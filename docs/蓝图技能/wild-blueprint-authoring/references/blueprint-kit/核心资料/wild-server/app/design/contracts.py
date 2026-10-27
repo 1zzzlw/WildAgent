@@ -293,6 +293,12 @@ class ComponentInstance(ContractModel):
     def descriptive_form(cls, value):
         return {"description": value} if isinstance(value, str) else value
 
+    @model_validator(mode="after")
+    def construction_contract(self):
+        from .construction_systems import validate_construction
+        validate_construction(self.model_dump(mode="json", exclude_none=True))
+        return self
+
 
 class ArchitectureIntent(ContractModel):
     """审核前的整体设计方向；不冒充已编译几何或专业规范结论。"""

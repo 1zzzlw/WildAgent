@@ -70,7 +70,7 @@ registerSurfaceMaterialFeature({
       metallic: params.metallic,
       descriptor,
     })
-    applyDefaultSurfaceMaterial(material, descriptor, stableSeed)
+    applyDefaultSurfaceMaterial(material, descriptor, stableSeed, params.uvScale)
   },
 })
 

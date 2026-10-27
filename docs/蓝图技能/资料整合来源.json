@@ -1,7 +1,7 @@
 {
-  "source": "docs/10月23日/蓝图文档",
-  "date": "2026-10-23",
-  "policy": "同步默认交互语义、Core源码与来源清单；未运行测试、构建或渲染；案例和旧报告保留历史边界",
+  "source": "docs/蓝图文档",
+  "date": "2026-10-27",
+  "policy": "当前材质/动态构件/渲染能力、源码与三案证据同步；历史报告保留原日期与边界",
   "files": [
     {
       "source": ".gitignore",
@@ -29,14 +29,19 @@
       "sha256": "055d6597c53eb3f320ee055c3925478b2e7e10cde65dc01808a7c165c8039e7e"
     },
     {
+      "source": "04-材质交互与渲染创作补充-2026-10-27.md",
+      "packed": "references/blueprint-kit/04-材质交互与渲染创作补充-2026-10-27.md",
+      "sha256": "37f961acbde95c0ce9923cd788c435ee1ca79c9686a4e6242424527b3161009f"
+    },
+    {
       "source": "README.md",
       "packed": "references/blueprint-kit/README.md",
-      "sha256": "a7324e6fe22e45bb69b65f3c022c6f24cb053780bc913f261aae0f9b62152f6f"
+      "sha256": "076054dc87206849999ab40c6e8017be7dae473636b2966c96e62cfc7981d2a8"
     },
     {
       "source": "WILD蓝图设计语言-v3.0.md",
       "packed": "references/blueprint-kit/WILD蓝图设计语言-v3.0.md",
-      "sha256": "b3fdb7cfd74d603f8092d76b5e73b6c7265b60d185e6a27a0fe6ad0fb001deb4"
+      "sha256": "c589e539647318113e403b708c1646668c1fc6a0575ecfbcb495dc5f66a643bf"
     },
     {
       "source": "参考资料/用户提供-WILD蓝图设计语言-v2.0.md.txt",
@@ -71,7 +76,12 @@
     {
       "source": "核心资料/README.md",
       "packed": "references/blueprint-kit/核心资料/README.md",
-      "sha256": "66ab7ebf78e8a06dfef6aa09c2de9efaaaeadd1286596cf3a5abba21d8b38265"
+      "sha256": "42fffad6c05a8f65997e34010c7ab81902156adec0abb77fdc75d03b32cc9e01"
+    },
+    {
+      "source": "核心资料/wild-core/material-presets.json",
+      "packed": "references/blueprint-kit/核心资料/wild-core/material-presets.json",
+      "sha256": "5a0714919266e72281081a5ec49d1aff38dc1299fee7b144c5eec815aafd71ad"
     },
     {
       "source": "核心资料/wild-core/package-lock.json",
@@ -81,12 +91,12 @@
     {
       "source": "核心资料/wild-core/package.json",
       "packed": "references/blueprint-kit/核心资料/wild-core/package.json",
-      "sha256": "6cad55f7dfd7ee4f0526c5660f8c2cf1d0a8dcb07707d2bcb2d33b9c1d680ec7"
+      "sha256": "a81683eda0b43d29e60ca25a44111a0d0efa5d7a975875b2dc9176cacfde4a14"
     },
     {
       "source": "核心资料/wild-core/schema.json",
       "packed": "references/blueprint-kit/核心资料/wild-core/schema.json",
-      "sha256": "35220c067d84254434f4760fca175dfcc4c5ddf32151304112c3176d330ce631"
+      "sha256": "b3bdc5d6aa2ab898d5a38661f7a372122e3393484debd2e955d75de72b05850e"
     },
     {
       "source": "核心资料/wild-core/src/compiler/componentCache.ts",
@@ -96,12 +106,12 @@
     {
       "source": "核心资料/wild-core/src/compiler/componentMaterials.ts",
       "packed": "references/blueprint-kit/核心资料/wild-core/src/compiler/componentMaterials.ts",
-      "sha256": "d431457a1afdba89c3c208fc83d147a911ae492d5158512b82779ffee6d5e599"
+      "sha256": "9f08927e77fd3501b37b140f7ae43c283e94c35accaac43c4a4649aec7f10805"
     },
     {
       "source": "核心资料/wild-core/src/compiler/componentRegistry.ts",
       "packed": "references/blueprint-kit/核心资料/wild-core/src/compiler/componentRegistry.ts",
-      "sha256": "fd9a75fc48f84ca12d8761a7a435c33d2eb601d7a2f135608243506484b1cb2a"
+      "sha256": "b61c167aaf9f086bb50cdc2bd75ac9ab7aad23a8f7f180a1be63402daf2f02a9"
     },
     {
       "source": "核心资料/wild-core/src/compiler/components/attachedToPath.ts",
@@ -151,7 +161,12 @@
     {
       "source": "核心资料/wild-core/src/compiler/components/elevator.ts",
       "packed": "references/blueprint-kit/核心资料/wild-core/src/compiler/components/elevator.ts",
-      "sha256": "c9bc37102a48520d00880b3ef86550e3a89952b7085128468eba3fe425e775e4"
+      "sha256": "40f32736ad3db6c74efe08be9aa0be1c0cd8077a67cb15484dc2d8b252bdb10e"
+    },
+    {
+      "source": "核心资料/wild-core/src/compiler/components/fan.ts",
+      "packed": "references/blueprint-kit/核心资料/wild-core/src/compiler/components/fan.ts",
+      "sha256": "df2b1abb06f43cfce077eee2f64d72992fee5454bdc462e74896cf51fd05f122"
     },
     {
       "source": "核心资料/wild-core/src/compiler/components/light.ts",
@@ -191,22 +206,27 @@
     {
       "source": "核心资料/wild-core/src/materials/contracts.ts",
       "packed": "references/blueprint-kit/核心资料/wild-core/src/materials/contracts.ts",
-      "sha256": "63b7590579997f6e77429ef84f6cd24fdd1eb5e3ddf197eefca1fe20020ef113"
+      "sha256": "a0f9ab7f35e19fa93c549eb40203fec9e56ace9e6e735fc15577ca80d7ba398a"
     },
     {
       "source": "核心资料/wild-core/src/materials/descriptor.ts",
       "packed": "references/blueprint-kit/核心资料/wild-core/src/materials/descriptor.ts",
-      "sha256": "a3c6131d995d32621d8303a89e6699e6cbda5baf3a07e32367d880a070460184"
+      "sha256": "7519d9289f218997cd6c4f624d1114df4089142ef94e7fb686b68d95381a61b5"
     },
     {
       "source": "核心资料/wild-core/src/materials/index.ts",
       "packed": "references/blueprint-kit/核心资料/wild-core/src/materials/index.ts",
-      "sha256": "2ecec995b71b14ec979eebe21f8998626bbccb3c56ad62066c5a60c3e42f4cfd"
+      "sha256": "cd9c647923a1ecd7ba51b577f6b7b79f2ac772ffae3a16f6e05d06975331440a"
     },
     {
       "source": "核心资料/wild-core/src/materials/packageParser.ts",
       "packed": "references/blueprint-kit/核心资料/wild-core/src/materials/packageParser.ts",
       "sha256": "5cc7faeaf8450ca6e3621fdb1013838805a57275e3b5530f06415ceb1399d258"
+    },
+    {
+      "source": "核心资料/wild-core/src/materials/presets.ts",
+      "packed": "references/blueprint-kit/核心资料/wild-core/src/materials/presets.ts",
+      "sha256": "5c6ce958879ea03a35ac83fffae3206fedcf261f410481b062780a7cd0bf1210"
     },
     {
       "source": "核心资料/wild-core/src/materials/water.ts",
@@ -226,7 +246,7 @@
     {
       "source": "核心资料/wild-core/src/primitive/geometry/beam.ts",
       "packed": "references/blueprint-kit/核心资料/wild-core/src/primitive/geometry/beam.ts",
-      "sha256": "3683d7c4c2019d382d8afa104aa9526d2ac23c38d673c24d87166fa7220c2b0d"
+      "sha256": "9362ac83f7896dd685b4792f14f7654194a00d0049705a2c015d6c68cb8b8e3a"
     },
     {
       "source": "核心资料/wild-core/src/primitive/geometry/body.ts",
@@ -241,7 +261,7 @@
     {
       "source": "核心资料/wild-core/src/primitive/geometry/column.ts",
       "packed": "references/blueprint-kit/核心资料/wild-core/src/primitive/geometry/column.ts",
-      "sha256": "bdfc36c2027b0cbe8081a0d600e96dc9c7b5d0f4d595a951b5c03e722fb3fddb"
+      "sha256": "03b6974231112c53882143d3d4dfb6205a4d7c55ce3d40ba2d0cf718c6880b80"
     },
     {
       "source": "核心资料/wild-core/src/primitive/geometry/denseBrick.ts",
@@ -271,7 +291,7 @@
     {
       "source": "核心资料/wild-core/src/primitive/geometry/mesh-helper.ts",
       "packed": "references/blueprint-kit/核心资料/wild-core/src/primitive/geometry/mesh-helper.ts",
-      "sha256": "04ac280123aa796aea5ec72133f17dd4d9455f39d0d7f6436af5da34567b97a4"
+      "sha256": "cbf420af01c820f2b427878537cdad916920690023ab1906d527c69d55a2d922"
     },
     {
       "source": "核心资料/wild-core/src/primitive/geometry/opening.ts",
@@ -291,7 +311,7 @@
     {
       "source": "核心资料/wild-core/src/primitive/geometry/primitive.ts",
       "packed": "references/blueprint-kit/核心资料/wild-core/src/primitive/geometry/primitive.ts",
-      "sha256": "5dec3851d5c9893ea5fc187b8610c166c35872122740f32d34292033de0b0bfb"
+      "sha256": "cad2fae58b0dfba607e2b9af82b9301230e5a5be902cde8abe8522d37a83a7cd"
     },
     {
       "source": "核心资料/wild-core/src/primitive/geometry/roof.ts",
@@ -311,12 +331,12 @@
     {
       "source": "核心资料/wild-core/src/primitive/index.ts",
       "packed": "references/blueprint-kit/核心资料/wild-core/src/primitive/index.ts",
-      "sha256": "1b355943646d05f5b387d6dbbec4017be577663caf25aaf282f0db6bcc7875f3"
+      "sha256": "5cfdeada12b4d005c949ca755114d73db41e6b6ab8a72279e32f750a337cb192"
     },
     {
       "source": "核心资料/wild-core/src/primitive/materials/apply.ts",
       "packed": "references/blueprint-kit/核心资料/wild-core/src/primitive/materials/apply.ts",
-      "sha256": "f2c59a9730398088c989232d6bea03f2df03ac0e089b05a04e170ae51344d649"
+      "sha256": "f4a2d1abf72bed5b6f62724ec84a7993bbdb965c83fe67dd71ef9c8299b79178"
     },
     {
       "source": "核心资料/wild-core/src/primitive/parser.ts",
@@ -326,7 +346,7 @@
     {
       "source": "核心资料/wild-core/src/primitive/registry.ts",
       "packed": "references/blueprint-kit/核心资料/wild-core/src/primitive/registry.ts",
-      "sha256": "0494dccfefdd7f38dcc9659edc84c2c3527503f7413b51b61e9fd41e6881ca43"
+      "sha256": "d8d2cb054ea85b4a7dd8c0bbf589f61fbce63705cf54e484679e2719e8a0539a"
     },
     {
       "source": "核心资料/wild-core/src/primitive/resolver.ts",
@@ -341,12 +361,12 @@
     {
       "source": "核心资料/wild-core/src/primitive/types.ts",
       "packed": "references/blueprint-kit/核心资料/wild-core/src/primitive/types.ts",
-      "sha256": "ce1386d61ac63b428f8a10ab6eced0ca2e6ef061a6c35c826dcd9fa83f06a009"
+      "sha256": "989d73d1823ebcaeb1e8ce1d817e46f13468303b8f0cde14093123a0f7e95b8b"
     },
     {
       "source": "核心资料/wild-core/src/relationships.ts",
       "packed": "references/blueprint-kit/核心资料/wild-core/src/relationships.ts",
-      "sha256": "3202a9f64b649e003e58de4c7ffa910e1d5c952ed4b02ec222c4a527594c2e5a"
+      "sha256": "b0bb09990d8305ff20d606797197f0b7b9670b18927e8883fa2ed331d6268020"
     },
     {
       "source": "核心资料/wild-core/src/world/contracts.ts",
@@ -366,17 +386,17 @@
     {
       "source": "核心资料/wild-core/types.ts",
       "packed": "references/blueprint-kit/核心资料/wild-core/types.ts",
-      "sha256": "2468ef65459cb8e8b970f9c7dd2ef3a01a51e7072d30a05e5c91bed68ffa81d9"
+      "sha256": "819836c55e22f49c05c00f3b24fe39f75b5779b7d54becb20d9886035dc51f9b"
     },
     {
       "source": "核心资料/wild-server/app/design/compilation.py",
       "packed": "references/blueprint-kit/核心资料/wild-server/app/design/compilation.py",
-      "sha256": "9d81de3ed38a9b41dee414b93e6006c2094aa393017b1ec4b49a66cec71b8dbf"
+      "sha256": "3377740c4100abb7d81eb26653729253a486fdadca7fff5c1a1132632dd77c64"
     },
     {
       "source": "核心资料/wild-server/app/design/contracts.py",
       "packed": "references/blueprint-kit/核心资料/wild-server/app/design/contracts.py",
-      "sha256": "5358dd784b1399ac6346f2d1865ed7ec30510e57f5c2ac0396c86041a006f796"
+      "sha256": "275befc1886f146c601fde8faeade9fe9f08bed8aafb08d92333fbf52cfddedd"
     },
     {
       "source": "核心资料/wild-web/package-lock.json",
@@ -411,22 +431,22 @@
     {
       "source": "核心资料/wild-web/src/renderer/fixtureLightingRuntime.ts",
       "packed": "references/blueprint-kit/核心资料/wild-web/src/renderer/fixtureLightingRuntime.ts",
-      "sha256": "97ed5c5aae25e392fe0834f988b2ef5d6e7ba9c94c3e2867a4b9abec3ad03049"
+      "sha256": "ef3bd7805bdff33d71d5b1f2c4ed3bc22e52d712a722ac36dd4bc944b24eb843"
     },
     {
       "source": "核心资料/wild-web/src/renderer/lightingRuntime.ts",
       "packed": "references/blueprint-kit/核心资料/wild-web/src/renderer/lightingRuntime.ts",
-      "sha256": "c82031a95df4d911852ed6e2afe16776bc1fc9082173e743d39d60cd12668968"
+      "sha256": "5169e5ca091841c4549b2be2a7bb8abe8fc0378cf932bee9815cebdf55690606"
     },
     {
       "source": "核心资料/wild-web/src/renderer/materialAdapter.ts",
       "packed": "references/blueprint-kit/核心资料/wild-web/src/renderer/materialAdapter.ts",
-      "sha256": "07688eb4359d982e2522498ea41347e1a6f884fed96ba41ef7c5a64036ccc978"
+      "sha256": "30e1dd0a06afc72d277935be12e6d973a110b7f686fe6f419b8633434517939a"
     },
     {
       "source": "核心资料/wild-web/src/renderer/materialFeatures/defaultSurfaceMaterial.ts",
       "packed": "references/blueprint-kit/核心资料/wild-web/src/renderer/materialFeatures/defaultSurfaceMaterial.ts",
-      "sha256": "59038aae35ffd47c1b2b59741589871f826c7632b67e19adb34886b6bc215cec"
+      "sha256": "e6ccc74a9915b66532b1d2bba1e20916364bef13f4c0f15b643b5216530ef6d5"
     },
     {
       "source": "核心资料/wild-web/src/renderer/materialFeatures/index.ts",
@@ -441,7 +461,12 @@
     {
       "source": "核心资料/wild-web/src/renderer/materialFeatures/registry.ts",
       "packed": "references/blueprint-kit/核心资料/wild-web/src/renderer/materialFeatures/registry.ts",
-      "sha256": "f1ab6d432aa155cb2aa255080aad057f416726376035971a37ea936baed4da8d"
+      "sha256": "4b200ad1b5a0957be124444bab5463a1f6bf81cecdb488e8065b8fbeed07ebac"
+    },
+    {
+      "source": "核心资料/wild-web/src/renderer/mechanismRuntime.ts",
+      "packed": "references/blueprint-kit/核心资料/wild-web/src/renderer/mechanismRuntime.ts",
+      "sha256": "35cf366e907859a4cb9e1bf0fbbf06be858696298676731b5e4cb3f368312cf0"
     },
     {
       "source": "核心资料/wild-web/src/renderer/meshDataToGeometry.ts",
@@ -456,7 +481,7 @@
     {
       "source": "核心资料/wild-web/src/renderer/proceduralMaterials/brickMaterial.ts",
       "packed": "references/blueprint-kit/核心资料/wild-web/src/renderer/proceduralMaterials/brickMaterial.ts",
-      "sha256": "09fa36f67bfe0bccb67fcb585dfedb9dd46906940cf24ba5311002d14f69efaa"
+      "sha256": "7a9d930467cbce7c8f9fe5f1915ac16da7632d208651602209b9639e556cb11b"
     },
     {
       "source": "核心资料/wild-web/src/renderer/proceduralMaterials/index.ts",
@@ -476,7 +501,7 @@
     {
       "source": "核心资料/wild-web/src/renderer/renderEntity.ts",
       "packed": "references/blueprint-kit/核心资料/wild-web/src/renderer/renderEntity.ts",
-      "sha256": "d44dce0215ee1c33972f8a973c975acef6775e46695dac82680910bde7aca439"
+      "sha256": "541a783c3027200a55e633176e23f4aca2553b238d5679cd012300035433a2e3"
     },
     {
       "source": "核心资料/wild-web/src/renderer/textLabel.ts",
@@ -491,7 +516,7 @@
     {
       "source": "核心资料/wild-web/src/renderer/waterReflectionRuntime.ts",
       "packed": "references/blueprint-kit/核心资料/wild-web/src/renderer/waterReflectionRuntime.ts",
-      "sha256": "3e2ab07258a4705104d234b1dc4297c29cf09f4b11e9c515f794fdfbbc2144ca"
+      "sha256": "46a658e6948d432d382d586df27294b2bd95092a8700b454ff2a973db2ba6035"
     },
     {
       "source": "核心资料/wild-web/src/renderer/waterSurfaceMaterial.ts",
@@ -531,12 +556,12 @@
     {
       "source": "核心资料/wild-web/src/types/blueprint.ts",
       "packed": "references/blueprint-kit/核心资料/wild-web/src/types/blueprint.ts",
-      "sha256": "ed1efd4ba21f558d74f27a1a5e5d7a07f96336d6203c5e5a4168d118080b5249"
+      "sha256": "9eadb3626fcc56ad3fb17beff5a2a5415f1e50e1fd5966ec65d9b70c7ce12ede"
     },
     {
       "source": "核心资料/wild-web/src/types/scene.ts",
       "packed": "references/blueprint-kit/核心资料/wild-web/src/types/scene.ts",
-      "sha256": "e8464100a74820667555180a2d0321788ce6a8d6bb96f880c0b3521dc0d0f27b"
+      "sha256": "5466f70c4bfa8eaf210ce1ea3c08897fb16298d293f0b237d80cb1777c167635"
     },
     {
       "source": "案例/00-汀院质量参考/原始记录/README.md.txt",
@@ -1204,9 +1229,214 @@
       "sha256": "ea83644b44317c5fb2d9c4d577e53d12826e28785012dc00b61976ce660a0349"
     },
     {
+      "source": "案例/16-三种原创别墅-2026-10-27/01-澄屿叠院-现代悬挑/效果图/01-日景主视.png",
+      "packed": "references/blueprint-kit/案例/16-三种原创别墅-2026-10-27/01-澄屿叠院-现代悬挑/效果图/01-日景主视.png",
+      "sha256": "982a791f2760029be557e959f1c8b551a18a76d736528211cca40b3d1f7babb8"
+    },
+    {
+      "source": "案例/16-三种原创别墅-2026-10-27/01-澄屿叠院-现代悬挑/效果图/02-西南立面.png",
+      "packed": "references/blueprint-kit/案例/16-三种原创别墅-2026-10-27/01-澄屿叠院-现代悬挑/效果图/02-西南立面.png",
+      "sha256": "9868f70fabf2607d2441784fbb6107bebf66e2c2c21a2a7ccb80d3e85271aac0"
+    },
+    {
+      "source": "案例/16-三种原创别墅-2026-10-27/01-澄屿叠院-现代悬挑/效果图/03-东北立面.png",
+      "packed": "references/blueprint-kit/案例/16-三种原创别墅-2026-10-27/01-澄屿叠院-现代悬挑/效果图/03-东北立面.png",
+      "sha256": "2fd217a5f406af56ea91861617b928e8f7e71f1a97da6f63073eeef760396caa"
+    },
+    {
+      "source": "案例/16-三种原创别墅-2026-10-27/01-澄屿叠院-现代悬挑/效果图/04-俯视全景.png",
+      "packed": "references/blueprint-kit/案例/16-三种原创别墅-2026-10-27/01-澄屿叠院-现代悬挑/效果图/04-俯视全景.png",
+      "sha256": "8bc7c49f97a4ac3c182397755c4f09e9fb1e6f04cbe569bbf4c8c8202dbf7a1a"
+    },
+    {
+      "source": "案例/16-三种原创别墅-2026-10-27/01-澄屿叠院-现代悬挑/效果图/05-黄昏.png",
+      "packed": "references/blueprint-kit/案例/16-三种原创别墅-2026-10-27/01-澄屿叠院-现代悬挑/效果图/05-黄昏.png",
+      "sha256": "f196bc010fe3df7659bb8667f706efaea3795907ea92376b8823d78bf81c7a84"
+    },
+    {
+      "source": "案例/16-三种原创别墅-2026-10-27/01-澄屿叠院-现代悬挑/效果图/06-夜景.png",
+      "packed": "references/blueprint-kit/案例/16-三种原创别墅-2026-10-27/01-澄屿叠院-现代悬挑/效果图/06-夜景.png",
+      "sha256": "981ef00c9cbafe04be8f6e91cbbcb9c16ad1b2582447247dea57becc1581b21a"
+    },
+    {
+      "source": "案例/16-三种原创别墅-2026-10-27/01-澄屿叠院-现代悬挑/效果图/07-室内材质.png",
+      "packed": "references/blueprint-kit/案例/16-三种原创别墅-2026-10-27/01-澄屿叠院-现代悬挑/效果图/07-室内材质.png",
+      "sha256": "2a983b38ede4946a02681a826e680172a6c259a70fce7a16c3ecf32103a4bdc5"
+    },
+    {
+      "source": "案例/16-三种原创别墅-2026-10-27/01-澄屿叠院-现代悬挑/效果图/08-近景构造.png",
+      "packed": "references/blueprint-kit/案例/16-三种原创别墅-2026-10-27/01-澄屿叠院-现代悬挑/效果图/08-近景构造.png",
+      "sha256": "a4476f3c034529c1c629659e1098017ab215eb1b39e4df64c63ed545d5feeedb"
+    },
+    {
+      "source": "案例/16-三种原创别墅-2026-10-27/01-澄屿叠院-现代悬挑/效果图/09-电梯开门.png",
+      "packed": "references/blueprint-kit/案例/16-三种原创别墅-2026-10-27/01-澄屿叠院-现代悬挑/效果图/09-电梯开门.png",
+      "sha256": "0568ae33934e271126ee890cd3759c272afa1cb0e42ae3eb9e2ce99299f46631"
+    },
+    {
+      "source": "案例/16-三种原创别墅-2026-10-27/01-澄屿叠院-现代悬挑/效果图/render_manifest.json",
+      "packed": "references/blueprint-kit/案例/16-三种原创别墅-2026-10-27/01-澄屿叠院-现代悬挑/效果图/render_manifest.json",
+      "sha256": "681868dd09057e354d795fab9b14907fad795b587f28403e05c09363f7414afa"
+    },
+    {
+      "source": "案例/16-三种原创别墅-2026-10-27/01-澄屿叠院-现代悬挑/澄屿叠院.wild",
+      "packed": "references/blueprint-kit/案例/16-三种原创别墅-2026-10-27/01-澄屿叠院-现代悬挑/澄屿叠院.wild",
+      "sha256": "b9cc7732d11c95ba6c94f1e02830621d89bd0fd435fe2deccd366753ee8f9c5a"
+    },
+    {
+      "source": "案例/16-三种原创别墅-2026-10-27/01-澄屿叠院-现代悬挑/设计事实.md",
+      "packed": "references/blueprint-kit/案例/16-三种原创别墅-2026-10-27/01-澄屿叠院-现代悬挑/设计事实.md",
+      "sha256": "238c0ac48bd9edb5606394073e5c19c47d0994bc4cec5d5736928fb184373161"
+    },
+    {
+      "source": "案例/16-三种原创别墅-2026-10-27/01-澄屿叠院-现代悬挑/静态与Core验收.json",
+      "packed": "references/blueprint-kit/案例/16-三种原创别墅-2026-10-27/01-澄屿叠院-现代悬挑/静态与Core验收.json",
+      "sha256": "d582dae6845f899033157e34b476e7bbef37047c30866e69103bb157e5763fd9"
+    },
+    {
+      "source": "案例/16-三种原创别墅-2026-10-27/02-松雨回廊-新中式合院/效果图/01-日景主视.png",
+      "packed": "references/blueprint-kit/案例/16-三种原创别墅-2026-10-27/02-松雨回廊-新中式合院/效果图/01-日景主视.png",
+      "sha256": "ded0a09a0e44514874d80ed4a080980fceb121b6f7a12107d9f2408863949907"
+    },
+    {
+      "source": "案例/16-三种原创别墅-2026-10-27/02-松雨回廊-新中式合院/效果图/02-西南立面.png",
+      "packed": "references/blueprint-kit/案例/16-三种原创别墅-2026-10-27/02-松雨回廊-新中式合院/效果图/02-西南立面.png",
+      "sha256": "1c0d0b6fa6e2cfe9d3475f01504ecc619bd27b0fead3636d7293567c599264bd"
+    },
+    {
+      "source": "案例/16-三种原创别墅-2026-10-27/02-松雨回廊-新中式合院/效果图/03-东北立面.png",
+      "packed": "references/blueprint-kit/案例/16-三种原创别墅-2026-10-27/02-松雨回廊-新中式合院/效果图/03-东北立面.png",
+      "sha256": "56120bd77ae058b577f996caaf602c6b8030995505a28b35a18a8bd0db9ea8e9"
+    },
+    {
+      "source": "案例/16-三种原创别墅-2026-10-27/02-松雨回廊-新中式合院/效果图/04-俯视全景.png",
+      "packed": "references/blueprint-kit/案例/16-三种原创别墅-2026-10-27/02-松雨回廊-新中式合院/效果图/04-俯视全景.png",
+      "sha256": "a5c6700aee9f2d06f3982686642a04aac163b730cde269753f038c84830dac7e"
+    },
+    {
+      "source": "案例/16-三种原创别墅-2026-10-27/02-松雨回廊-新中式合院/效果图/05-黄昏.png",
+      "packed": "references/blueprint-kit/案例/16-三种原创别墅-2026-10-27/02-松雨回廊-新中式合院/效果图/05-黄昏.png",
+      "sha256": "2c311cf2b9e784e37158c7956c3cf3779ac4c9355dfa797e282c8507dd9dd111"
+    },
+    {
+      "source": "案例/16-三种原创别墅-2026-10-27/02-松雨回廊-新中式合院/效果图/06-夜景.png",
+      "packed": "references/blueprint-kit/案例/16-三种原创别墅-2026-10-27/02-松雨回廊-新中式合院/效果图/06-夜景.png",
+      "sha256": "d1794a767f182de2ae12b5ef098d8cc6a6b9387da01430bd26262de236c3e35b"
+    },
+    {
+      "source": "案例/16-三种原创别墅-2026-10-27/02-松雨回廊-新中式合院/效果图/07-室内材质.png",
+      "packed": "references/blueprint-kit/案例/16-三种原创别墅-2026-10-27/02-松雨回廊-新中式合院/效果图/07-室内材质.png",
+      "sha256": "ea2b873979e70db78f14352129bae6e1dfedb9657d41e96cc7fcc6643eab7b02"
+    },
+    {
+      "source": "案例/16-三种原创别墅-2026-10-27/02-松雨回廊-新中式合院/效果图/08-近景构造.png",
+      "packed": "references/blueprint-kit/案例/16-三种原创别墅-2026-10-27/02-松雨回廊-新中式合院/效果图/08-近景构造.png",
+      "sha256": "7a30f69a18e8ef32fb777b2b96f3753e2d2ebde3636decb66f60aad3562d337b"
+    },
+    {
+      "source": "案例/16-三种原创别墅-2026-10-27/02-松雨回廊-新中式合院/效果图/render_manifest.json",
+      "packed": "references/blueprint-kit/案例/16-三种原创别墅-2026-10-27/02-松雨回廊-新中式合院/效果图/render_manifest.json",
+      "sha256": "4a8d244ead0171ddb959b07bb2f5885d6944b77f1a8aa95ba1a3926fb5d7adcb"
+    },
+    {
+      "source": "案例/16-三种原创别墅-2026-10-27/02-松雨回廊-新中式合院/松雨回廊.wild",
+      "packed": "references/blueprint-kit/案例/16-三种原创别墅-2026-10-27/02-松雨回廊-新中式合院/松雨回廊.wild",
+      "sha256": "f1bc5669ba80bee1b1fcddb2399f3c79ff4b00a46952466b92e95ccf1a81c8a5"
+    },
+    {
+      "source": "案例/16-三种原创别墅-2026-10-27/02-松雨回廊-新中式合院/设计事实.md",
+      "packed": "references/blueprint-kit/案例/16-三种原创别墅-2026-10-27/02-松雨回廊-新中式合院/设计事实.md",
+      "sha256": "f57b6b3c10485b7a1175bc3afdd2cdb73defb29f7769b8f4b0cedc32772dcf29"
+    },
+    {
+      "source": "案例/16-三种原创别墅-2026-10-27/02-松雨回廊-新中式合院/静态与Core验收.json",
+      "packed": "references/blueprint-kit/案例/16-三种原创别墅-2026-10-27/02-松雨回廊-新中式合院/静态与Core验收.json",
+      "sha256": "193b6f7b0ce66bac94890a6b509119f24ae2e8f35186cab15f01be6ed0182e68"
+    },
+    {
+      "source": "案例/16-三种原创别墅-2026-10-27/03-栖坡陶院-地中海坡顶/效果图/01-日景主视.png",
+      "packed": "references/blueprint-kit/案例/16-三种原创别墅-2026-10-27/03-栖坡陶院-地中海坡顶/效果图/01-日景主视.png",
+      "sha256": "78aa89a9a41e4ecdcde05a723b3064537c009e1f6b8f9fc6a8ab06d3fdfdc61a"
+    },
+    {
+      "source": "案例/16-三种原创别墅-2026-10-27/03-栖坡陶院-地中海坡顶/效果图/02-西南立面.png",
+      "packed": "references/blueprint-kit/案例/16-三种原创别墅-2026-10-27/03-栖坡陶院-地中海坡顶/效果图/02-西南立面.png",
+      "sha256": "c78d2a6d1eb5481e32d548f58731c34c73702debb915a635c35614638084c343"
+    },
+    {
+      "source": "案例/16-三种原创别墅-2026-10-27/03-栖坡陶院-地中海坡顶/效果图/03-东北立面.png",
+      "packed": "references/blueprint-kit/案例/16-三种原创别墅-2026-10-27/03-栖坡陶院-地中海坡顶/效果图/03-东北立面.png",
+      "sha256": "dcf5a395dada70e2bfaa8d94102c311758aabb2d1726584abe298e9d3f7fd28c"
+    },
+    {
+      "source": "案例/16-三种原创别墅-2026-10-27/03-栖坡陶院-地中海坡顶/效果图/04-俯视全景.png",
+      "packed": "references/blueprint-kit/案例/16-三种原创别墅-2026-10-27/03-栖坡陶院-地中海坡顶/效果图/04-俯视全景.png",
+      "sha256": "9de85936efe36d3bc3cd50e041655ec0dfcb981d52943ea2314ead2b8d608734"
+    },
+    {
+      "source": "案例/16-三种原创别墅-2026-10-27/03-栖坡陶院-地中海坡顶/效果图/05-黄昏.png",
+      "packed": "references/blueprint-kit/案例/16-三种原创别墅-2026-10-27/03-栖坡陶院-地中海坡顶/效果图/05-黄昏.png",
+      "sha256": "f1792acf1e46dc79bbf4818858e954580eebc71c83077309496fd0745b1f9ea1"
+    },
+    {
+      "source": "案例/16-三种原创别墅-2026-10-27/03-栖坡陶院-地中海坡顶/效果图/06-夜景.png",
+      "packed": "references/blueprint-kit/案例/16-三种原创别墅-2026-10-27/03-栖坡陶院-地中海坡顶/效果图/06-夜景.png",
+      "sha256": "f1144f209f0036db9c2e3540b07af88596ebb485aafa9ee5706d50e63f7a2b52"
+    },
+    {
+      "source": "案例/16-三种原创别墅-2026-10-27/03-栖坡陶院-地中海坡顶/效果图/07-室内材质.png",
+      "packed": "references/blueprint-kit/案例/16-三种原创别墅-2026-10-27/03-栖坡陶院-地中海坡顶/效果图/07-室内材质.png",
+      "sha256": "1ed76f4458cf5fb56fde856a8e3bf69ab50dca18c01fe6eb2384e1ce74d2a270"
+    },
+    {
+      "source": "案例/16-三种原创别墅-2026-10-27/03-栖坡陶院-地中海坡顶/效果图/08-近景构造.png",
+      "packed": "references/blueprint-kit/案例/16-三种原创别墅-2026-10-27/03-栖坡陶院-地中海坡顶/效果图/08-近景构造.png",
+      "sha256": "6ca0c881d7f3865b331f27d46eb45fedfb4c63b1e686d58ef1648b7a7fdd9562"
+    },
+    {
+      "source": "案例/16-三种原创别墅-2026-10-27/03-栖坡陶院-地中海坡顶/效果图/render_manifest.json",
+      "packed": "references/blueprint-kit/案例/16-三种原创别墅-2026-10-27/03-栖坡陶院-地中海坡顶/效果图/render_manifest.json",
+      "sha256": "e957329db14717100e5a901f1ec832f9e63fddefbb01fb56a410a53333c768c7"
+    },
+    {
+      "source": "案例/16-三种原创别墅-2026-10-27/03-栖坡陶院-地中海坡顶/栖坡陶院.wild",
+      "packed": "references/blueprint-kit/案例/16-三种原创别墅-2026-10-27/03-栖坡陶院-地中海坡顶/栖坡陶院.wild",
+      "sha256": "acc5f492665d1b0d7a51f51f03f54960c1a979e31912f1ec4803b1136ad62f12"
+    },
+    {
+      "source": "案例/16-三种原创别墅-2026-10-27/03-栖坡陶院-地中海坡顶/设计事实.md",
+      "packed": "references/blueprint-kit/案例/16-三种原创别墅-2026-10-27/03-栖坡陶院-地中海坡顶/设计事实.md",
+      "sha256": "c0bf3fff515c6ca9db62248e44eb037ea1e09cef9248d312a8134e7e72bf97ef"
+    },
+    {
+      "source": "案例/16-三种原创别墅-2026-10-27/03-栖坡陶院-地中海坡顶/静态与Core验收.json",
+      "packed": "references/blueprint-kit/案例/16-三种原创别墅-2026-10-27/03-栖坡陶院-地中海坡顶/静态与Core验收.json",
+      "sha256": "1e76eaca10e48e9963db6b6551e3c9a6d15dd4708ea7e73983e1dbe45c42c21d"
+    },
+    {
+      "source": "案例/16-三种原创别墅-2026-10-27/README.md",
+      "packed": "references/blueprint-kit/案例/16-三种原创别墅-2026-10-27/README.md",
+      "sha256": "4eb9bdf13f3dc88605d58c4bd6f6a2e602e8e82521148fb59582b1c630fb7c9f"
+    },
+    {
+      "source": "案例/16-三种原创别墅-2026-10-27/作者源码.mjs.txt",
+      "packed": "references/blueprint-kit/案例/16-三种原创别墅-2026-10-27/作者源码.mjs.txt",
+      "sha256": "aeedd6fd3a8900ed9cd500afaedfc691442635a81f0c013f9eb58f287b810880"
+    },
+    {
+      "source": "案例/16-三种原创别墅-2026-10-27/生成清单.json",
+      "packed": "references/blueprint-kit/案例/16-三种原创别墅-2026-10-27/生成清单.json",
+      "sha256": "c249001998d5f99d23e9c079429a74a8464a93e0aa7422614b2e55605e030c5a"
+    },
+    {
+      "source": "案例/16-三种原创别墅-2026-10-27/设计事实.json",
+      "packed": "references/blueprint-kit/案例/16-三种原创别墅-2026-10-27/设计事实.json",
+      "sha256": "274243d14de96fe4e36cd10ec875d07fd4da405484754a0bb583cd276bd8c5b6"
+    },
+    {
       "source": "案例/README.md",
       "packed": "references/blueprint-kit/案例/README.md",
-      "sha256": "25e5b5d40bd07c02a89582ae408e7440742b9bad7e8ed5324bd5aa0b95c074f5"
+      "sha256": "d25bdb64b83641ab82fd6733da16aa64a0083bb9ebd81851675a2981a6c7591c"
     },
     {
       "source": "示例/README.md",
@@ -1249,9 +1479,14 @@
       "sha256": "2026898cd71b48beff493d03a35763702244f6c27cc67653e79430dec2b2ade9"
     },
     {
+      "source": "验证与来源/2026-10-27资料包自检.json",
+      "packed": "references/blueprint-kit/验证与来源/2026-10-27资料包自检.json",
+      "sha256": "d6fb7af3bc269f757d3beda21b587f877376ba521e3ae42aadec9a5b26399233"
+    },
+    {
       "source": "验证与来源/README.md",
       "packed": "references/blueprint-kit/验证与来源/README.md",
-      "sha256": "fcee03370878464103a50a26847897b8515d3262f4a5db0f6812d9e33c926a31"
+      "sha256": "af44e30bd2ce340e43da68fb06c4db009f4650cd99b479aa23193d590d769f1a"
     },
     {
       "source": "验证与来源/v2参考来源.json",
@@ -1291,12 +1526,12 @@
     {
       "source": "验证与来源/文件清单.json",
       "packed": "references/blueprint-kit/验证与来源/文件清单.json",
-      "sha256": "8410cd4a391fe0aecd054003da5dfdf411cc47a452a7a87292997676cd9d86fa"
+      "sha256": "64cf16627d0671d29dbdf737a2671336f2c58d70b6acc939c9bc9bbaeb8ae56d"
     },
     {
       "source": "验证与来源/核心源码来源.json",
       "packed": "references/blueprint-kit/验证与来源/核心源码来源.json",
-      "sha256": "2d211aa443656fa916595b7c61502a3905f9cca2bb17bab18a6d5eaa74f1dcdd"
+      "sha256": "da48307fb77981332025590221af9e2b9b1f2aa6cebfa35618e9b850df8d0472"
     },
     {
       "source": "验证与来源/渲染修订资料包自检.json",

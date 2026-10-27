@@ -11,6 +11,7 @@ import { compileCornice } from './components/cornice'
 import { compileRamp } from './components/ramp'
 import { compileLight } from './components/light'
 import { compileElevator } from './components/elevator'
+import { compileFan } from './components/fan'
 
 export interface ComponentCompilerRegistration {
   type: ComponentSpec['type']
@@ -123,8 +124,15 @@ function registerBuiltins(): void {
   registerComponentCompiler({
     type: 'elevator',
     editing: { translation: 'position', parameters: ['width', 'depth', 'floorHeight', 'floorCount'] },
-    description: '将电梯编译为可动轿厢、导轨与呼梯按钮（点击上下移动）',
+    contextDependencies: ['walls'],
+    description: '带层门联锁、逐层呼梯、轿内选层和开关门按钮的电梯，入口朝 +Z',
     compile: (component, context) => compileElevator(component as Extract<ComponentSpec, { type: 'elevator' }>, context),
+  })
+  registerComponentCompiler({
+    type: 'fan',
+    editing: { translation: 'position', parameters: ['radius', 'bladeCount', 'drop', 'rpm'] },
+    description: '吊扇与独立墙面开关，关闭、低速、高速循环',
+    compile: component => compileFan(component as Extract<ComponentSpec, { type: 'fan' }>),
   })
 }
 

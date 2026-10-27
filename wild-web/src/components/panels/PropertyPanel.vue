@@ -1205,7 +1205,7 @@ async function removeSelectedItems() {
   padding: 8px 12px;
   font-size: 13px;
   font-weight: 500;
-  border-bottom: 1px solid #3e3e42;
+  border-bottom: 1px solid var(--studio-border);
 }
 
 .panel-body {
@@ -1216,7 +1216,7 @@ async function removeSelectedItems() {
 .empty-state {
   padding: 24px;
   text-align: center;
-  color: #666666;
+  color: var(--studio-muted);
   font-size: 13px;
 }
 
@@ -1230,9 +1230,9 @@ async function removeSelectedItems() {
 
 .behavior-card {
   padding: 10px;
-  border: 1px solid #343b43;
+  border: 1px solid var(--studio-border);
   border-radius: 6px;
-  background: linear-gradient(145deg, rgba(38, 44, 51, 0.92), rgba(29, 31, 36, 0.92));
+  background: linear-gradient(145deg, var(--studio-surface), var(--studio-surface));
 }
 
 .behavior-row {
@@ -1245,20 +1245,20 @@ async function removeSelectedItems() {
 
 .behavior-description {
   margin-top: 2px;
-  color: #75838b;
+  color: var(--studio-muted);
   font-size: 10px;
 }
 
 .behavior-card :deep(.el-switch) {
   flex: 0 0 auto;
-  --el-switch-on-color: #22a8d6;
-  --el-switch-off-color: #4a4e55;
+  --el-switch-on-color: var(--studio-accent);
+  --el-switch-off-color: var(--studio-muted);
 }
 
 .section-title {
   font-size: 12px;
   font-weight: 500;
-  color: #888888;
+  color: var(--studio-muted);
   margin-bottom: 8px;
   text-transform: uppercase;
 }
@@ -1273,10 +1273,10 @@ async function removeSelectedItems() {
 .component-badge {
   margin-top: 8px;
   padding: 6px 8px;
-  border: 1px solid #326b80;
+  border: 1px solid var(--studio-accent-border);
   border-radius: 4px;
-  background: rgba(42, 118, 145, 0.18);
-  color: #8bd9f5;
+  background: var(--studio-hover);
+  color: var(--studio-accent);
   font-size: 11px;
 }
 
@@ -1321,15 +1321,15 @@ async function removeSelectedItems() {
 
 .array-item {
   padding: 9px;
-  border: 1px solid #34343a;
-  border-left: 2px solid #326b80;
+  border: 1px solid var(--studio-border);
+  border-left: 2px solid var(--studio-accent-border);
   border-radius: 4px;
-  background: #252529;
+  background: var(--studio-surface);
 }
 
 .array-item-title {
   margin-bottom: 6px;
-  color: #999999;
+  color: var(--studio-muted);
   font-size: 11px;
 }
 
@@ -1359,17 +1359,17 @@ async function removeSelectedItems() {
 
 .interaction-hint {
   padding: 7px 8px;
-  border-left: 2px solid #35bfe8;
-  background: rgba(53, 191, 232, 0.08);
-  color: #8ca5b1;
+  border-left: 2px solid var(--studio-accent-border);
+  background: var(--studio-hover);
+  color: var(--studio-muted);
   font-size: 11px;
   line-height: 1.5;
 }
 
 .property-row :deep(.el-input__wrapper) {
-  background: #1e1e1e;
-  border: 1px solid #3e3e42;
-  color: #cccccc;
+  background: var(--studio-input);
+  border: 1px solid var(--studio-border);
+  color: var(--studio-text);
   font-size: 12px;
   border-radius: 2px;
   box-shadow: none;
@@ -1378,12 +1378,12 @@ async function removeSelectedItems() {
 
 .property-row :deep(.el-input__wrapper:hover),
 .property-row :deep(.el-input__wrapper.is-focus) {
-  border-color: #007acc;
-  box-shadow: 0 0 0 1px #007acc inset;
+  border-color: var(--studio-accent-border);
+  box-shadow: 0 0 0 1px rgba(41, 76, 61, 0.12) inset;
 }
 
 .property-row :deep(.el-input__inner) {
-  color: #cccccc;
+  color: var(--studio-text);
   background: transparent;
 }
 
@@ -1398,7 +1398,7 @@ async function removeSelectedItems() {
 .axis-label {
   display: block;
   margin: 0 0 4px 2px;
-  color: #718995;
+  color: var(--studio-muted);
   font-size: 10px;
   line-height: 1;
   text-transform: uppercase;
@@ -1411,23 +1411,23 @@ async function removeSelectedItems() {
 .vector-inputs :deep(.el-input__wrapper) {
   min-height: 28px;
   padding: 0 7px;
-  border: 1px solid #3b3d45;
+  border: 1px solid var(--studio-border);
   border-radius: 4px;
-  background: #18191d;
+  background: var(--studio-input);
   box-shadow: none;
 }
 
 .vector-inputs :deep(.el-input__wrapper:hover) {
-  border-color: #4e7080;
+  border-color: var(--studio-accent-border);
 }
 
 .vector-inputs :deep(.el-input__wrapper.is-focus) {
-  border-color: #35bfe8;
-  box-shadow: 0 0 0 1px rgba(53, 191, 232, 0.28) inset;
+  border-color: var(--studio-accent-border);
+  box-shadow: 0 0 0 1px rgba(41, 76, 61, 0.12) inset;
 }
 
 .vector-inputs :deep(.el-input__inner) {
-  color: #d9e3e8;
+  color: var(--studio-text);
   font-size: 11px;
   text-align: center;
 }

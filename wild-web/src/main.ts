@@ -32,6 +32,8 @@ import 'element-plus/es/components/switch/style/css'
 import 'element-plus/es/components/tag/style/css'
 import { createPinia } from 'pinia'
 import App from './App.vue'
+import { router } from './router'
+import { useThemeStore } from './stores/themeStore'
 import './style.css'
 
 const app = createApp(App)
@@ -54,5 +56,7 @@ const elementPlusComponents = [
 ]
 
 app.use(pinia)
+useThemeStore(pinia)
+app.use(router)
 elementPlusComponents.forEach(component => app.use(component))
 app.mount('#app')

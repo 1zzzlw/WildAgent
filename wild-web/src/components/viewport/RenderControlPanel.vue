@@ -149,7 +149,7 @@ function formatCount(value: number): string {
 
 <style scoped>
 .render-control-root.embedded { position: static; width: 100%; margin-top: 16px; align-items: stretch; }
-.embedded .rc-panel { width: 100%; background: #ffffff03; box-shadow: none; border-color: #ffffff12; }
+.embedded .rc-panel { width: 100%; background: var(--studio-hover); box-shadow: none; border-color: var(--studio-border); }
 .render-control-root {
   position: absolute;
   top: 56px;
@@ -169,12 +169,12 @@ function formatCount(value: number): string {
   align-items: center;
   gap: 4px;
   padding: 6px 10px;
-  border: 1px solid rgba(255, 255, 255, 0.22);
+  border: 1px solid var(--studio-border);
   border-radius: 999px;
-  background: rgba(18, 24, 32, 0.42);
+  background: var(--studio-bg);
   backdrop-filter: blur(12px) saturate(1.4);
   -webkit-backdrop-filter: blur(12px) saturate(1.4);
-  color: #e8eef4;
+  color: var(--studio-text);
   font-size: 12px;
   font-family: monospace;
   cursor: pointer;
@@ -182,7 +182,7 @@ function formatCount(value: number): string {
 }
 
 .rc-fab:hover {
-  background: rgba(30, 40, 52, 0.6);
+  background: var(--studio-surface);
   transform: translateY(-1px);
 }
 
@@ -192,15 +192,15 @@ function formatCount(value: number): string {
 }
 
 .rc-fab-fps.good {
-  color: #7ee2a0;
+  color: var(--studio-accent);
 }
 
 .rc-fab-fps.ok {
-  color: #f2d377;
+  color: var(--studio-orange);
 }
 
 .rc-fab-fps.bad {
-  color: #f28b82;
+  color: var(--studio-danger);
 }
 
 /* ── 毛玻璃面板 ── */
@@ -208,13 +208,13 @@ function formatCount(value: number): string {
   pointer-events: auto;
   width: 232px;
   padding: 12px 14px 14px;
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  border: 1px solid var(--studio-border);
   border-radius: 14px;
-  background: rgba(18, 24, 32, 0.45);
+  background: var(--studio-bg);
   backdrop-filter: blur(16px) saturate(1.5);
   -webkit-backdrop-filter: blur(16px) saturate(1.5);
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.28);
-  color: #e8eef4;
+  box-shadow: 0 8px 28px rgba(41, 76, 61, 0.12);
+  color: var(--studio-text);
   font-size: 12px;
   user-select: none;
 }
@@ -238,10 +238,10 @@ function formatCount(value: number): string {
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  border: 1px solid var(--studio-border);
   border-radius: 7px;
-  background: rgba(255, 255, 255, 0.08);
-  color: #e8eef4;
+  background: var(--studio-hover);
+  color: var(--studio-text);
   font-size: 14px;
   line-height: 1;
   cursor: pointer;
@@ -249,12 +249,12 @@ function formatCount(value: number): string {
 }
 
 .rc-collapse:hover {
-  background: rgba(255, 255, 255, 0.16);
+  background: var(--studio-hover);
 }
 
 .rc-section {
   padding: 8px 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid var(--studio-border);
 }
 
 .rc-section:first-of-type {
@@ -265,7 +265,7 @@ function formatCount(value: number): string {
   margin-bottom: 6px;
   font-size: 11px;
   font-weight: 600;
-  color: rgba(232, 238, 244, 0.6);
+  color: var(--studio-text);
   letter-spacing: 0.08em;
 }
 
@@ -289,7 +289,7 @@ function formatCount(value: number): string {
 }
 
 .rc-stat-label {
-  color: rgba(232, 238, 244, 0.62);
+  color: var(--studio-text);
   flex-shrink: 0;
 }
 
@@ -300,15 +300,15 @@ function formatCount(value: number): string {
 }
 
 .rc-stat-value.good {
-  color: #7ee2a0;
+  color: var(--studio-accent);
 }
 
 .rc-stat-value.ok {
-  color: #f2d377;
+  color: var(--studio-orange);
 }
 
 .rc-stat-value.bad {
-  color: #f28b82;
+  color: var(--studio-danger);
 }
 
 /* ── 开关 ── */
@@ -332,7 +332,7 @@ function formatCount(value: number): string {
   width: 30px;
   height: 16px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.18);
+  background: var(--studio-hover);
   transition: background 0.18s ease;
   flex-shrink: 0;
 }
@@ -345,12 +345,12 @@ function formatCount(value: number): string {
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background: #e8eef4;
+  background: var(--studio-surface);
   transition: transform 0.18s ease;
 }
 
 .rc-toggle input:checked+.rc-switch {
-  background: rgba(96, 205, 155, 0.75);
+  background: var(--studio-hover);
 }
 
 .rc-toggle input:checked+.rc-switch::after {
@@ -358,7 +358,7 @@ function formatCount(value: number): string {
 }
 
 .rc-toggle input:focus-visible+.rc-switch {
-  outline: 1px solid rgba(125, 211, 252, 0.8);
+  outline: 1px solid var(--studio-accent-border);
   outline-offset: 1px;
 }
 
@@ -371,12 +371,12 @@ function formatCount(value: number): string {
 }
 
 .rc-slider-label {
-  color: rgba(232, 238, 244, 0.62);
+  color: var(--studio-text);
 }
 
 .rc-slider {
   flex: 1;
-  accent-color: #60cd9b;
+  accent-color: var(--studio-accent);
 }
 
 .rc-slider-value {
@@ -398,20 +398,20 @@ function formatCount(value: number): string {
   justify-content: center;
   gap: 4px;
   padding: 6px 8px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  border: 1px solid var(--studio-border);
   border-radius: 9px;
-  background: rgba(255, 255, 255, 0.08);
-  color: #e8eef4;
+  background: var(--studio-hover);
+  color: var(--studio-text);
   font-size: 12px;
   cursor: pointer;
   transition: background 0.15s ease;
 }
 
 .rc-button:hover {
-  background: rgba(255, 255, 255, 0.16);
+  background: var(--studio-hover);
 }
 
 .rc-button:active {
-  background: rgba(255, 255, 255, 0.22);
+  background: var(--studio-hover);
 }
 </style>

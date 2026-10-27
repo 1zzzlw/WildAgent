@@ -1,0 +1,17 @@
+{
+  "createdAt": "2026-10-27T09:53:11.814Z",
+  "source": "../岚石光庭-交互材质别墅.wild",
+  "resolution": [
+    1680,
+    1050
+  ],
+  "name": "岚石光庭·交互材质别墅",
+  "meshes": 545,
+  "errors": [],
+  "materialPanel": true,
+  "files": [
+    "workbench-01.jpg",
+    "workbench-02.jpg"
+  ],
+  "scope": "完整 Vue 编辑器真实导入与截图；使用独立临时浏览器和现有本地 smoke 服务，未调用模型。"
+}

@@ -126,7 +126,7 @@ function formatBounds(bounds: { min: [number, number, number]; max: [number, num
   padding: 8px 12px;
   font-size: 13px;
   font-weight: 500;
-  border-bottom: 1px solid #3e3e42;
+  border-bottom: 1px solid var(--studio-border);
 }
 
 .panel-body {
@@ -138,7 +138,7 @@ function formatBounds(bounds: { min: [number, number, number]; max: [number, num
 .success-state {
   padding: 16px;
   text-align: center;
-  color: #4ec9b0;
+  color: var(--studio-accent);
   font-size: 13px;
 }
 
@@ -154,12 +154,12 @@ function formatBounds(bounds: { min: [number, number, number]; max: [number, num
   gap: 4px;
   margin-top: 8px;
   padding-top: 8px;
-  border-top: 1px solid #3e3e42;
+  border-top: 1px solid var(--studio-border);
 }
 
 .diagnostic-title {
   padding: 2px 4px 6px;
-  color: #c8c8c8;
+  color: var(--studio-text);
   font-size: 11px;
   font-weight: 600;
 }
@@ -167,8 +167,8 @@ function formatBounds(bounds: { min: [number, number, number]; max: [number, num
 .reconstruction-report {
   margin-top: 10px;
   padding-top: 8px;
-  border-top: 1px solid #3e3e42;
-  color: #85858e;
+  border-top: 1px solid var(--studio-border);
+  color: var(--studio-muted);
   font-size: 11px;
 }
 
@@ -179,38 +179,38 @@ function formatBounds(bounds: { min: [number, number, number]; max: [number, num
 .observation-item {
   margin-top: 6px;
   padding: 6px 8px;
-  background: #252528;
-  border-left: 2px solid #4ec9b0;
+  background: var(--studio-surface);
+  border-left: 2px solid var(--studio-accent-border);
   border-radius: 3px;
 }
 
-.observation-item.warning { border-left-color: #dcdcaa; }
-.observation-item.error { border-left-color: #f48771; }
+.observation-item.warning { border-left-color: var(--studio-accent-border); }
+.observation-item.error { border-left-color: var(--studio-orange); }
 
 .observation-title {
   display: flex;
   justify-content: space-between;
   gap: 8px;
   margin-bottom: 4px;
-  color: #c8c8c8;
+  color: var(--studio-text);
 }
 
 .issue-item {
   display: flex;
   gap: 8px;
   padding: 8px;
-  background: #2d2d30;
+  background: var(--studio-surface);
   border-left: 3px solid;
   border-radius: 3px;
   font-size: 12px;
 }
 
 .issue-item.error {
-  border-color: #f48771;
+  border-color: var(--studio-orange);
 }
 
 .issue-item.warning {
-  border-color: #dcdcaa;
+  border-color: var(--studio-accent-border);
 }
 
 .issue-icon {
@@ -218,11 +218,11 @@ function formatBounds(bounds: { min: [number, number, number]; max: [number, num
 }
 
 .issue-item.error .issue-icon {
-  color: #f48771;
+  color: var(--studio-danger);
 }
 
 .issue-item.warning .issue-icon {
-  color: #dcdcaa;
+  color: var(--studio-accent);
 }
 
 .issue-content {
@@ -237,7 +237,7 @@ function formatBounds(bounds: { min: [number, number, number]; max: [number, num
   display: flex;
   flex-direction: column;
   gap: 2px;
-  color: #888888;
+  color: var(--studio-muted);
   font-size: 11px;
 }
 </style>

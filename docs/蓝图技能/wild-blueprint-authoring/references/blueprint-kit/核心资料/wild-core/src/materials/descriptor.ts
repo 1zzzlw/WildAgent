@@ -55,7 +55,7 @@ export function createRenderMaterialDescriptor(
 
   return {
     family,
-    ...(usesDefaultSurface && ['quartz', 'planks'].includes(material.surfacePattern || '')
+    ...(usesDefaultSurface && material.surfacePattern
       ? { pattern: material.surfacePattern } : {}),
     source,
     implementation: specializedBrick

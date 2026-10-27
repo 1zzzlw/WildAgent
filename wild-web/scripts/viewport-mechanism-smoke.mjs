@@ -3,7 +3,7 @@ import { resolve } from 'node:path'
 import { readFile, writeFile } from 'node:fs/promises'
 import { launchEditorBrowser } from './editor-browser.mjs'
 
-const output='../docs/10月27日/验证',browser=await launchEditorBrowser('http://127.0.0.1:5178/')
+const output=process.argv[2]||'../docs/10月27日/验证',browser=await launchEditorBrowser('http://127.0.0.1:5178/')
 const p=browser.page
 const viewport=code=>p.evaluate(`(()=>{const s=document.querySelector('.canvas-viewport').__vueParentComponent.setupState;${code}})()`)
 try{

@@ -1,0 +1,128 @@
+{
+  "status": "PASS",
+  "results": [
+    {
+      "name": "Core TypeScript",
+      "cwd": "wild-core",
+      "command": [
+        "node",
+        "node_modules/typescript/bin/tsc",
+        "--noEmit",
+        "-p",
+        "tsconfig.json"
+      ],
+      "startedAt": "2026-10-27T07:01:41.544Z",
+      "endedAt": "2026-10-27T07:01:42.477Z",
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "name": "Vue TypeScript",
+      "cwd": "wild-web",
+      "command": [
+        "node",
+        "node_modules/vue-tsc/bin/vue-tsc.js",
+        "-b"
+      ],
+      "startedAt": "2026-10-27T07:01:42.479Z",
+      "endedAt": "2026-10-27T07:01:46.612Z",
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "name": "Vite production build",
+      "cwd": "wild-web",
+      "command": [
+        "node",
+        "node_modules/vite/bin/vite.js",
+        "build"
+      ],
+      "startedAt": "2026-10-27T07:01:46.613Z",
+      "endedAt": "2026-10-27T07:01:47.406Z",
+      "exitCode": 0,
+      "stdout": "vite v8.1.4 building client environment for production...\n\u001b[2K\rtransforming...✓ 1984 modules transformed.\nrendering chunks...\ncomputing gzip size...\ndist/index.html                                  1.00 kB │ gzip:   0.44 kB\ndist/assets/reconstruction.worker-DPIn6_5p.js  584.27 kB\ndist/assets/markdown-DFUOUzAA.css                1.08 kB │ gzip:   0.47 kB\ndist/assets/LLMConfigDialog-BrsLb6ri.css         4.62 kB │ gzip:   1.36 kB\ndist/assets/index-CFeEgBpQ.css                  78.58 kB │ gzip:  15.78 kB\ndist/assets/element-plus-CDte7hkx.css          104.07 kB │ gzip:  14.62 kB\ndist/assets/rolldown-runtime-QTnfLwEv.js         0.69 kB │ gzip:   0.42 kB\ndist/assets/vue-CHmKYYLA.js                      5.93 kB │ gzip:   2.79 kB\ndist/assets/LLMConfigDialog-Cv59TPnj.js          9.04 kB │ gzip:   3.67 kB\ndist/assets/markdown-akC962AH.js               158.99 kB │ gzip:  63.99 kB\ndist/assets/element-plus-BRuRKO5h.js           359.42 kB │ gzip: 121.26 kB\ndist/assets/three-AjciwMn4.js                  676.59 kB │ gzip: 179.19 kB\ndist/assets/index-Bk5NmvcZ.js                  682.04 kB │ gzip: 243.58 kB\n\n✓ built in 568ms\n",
+      "stderr": "[plugin builtin:vite-reporter] \n(!) Some chunks are larger than 600 kB after minification. Consider:\n- Using dynamic import() to code-split the application\n- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting\n- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.\n"
+    },
+    {
+      "name": "12 historical geometries",
+      "cwd": "wild-web",
+      "command": [
+        "node",
+        "scripts/geometry-regression.mjs"
+      ],
+      "startedAt": "2026-10-27T07:01:47.407Z",
+      "endedAt": "2026-10-27T07:01:49.219Z",
+      "exitCode": 0,
+      "stdout": "{\n  \"status\": \"PASS\",\n  \"geometry\": [\n    \"polygon hole winding false\",\n    \"polygon hole winding true\",\n    \"concave slab, invalid polygons, circular slab height, capped sweeps\",\n    \"metre UV density, unequal sweep edges, curved surfaces, transform scale, texture asset dimensions, legacy image compatibility\"\n  ],\n  \"legacy\": [\n    {\n      \"file\": \"汀院别墅-Codex.wild\",\n      \"meshes\": 752\n    },\n    {\n      \"file\": \"听澜合院-新中式别墅.wild\",\n      \"meshes\": 1852\n    },\n    {\n      \"file\": \"玫庭庄园-欧式别墅.wild\",\n      \"meshes\": 2172\n    },\n    {\n      \"file\": \"听雨水榭-凉亭.wild\",\n      \"meshes\": 694\n    },\n    {\n      \"file\": \"云序中心-写字楼.wild\",\n      \"meshes\": 3536\n    },\n    {\n      \"file\": \"栖光别墅-单文档生成.wild\",\n      \"meshes\": 970\n    },\n    {\n      \"file\": \"知序图书馆.wild\",\n      \"meshes\": 1744\n    },\n    {\n      \"file\": \"澄屿现代别墅.wild\",\n      \"meshes\": 801\n    },\n    {\n      \"file\": \"青屿咖啡.wild\",\n      \"meshes\": 342\n    },\n    {\n      \"file\": \"邻里优选超市.wild\",\n      \"meshes\": 664\n    },\n    {\n      \"file\": \"林庭石光馆.wild\",\n      \"meshes\": 1891\n    },\n    {\n      \"file\": \"Forest Cafe.wild\",\n      \"meshes\": 1930\n    }\n  ]\n}\n",
+      "stderr": ""
+    },
+    {
+      "name": "Opening interaction and incremental resources",
+      "cwd": "wild-web",
+      "command": [
+        "node",
+        "scripts/check-opening-interactions.mjs"
+      ],
+      "startedAt": "2026-10-27T07:01:49.220Z",
+      "endedAt": "2026-10-27T07:01:49.972Z",
+      "exitCode": 0,
+      "stdout": "场景组创建成功: 19 个网格, 3 个材质\n场景组创建成功: 19 个网格, 3 个材质\n场景组创建成功: 19 个网格, 3 个材质\n场景组创建成功: 19 个网格, 3 个材质\n场景组创建成功: 19 个网格, 3 个材质\n场景组创建成功: 19 个网格, 3 个材质\n场景组创建成功: 19 个网格, 3 个材质\n场景组创建成功: 19 个网格, 3 个材质\n场景组创建成功: 19 个网格, 3 个材质\n场景组创建成功: 19 个网格, 3 个材质\n场景组创建成功: 19 个网格, 3 个材质\n场景组创建成功: 19 个网格, 3 个材质\n场景组创建成功: 19 个网格, 3 个材质\n场景组创建成功: 19 个网格, 3 个材质\n场景组创建成功: 19 个网格, 3 个材质\n场景组创建成功: 19 个网格, 3 个材质\n场景组创建成功: 19 个网格, 3 个材质\n场景组创建成功: 19 个网格, 3 个材质\n场景组创建成功: 19 个网格, 3 个材质\n场景组创建成功: 19 个网格, 3 个材质\n场景组创建成功: 19 个网格, 3 个材质\n场景组创建成功: 19 个网格, 3 个材质\n场景组创建成功: 19 个网格, 3 个材质\n场景组创建成功: 19 个网格, 3 个材质\n场景组创建成功: 6 个网格, 3 个材质\n场景组创建成功: 6 个网格, 3 个材质\n场景组创建成功: 23 个网格, 3 个材质\n场景组创建成功: 23 个网格, 3 个材质\n场景组创建成功: 6 个网格, 3 个材质\n场景组创建成功: 6 个网格, 3 个材质\n场景组创建成功: 23 个网格, 3 个材质\n场景组创建成功: 23 个网格, 3 个材质\n场景组创建成功: 6 个网格, 3 个材质\n场景组创建成功: 6 个网格, 3 个材质\n场景组创建成功: 23 个网格, 3 个材质\n场景组创建成功: 23 个网格, 3 个材质\n场景组创建成功: 9 个网格, 3 个材质\n场景组更新成功: 9 个网格\n场景组更新成功: 9 个网格\n场景组更新成功: 9 个网格\n场景组更新成功: 9 个网格\n场景组更新成功: 8 个网格\n{\"passed\":48,\"incrementalSceneUpdates\":true,\"assertions\":\"推拉/升降全行程、双扇铰链、网格复用、实例移动与包围盒、交互状态保留、资源释放\"}\n",
+      "stderr": ""
+    },
+    {
+      "name": "Elevator and fan",
+      "cwd": "wild-web",
+      "command": [
+        "node",
+        "scripts/check-mechanisms.mjs"
+      ],
+      "startedAt": "2026-10-27T07:01:49.973Z",
+      "endedAt": "2026-10-27T07:01:50.858Z",
+      "exitCode": 0,
+      "stdout": "场景组创建成功: 23 个网格, 3 个材质\n场景组创建成功: 39 个网格, 3 个材质\n场景组更新成功: 39 个网格\n场景组创建成功: 39 个网格, 3 个材质\n场景组更新成功: 39 个网格\n场景组创建成功: 55 个网格, 3 个材质\n场景组更新成功: 55 个网格\n场景组创建成功: 16 个网格, 2 个材质\n场景组创建成功: 39 个网格, 3 个材质\n{\n  \"status\": \"PASS\",\n  \"elevators\": [\n    {\n      \"floorCount\": 1,\n      \"initialFloor\": 0,\n      \"target\": 0,\n      \"passengerRoundTrip\": true\n    },\n    {\n      \"floorCount\": 3,\n      \"initialFloor\": 0,\n      \"target\": 1,\n      \"passengerRoundTrip\": true\n    },\n    {\n      \"floorCount\": 3,\n      \"initialFloor\": 2,\n      \"target\": 0,\n      \"passengerRoundTrip\": true\n    },\n    {\n      \"floorCount\": 5,\n      \"initialFloor\": 1,\n      \"target\": 2,\n      \"passengerRoundTrip\": true\n    }\n  ],\n  \"queueStops\": [\n    2,\n    1\n  ],\n  \"fan\": {\n    \"independentControls\": true,\n    \"lowHighOff\": true,\n    \"idleSleeps\": true\n  }\n}\n",
+      "stderr": ""
+    },
+    {
+      "name": "Three villas Schema and Core",
+      "cwd": "wild-web",
+      "command": [
+        "node",
+        "scripts/validate-three-villas.mjs"
+      ],
+      "startedAt": "2026-10-27T07:01:50.859Z",
+      "endedAt": "2026-10-27T07:01:51.598Z",
+      "exitCode": 0,
+      "stdout": "[\n  {\n    \"name\": \"澄屿叠院 · 现代悬挑别墅\",\n    \"status\": \"PASS\",\n    \"meshes\": 444,\n    \"diagnostics\": [\n      {\n        \"level\": \"info\",\n        \"code\": \"PARTIAL_CAPABILITY\",\n        \"message\": \"roof: 基础屋顶、中式曲面与重檐屋顶\",\n        \"elementType\": \"roof\"\n      },\n      {\n        \"level\": \"info\",\n        \"code\": \"PARTIAL_CAPABILITY\",\n        \"message\": \"furniture: 基础参数化家具\",\n        \"elementType\": \"furniture\"\n      },\n      {\n        \"level\": \"info\",\n        \"code\": \"PARTIAL_CAPABILITY\",\n        \"message\": \"opening: 墙体洞口及门窗覆盖几何\",\n        \"elementType\": \"opening\"\n      },\n      {\n        \"level\": \"info\",\n        \"code\": \"PARTIAL_CAPABILITY\",\n        \"message\": \"beam: 矩形、圆形与工字梁\",\n        \"elementType\": \"beam\"\n      }\n    ]\n  },\n  {\n    \"name\": \"松雨回廊 · 新中式合院\",\n    \"status\": \"PASS\",\n    \"meshes\": 412,\n    \"diagnostics\": [\n      {\n        \"level\": \"info\",\n        \"code\": \"PARTIAL_CAPABILITY\",\n        \"message\": \"furniture: 基础参数化家具\",\n        \"elementType\": \"furniture\"\n      },\n      {\n        \"level\": \"info\",\n        \"code\": \"PARTIAL_CAPABILITY\",\n        \"message\": \"roof: 基础屋顶、中式曲面与重檐屋顶\",\n        \"elementType\": \"roof\"\n      },\n      {\n        \"level\": \"info\",\n        \"code\": \"PARTIAL_CAPABILITY\",\n        \"message\": \"opening: 墙体洞口及门窗覆盖几何\",\n        \"elementType\": \"opening\"\n      }\n    ]\n  },\n  {\n    \"name\": \"栖坡陶院 · 地中海坡顶别墅\",\n    \"status\": \"PASS\",\n    \"meshes\": 689,\n    \"diagnostics\": [\n      {\n        \"level\": \"info\",\n        \"code\": \"PARTIAL_CAPABILITY\",\n        \"message\": \"roof: 基础屋顶、中式曲面与重檐屋顶\",\n        \"elementType\": \"roof\"\n      },\n      {\n        \"level\": \"info\",\n        \"code\": \"PARTIAL_CAPABILITY\",\n        \"message\": \"furniture: 基础参数化家具\",\n        \"elementType\": \"furniture\"\n      },\n      {\n        \"level\": \"info\",\n        \"code\": \"PARTIAL_CAPABILITY\",\n        \"message\": \"opening: 墙体洞口及门窗覆盖几何\",\n        \"elementType\": \"opening\"\n      },\n      {\n        \"level\": \"info\",\n        \"code\": \"PARTIAL_CAPABILITY\",\n        \"message\": \"beam: 矩形、圆形与工字梁\",\n        \"elementType\": \"beam\"\n      }\n    ]\n  }\n]\n",
+      "stderr": ""
+    },
+    {
+      "name": "Shadow fit and cache regression",
+      "cwd": "wild-web",
+      "command": [
+        "node",
+        "scripts/render-optimization-smoke.mjs"
+      ],
+      "startedAt": "2026-10-27T07:01:51.599Z",
+      "endedAt": "2026-10-27T07:02:11.385Z",
+      "exitCode": 0,
+      "stdout": "{\"status\":\"PASS\",\"shadowFits\":36,\"reflection\":{\"initial\":1,\"stable\":1,\"invalidated\":2,\"moved\":3,\"offscreen\":{\"active\":false,\"visible\":false,\"captures\":3},\"hidden\":{\"active\":false,\"visible\":false}},\"fixtures\":{\"initial\":true,\"stable\":false,\"remoteCulled\":true,\"geometryDirty\":true,\"mapRetained\":true,\"moved\":true,\"invalidated\":true,\"released\":true}}\n",
+      "stderr": ""
+    },
+    {
+      "name": "Materials and wall glass GPU",
+      "cwd": "wild-web",
+      "command": [
+        "node",
+        "scripts/material-mechanism-smoke.mjs",
+        "../docs/10月27日/渲染性能光影与三种别墅/验证"
+      ],
+      "startedAt": "2026-10-27T07:02:11.387Z",
+      "endedAt": "2026-10-27T07:02:32.516Z",
+      "exitCode": 0,
+      "stdout": "{\n  \"status\": \"PASS\",\n  \"surfaces\": [\n    {\n      \"id\": \"quartz_ivory\",\n      \"pattern\": \"quartz\",\n      \"changedPixels\": 129503,\n      \"physical\": true,\n      \"transmission\": 0,\n      \"anisotropy\": 0,\n      \"sheen\": 0\n    },\n    {\n      \"id\": \"quartz_grey\",\n      \"pattern\": \"quartz\",\n      \"changedPixels\": 306392,\n      \"physical\": true,\n      \"transmission\": 0,\n      \"anisotropy\": 0,\n      \"sheen\": 0\n    },\n    {\n      \"id\": \"planks_oak\",\n      \"pattern\": \"planks\",\n      \"changedPixels\": 337346,\n      \"physical\": true,\n      \"transmission\": 0,\n      \"anisotropy\": 0,\n      \"sheen\": 0\n    },\n    {\n      \"id\": \"planks_walnut\",\n      \"pattern\": \"planks\",\n      \"changedPixels\": 294256,\n      \"physical\": true,\n      \"transmission\": 0,\n      \"anisotropy\": 0,\n      \"sheen\": 0\n    },\n    {\n      \"id\": \"glass_clear\",\n      \"changedPixels\": 0,\n      \"physical\": true,\n      \"transmission\": 0.94,\n      \"anisotropy\": 0,\n      \"sheen\": 0\n    },\n    {\n      \"id\": \"glass_frosted\",\n      \"changedPixels\": 0,\n      \"physical\": true,\n      \"transmission\": 0.85,\n      \"anisotropy\": 0,\n      \"sheen\": 0\n    },\n    {\n      \"id\": \"metal_brushed\",\n      \"pattern\": \"brushed\",\n      \"changedPixels\": 215959,\n      \"physical\": true,\n      \"transmission\": 0,\n      \"anisotropy\": 0.65,\n      \"sheen\": 0\n    },\n    {\n      \"id\": \"plaster_lime\",\n      \"pattern\": \"plaster\",\n      \"changedPixels\": 87077,\n      \"physical\": false,\n      \"transmission\": 0,\n      \"anisotropy\": 0,\n      \"sheen\": 0\n    },\n    {\n      \"id\": \"concrete_fair\",\n      \"pattern\": \"concrete\",\n      \"changedPixels\": 248084,\n      \"physical\": false,\n      \"transmission\": 0,\n      \"anisotropy\": 0,\n      \"sheen\": 0\n    },\n    {\n      \"id\": \"stone_travertine\",\n      \"pattern\": \"travertine\",\n      \"changedPixels\": 317628,\n      \"physical\": false,\n      \"transmission\": 0,\n      \"anisotropy\": 0,\n      \"sheen\": 0\n    },\n    {\n      \"id\": \"tiles_limestone\",\n      \"pattern\": \"tiles\",\n      \"changedPixels\": 117336,\n      \"physical\": true,\n      \"transmission\": 0,\n      \"anisotropy\": 0,\n      \"sheen\": 0\n    },\n    {\n      \"id\": \"tiles_terracotta\",\n      \"pattern\": \"tiles\",\n      \"changedPixels\": 309641,\n      \"physical\": false,\n      \"transmission\": 0,\n      \"anisotropy\": 0,\n      \"sheen\": 0\n    },\n    {\n      \"id\": \"fabric_linen\",\n      \"pattern\": \"linen\",\n      \"changedPixels\": 322660,\n      \"physical\": true,\n      \"transmission\": 0,\n      \"anisotropy\": 0,\n      \"sheen\": 0.45\n    }\n  ],\n  \"bricks\": [\n    {\n      \"id\": \"brick_new_red\",\n      \"pixelDigest\": 2271757693,\n      \"proceduralType\": \"brick\"\n    },\n    {\n      \"id\": \"brick_aged_red\",\n      \"pixelDigest\": 1859403637,\n      \"proceduralType\": \"brick\"\n    },\n    {\n      \"id\": \"brick_salt_weathered\",\n      \"pixelDigest\": 3448066177,\n      \"proceduralType\": \"brick\"\n    }\n  ],\n  \"occlusion\": [\n    {\n      \"quality\": \"low\",\n      \"glass\": false,\n      \"rgb\": [\n        0,\n        0,\n        0\n      ],\n      \"active\": 2,\n      \"shadows\": 2,\n      \"wallCasts\": true\n    },\n    {\n      \"quality\": \"low\",\n      \"glass\": true,\n      \"rgb\": [\n        183,\n        183,\n        183\n      ],\n      \"active\": 2,\n      \"shadows\": 2,\n      \"wallCasts\": false\n    },\n    {\n      \"quality\": \"medium\",\n      \"glass\": false,\n      \"rgb\": [\n        0,\n        0,\n        0\n      ],\n      \"active\": 2,\n      \"shadows\": 2,\n      \"wallCasts\": true\n    },\n    {\n      \"quality\": \"medium\",\n      \"glass\": true,\n      \"rgb\": [\n        214,\n        214,\n        214\n      ],\n      \"active\": 2,\n      \"shadows\": 2,\n      \"wallCasts\": false\n    },\n    {\n      \"quality\": \"high\",\n      \"glass\": false,\n      \"rgb\": [\n        0,\n        0,\n        0\n      ],\n      \"active\": 2,\n      \"shadows\": 2,\n      \"wallCasts\": true\n    },\n    {\n      \"quality\": \"high\",\n      \"glass\": true,\n      \"rgb\": [\n        202,\n        202,\n        202\n      ],\n      \"active\": 2,\n      \"shadows\": 2,\n      \"wallCasts\": false\n    }\n  ],\n  \"shaderErrors\": []\n}\n",
+      "stderr": ""
+    }
+  ]
+}

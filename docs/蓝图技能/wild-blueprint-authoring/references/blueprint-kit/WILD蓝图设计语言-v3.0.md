@@ -4,6 +4,8 @@
 
 补充修订：2026-10-23，参考用户提供的v2.0，补入依赖联动、精度、重复立面、分段/圆形设计与装配检查；所有引擎语义仍以当前实现为依据，不继承外部文档的冲突规则。
 
+当前能力更新：2026-10-27。同步13套真实材质配方、8种参数表面、全活跃局部灯阴影、可交互电梯/风扇，以及反射缓存和阴影范围优化。字段版本仍是1.1。三种原创别墅及实测范围见[本轮创作与渲染补充](04-材质交互与渲染创作补充-2026-10-27.md)；历史报告只证明其当时的文件与代码。
+
 ## 0. 直接交给 AI 的指令
 
 你是一名使用 WILD 表达空间的建筑设计者。根据用户需求重新设计建筑，再把设计计算为一份可直接导入的、完整 UTF-8 JSON `.wild` 文件。建筑的用途、空间和构造决定形态，不能只靠名称、风格词和重复装饰表达设计。
@@ -320,11 +322,18 @@ subtype 仅：`table/chair/sofa/bookshelf/bed/wardrobe/nightstand/tv_cabinet/lam
 | cornice | path、profile（二维截面点） | closedProfile；与扫掠相同，不能依赖端盖 |
 | chimney | position、width、depth、height | wallThickness、capHeight、capMaterial |
 | light | position | fixtureType=bulb/table_lamp，或body自定义；详见第7节 |
-| elevator | position、dimensions:{width,depth,height}、floorHeight、floorCount | initialFloor（0基）、frameMaterial |
+| elevator | position、dimensions:{width,depth,height}、floorHeight、floorCount | initialFloor（0基）、material、frameMaterial、doorMaterial、floorMaterial、landingWalls |
+| fan | position、controlPosition | radius、bladeCount（3～8）、drop、rpm（正数且≤600）、initiallyOn、material（扇叶）、frameMaterial |
 
 canopy/balcony 的 from[0]是沿墙起点；Y分别为安装高度/阳台完成面，外挑方向由墙与建筑包络推定。凹院/内墙可能与设计意图不同，需真实检查；不能因此保证任意凹多边形外挑正确。复杂露台可用独立楼板+栏杆。
 
-railing 的 path 默认世界坐标基线，height 向上；坡梯扶手可沿上升路径。不要跨过楼梯到达口、入口或通行门。elevator 只生成简化轿厢/导轨/按钮，不生成井壁、楼板孔、层门或完整设备仿真；所有层停靠高度要匹配完成面。
+railing 的 path 默认世界坐标基线，height 向上；坡梯扶手可沿上升路径。不要跨过楼梯到达口、入口或通行门。
+
+elevator 生成开放入口轿厢、导轨、轿门、逐层层门及独立呼梯/选层/开关门按钮；点击按钮运行“关门→移动→开门”，可排队和载人。入口固定朝+Z；position.y是initialFloor所在层的地板完成面，因此第f层完成面=position.y+(f−initialFloor)×floorHeight。宽深至少1.2m，有效轿厢高=min(dimensions.height,floorHeight−0.15)，至少2.1m。作者仍负责真实井壁、上层井洞、门前完整落脚面和可达前厅；不能用实心箱体包住按钮，也不能把电梯当完整安全设备仿真。
+
+可选landingWalls按楼层顺序列出已有入口直墙ID，数量等于floorCount。墙沿X、位于Z=position.z+dimensions.depth/2+0.08；编译器自动在这些墙开层门洞。省略时不自动造井壁/楼板孔。轿门对开总宽=min(1.1,(width−0.16)/2)；入口与门前通路要按实际净宽复核，不能把轿厢外宽当门净宽。
+
+fan.position是电机/转子轴心，吊杆从此向上drop；扇叶在轴心附近扫转，controlPosition是独立墙面按钮的世界坐标，按钮正面朝+Z。默认半径0.65m、4叶、drop=0.25m、rpm=180，初始关闭；按钮循环关闭/低速/高速，带惯性启停。按叶片扫掠外缘、层高和顶板留净空。两类组件只在源JSON保存设计参数，不保存运行时楼层/角度，不发明spin、repeat或控制脚本。
 
 ## 6. 材质与颜色
 
@@ -339,11 +348,13 @@ railing 的 path 默认世界坐标基线，height 向上；坡梯扶手可沿�
 }
 ```
 
-可选物理字段：`materialClass=standard/glass/clearcoat/fabric`、`opacity`、`transmission`、`ior`、`thickness`、`attenuationColor`、`attenuationDistance`、`clearcoat`、`clearcoatRoughness`、`sheen`、`sheenColor`、`emissive`、`emissiveIntensity`、`side=front/double`。颜色/多数比例用0～1，厚度/衰减距离为米，光强非负。
+可选物理字段：`materialClass=standard/glass/clearcoat/fabric`、`opacity`、`transmission`、`ior`、`thickness`、`attenuationColor`、`attenuationDistance`、`clearcoat`、`clearcoatRoughness`、`sheen`、`sheenColor`、`anisotropy`、`anisotropyRotation`、`emissive`、`emissiveIntensity`、`side=front/double`。颜色/多数比例用0～1，anisotropyRotation为弧度，厚度/衰减距离为米，光强非负。
 
 玻璃优先用 transmission 和低粗糙度，不同时无理由降低 opacity。木/石/灰泥通常 metallic 接近0，金属框可以更高。粗糙度与材料尺寸要有区别，不能整栋都像塑料或镜子。透明材料要有正确朝向、厚度和场景背景；参数本身不能保证照片质感。
 
-2026-10-23新增参数表面：材质可写`surfacePattern:"quartz"`配合`surfaceFamily:"mineral"`表达石英晶粒，或`surfacePattern:"planks"`配合`surfaceFamily:"wood"`表达错缝木板和细木纹。这两个字段放在材质对象顶层，不能写成`procedural.type`。石英石建议metallic=0、roughness约0.22～0.3，可用clearcoat约0.18～0.22获得克制的抛光高光；木板roughness约0.48～0.55。图案按世界米制坐标投影，当前板宽0.18米、板长1.2米，方向/尺寸未作为作者参数开放。配有真实贴图或砖procedural时仍走原专用通路，不叠加这两种图案。仅保存参数，无外部图片或模型数据。本轮按用户要求未执行构建/渲染，视觉效果待用户验证。
+参数表面字段放在材质对象顶层，不能写成procedural.type。当前surfacePattern支持quartz（石英）、planks（木板）、plaster（抹灰）、concrete（混凝土）、travertine（洞石）、tiles（砖板）、brushed（拉丝）、linen（织物）。它们同时改变颜色、粗糙度和微法线，显式图案使用随构件移动的局部米制UV；uvScale可调整频率。没有显式图案的旧默认表面保留世界坐标策略。木板基础板宽0.18m、长1.2m，不能另造未实现的板宽字段。真实贴图或brick procedural仍走各自通路。
+
+surfaceFamily常用mineral/wood/metal/glass/neutral/masonry；它不是材质库预设ID。13套完整配方为quartz_ivory/quartz_grey、planks_oak/planks_walnut、glass_clear/glass_frosted、metal_brushed、plaster_lime、concrete_fair、stone_travertine、tiles_limestone/tiles_terracotta、fabric_linen。材质库应用后应将完整材质对象写入materials，再由构件引用；仅把字符串改为“洞石”或“亚麻”不会加载配方。对应原始配方见[材质目录](核心资料/wild-core/material-presets.json)。石英可配clearcoat，玻璃用transmission，织物用sheen，金属用anisotropy；这些能力已做真实GPU专项检查，但不能保证任意场景达到摄影效果。
 
 门窗的glassMaterial和玻璃栏板的infillMaterial应引用玻璃材质，水材质不能作为玻璃候选；框架和实心栏板选择实体材料。当前编辑器按槽位过滤选项，历史不匹配引用仍需作者修正，不能只改材质名字假装改变物理属性。
 
@@ -379,9 +390,9 @@ railing 的 path 默认世界坐标基线，height 向上；坡梯扶手可沿�
 
 该对象作为 `primitive.lightSource` 值，**不是额外的元素 type**。可选 lightType=spot，angle为(0,90]度、direction为非零局部向量（默认向下）、offset为局部包围盒中心的偏移。intensity非负、distance>0。杆、外壳、遮光罩仍是普通实体，只给真正发光部位一个光源。
 
-默认point/intensity25/distance8/angle45/initiallyOn=true；这些是实现默认值，不是美学推荐。按空间试调，夜景避免满屏过曝。当前渲染器强档约为指定强度3倍。实时局部灯按相机和画质选择，流畅/均衡/精细上限分别为4/8/12个，精细档最多两个重点局部灯投影；灯具发光表面始终保留，不等于文件只能放12盏灯。不要为追求数量给每根装饰杆绑定光源。
+默认point/intensity25/distance8/angle45/initiallyOn=true；这些是实现默认值，不是美学推荐。按空间试调，夜景避免满屏过曝。当前渲染器强档约为指定强度3倍。活跃实时局部灯按相机、照射范围和画质选择，流畅/均衡/精细上限分别为2/4/8个，所有活跃局部灯均投影，单面阴影尺寸分别256/512/1024。点光阴影需6个方向，不能把很多点光当成无成本。未入选灯具可保留发光表面；这不等于文件最多只能放8盏灯。
 
-光源offset应使其位于真实发光空间，不能埋进另一个实心灯罩或墙内。发光网格自身不遮住自己的光，独立灯罩、墙板仍可遮挡重点灯。非重点灯仍可能穿墙；这不是完整全局照明或全灯阴影保证，重要照明需实际检查。
+光源offset应使其位于真实发光空间，不能埋进另一个实心灯罩或墙内。发光网格自身不遮住自己的光，独立灯罩、实体墙板仍参与遮挡。透射玻璃不按不透明墙投影，允许直射光通过；这是实时近似，没有计算真实彩色玻璃透射阴影和焦散。环境贴图/半球光不具备完整室内遮挡与间接光求解，因此不能将“所有活跃局部灯投影”表述为完整全局光照。三档实体墙与玻璃像素验证见本轮补充。
 
 原 `light` 组件也能发光，可写lowIntensity/highIntensity/distance/color/angle/initiallyOn；预设fixtureType可省略尺寸使用默认值。自定义body数组每项复用primitive几何字段但不写id/type，可标一项interactive:true；**body.position是世界坐标，省略才继承组件position**。不要把[0,0,0]误当相对灯杆的偏移。light组件建议显式initiallyOn:true，避免默认关灯。
 
@@ -393,7 +404,7 @@ railing 的 path 默认世界坐标基线，height 向上；坡梯扶手可沿�
 
 新前端可用多边形楼板holes留池口，旧链路用拆板。水的几何厚度只负责表面/体块，材质thickness是透射吸收的光学参数，不能用它冒充已生成池深；attenuationColor/attenuationDistance共同控制透过后的水色。已有池底时避免高金属度、过深底色和多层重叠水面。
 
-查看器固定启用动态水面，透明度倍率1、波纹强度0.65；均衡/精细档自动捕获主水平水位上的建筑场景反射，低档、自适应降档或其他水位保留环境反射。渲染面板不再提供这些水面开关或滑块。WILD里的透射与吸收参数仍描述水本身，不新增waterAnimation/reflection等字段。当前没有真实流体、完整焦散或多水位同时反射，不能靠描述词宣称具备。
+查看器固定启用动态水面，透明度倍率1、波纹强度0.65；精细档捕获画面内主要水平水位上的建筑场景反射，低/均衡档、自适应降档和其他水位保留环境反射。静止画面复用场景捕获，水纹继续动画；相机/几何/灯光变化后失效更新，运动捕获最多30次/秒，截图强制更新。水不在视锥内时不做场景反射，也不单为该水面维持视口帧循环；云、人物或其他动画仍按自身需求运行。渲染面板不提供这些水面开关，WILD不新增waterAnimation/reflection字段。当前没有真实流体、完整焦散或多水位同时反射。
 
 动态法线波和天空/地面环境反射由当前渲染器提供。没有场景SSR完整镜像、真实流体或完整焦散求解。不要向WILD添加waterAnimation、波纹Shader或相机字段；有工具且允许渲染时在有环境光照的查看器另验近景。固定基线的外部地面也可能盖住下沉池，须区分显示场地与模型池底。
 

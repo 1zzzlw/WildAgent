@@ -1,6 +1,7 @@
 <template>
   <main class="visitor-gate">
     <section class="visitor-card" aria-labelledby="visitor-title">
+      <button class="gate-theme-toggle" type="button" :aria-label="theme.isDark ? '切换为亮色主题' : '切换为暗色主题'" @click="theme.toggle()">{{ theme.isDark ? '亮色 ☀' : '暗色 ☾' }}</button>
       <div class="visitor-brand">WILD</div>
       <h1 id="visitor-title">进入协作空间</h1>
       <p>输入一个方便同事识别的访客名称。</p>
@@ -28,12 +29,16 @@
       </form>
 
       <div class="visitor-note">名称仅用于在线列表展示，不是账号，也不会用于会话隔离。</div>
+      <RouterLink class="business-plan-entry" to="/business-plan">了解 WILD · 商业计划书 ↗</RouterLink>
     </section>
   </main>
 </template>
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { RouterLink } from 'vue-router'
+import { useThemeStore } from '../../stores/themeStore'
+const theme = useThemeStore()
 import { MAX_VISITOR_NAME_LENGTH } from './types'
 import { normalizeVisitorName, usePresenceStore } from './store'
 
@@ -55,29 +60,29 @@ function confirmName() {
   display: grid;
   place-items: center;
   padding: 24px;
-  color: #e5e7eb;
-  background:
-    radial-gradient(circle at 20% 15%, rgba(14, 99, 156, 0.24), transparent 32%),
-    radial-gradient(circle at 80% 85%, rgba(64, 158, 255, 0.14), transparent 30%),
-    #151719;
+  color: var(--studio-text);
+  background: var(--studio-bg);
 }
 
 .visitor-card {
+  position: relative;
   width: min(420px, 100%);
   padding: 38px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 14px;
-  background: rgba(37, 37, 38, 0.96);
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.36);
+  border: 1px solid var(--studio-border);
+  border-radius: 5px;
+  background: var(--studio-surface);
+  box-shadow: 0 24px 70px rgba(41, 76, 61, 0.12);
 }
+.gate-theme-toggle { position: absolute; top: 18px; right: 18px; border: 1px solid var(--studio-border); border-radius: 3px; padding: 4px 9px; color: var(--studio-muted); background: transparent; font-size: 11px; cursor: pointer }
+.business-plan-entry { display: inline-block; margin-top: 22px; color: var(--studio-accent); font-size: 12px; text-underline-offset: 5px }
 
 .visitor-brand {
   width: fit-content;
   margin-bottom: 22px;
   padding: 5px 9px;
-  border: 1px solid rgba(64, 158, 255, 0.45);
+  border: 1px solid var(--studio-accent-border);
   border-radius: 5px;
-  color: #79bbff;
+  color: var(--studio-accent);
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.18em;
@@ -85,14 +90,14 @@ function confirmName() {
 
 h1 {
   margin: 0;
-  color: #f3f4f6;
+  color: var(--studio-text);
   font-size: 26px;
   font-weight: 600;
 }
 
 p {
   margin: 10px 0 24px;
-  color: #a8abb2;
+  color: var(--studio-muted);
   font-size: 14px;
   line-height: 1.6;
 }
@@ -109,7 +114,7 @@ form {
 
 .visitor-note {
   margin-top: 18px;
-  color: #73767a;
+  color: var(--studio-muted);
   font-size: 12px;
   line-height: 1.6;
 }

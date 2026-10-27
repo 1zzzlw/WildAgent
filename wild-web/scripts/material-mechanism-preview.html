@@ -29,12 +29,13 @@ window.viewBlueprint=async(bp,settings={})=>{
  for(const id of settings.hide||[]){const mesh=group.getObjectByName(id);if(mesh)mesh.visible=false}
  const look=resolveWorldIllumination(settings.time||'day','minimal');scene.background=look.background;renderer.toneMappingExposure=look.exposure;
  lighting.applyAppearance(look.lighting);const b=new THREE.Box3().setFromObject(group),size=b.getSize(new THREE.Vector3()),center=b.getCenter(new THREE.Vector3());
- lighting.fitToBounds(center,size,look.keyDirection);sky.visible=look.preset.skyVisible;syncSkyPreset(sky,look.preset,look.atmosphere,look.sunDirection);environment.rebuild(look.preset,look.atmosphere,look.sunDirection,settings.time==='night',look.groundColor.getHex());
+ sky.visible=look.preset.skyVisible;syncSkyPreset(sky,look.preset,look.atmosphere,look.sunDirection);environment.rebuild(look.preset,look.atmosphere,look.sunDirection,settings.time==='night',look.groundColor.getHex());
  quality=settings.quality||'high';applyWorldRenderQuality(renderer,post,lighting,quality,settings.time||'day');
- camera.position.fromArray(settings.camera||[18,12,22]);camera.lookAt(...(settings.target||[0,2,0]));camera.updateMatrixWorld();window.group=group;window.entity=entity;window.draw();
+ lighting.fitToBounds(center,size,look.keyDirection);
+ camera.fov=settings.fov||45;camera.updateProjectionMatrix();camera.position.fromArray(settings.camera||[18,12,22]);camera.lookAt(...(settings.target||[0,2,0]));camera.updateMatrixWorld();window.group=group;window.entity=entity;window.draw();
  return {diagnostics:entity.diagnostics,meshes:entity.meshes.length,materials:entity.materialParams.length,activeLights:fixtures.activeCount,shadowLights:fixtures.shadowCount};
 };
-window.advance=seconds=>{for(let i=0;i<Math.ceil(seconds/.05);i++)tickMechanisms(group,.05);renderer.shadowMap.needsUpdate=true;window.draw();return true};
+window.advance=seconds=>{for(let i=0;i<Math.ceil(seconds/.05);i++)tickMechanisms(group,.05);fixtures.invalidateShadows();reflection.invalidate();renderer.shadowMap.needsUpdate=true;window.draw();return true};
 window.controlPoint=id=>{const mesh=group.getObjectByName(id),p=mesh.getWorldPosition(new THREE.Vector3()).project(camera);return {x:(p.x*.5+.5)*1280,y:(-.5*p.y+.5)*960}};
 renderer.domElement.addEventListener('click',event=>{const r=renderer.domElement.getBoundingClientRect(),ray=new THREE.Raycaster();ray.setFromCamera(new THREE.Vector2((event.clientX-r.left)/r.width*2-1,-(event.clientY-r.top)/r.height*2+1),camera);const hit=ray.intersectObjects(group.children,true).find(h=>h.object.userData.elementId)?.object;const target=hit?.userData.interaction?hit:hit?.parent;if(target&&isMechanismControl(target))toggleRuntimeInteraction(target,()=>{});window.draw()});
 window.materialProbe=async()=>{
@@ -63,5 +64,5 @@ window.occlusionProbe=async()=>{
  }
  return result;
 };
-window.renderer=renderer;window.scene=scene;window.camera=camera;window.ready=true;
+window.renderHarness={lighting,fixtures,reflection,post};window.renderer=renderer;window.scene=scene;window.camera=camera;window.ready=true;
 </script></html>

@@ -1,0 +1,503 @@
+<template>
+<div class="business-plan-page" ref="pageRoot" @scroll.passive="updateReading">
+<a class="skip" href="#main">跳到正文</a>
+  <header class="topbar">
+    <a class="brand" href="#cover" aria-label="WILD 旷野商业计划书首页"><span class="brand-mark" aria-hidden="true">W</span><span class="brand-name">WILD <span class="brand-cn">/ 旷野</span></span></a>
+    <span class="top-meta">BUSINESS PLAN / 商业计划书</span>
+    <div class="top-actions"><RouterLink class="home-link" to="/">回到主页 ↗</RouterLink></div>
+    <div class="reading-progress" id="reading-progress" aria-hidden="true" :style="{ width: readingProgress + '%' }"></div>
+  </header>
+  <div class="layout">
+    <aside class="sidebar" aria-label="计划书目录">
+      <div class="nav-title">CONTENTS / 阅读导航</div>
+      <nav>
+        <a href="#summary" :aria-current="activeChapter === '#summary' ? 'location' : undefined"><span>01</span>项目摘要</a><a href="#problem" :aria-current="activeChapter === '#problem' ? 'location' : undefined"><span>02</span>问题与机会</a><a href="#product" :aria-current="activeChapter === '#product' ? 'location' : undefined"><span>03</span>产品与核心价值</a><a href="#showcase" :aria-current="activeChapter === '#showcase' ? 'location' : undefined"><span>04</span>近期成果展示</a><a href="#customers" :aria-current="activeChapter === '#customers' ? 'location' : undefined"><span>05</span>客户与市场切口</a><a href="#business" :aria-current="activeChapter === '#business' ? 'location' : undefined"><span>06</span>商业模式</a><a href="#advantage" :aria-current="activeChapter === '#advantage' ? 'location' : undefined"><span>07</span>竞争与长期壁垒</a><a href="#growth" :aria-current="activeChapter === '#growth' ? 'location' : undefined"><span>08</span>获客与验证</a><a href="#roadmap" :aria-current="activeChapter === '#roadmap' ? 'location' : undefined"><span>09</span>产品路线</a><a href="#finance" :aria-current="activeChapter === '#finance' ? 'location' : undefined"><span>10</span>收入与成本试算</a><a href="#team" :aria-current="activeChapter === '#team' ? 'location' : undefined"><span>11</span>团队与合作需求</a><a href="#risks" :aria-current="activeChapter === '#risks' ? 'location' : undefined"><span>12</span>不足与改进方向</a>
+      </nav>
+      <div class="sidebar-foot">AI 是新的土地。<b>WILD 蓝图，是种子。</b>建筑创作 · 轻量蓝图 · 持续编辑</div>
+    </aside>
+    <main class="main" id="main">
+      <section class="hero" id="cover" aria-labelledby="cover-title">
+        <div class="hero-meta"><div class="eyebrow">A blueprint for what comes next</div><div class="edition">建筑创作 / 产品与发展</div></div>
+        <div class="hero-grid">
+          <div>
+            <h1 id="cover-title">让建筑，像文字一样<br><em>被创造与修改。</em></h1>
+            <p class="hero-copy">成熟智能体读懂设计语言，写下细节丰富的小体积蓝图。自研参数化引擎重建建筑，网页工作台完成渲染、编辑与交付。让一份设计可以被理解、修改和复用。</p>
+            <div class="hero-links"><a class="primary-link" href="#summary">阅读项目摘要 ↓</a><a class="text-link" href="#showcase">查看近期真实渲染 ↗</a></div>
+          </div>
+          <figure class="hero-visual"><button class="image-open" type="button" data-zoom @click="openImage" aria-label="放大岚石光庭完整渲染图"><img src="/business-plan/lanshi-01.jpg" width="1600" height="1000" alt="岚石光庭：完整建筑、木格栅与水庭"></button><figcaption><span>岚石光庭 / 参数化建筑实景</span><span>点击查看完整大图 ↗</span></figcaption></figure>
+        </div>
+        <div class="hero-note"><div><b>轻量蓝图</b>交付设计参数，按需重建几何</div><div><b>持续编辑</b>AI 对话与直接操作共同创作</div><div><b>开放生态愿景</b>从建筑工作台走向内容与应用</div></div>
+      </section>
+
+      <section class="chapter" id="summary">
+        <div class="chapter-heading"><span class="chapter-num">01</span><div><div class="eyebrow">Executive summary</div><h2>用一份蓝图，连接创作与交付</h2></div></div>
+        <p class="lead">WILD（旷野）基于现有 WildAgent 项目，围绕“小体积蓝图表达丰富建筑”构建建筑创作与展示工作台。成熟智能体可以依据项目文档、蓝图语言和示例编写 WILD，再由引擎重建并进入编辑。项目希望把“生成一张好看的结果”推进为“得到一份可以继续使用的建筑资产”：既能在浏览器中呈现，也能按构件修改、保存和复用。</p>
+        <div class="brand-story"><div class="eyebrow">WILD / Wild Iterative Language for Design</div><h3>旷野 · 迭代 · 设计语言</h3><p>“旷野”代表不被模板固化的自由创作：让 AI 提出独立的建筑设计，让人可以持续修改与完善。<span class="mono">.wild</span> 是承载设计的蓝图文件后缀。</p><div class="brand-letters"><div><b>W</b><span><strong>Write</strong> 写蓝图</span></div><div><b>I</b><span><strong>Iterate</strong> 迭代 · 联动重算</span></div><div><b>L</b><span><strong>Learn</strong> 读入 · 学习与校验</span></div><div><b>D</b><span><strong>Design</strong> 设计</span></div></div><p class="brand-footnote">四个词表达品牌理念；实际创作先明确设计，再写入蓝图、校验和迭代。</p></div>
+        <div class="three-col">
+          <article class="panel"><div class="eyebrow">The foundation</div><h3>核心资产是什么</h3><p>WILD 蓝图语言、自研参数化几何与编译引擎，以及网页渲染编辑工作台。成熟智能体、人工与脚本都可依据规范创作，自研 Agent 同步迭代。 </p></article>
+          <article class="panel"><div class="eyebrow">The first market</div><h3>先服务谁</h3><p>建议先面向独立场景创作者、小型三维团队和网页互动项目：他们需要可反复修改的建筑，愿意接受明确的构件范围，交付不依赖施工图与工程计算。</p></article>
+          <article class="panel"><div class="eyebrow">The business</div><h3>如何形成收入</h3><p>先验证托管工作台订阅与有边界的项目试点；待复用与留存成立，再拓展团队协作、API 服务和创作者内容交易。商业模式与价格均为本稿建议。</p></article>
+        </div>
+        <div class="statement"><p>土地是 AI 时代，种子是 WILD 蓝图。<br>近期让种子可用，长期让更多人参与创造。</p><div class="small">从可编辑的建筑出发，逐步探索内容社区、互动场景与更开放的创作生态。</div></div>
+        <p class="small muted"><span class="label proof">已有项目基础</span> 三包架构、蓝图与编辑工作台、近期渲染和交互证据。<span class="label idea">待商业验证</span> 客户需求、定价、付费留存与规模化交付。付费转化、留存与规模化交付仍需通过真实试点验证。</p>
+      </section>
+
+      <section class="chapter" id="problem">
+        <div class="chapter-heading"><span class="chapter-num">02</span><div><div class="eyebrow">Problem & opportunity</div><h2>结果能看见，资产还要用得起来</h2></div></div>
+        <div class="three-col">
+          <article class="panel"><span class="eyebrow">01 / Delivery</span><h3>建筑越来越细，交付越来越重</h3><p>高细节建筑往往伴随更多网格与纹理。网页展示、版本传递和多次复用需要同时管理资源大小与加载成本。WILD 选择让蓝图保存参数，由引擎重建支持的几何。</p></article>
+          <article class="panel"><span class="eyebrow">02 / Iteration</span><h3>生成之后，还有很多轮修改</h3><p>换屋顶、调窗宽、改材质、移动构件，才是连续创作中的日常。产物若保留类型、尺寸与依附关系，就能围绕设计对象修改，而不必每次重做整座建筑。</p></article>
+          <article class="panel"><span class="eyebrow">03 / Reliability</span><h3>能表达，不等于能正确落地</h3><p>门窗需要宿主，楼梯需要对齐，参数需要合法。项目把可计算的几何与关系检查交给代码，让 AI 集中处理设计意图，并提供明确的错误反馈。</p></article>
+        </div>
+        <div class="note">商业机会假设：对需要频繁改方案的用户，价值可能更多来自“生成后仍然好改”，而非单次生成的新鲜感。首轮访谈应验证修改频率、现有流程耗时、返工原因与实际支付意愿。</div>
+        <p class="decision">市场判断方式：先证明一个具体工作流值得付费，再扩大用户范围。本稿暂不引用未经调研的行业规模或增长率。</p>
+      </section>
+
+      <section class="chapter" id="product">
+        <div class="chapter-heading"><span class="chapter-num">03</span><div><div class="eyebrow">Product & value</div><h2>蓝图是底座，工作台是产品</h2></div></div>
+        <p class="lead">用户可以借助成熟智能体依据文档和规范创作，也可以直接编写蓝图，或在网页中操作构件。多种入口围绕同一份 WILD 资产持续迭代。</p><div class="subsection-heading"><div class="eyebrow">From language to workspace</div><h3>成熟智能体创作，自研底座承接</h3><p>把项目文档、WILD 语言规范、当前能力和成功示例交给成熟智能体，即可编写细节丰富、可读可改的小体积蓝图。设计入口可以多样，资产以同一份语言保留下来。</p></div><div class="three-col"><article class="panel"><h3>WILD 设计语言</h3><p>用构件、参数、材质与引用表达设计；重复细节可以由组合与参数展开。蓝图保存设计信息，网格在运行时重建，适合存档、版本比较和复用。</p></article><article class="panel"><h3>自研参数化引擎</h3><p>自研几何构建、组合编译与规则检查，统一解释蓝图中的建筑语义。显示与交互基于 Three.js 和 WebGL，实现浏览器中的实时呈现与持续编辑。</p></article><article class="panel"><h3>文档与构件知识</h3><p>规范、构件规则、成功作品与能力边界共同构成创作基础，可供外部成熟智能体阅读，也为自研 Agent 的按需检索和工具调用提供知识。</p></article></div><div class="note warm"><strong>自研 Agent · 同步开发中。</strong>目前资源投入有限，复杂创作的效果与成熟度仍落后于成熟智能体。当前可借助成熟智能体完成丰富蓝图创作，自研 Agent 持续完善任务编排、知识检索、校验反馈与编辑协作。</div><div class="subsection-heading"><div class="eyebrow">One asset, several ways to create</div><h3>从灵感，到可以继续使用的建筑</h3></div><div class="flowline"><strong>项目文档 + WILD 规范 + 示例</strong><span class="arrow">→</span><span>成熟智能体 / 人工创作</span><span class="arrow">→</span><strong>小体积 .wild</strong><span class="arrow">→</span><span>自研引擎重建</span><span class="arrow">→</span><strong>网页渲染与编辑</strong></div>
+        <div class="step-list"><div class="step"><span class="mono">INPUT / 01</span><h4>描述与确认</h4><p>表达用途、体量和风格，审核设计方案。</p></div><div class="step"><span class="mono">BLUEPRINT / 02</span><h4>生成 WILD 蓝图</h4><p>保存构件、参数、引用与材质，执行规则检查。</p></div><div class="step"><span class="mono">WORKSPACE / 03</span><h4>实时编辑与预览</h4><p>拖拽、调参、改材质，或通过对话提出修改。</p></div><div class="step"><span class="mono">DELIVERY / 04</span><h4>保存与继续使用</h4><p>交付蓝图、重建场景，为后续复用提供基础。</p></div></div>
+        <div class="subsection-heading"><div class="eyebrow">A building that keeps its meaning</div><h3>交付的不只是形状，还有建筑的设计信息</h3><p>一扇窗除了外观，还应保留它的构件类型、宽高、材质和依附墙体。WILD 将这些信息保存为结构化参数，窗框、玻璃和重复细节由引擎展开。轻量蓝图因此既能用于展示，也能作为下一轮修改的起点。</p></div>
+        <div class="two-col">
+          <article class="panel"><h3>把设计差异留在文件中</h3><p>蓝图保存构件、尺寸、位置、引用与材质描述，无需逐一保存重建后的顶点和三角面。对于参数化能力覆盖的建筑，丰富细节可以由组合构件与规则表达，便于传输、版本比较和批量复用。</p><p>蓝图体积、纹理等外部资源、展开后的网格与运行开销分别衡量。小文件的价值来自表达方式，最终加载和渲染表现仍需在目标设备上验证。</p></article>
+          <article class="panel"><h3>让几何实现保持一致</h3><p>自研 Core 承担参数到几何的计算，Vue 承担编辑界面，Three.js 承担显示适配。将几何算法从界面和模型调用中独立出来，使同一套构件规则可以持续复用与测试。</p><p>在相同引擎版本、配置和资源下，同一蓝图可以重建一致的几何。新的设计仍有变化空间，跨版本使用则需要兼容规则与迁移支持。</p></article>
+        </div>
+        <div class="subsection-heading"><div class="eyebrow">Design · blueprint · change</div><h3>三份数据契约，贯通从想法到持续修改</h3><p>将设计判断、建筑资产与改动提案分别保存，让人能够确认意图，让程序能够计算与检查，也让每次修改有明确的范围。</p></div>
+        <div class="table-wrap"><table><thead><tr><th scope="col">契约</th><th scope="col">保存什么</th><th scope="col">对创作的意义</th></tr></thead><tbody>
+          <tr><td>DesignDocument · 设计文档</td><td>体量、层数、立面分格、屋顶、构件需求和材质意图</td><td>在落地前确认方案，区分设计意图与实际实现</td></tr>
+          <tr><td>Blueprint · WILD 蓝图</td><td>构件身份、参数、位置、依附关系与材质</td><td>形成可保存、重建、版本管理和继续编辑的资产</td></tr>
+          <tr><td>ScenePatch · 修改提案</td><td>增删改构件、调整材质等结构化操作</td><td>对话改动先经过预检与确认，应用失败时回退，减少无关变化</td></tr>
+        </tbody></table></div>
+        <div class="note"><strong>例如“把这扇窗加宽”。</strong>用户可以直接调整参数，也可以提出对话修改意图。程序根据支持的构件和宿主关系检查改动，再重建相应几何；改变的是已有资产中的设计参数，作品仍可继续编辑。涉及更复杂联动的场景，需要持续补齐约束与验证。</div>
+        <div class="subsection-heading"><div class="eyebrow">Product foundation &amp; delivery</div><h3>已有能力如何进入可用的产品</h3></div>
+        <div class="table-wrap"><table><thead><tr><th scope="col">产品层</th><th scope="col">已有基础</th><th scope="col">对应的客户价值</th><th scope="col">商业化仍需完成</th></tr></thead><tbody>
+          <tr><td>WILD 蓝图与引擎</td><td>结构化建筑描述、组合构件编译与参数化重建</td><td>保存设计参数，便于版本管理与重复利用</td><td>兼容性承诺、版本迁移与外部接入文档</td></tr>
+          <tr><td>网页创作工作台</td><td>属性、场景树、构件库、拖拽、材质与光影操作</td><td>小修改直接完成，减少重复对话</td><td>新手引导、可靠保存、用户任务验证与支持体系</td></tr>
+          <tr><td>自研 AI 创作服务</td><td>开发中的设计审核、知识检索、执行编排与修改协作</td><td>降低入门操作成本，组织多步骤创作</td><td>真实任务通过率、单次成本与付费额度管理</td></tr>
+          <tr><td>开放与内容生态</td><td>可复用协议、构件和材质能力提供技术基础</td><td>未来可复用他人作品、构件与扩展包</td><td><span class="label idea">规划</span> 分发、授权、交易、结算及生态治理</td></tr>
+        </tbody></table></div>
+        
+      </section>
+
+      <section class="chapter" id="showcase">
+  <div class="chapter-heading"><span class="chapter-num">04</span><div><div class="eyebrow">Architecture, material &amp; space</div><h2>一套语言，承载不同建筑与空间</h2></div></div>
+  <p class="lead">从住宅与合院，到展馆与咖啡空间，WILD 将建筑体量、构件细节、材质与关系保留在可以阅读和修改的蓝图中。这里展示不同风格的完整建筑，点击图片可以放大，展开卡片可查看另一侧视角。</p>
+  <div class="showcase-summary"><strong>{{ projects.length }} <small>座建筑</small></strong><strong>{{ projects.length * 2 }} <small>幅完整视角</small></strong><strong>1600 × 1000 <small>原始画幅</small></strong></div>
+  <div class="project-grid">
+    <article v-for="project in projects" :key="project.id" class="project-case">
+      <div class="project-heading"><div><span class="eyebrow">{{ project.type }}</span><h3>{{ project.name }}</h3></div><span class="project-size mono">{{ project.size }}<small>蓝图</small></span></div>
+      <p class="project-story">{{ project.story }}</p>
+      <figure class="project-main"><button class="image-open" type="button" data-zoom :aria-label="'放大' + project.name" @click="showImage(project.images[0]!)"><img :src="project.images[0]!.src" :alt="project.images[0]!.alt" width="1600" height="1000" loading="lazy"></button><figcaption>建筑全貌<span>点击放大 ↗</span></figcaption></figure>
+      <details class="more-views"><summary>另一侧完整视角</summary><figure class="project-detail"><button class="image-open" type="button" data-zoom :aria-label="'放大' + project.name + '另一侧视角'" @click="showImage(project.images[1]!)"><img :src="project.images[1]!.src" :alt="project.images[1]!.alt" width="1600" height="1000" loading="lazy"></button></figure></details>
+    </article>
+  </div>
+  <div class="subsection-heading"><div class="eyebrow">Interior &amp; materials</div><h3>走进建筑，看见材料与空间</h3><p>木作、石材、玻璃、家具与光照，延续在同一份蓝图和同一个编辑环境中。</p></div>
+  <div class="interior-gallery"><figure v-for="image in interiors" :key="image.src" class="project-detail"><button class="image-open" type="button" data-zoom :aria-label="'放大' + image.alt" @click="showImage(image)"><img :src="image.src" :alt="image.alt" width="1600" height="1000" loading="lazy"></button><figcaption>{{ image.alt }}<span>点击放大 ↗</span></figcaption></figure></div>
+  <div class="asset-metric"><strong>49,802 <span>bytes</span></strong><span>岚石光庭源蓝图 · 257 个原生元素 + 19 个组合构件<br>文件不内嵌网格或图片，体积不含引擎及外部资源。几何量与运行成本仍需独立衡量。</span></div>
+  <div class="note">作品展示蓝图与引擎的表达能力。复杂建筑的生成稳定性、设计一致性与实际使用体验，仍是自研 Agent 和工作台持续完善的重点。</div>
+</section>
+
+      <section class="chapter" id="customers">
+        <div class="chapter-heading"><span class="chapter-num">05</span><div><div class="eyebrow">Customers & market entry</div><h2>从高频修改、边界清楚的场景进入</h2></div></div>
+        <div class="table-wrap"><table><thead><tr><th scope="col">客户与优先级</th><th scope="col">首个任务</th><th scope="col">可能的付费理由</th><th scope="col">需要验证的门槛</th></tr></thead><tbody>
+          <tr><td>优先：独立场景创作者<br>与小型三维团队</td><td>制作可修改的庭院、低层住宅、街区单体；持续调整风格与材质</td><td>节省搭建与反复修改的时间，保留可复用蓝图</td><td>能否直接进入其工作流；是否接受当前构件与渲染边界</td></tr>
+          <tr><td>优先：网页三维与<br>互动展示团队</td><td>在网页中呈现、修改与交付建筑场景</td><td>轻量描述、浏览器重建，以及统一编辑入口</td><td>集成工作量、移动设备表现、版本兼容和资源总成本</td></tr>
+          <tr><td>次优先：设计教育<br>与方案表达用户</td><td>学习构件与风格，比较概念方案，完成交流演示</td><td>直观表达与迭代便利</td><td>使用频次、预算与采购周期；不依赖专业施工交付</td></tr>
+          <tr><td>后续：企业平台<br>与互动世界开发者</td><td>把蓝图和生成服务接入自有应用</td><td>可复用资产供给、定制构件和服务支持</td><td>真实接入项目、服务可靠性、授权、成本与维护责任</td></tr>
+        </tbody></table></div>
+        <div class="subsection-heading"><div class="eyebrow">Tasks people can actually use</div><h3>围绕完整任务，而非一次生成结果</h3></div>
+        <div class="two-col">
+          <article class="panel"><h3>方案交流与设计学习</h3><p>在相同视角和光照下，比较体量、立面节奏、屋顶与材料；保留每个方案的蓝图，继续调参和讲解。适合概念阶段的讨论、教学与创作演示，工程结构和施工图仍由专业流程承担。</p></article>
+          <article class="panel"><h3>从单体建筑到场景内容</h3><p>住宅、咖啡空间、展馆和亭榭可以作为展示内容；家具、器物与景观构件也能沿用参数化描述和材质能力。街区、游戏或互动叙事是后续应用方向，需验证场景规模、外部接入和交互需求。</p></article>
+        </div>
+        <p class="decision">首个付费承诺建议：“在约定建筑类型与复杂度内，交付可加载、可修改、可再次打开的 WILD 场景。”先通过试点明确支持范围，再谈规模。</p>
+        <div class="two-col gap-top"><article class="panel"><h3>可触达市场的测量方法</h3><p>先建立目标团队名录，核实每月相关任务量、现有工具费用、决策人和付费意愿。以“可触达团队数 × 可接受月费”形成首期收入空间测算，并记录访谈依据。</p></article><article class="panel"><h3>不把远景当作首期市场</h3><p>专业 BIM、施工图与结构计算要求更完整的专业能力和责任体系。自主数字世界需要额外的角色、行为与持续状态系统；本稿将其放在远期拓展阶段。</p></article></div>
+      </section>
+
+      <section class="chapter" id="business">
+        <div class="chapter-heading"><span class="chapter-num">06</span><div><div class="eyebrow">Business model</div><h2>围绕持续创作收费，逐步验证收入</h2></div></div>
+        <div class="section-label"><p class="small muted">以下为定价实验草案，尚未上线或验证；额度与服务范围须以实际成本及试点反馈确定。</p><span class="label idea">建议方案</span></div>
+        <div class="three-col">
+          <article class="panel price-card"><span class="label">基础体验</span><h3>看见价值</h3><div class="price">¥0 <small>/ 受控体验</small></div><ul class="compact-list"><li>样例浏览、本地蓝图体验与基础编辑。</li><li>托管 AI 试用设置严格额度。</li><li>用实际完成任务引导升级。</li></ul><p class="small">目的：降低学习门槛，验证激活与留存。</p></article>
+          <article class="panel price-card featured"><span class="label proof">首期付费实验</span><h3>创作者 Pro</h3><div class="price">¥99 <small>/ 月 · 试探价</small></div><ul class="compact-list"><li>托管创作与保存服务。</li><li>包含明确上限的 AI 生成额度。</li><li>超额按用量收费，价格另行验证。</li></ul><p class="small">目的：验证独立用户的持续支付意愿。</p></article>
+          <article class="panel price-card"><span class="label">团队与项目试点</span><h3>工作室 / API 合作</h3><div class="price">按范围 <small>/ 报价</small></div><ul class="compact-list"><li>以明确验收项开展有限付费试点。</li><li>后续评估团队空间、额度与 API。</li><li>定制维护成本单独核算。</li></ul><p class="small">目的：发现可重复需求，避免无限定制。</p></article>
+        </div>
+        <div class="two-col gap-top"><article class="panel"><h3>开源带来采用，托管带来收入</h3><p>建议公开稳定的蓝图规范、示例与接入文档，逐步评估引擎开放范围。让外部工具也能生成 WILD，以便扩大使用入口。具体开源范围、许可证与第三方资源授权需要确认。</p><p>收费价值放在托管计算、可靠存储、协作、运维支持和企业交付上。开放规范的商业作用，是降低采用成本并提高复用机会。</p></article><article class="panel"><h3>内容交易是后续收入选项</h3><p>当用户开始重复使用构件、风格或材质包，再验证付费内容与平台分成。抽成比例暂不设定，需要先有真实交易量、版权规则与结算能力。</p><p>初期保留少量高质量范例与官方内容，优先保障工作台可用性，不提前建设完整商城。</p></article></div>
+        <div class="flowline"><strong>开放规范与样例</strong><span class="arrow">→</span><span>完成第一次创作</span><span class="arrow">→</span><span>持续编辑与复用</span><span class="arrow">→</span><strong>托管订阅 / 团队服务</strong><span class="arrow">→</span><span>内容生态（后续）</span></div>
+      </section>
+
+      <section class="chapter" id="advantage">
+        <div class="chapter-heading"><span class="chapter-num">07</span><div><div class="eyebrow">Positioning & defensibility</div><h2>差异来自资产与工作流，价值要靠使用证明</h2></div></div>
+        <div class="table-wrap"><table><thead><tr><th scope="col">用户可选路线</th><th scope="col">通常关注的结果</th><th scope="col">WILD 的选择</th><th scope="col">验证重点</th></tr></thead><tbody>
+          <tr><td>成熟建模与专业建筑工具</td><td>广泛的建模能力、专业工作流与成熟生态</td><td>聚焦浏览器里的参数化建筑创作和轻量交付</td><td>在具体小型任务中能否减少操作与交接</td></tr>
+          <tr><td>AI 三维资产生成</td><td>快速获得形体或可视化资产</td><td>围绕建筑构件、参数与引用保留可修改信息</td><td>编辑与复用价值是否足以支持迁移成本</td></tr>
+          <tr><td>通用编程 Agent + 渲染代码</td><td>灵活实现自定义三维场景</td><td>将规范、引擎、校验和直接编辑沉淀在工作台</td><td>实际任务的成本、耗时与修改准确性</td></tr>
+        </tbody></table></div>
+        <p class="small muted gap-top">本表按产品路线讨论取舍，不构成对特定厂商最新功能的评测。通用 Agent 也能编写 WILD；“采用专门工作流”本身不能证明效果优于其他方案。</p>
+        <div class="three-col gap-top"><article class="panel"><h3>现在的积累</h3><p>统一协议、构件实现、知识与校验规则、编辑和渲染入口，形成了需要持续维护的工程资产。其价值在于一致性和复用。</p></article><article class="panel"><h3>需要形成的壁垒</h3><p>稳定的兼容性、真实任务覆盖、优质内容、外部接入与创作者复用。只有真实使用和长期维护，才能将代码能力转化为迁移成本与信任。</p></article><article class="panel"><h3>模型进步带来的位置</h3><p>设计入口可以随模型升级而改善；已有蓝图与工作流需要继续可用。保持模型可替换，把差异沉淀在资产、规则与交互体验中。</p></article></div>
+        <div class="subsection-heading"><div class="eyebrow">Knowledge, control &amp; reuse</div><h3>把经验沉淀进工具，让创作可以反复发生</h3></div>
+        <div class="two-col">
+          <article class="panel"><h3>按需提供专有知识</h3><p>构件知识库重点保存 WILD 规范、写法与引擎能力边界，按任务检索相关内容。成熟智能体可以直接阅读这些资料，自研 Agent 则继续完善检索与编排，减少每次会话重新理解整个项目的准备工作。</p><p>过程记录用于定位模型、检索、构件和装配的问题，帮助修正文档与实现；它们不会自动训练模型，也不能保证同类错误不再出现。</p></article>
+          <article class="panel"><h3>把自动化消耗变得可管理</h3><p>生成粒度同时约束设计范围、构件任务、模型调用和修订预算；用户选择更精细内容时，也需要面对更高的调用与渲染成本。小改动可以通过直接编辑完成，避免每次都消耗模型调用。</p><p>已有设计审核、结构与空间检查以及有界修复的机制。失败草稿和诊断仍可保留，方便继续编辑；检查通过之后，还需要实际渲染与用户判断。</p></article>
+          <article class="panel"><h3>表现层可以独立迭代</h3><p>材质、光影和世界外观不必绑定一次 AI 生成。用户可以在已有建筑上持续调整视觉表达，构件与表现能力也可以独立开发、调试和复用。</p></article>
+          <article class="panel"><h3>给外部应用留下接入空间</h3><p>服务端封装模型调用、知识检索与生成编排，并有 REST 与 WebSocket 接入基础；几何重建独立于编辑界面。其他应用可以探索复用相应能力，商用接入仍需明确版本、授权、稳定性与支持责任。</p></article>
+        </div>
+      </section>
+
+      <section class="chapter" id="growth">
+        <div class="chapter-heading"><span class="chapter-num">08</span><div><div class="eyebrow">Go-to-market & validation</div><h2>以真实任务验证增长，先找到愿意留下的人</h2></div></div>
+        <p class="lead">首期采用创始人直接参与的用户开发：展示完整创作过程，邀请用户带自己的任务试用，再对明确有价值的使用方式收费。下面是建议的首轮实验目标，均非已取得结果。</p>
+        <div class="table-wrap"><table><thead><tr><th scope="col">阶段与动作</th><th scope="col">建议样本 / 目标</th><th scope="col">怎样判断有效</th><th scope="col">不通过时怎么调整</th></tr></thead><tbody>
+          <tr><td>访谈与问题确认</td><td>访谈 20 位目标用户；覆盖创作者与小团队</td><td>至少 10 位能描述真实近期任务及重复修改痛点</td><td>缩小场景，重新确定用户与任务</td></tr>
+          <tr><td>邀请制任务试用</td><td>招募 10–20 位设计伙伴；任务中记录失败与人工介入</td><td>能完成“创建 → 修改 → 保存 → 重开”的完整任务</td><td>先修复阻塞，不以注册量替代完成率</td></tr>
+          <tr><td>付费试点</td><td>争取 3–5 个明确范围的付费项目或订阅意向转化</td><td>客户按约定验收付款，人工交付成本可记录</td><td>检查价值、边界、定价或服务成本</td></tr>
+          <tr><td>留存与可重复收入</td><td>至少观察连续 2 个付费周期</td><td>复用与续费发生，单位贡献为正，人工投入趋于可控</td><td>暂缓扩大投放，优先修复留存原因</td></tr>
+        </tbody></table></div>
+        <div class="two-col gap-top"><article class="panel"><h3>首批用户从哪里来</h3><p>通过代码仓库、演示站、建筑与三维创作者社群发布任务型演示：展示“同一座建筑如何改三次”，同时提供可体验的蓝图。与独立开发者、网页展示团队建立小规模试点。</p></article><article class="panel"><h3>核心指标怎么定义</h3><p>激活：用户独立完成并重开一个作品。任务成功：格式、空间关系和实际渲染通过，且满足用户验收。留存：按用户批次统计下一周期再次创作与续费；同时记录每次成功交付的全成本。</p></article></div>
+      </section>
+
+      <section class="chapter" id="roadmap">
+        <div class="chapter-heading"><span class="chapter-num">09</span><div><div class="eyebrow">Roadmap & gates</div><h2>先把工作台做稳，再让生态生长</h2></div></div>
+        <p class="small muted">相对周期自正式启动商业验证起算，属于建议计划；需按团队资源和试点结果调整。</p><div class="subsection-heading"><div class="eyebrow">Where this can grow</div><h3>发展前景：资产可以脱离一次生成，持续创造价值</h3></div><div class="two-col"><article class="panel"><h3>建筑与场景创作工作台</h3><p>将生成后的调参、拖拽、材质和光影操作做得可靠，逐步补齐批量替换、阵列和楼层复用。价值来自持续创作效率，需要通过实际任务验证。</p></article><article class="panel"><h3>面向应用的轻量资产供给</h3><p>向网页展示、互动叙事、教育和场景平台提供可编辑建筑。以版本化协议和引擎接入为基础，验证跨应用传递和重复使用的价值。</p></article><article class="panel"><h3>构件、风格与材质内容</h3><p>将已有材料与形态能力发展为可制作、预览、保存和分享的扩展包，让创作者积累可复用内容。交易和分发机制在真实复用形成后建设。</p></article><article class="panel"><h3>更开放的互动世界</h3><p>在建筑可编辑、操作可靠的基础上，探索漫游、互动设备、角色行为与持续变化的场景。长期价值依赖状态、权限、性能与内容治理能力逐步成熟。</p></article></div>
+        <div class="subsection-heading"><div class="eyebrow">From built-in capability to creator tools</div><h3>让已有底层能力，逐步成为创作者可以使用的工具</h3><p>风格配置、材质运行时、光影参数和世界包提供了扩展基础。下一步的重点，是把这些能力整理成可制作、预览、保存和复用的内容流程。下表中的产品化工作仍属于规划。</p></div>
+        <div class="table-wrap"><table><thead><tr><th scope="col">已有基础</th><th scope="col">规划中的产品形态</th><th scope="col">需要补齐</th></tr></thead><tbody>
+          <tr><td>形态与风格配置</td><td>由创作者制作和分享风格扩展包</td><td>编辑入口、参数范围、版本管理及使用说明</td></tr>
+          <tr><td>程序化材质与 PBR 资源</td><td>独立保存、预览、导入与复用材质配方</td><td>制作流程、引用兼容、授权与资源管理</td></tr>
+          <tr><td>环境、时段与光影参数</td><td>可命名的光影方案，在同一建筑上切换效果</td><td>持久化、组合规则和一致机位下的效果预览</td></tr>
+          <tr><td>世界包解析与应用基础</td><td>建筑与外观内容一起交付给应用</td><td>覆盖顺序、迁移策略、外部集成和性能验证</td></tr>
+        </tbody></table></div>
+        <div class="timeline">
+          <article class="milestone"><span class="period">0–3 MONTHS</span><h3>验证可用与需求</h3><p>限定建筑范围，建立真实任务评测；完善首次体验、保存重开与问题反馈。完成用户访谈和邀请试用，测量生成成本、人工介入及任务完成情况。</p><div class="gate"><strong>进入下一阶段：</strong>关键任务可复现，3–5 个用户或项目出现真实付费，失败原因可归类。</div></article>
+          <article class="milestone"><span class="period">3–6 MONTHS</span><h3>验证持续付费</h3><p>按成本确定订阅额度，补齐稳定性与常用编辑操作。围绕反复出现的需求沉淀构件与示例，试行有限的团队服务与外部接入。</p><div class="gate"><strong>进入下一阶段：</strong>观察到续费，订阅单位贡献为正，支持和定制工作量保持可控。</div></article>
+          <article class="milestone"><span class="period">6–12 MONTHS</span><h3>验证可复制交付</h3><p>完善可复用 API 与版本兼容，支持优质内容制作和分发。选择一个外部平台做真实接入，验证蓝图在目标设备与应用中的交付表现。</p><div class="gate"><strong>继续扩展：</strong>形成可重复获客、续费与交付流程；具备内容复用或外部集成证据。</div></article>
+        </div>
+        <div class="statement"><p>长期方向：创作工具 → 内容社区 → 可交互场景 → 更开放的数字世界。</p><div class="small">互动建筑、角色生活与 Agent 自主演化是长期探索方向，需要角色行为、寻路、状态和权限等新能力。启动时间由前期验证决定，不纳入首期收入预测。</div></div>
+      </section>
+
+      <section class="chapter" id="finance">
+        <div class="chapter-heading"><span class="chapter-num">10</span><div><div class="eyebrow">Unit economics · interactive assumptions</div><h2>先算清一位用户，再讨论规模</h2></div></div>
+        <p class="lead">以下模型只测试个人订阅能否覆盖直接服务成本与固定运营费用。所有输入都是可修改的讨论假设，不代表实际成本、已售价格、客户数或收入预测。</p>
+        <div class="calculator">
+          <div class="calc-inputs"><h3>调整试算假设</h3>
+            <div class="field"><label for="price">订阅单价（元 / 人 / 月）</label><input id="price" type="number" v-model.number="assumptions['price']" :aria-invalid="!validInput('price')" min="1" max="100000" step="1" inputmode="decimal"></div>
+            <div class="field"><label for="users">付费用户数（人）</label><input id="users" type="number" v-model.number="assumptions['users']" :aria-invalid="!validInput('users')" min="0" max="10000000" step="1" inputmode="numeric"></div>
+            <div class="field"><label for="model-cost">人均 AI 变动成本（元 / 月）</label><input id="model-cost" type="number" v-model.number="assumptions['model-cost']" :aria-invalid="!validInput('model-cost')" min="0" max="100000" step="1" inputmode="decimal"></div>
+            <div class="field"><label for="service-cost">人均其他直接成本（元 / 月）</label><input id="service-cost" type="number" v-model.number="assumptions['service-cost']" :aria-invalid="!validInput('service-cost')" min="0" max="100000" step="1" inputmode="decimal"></div>
+            <div class="field"><label for="fixed-cost">固定运营费用（元 / 月）</label><input id="fixed-cost" type="number" v-model.number="assumptions['fixed-cost']" :aria-invalid="!validInput('fixed-cost')" min="0" max="100000000" step="1000" inputmode="decimal"></div>
+            <p class="calc-error" id="calc-error" role="status">{{ inputsValid ? '' : '请输入有效范围内的数字；人数须为整数。结果保留上一次有效试算。' }}</p><button class="reset" id="reset-calculator" type="button" @click="resetAssumptions">恢复初始假设 ↺</button>
+          </div>
+          <div class="calc-results" id="calc-results" aria-live="polite" aria-atomic="true">
+            <p class="print-only" id="print-assumptions">{{ printAssumptions }}</p>
+            <div class="result-grid"><div><div class="result-label">月度订阅收入 MRR</div><div class="result-value" id="mrr">{{ money(calculation.revenue) }}</div></div><div><div class="result-label">月度贡献 / 贡献率</div><div class="result-value" id="contribution">{{ money(calculation.contribution) }}</div><div class="small muted" id="margin-rate">贡献率 {{ calculation.rate.toFixed(1) }}%</div></div><div><div class="result-label">扣固定费用后的月结余</div><div class="result-value" :class="{ negative: calculation.balance < 0 }" id="balance">{{ money(calculation.balance) }}</div></div><div><div class="result-label">覆盖固定费用所需用户</div><div class="result-value" id="break-even">{{ calculation.breakEven === null ? '无法覆盖' : calculation.breakEven.toLocaleString('zh-CN') }}<span v-if="calculation.breakEven !== null" class="unit">人</span></div></div></div>
+            <div class="calc-bar" aria-hidden="true"><span class="bar-model" id="bar-model" :style="{ width: percentages.model + '%' }"></span><span class="bar-service" id="bar-service" :style="{ width: percentages.service + '%' }"></span><span class="bar-margin" id="bar-margin" :style="{ width: percentages.margin + '%' }"></span></div>
+            <div class="legend"><span><i style="background:#b76d4c"></i>AI 成本</span><span><i style="background:#b6bd9d"></i>其他直接成本</span><span><i style="background:#42694f"></i>贡献</span></div>
+            <p class="calc-comment" id="calc-comment">{{ calculationComment }}</p>
+          </div>
+        </div>
+        
+        <div class="formula">月贡献 = 付费人数 ×（月费 − 人均 AI 成本 − 人均其他直接成本）<br>覆盖固定费用人数 = 固定费用 ÷ 单位月贡献，向上取整。单位贡献≤0 时，增加同类用户无法覆盖固定费用。<br>AI 成本应计入失败与重试；其他直接成本应覆盖支付、存储带宽与随用户增长的支持支出。免费试用的直接成本暂并入固定运营预算。未计税费、一次性投入、融资、渠道获客及团队/API/内容交易收入。</div>
+        <div class="budget"><article class="panel"><h3>固定运营预算示例</h3><div class="budget-row"><span>核心研发与产品投入</span><b>¥30,000 / 月</b></div><div class="budget-row"><span>基础设施、工具与免费试用预算</span><b>¥5,000 / 月</b></div><div class="budget-row"><span>用户研究、内容与运营</span><b>¥10,000 / 月</b></div><div class="budget-row"><span>初始假设合计</span><b>¥45,000 / 月</b></div><p class="small gap-top">对应 12 个月固定运营费用 54 万元。这是规划示例，不是现有团队工资、融资需求或完整现金预算。</p></article><article class="panel"><h3>商业决策需要补齐的数据</h3><ul class="compact-list"><li>按粒度统计成功任务成本，计入失败、重试与退款。</li><li>记录新用户获得成本、免费用户消耗和人工支持时间。</li><li>按月付费批次统计续费，出现稳定留存后再估计生命周期价值。</li><li>将月度增长、回款、一次性投入和现金储备加入融资预算。</li></ul></article></div>
+      </section>
+
+      <section class="chapter" id="team">
+        <div class="chapter-heading"><span class="chapter-num">11</span><div><div class="eyebrow">Team, capital & collaboration</div><h2>下一笔投入，要换来可验证的商业进展</h2></div></div>
+        <div class="two-col"><article class="panel"><h3>团队现状与补位</h3><p>项目目前以独立开发为主，已经贯通蓝图语言、参数化引擎与网页工作台。后续需要根据产品和商业验证情况补充研发、设计及用户运营能力。</p><p>建议早期补齐两类能力：一类聚焦引擎、编辑体验与可靠交付；另一类聚焦创作者访谈、内容演示、渠道与试点转化。采用何种全职、兼职或合作方式，取决于现金与业务验证。</p></article><article class="funding"><h3>资金与融资口径</h3><p>拟围绕未来 6–12 个月的任务稳定性、付费试点、续费和外部接入里程碑配置资金。具体金额应由现金预算、团队安排与回款假设倒推。</p><p>融资金额与方式将结合团队计划、研发投入和现金预算确定。</p><span class="label">预算优先级：产品可靠性 → 真实试点 → 可复制收入</span></article></div>
+        <div class="three-col gap-top"><article class="panel"><h3>寻找设计伙伴</h3><p>有实际建筑或三维场景任务，愿意提供过程反馈并按清晰范围试点的创作者、小型团队。</p></article><article class="panel"><h3>寻找应用合作方</h3><p>网页互动、数字展陈或场景平台团队，共同完成一个真正上线使用的接入案例。</p></article><article class="panel"><h3>寻找早期资金与资源</h3><p>认可可编辑资产方向，能提供研发周期、创作者渠道和商业化支持的早期合作伙伴。</p></article></div>
+      </section>
+
+      <section class="chapter" id="risks">
+        <div class="chapter-heading"><span class="chapter-num">12</span><div><div class="eyebrow">Limitations & next steps</div><h2>承认当前不足，把下一步做扎实</h2></div></div><div class="two-col gap-top"><article class="panel"><h3>自研 Agent 的效果与投入</h3><p>目前受研发资源限制，自研 Agent 在复杂设计、稳定执行和成品一致性上仍落后于成熟智能体。优先完善可计算的坐标、关系与校验，把模型能力集中在设计判断。</p></article><article class="panel"><h3>从单件编辑到生产效率</h3><p>工作台已有直接操作基础，批量对齐、阵列、楼层复制与参数层级仍需逐步补齐。完整工程图纸、结构计算和法规审查不在当前交付范围内。</p></article><article class="panel"><h3>实时画质与表达边界</h3><p>当前采用实时光栅化渲染。家具和植被仍有简化形体，程序纹理不等于真实几何起伏；全局照明、焦散与扫描级细节需要额外能力。小文件也不能直接保证低渲染成本。</p></article><article class="panel"><h3>产品化与生态仍需验证</h3><p>托管服务、计费、团队协作、外部兼容和内容授权需要完善。用户是否持续使用、是否愿意付费，以及支持成本能否控制，需要实际商业试点回答。</p></article></div>
+        <div class="table-wrap"><table><thead><tr><th scope="col">关键风险</th><th scope="col">当前判断</th><th scope="col">控制与验证</th></tr></thead><tbody>
+          <tr><td>复杂生成质量不稳定</td><td>精细渲染样例不等于复杂任务稳定自动交付</td><td>限定支持范围；分别统计结构、空间、渲染和用户验收；记录人工介入</td></tr>
+          <tr><td>需求与付费不足</td><td>付费转化与跨周期留存尚未充分验证</td><td>真实任务访谈、有限付费试点与跨周期续费验证</td></tr>
+          <tr><td>成本随用量上升</td><td>AI 调用、失败重试和支持会影响单位贡献</td><td>按质量档设额度；监测成功交付成本；超额计费前验证价格接受度</td></tr>
+          <tr><td>格式采用与兼容</td><td>自定义协议需要外部工具愿意接入</td><td>版本化规范、兼容测试、迁移策略与首个真实外部应用</td></tr>
+          <tr><td>设备性能与资产总成本</td><td>蓝图小不代表展开后网格、贴图或运行成本小</td><td>同时测文件体积、外部资源、首屏、内存与目标设备交互表现</td></tr>
+          <tr><td>许可与内容权利</td><td>拟开放范围及第三方素材商业授权仍需核对</td><td>上线前明确许可证、资源清单、作品授权及平台内容规则</td></tr>
+          <tr><td>团队与范围失控</td><td>独立开发资源有限，远景容易分散投入</td><td>先完成工作台与商业验证；社区交易、自主世界按里程碑启动</td></tr>
+        </tbody></table></div>
+        <div class="note"><strong>商业化前需要验证：</strong>负责人和公司主体、项目许可与资源授权、核心任务真实完成率、付费客户与留存、按任务统计的成本、月度现金预算及融资目标。相关指标将随试点与产品进展持续完善。</div>
+        <div class="endline">从一份可编辑的蓝图，<br>长出更多可以被创造的世界。</div>
+        <div class="footer"><span>WILD · 旷野 · 商业计划书</span><span>WILD · 旷野 / 持续开发中</span></div>
+      </section>
+    </main>
+  </div>
+<dialog class="image-viewer" id="image-viewer" ref="imageViewer" @click="closeOnBackdrop" @close="selectedImage = null" aria-label="完整渲染图"><button class="viewer-close" type="button" @click="imageViewer?.close()" aria-label="关闭大图">关闭 ×</button><figure><img id="viewer-image" :src="selectedImage?.src" :alt="selectedImage?.alt || ''"><figcaption id="viewer-caption">{{ selectedImage?.alt }}</figcaption></figure></dialog>
+</div>
+
+</template>
+
+<script setup lang="ts">
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, shallowRef, watch } from 'vue'
+import { calculateSubscription, money, type SubscriptionAssumptions } from './calculation'
+import { RouterLink } from 'vue-router'
+
+const projects = [
+  {
+    "id": "curated-linting",
+    "name": "林庭石光馆",
+    "type": "庭院展馆",
+    "story": "庭院、连廊与石材界面共同组织建筑空间，展示较复杂的公共空间和构件细节。",
+    "size": "780.1 KiB",
+    "images": [
+      {
+        "src": "/business-plan/curated-linting-02.jpg",
+        "alt": "林庭石光馆 · 建筑全貌"
+      },
+      {
+        "src": "/business-plan/curated-linting-01.jpg",
+        "alt": "林庭石光馆 · 另一侧视角"
+      }
+    ]
+  },
+  {
+    "id": "curated-meiting",
+    "name": "玫庭庄园 · 欧式别墅",
+    "type": "欧式住宅",
+    "story": "通过坡屋顶、门窗、柱廊与装饰层次，表达具有细节的欧式住宅。",
+    "size": "518.9 KiB",
+    "images": [
+      {
+        "src": "/business-plan/curated-meiting-02.jpg",
+        "alt": "玫庭庄园 · 欧式别墅 · 建筑全貌"
+      },
+      {
+        "src": "/business-plan/curated-meiting-01.jpg",
+        "alt": "玫庭庄园 · 欧式别墅 · 另一侧视角"
+      }
+    ]
+  },
+  {
+    "id": "curated-qiguang",
+    "name": "栖光别墅 · 叠院露台住宅",
+    "type": "叠院露台住宅",
+    "story": "退台、露台与多层空间组合，展示住宅体量与院落关系的参数化表达。",
+    "size": "149.0 KiB",
+    "images": [
+      {
+        "src": "/business-plan/curated-qiguang-02.jpg",
+        "alt": "栖光别墅 · 叠院露台住宅 · 建筑全貌"
+      },
+      {
+        "src": "/business-plan/curated-qiguang-01.jpg",
+        "alt": "栖光别墅 · 叠院露台住宅 · 另一侧视角"
+      }
+    ]
+  },
+  {
+    "id": "curated-tinglan",
+    "name": "听澜合院 · 新中式别墅",
+    "type": "新中式合院",
+    "story": "以合院、坡顶和木作细节表达新中式居住空间。",
+    "size": "448.5 KiB",
+    "images": [
+      {
+        "src": "/business-plan/curated-tinglan-02.jpg",
+        "alt": "听澜合院 · 新中式别墅 · 建筑全貌"
+      },
+      {
+        "src": "/business-plan/curated-tinglan-01.jpg",
+        "alt": "听澜合院 · 新中式别墅 · 另一侧视角"
+      }
+    ]
+  },
+  {
+    "id": "curated-tingguang",
+    "name": "庭光别墅 · 双层庭院住宅",
+    "type": "双层庭院住宅",
+    "story": "围绕庭院组织双层居住体量，展示建筑形态与开口、材质的组合。",
+    "size": "80.7 KiB",
+    "images": [
+      {
+        "src": "/business-plan/curated-tingguang-02.jpg",
+        "alt": "庭光别墅 · 双层庭院住宅 · 建筑全貌"
+      },
+      {
+        "src": "/business-plan/curated-tingguang-01.jpg",
+        "alt": "庭光别墅 · 双层庭院住宅 · 另一侧视角"
+      }
+    ]
+  },
+  {
+    "id": "curated-yanlu",
+    "name": "砚麓别墅",
+    "type": "别墅与景观",
+    "story": "以真实蓝图中的建筑体量和细部表达，展示持续迭代的建筑创作成果。",
+    "size": "297.6 KiB",
+    "images": [
+      {
+        "src": "/business-plan/curated-yanlu-02.jpg",
+        "alt": "砚麓别墅 · 建筑全貌"
+      },
+      {
+        "src": "/business-plan/curated-yanlu-01.jpg",
+        "alt": "砚麓别墅 · 另一侧视角"
+      }
+    ]
+  },
+  {
+    "id": "curated-forest",
+    "name": "Forest Cafe",
+    "type": "商业建筑",
+    "story": "以丰富的商业空间、界面和构件细节，展示 WILD 在住宅之外的应用。",
+    "size": "833.6 KiB",
+    "images": [
+      {
+        "src": "/business-plan/curated-forest-02.jpg",
+        "alt": "Forest Cafe · 建筑全貌"
+      },
+      {
+        "src": "/business-plan/curated-forest-01.jpg",
+        "alt": "Forest Cafe · 另一侧视角"
+      }
+    ]
+  },
+  {
+    "id": "lanshi",
+    "name": "岚石光庭",
+    "type": "交互材质别墅",
+    "story": "L 形体量与水庭组织居住空间，木格栅、洞石、玻璃与室内陈设共同参与表达。",
+    "size": "48.6 KiB",
+    "images": [
+      {
+        "src": "/business-plan/lanshi-01.jpg",
+        "alt": "岚石光庭 · 建筑全貌"
+      },
+      {
+        "src": "/business-plan/lanshi-02.jpg",
+        "alt": "岚石光庭 · 另一侧视角"
+      }
+    ]
+  },
+  {
+    "id": "songyu",
+    "name": "松雨回廊",
+    "type": "新中式合院",
+    "story": "围合院落、屋面层次和回廊关系，体现蓝图对不同空间组织与建筑语言的承载。",
+    "size": "39.4 KiB",
+    "images": [
+      {
+        "src": "/business-plan/songyu-01.jpg",
+        "alt": "松雨回廊 · 建筑全貌"
+      },
+      {
+        "src": "/business-plan/songyu-02.jpg",
+        "alt": "松雨回廊 · 另一侧视角"
+      }
+    ]
+  },
+  {
+    "id": "qipo",
+    "name": "栖坡陶院",
+    "type": "地中海坡顶",
+    "story": "陶土坡顶、拱廊、阳台与庭院，展示同一引擎下的风格变化与参数化复用。",
+    "size": "52.8 KiB",
+    "images": [
+      {
+        "src": "/business-plan/qipo-01.jpg",
+        "alt": "栖坡陶院 · 建筑全貌"
+      },
+      {
+        "src": "/business-plan/qipo-02.jpg",
+        "alt": "栖坡陶院 · 另一侧视角"
+      }
+    ]
+  }
+]
+const interiors = [
+  {
+    "src": "/business-plan/lanshi-04-interior.jpg",
+    "alt": "岚石光庭 · 室内材质与空间"
+  },
+  {
+    "src": "/business-plan/chengyu-04-interior.jpg",
+    "alt": "澄屿叠院 · 室内材质与空间"
+  },
+  {
+    "src": "/business-plan/qipo-04-interior.jpg",
+    "alt": "栖坡陶院 · 室内材质与空间"
+  }
+]
+
+const pageRoot = ref<HTMLElement>()
+const imageViewer = ref<HTMLDialogElement>()
+const selectedImage = ref<{ src: string; alt: string } | null>(null)
+const defaults: SubscriptionAssumptions = { price: 99, users: 300, 'model-cost': 18, 'service-cost': 8, 'fixed-cost': 45000 }
+const assumptions = reactive({ ...defaults })
+const lastValid = shallowRef({ ...defaults })
+const limits: Record<string, [number, number, number]> = { price: [1, 100000, 1], users: [0, 10000000, 1], 'model-cost': [0, 100000, 1], 'service-cost': [0, 100000, 1], 'fixed-cost': [0, 100000000, 1000] }
+function validInput(key: string) {
+  const value = assumptions[key as keyof SubscriptionAssumptions]
+  const [min, max, step] = limits[key]!
+  return typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max && Number.isInteger((value - min) / step)
+}
+const inputsValid = computed(() => Object.keys(defaults).every(validInput))
+watch(assumptions, () => { if (inputsValid.value) lastValid.value = { ...assumptions } }, { deep: true })
+const calculation = computed(() => calculateSubscription(lastValid.value))
+const percentages = computed(() => ({ model: lastValid.value['model-cost'] / calculation.value.scale * 100, service: lastValid.value['service-cost'] / calculation.value.scale * 100, margin: Math.max(calculation.value.unit, 0) / calculation.value.scale * 100 }))
+const calculationComment = computed(() => '在当前假设下，每位付费用户月贡献 ' + calculation.value.unit.toLocaleString('zh-CN') + ' 元；' + (calculation.value.breakEven === null ? '同类用户的增长无法覆盖固定运营费用，需要提高单价或降低成本。' : '约需 ' + calculation.value.breakEven.toLocaleString('zh-CN') + ' 位同等用量的付费用户覆盖月固定费用。'))
+const printAssumptions = computed(() => '本次试算输入：单价 ' + lastValid.value.price + ' 元；' + lastValid.value.users + ' 位付费用户；人均 AI 成本 ' + lastValid.value['model-cost'] + ' 元；其他直接成本 ' + lastValid.value['service-cost'] + ' 元；固定运营费用 ' + lastValid.value['fixed-cost'].toLocaleString('zh-CN') + ' 元 / 月。')
+function resetAssumptions() { Object.assign(assumptions, defaults) }
+async function openImage(event: MouseEvent) {
+  const image = (event.currentTarget as HTMLElement).querySelector('img')
+  if (!image) return
+  await showImage({ src: image.src, alt: image.alt })
+}
+async function showImage(image: { src: string; alt: string }) {
+  selectedImage.value = image
+  await nextTick()
+  imageViewer.value?.showModal()
+}
+function closeOnBackdrop(event: MouseEvent) { if (event.target === imageViewer.value) imageViewer.value?.close() }
+const activeChapter = ref('#summary')
+const readingProgress = ref(0)
+let readingFrame = 0
+function updateReading() {
+  const root = pageRoot.value
+  if (!root) return
+  const total = root.scrollHeight - root.clientHeight
+  readingProgress.value = total > 0 ? Math.min(100, Math.max(0, root.scrollTop / total * 100)) : 0
+  const top = root.getBoundingClientRect().top
+  for (const section of root.querySelectorAll<HTMLElement>('.chapter')) {
+    if (section.getBoundingClientRect().top - top <= 180) activeChapter.value = '#' + section.id
+  }
+}
+function scheduleReading() { cancelAnimationFrame(readingFrame); readingFrame = requestAnimationFrame(updateReading) }
+onMounted(() => {
+  pageRoot.value?.addEventListener('load', scheduleReading, true)
+  window.addEventListener('resize', scheduleReading)
+  updateReading()
+})
+onBeforeUnmount(() => {
+  cancelAnimationFrame(readingFrame)
+  pageRoot.value?.removeEventListener('load', scheduleReading, true)
+  window.removeEventListener('resize', scheduleReading)
+  imageViewer.value?.close()
+})
+</script>
+
+<style scoped>
+
+    .business-plan-page{--paper:var(--studio-bg);--on-accent:var(--studio-bg);--white:var(--studio-surface);--ink:var(--studio-text);--muted:var(--studio-muted);--green:var(--studio-accent);--soft:var(--studio-hover);--line:var(--studio-border);--orange:var(--studio-orange);--serif:"Noto Serif SC","Source Han Serif SC","Songti SC","SimSun",serif;--sans:"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+    *{box-sizing:border-box}.business-plan-page{scroll-behavior:smooth;scroll-padding-top:88px}.business-plan-page{margin:0;background:var(--paper);color:var(--ink);font:15px/1.85 var(--sans);-webkit-font-smoothing:antialiased}a{color:inherit;text-underline-offset:4px}button,input{font:inherit}button,a,input{touch-action:manipulation}button{cursor:pointer}button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid var(--orange);outline-offset:4px}img{display:block;max-width:100%}figure,p,ul,ol{margin:0}h1,h2,h3,h4{margin:0;line-height:1.4}h2{font-size:clamp(25px,3vw,37px);letter-spacing:-1px;font-weight:650}h3{font-size:19px;font-weight:650}h4{font-size:16px}p+p{margin-top:14px}strong{font-weight:650}small,.small{font-size:12px;line-height:1.8}.muted{color:var(--muted)}.mono{font-family:Consolas,"SFMono-Regular",monospace;font-variant-numeric:tabular-nums}.eyebrow{font-size:11px;letter-spacing:2.5px;text-transform:uppercase;font-weight:700;color:var(--green)}.label{display:inline-block;font-size:11px;line-height:1.5;padding:5px 9px;border:1px solid var(--line);border-radius:3px;vertical-align:middle;letter-spacing:.4px}.label.proof{background:var(--soft);border-color:var(--soft);color:var(--green)}.label.idea{color:var(--orange);background:var(--studio-warm);border-color:var(--studio-warm)}.nowrap{white-space:nowrap}
+    .skip{position:fixed;left:20px;top:-70px;z-index:99;background:var(--green);color:var(--on-accent);padding:10px 20px}.skip:focus{top:10px}.topbar{height:70px;position:sticky;top:0;z-index:20;background:var(--paper);border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 38px;gap:20px}.brand{text-decoration:none;display:flex;gap:12px;align-items:center}.brand-mark{width:33px;height:33px;background:var(--green);color:var(--paper);display:grid;place-items:center;font-family:var(--serif);font-size:26px;line-height:1}.brand-name{font-size:19px;letter-spacing:-.8px;font-weight:750}.top-meta{font-size:11px;letter-spacing:1.5px;color:var(--muted)}.top-actions{display:flex;align-items:center;gap:20px}.home-link{border:1px solid var(--studio-accent-border);background:transparent;padding:7px 13px;border-radius:3px;font-size:12px;color:var(--green)}.reading-progress{position:absolute;bottom:-1px;left:0;width:0;height:2px;background:var(--orange)}
+    .layout{max-width:1600px;display:grid;grid-template-columns:225px minmax(0,1fr);margin:auto}.sidebar{position:sticky;top:70px;align-self:start;height:calc(100vh - 70px);padding:35px 20px 24px 30px;border-right:1px solid var(--line);display:flex;flex-direction:column;overflow:auto}.nav-title{font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:16px}.sidebar nav{display:grid;gap:3px}.sidebar nav a{display:flex;gap:13px;padding:7px 10px;border-radius:3px;text-decoration:none;font-size:12px;color:var(--muted);line-height:1.6}.sidebar nav a span{color:var(--muted);font-size:10px;padding-top:2px}.sidebar nav a:hover,.sidebar nav a[aria-current="location"]{color:var(--green);background:var(--soft)}.sidebar nav a[aria-current="location"] span{color:var(--orange)}.sidebar-foot{margin-top:auto;padding-top:30px;font-size:10px;color:var(--muted);line-height:1.9}.sidebar-foot b{display:block;font-size:12px;color:var(--green);margin:4px 0}.main{min-width:0;padding:0 56px}.hero{padding:51px 0 40px}.hero-meta{display:flex;justify-content:space-between;gap:15px;align-items:center;margin-bottom:32px}.hero-grid{display:grid;grid-template-columns:1fr 1.15fr;gap:32px;align-items:center}.hero h1{font-family:var(--serif);font-size:clamp(39px,4.3vw,64px);font-weight:600;line-height:1.35;letter-spacing:-2px}.hero h1 em{font-style:normal;color:var(--green)}.hero-copy{font-size:14px;line-height:1.95;color:var(--muted);margin:23px 0;max-width:460px}.hero-links{display:flex;align-items:center;gap:22px;flex-wrap:wrap}.primary-link{background:var(--green);color:var(--on-accent);text-decoration:none;padding:10px 18px;font-size:12px;border-radius:2px}.text-link{font-size:12px;color:var(--green)}.hero-visual{position:relative;padding:14px 0 0 14px}.hero-visual:before{content:"";position:absolute;inset:0 15px 38px 0;border:1px solid var(--line);z-index:-1}.hero-visual img{display:block;width:100%;height:auto;aspect-ratio:auto;object-fit:contain;background:var(--soft)}.hero-visual figcaption{padding:10px 0;font-size:10px;color:var(--muted);display:flex;justify-content:space-between;gap:8px}.hero-note{padding:17px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:20px;margin-top:34px;font-size:12px;color:var(--muted)}.hero-note b{display:block;color:var(--ink);font-size:15px;margin-bottom:2px}.hero-note>div+div{border-left:1px solid var(--line);padding-left:20px}.edition{font-size:11px;color:var(--muted);text-align:right;line-height:1.7}
+    .chapter{padding:55px 0;border-top:1px solid var(--line);scroll-margin-top:20px}.chapter-heading{display:grid;grid-template-columns:38px 1fr;gap:17px;align-items:start;margin-bottom:28px}.chapter-num{font:12px/1.7 Consolas,monospace;color:var(--orange);padding-top:6px}.chapter-heading .eyebrow{margin-bottom:8px}.lead{font-size:16px;line-height:1.95;color:var(--muted);max-width:850px;margin:0 0 25px}.two-col{display:grid;grid-template-columns:1fr 1fr;gap:28px}.three-col{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}.panel{background:var(--white);padding:24px;border:1px solid var(--line);border-radius:3px}.panel h3{margin-bottom:12px}.panel p{font-size:13px;color:var(--muted)}.panel .eyebrow{margin-bottom:13px}.statement{background:var(--green);color:var(--paper);padding:30px 34px;margin:25px 0;border-radius:3px}.statement p{font-family:var(--serif);font-size:clamp(20px,2.3vw,28px);line-height:1.8}.statement .small{color:var(--on-accent);font-family:var(--sans);font-size:12px;margin-top:11px}.compact-list{padding-left:19px;font-size:13px;color:var(--muted);line-height:1.95}.compact-list li+li{margin-top:7px}.note{border-left:3px solid var(--studio-accent-border);background:var(--soft);padding:15px 20px;font-size:12px;color:var(--muted);margin-top:20px}.note.warm{border-color:var(--orange);background:var(--studio-warm);color:var(--orange)}.section-label{display:flex;gap:10px;align-items:center;justify-content:space-between;margin-bottom:17px;flex-wrap:wrap}.gap-top{margin-top:24px}.step-list{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid var(--line);background:var(--white);margin:25px 0}.step{padding:20px;position:relative}.step+.step{border-left:1px solid var(--line)}.step .mono{color:var(--orange);font-size:11px}.step h4{margin:10px 0}.step p{font-size:12px;color:var(--muted)}.step:not(:last-child):after{content:"→";position:absolute;right:-9px;top:18px;z-index:1;background:var(--white);color:var(--muted);padding:0 2px}.table-wrap{width:100%;overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:12px;line-height:1.85;text-align:left}th{color:var(--green);font-weight:650;background:var(--soft);padding:12px 14px;white-space:nowrap}td{padding:14px;border-bottom:1px solid var(--line);vertical-align:top}td:first-child{font-weight:600;color:var(--ink)}td{color:var(--muted)}.table-wrap table{min-width:600px}.table-wrap.narrow table{min-width:480px}.decision{margin-top:20px;font-size:13px;color:var(--green)}.asset-metric{display:flex;align-items:baseline;gap:12px;margin-top:22px;padding:20px 0;border-top:1px solid var(--line);flex-wrap:wrap}.asset-metric strong{font-size:35px;font-family:Consolas,monospace;letter-spacing:-1.5px;color:var(--green)}.asset-metric span{font-size:12px;color:var(--muted)}.price{font:34px/1.5 Consolas,monospace;color:var(--green);letter-spacing:-1.5px;margin:10px 0}.price small{font-family:var(--sans);letter-spacing:0;font-size:12px}.price-card{position:relative}.price-card.featured{border-top:3px solid var(--green)}.price-card ul{min-height:116px;margin-top:16px}.price-card .label{margin-bottom:14px}.flowline{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--soft);padding:21px 24px;margin-top:22px;font-size:12px;color:var(--green)}.flowline .arrow{color:var(--muted)}.timeline{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:24px}.milestone{border-top:2px solid var(--studio-accent-border);padding-top:20px}.milestone .period{font:13px Consolas,monospace;color:var(--orange)}.milestone h3{margin:10px 0 14px}.milestone p{font-size:13px;color:var(--muted)}.milestone .gate{margin-top:17px;background:var(--soft);padding:12px;font-size:12px;color:var(--green)}
+    .calculator{display:grid;grid-template-columns:.9fr 1.1fr;border:1px solid var(--line);background:var(--white);margin-top:24px}.calc-inputs{padding:26px 28px;border-right:1px solid var(--line)}.calc-inputs h3{margin-bottom:18px}.field{display:grid;grid-template-columns:1fr 116px;gap:16px;align-items:center;margin:15px 0}.field label{font-size:12px;color:var(--muted)}.field input{width:100%;min-width:0;padding:7px 9px;background:var(--paper);border:1px solid var(--line);color:var(--green);border-radius:2px;font-family:Consolas,monospace}.reset{background:transparent;color:var(--green);font-size:12px;border:0;border-bottom:1px solid var(--studio-accent-border);padding:2px 0;margin-top:9px}.calc-results{padding:26px 28px;display:flex;flex-direction:column}.result-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px 20px}.result-label{font-size:11px;color:var(--muted)}.result-value{font-family:Consolas,monospace;font-size:29px;line-height:1.6;color:var(--green);letter-spacing:-1px}.result-value.negative{color:var(--studio-danger)}.unit{font:11px var(--sans);letter-spacing:0;margin-left:5px}.calc-bar{display:flex;min-height:12px;background:var(--soft);margin-top:23px}.calc-bar span{display:block}.bar-model{background:#b76d4c;width:18.18%}.bar-service{background:#b6bd9d;width:8.08%}.bar-margin{background:#42694f;width:73.74%}.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:10px;color:var(--muted);margin:9px 0 14px}.legend i{display:inline-block;width:7px;height:7px;margin-right:5px}.calc-comment{font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:16px;margin-top:auto}.formula{font-size:11px;color:var(--muted);background:var(--soft);padding:15px 20px;margin-top:16px;line-height:2}.calc-error{color:var(--studio-danger);min-height:20px;font-size:11px}.budget{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:24px}.budget-row{display:flex;justify-content:space-between;gap:20px;padding:9px 0;border-bottom:1px solid var(--line);font-size:12px}.budget-row b{color:var(--green);white-space:nowrap}.funding{padding:28px;background:var(--green);color:var(--paper)}.funding h3{margin-bottom:13px}.funding p{font-size:13px;color:var(--on-accent)}.funding .label{color:var(--on-accent);border-color:var(--on-accent);margin-top:17px}.endline{font-family:var(--serif);font-size:clamp(26px,3.5vw,44px);color:var(--green);padding:35px 0 28px;line-height:1.6}.footer{display:flex;justify-content:space-between;gap:20px;border-top:1px solid var(--line);padding:19px 0 30px;font-size:10px;color:var(--muted)}.print-only{display:none}
+    @media(min-width:1550px){.main{padding:0 75px}.hero h1{font-size:66px}.hero{padding-top:64px}.hero-grid{gap:45px}}
+    @media(max-width:1150px){.layout{grid-template-columns:190px minmax(0,1fr)}.main{padding:0 30px}.sidebar{padding-left:16px}.hero-grid{grid-template-columns:1fr;gap:26px}.hero h1{font-size:48px}.hero h1 br:nth-of-type(2){display:none}.hero-visual{max-width:700px}.hero-visual img{display:block;width:100%;height:auto;aspect-ratio:auto;object-fit:contain;background:var(--soft)}.three-col,.timeline{gap:13px}.panel{padding:20px}.hero-note{grid-template-columns:1fr 1fr 1fr}.top-meta{display:none}}
+    @media(max-width:820px){.topbar{height:62px;padding:0 20px}.layout{display:block}.sidebar{position:sticky;top:62px;height:auto;padding:0;background:var(--paper);z-index:15;border-right:0;border-bottom:1px solid var(--line);overflow:visible}.nav-title,.sidebar-foot{display:none}.sidebar nav{display:flex;overflow-x:auto;gap:2px;padding:7px 13px;scrollbar-width:thin}.sidebar nav a{white-space:nowrap;padding:6px 10px;font-size:11px}.sidebar nav a span{display:none}.main{padding:0 24px}.hero{padding-top:30px}.hero-meta{margin-bottom:25px}.hero h1{font-size:43px}.hero-grid{grid-template-columns:1fr;gap:25px}.hero-visual{padding-top:10px}.hero-visual img{display:block;width:100%;height:auto;aspect-ratio:auto;object-fit:contain;background:var(--soft)}.hero-copy{font-size:12px}.hero-links{gap:15px}.hero-visual figcaption{display:block}.hero-visual figcaption span{display:block}.chapter{padding:40px 0}.chapter-heading{grid-template-columns:25px 1fr;gap:10px}.hero-note{gap:12px}.hero-note>div+div{padding-left:12px}.hero-note b{font-size:13px}.hero-note{font-size:11px}.three-col{grid-template-columns:1fr}.price-card ul{min-height:0}.step-list{grid-template-columns:1fr 1fr}.step:nth-child(3){border-left:0;border-top:1px solid var(--line)}.step:nth-child(4){border-top:1px solid var(--line)}.step:nth-child(2):after{display:none}.calculator{grid-template-columns:1fr}.calc-inputs{border-right:0;border-bottom:1px solid var(--line)}.timeline{grid-template-columns:1fr;gap:25px}.chapter{scroll-margin-top:80px}}
+    @media(max-width:560px){.business-plan-page{font-size:14px}.topbar{padding:0 16px}.brand-name{font-size:17px}.top-actions{gap:8px}.top-actions .label{display:none}.main{padding:0 19px}.hero-meta .eyebrow{font-size:9px;letter-spacing:1px}.hero-grid{grid-template-columns:1fr}.hero h1{font-size:43px}.hero h1 br:nth-of-type(2){display:block}.hero-copy{font-size:13px;max-width:100%}.hero-visual img{display:block;width:100%;height:auto;aspect-ratio:auto;object-fit:contain;background:var(--soft)}.hero-visual figcaption{display:flex}.hero-meta{align-items:start}.hero-note{grid-template-columns:1fr;gap:13px}.hero-note>div+div{border-left:0;padding:11px 0 0;border-top:1px solid var(--line)}.hero-note b{display:inline;margin-right:12px}.two-col,.budget{grid-template-columns:1fr}.statement{padding:23px}.lead{font-size:14px}.chapter-heading{margin-bottom:23px}.field{grid-template-columns:1fr 104px}.calc-inputs,.calc-results{padding:21px}.result-value{font-size:25px}.result-grid{gap:18px 12px}.step{padding:17px}.step p{font-size:11px}.footer{display:block}.footer span{display:block;margin-top:4px}.endline{padding-top:25px}.edition{font-size:10px}.asset-metric strong{font-size:29px}}
+    @media(prefers-reduced-motion:reduce){.business-plan-page{scroll-behavior:auto}}
+    @page{size:A4;margin:16mm 14mm}
+    @media print{.business-plan-page{scroll-behavior:auto}.business-plan-page{background:white;font-size:10pt;line-height:1.75;color:#172b20;-webkit-print-color-adjust:exact;print-color-adjust:exact}.topbar,.sidebar,.hero-links,.home-link,.reset,.calc-inputs,.calc-bar,.legend,.reading-progress,.skip{display:none!important}.layout{display:block;max-width:none}.main{padding:0}.hero{padding:0 0 20px}.hero-meta{margin-bottom:20px}.hero-grid{grid-template-columns:.9fr 1.1fr;gap:20px}.hero h1{font-size:28pt}.hero h1 br:nth-of-type(2){display:block}.hero-copy{font-size:9pt}.hero-visual img{display:block;width:100%;height:auto;aspect-ratio:auto;object-fit:contain;background:var(--soft)}.hero-note{margin-top:20px}.chapter{padding:25px 0;scroll-margin-top:0}.chapter-heading{margin-bottom:18px}h2{font-size:21pt}h3{font-size:13pt}h1,h2,h3,h4,.chapter-heading{break-after:avoid}.panel,figure,.step,.milestone,.budget,.statement,.calculator{break-inside:avoid}.three-col{grid-template-columns:repeat(3,1fr)}.two-col,.budget{grid-template-columns:1fr 1fr}.timeline{grid-template-columns:repeat(3,1fr)}.step-list{grid-template-columns:repeat(4,1fr)}.step:nth-child(3){border-left:1px solid var(--line);border-top:0}.step:nth-child(4){border-top:0}.panel{padding:15px}.panel p,.compact-list,.milestone p,td,.lead{font-size:9pt}.table-wrap{overflow:visible}.table-wrap table,.table-wrap.narrow table{min-width:0;font-size:8pt}thead{display:table-header-group}tr{break-inside:avoid}td,th{padding:9px}.lead{margin-bottom:17px}.calculator{display:block}.calc-results{padding:20px}.result-grid{grid-template-columns:repeat(4,1fr)}.result-value{font-size:19pt}.print-only{display:block;font-size:8pt;color:var(--muted);margin-bottom:10px}.footer{font-size:8pt}.endline{font-size:26pt}.note,.formula{font-size:8pt}.chapter a{color:inherit}.hero-visual figcaption{font-size:7pt}}
+
+    .brand-cn{font-size:12px;letter-spacing:2px;font-weight:500;margin-left:5px}.brand-story{margin:0 0 25px;padding:26px 28px;border:1px solid var(--line);background:linear-gradient(115deg,var(--soft),var(--white))}.brand-story h3{margin:9px 0 10px;font-family:var(--serif);font-size:24px;letter-spacing:2px}.brand-story>p{font-size:13px;color:var(--muted)}.brand-letters{display:grid;grid-template-columns:repeat(4,1fr);margin-top:22px;border-top:1px solid var(--line);padding-top:16px;gap:14px}.brand-letters b{font:34px/1.3 var(--serif);color:var(--green);display:block}.brand-letters span{font-size:11px;color:var(--muted)}.brand-letters strong{font-weight:650;color:var(--green);margin-right:3px}.brand-story .brand-footnote{font-size:10px;margin-top:15px;color:var(--muted)}@media(max-width:560px){.brand-story{padding:22px}.brand-story .eyebrow{font-size:9px;letter-spacing:1px}.brand-letters{grid-template-columns:1fr 1fr}.brand-cn{font-size:10px}}@media print{.brand-story{break-inside:avoid;padding:18px}.brand-letters{grid-template-columns:repeat(4,1fr)}.brand-story>p{font-size:9pt}}
+  
+.business-plan-page{height:100dvh;overflow-y:auto;overflow-x:hidden;scroll-behavior:smooth;scroll-padding-top:88px}.business-plan-page h1,.business-plan-page h2,.business-plan-page h3,.business-plan-page h4,.business-plan-page p,.business-plan-page figure{margin:0}.hero-grid{grid-template-columns:minmax(0,1fr);gap:30px}.hero h1{font-size:clamp(36px,4.4vw,65px);line-height:1.4}.hero-copy{max-width:800px;font-size:15px}.hero-visual{max-width:none;padding:0}.hero-visual:before{display:none}.hero-visual img{width:100%;height:auto;aspect-ratio:auto}.hero-meta{margin-bottom:25px}.image-open{display:block;width:100%;border:0;padding:0;background:transparent;cursor:zoom-in;color:inherit;text-align:inherit}.showcase-summary{display:flex;gap:35px;flex-wrap:wrap;border-block:1px solid var(--line);padding:17px 0}.showcase-summary strong{font:26px/1.5 Consolas,monospace;color:var(--green)}.showcase-summary small{font:11px var(--sans);color:var(--muted);margin-left:5px}.project-case{padding:28px 0 35px;border-top:1px solid var(--line)}.project-heading{display:flex;justify-content:space-between;gap:20px;align-items:center}.project-heading h3{font-family:var(--serif);font-size:28px;margin:8px 0}.project-size{color:var(--green);font-size:21px;white-space:nowrap}.project-size small{font:10px var(--sans);color:var(--muted)}.project-story{font-size:13px;color:var(--muted);margin:8px 0 22px!important}.interior-gallery{display:grid;grid-template-columns:1fr 1fr;gap:18px}.project-main img,.project-detail img{display:block;width:100%;height:auto;aspect-ratio:auto;object-fit:contain}.project-main figcaption,.project-detail figcaption{display:flex;justify-content:space-between;gap:12px;padding:10px 0 18px;color:var(--muted);font-size:11px}.project-main figcaption span,.project-detail figcaption span{color:var(--green);white-space:nowrap}.subsection-heading{margin:30px 0 22px}.subsection-heading h3{font-size:23px;margin:8px 0 12px}.subsection-heading p{font-size:13px;color:var(--muted);line-height:1.95}.image-viewer{margin:auto;max-width:96vw;max-height:96dvh;border:1px solid var(--line);border-radius:4px;background:var(--paper);padding:16px;color:var(--ink)}.image-viewer::backdrop{background:#18251ee8}.viewer-close{display:block;margin-left:auto;background:transparent;border:1px solid var(--line);color:var(--green);padding:5px 12px;font-size:12px;margin-bottom:12px}.image-viewer img{display:block;max-width:calc(96vw - 34px);max-height:80dvh;width:auto;height:auto;object-fit:contain}.image-viewer figcaption{padding-top:10px;font-size:12px;color:var(--muted)}.home-link{text-decoration:none;display:inline-flex;align-items:center;white-space:nowrap}.project-case .eyebrow{font-size:10px}@media(max-width:560px){.interior-gallery{grid-template-columns:1fr}.showcase-summary{gap:18px}.showcase-summary strong{font-size:22px}.project-heading h3{font-size:25px}.project-size{font-size:17px}.hero h1{font-size:36px}.hero h1 br{display:none}.hero-copy{font-size:13px}.project-story{font-size:12px}.project-case{padding:22px 0}}@media print{.business-plan-page{height:auto;overflow:visible}.hero-grid{display:block}.hero-visual{margin-top:20px!important}.hero h1{font-size:27pt}.hero-copy{max-width:none}.image-viewer{display:none!important}.project-case{break-before:page}.project-main{break-inside:avoid}.project-main img{max-height:145mm;width:100%;object-fit:contain}.interior-gallery{grid-template-columns:1fr 1fr}.project-detail{break-inside:avoid}.project-heading h3{font-size:23pt}.project-main figcaption span,.project-detail figcaption span{display:none}.showcase-summary{gap:25px}.project-story{font-size:9pt}.image-open{cursor:default}.subsection-heading{break-after:avoid}}
+
+
+.business-plan-page{color-scheme:inherit}.home-link{display:inline-flex;align-items:center;padding:7px 13px;border:1px solid var(--studio-accent-border);border-radius:3px;font-size:12px;color:var(--green);text-decoration:none;white-space:nowrap}.project-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:26px 22px;margin-top:28px}.project-case{min-width:0;padding:20px 0 22px}.project-heading{align-items:flex-start;gap:12px}.project-heading h3{font-size:20px;line-height:1.6}.project-size{display:flex;flex-direction:column;align-items:flex-end;font-size:15px;padding-top:5px}.project-story{font-size:12px;min-height:65px;margin:7px 0 15px!important}.project-main img,.project-detail img{width:100%;height:auto;object-fit:contain;aspect-ratio:auto}.project-main figcaption{padding:8px 0 11px}.more-views{border-top:1px solid var(--line);padding-top:9px}.more-views summary{font-size:11px;color:var(--green);cursor:pointer}.more-views[open] .project-detail{margin-top:12px}.interior-gallery{grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.interior-gallery figcaption{display:block;line-height:1.8}.interior-gallery figcaption span{display:block}@media(max-width:640px){.project-grid{grid-template-columns:1fr}.project-story{min-height:0}.interior-gallery{grid-template-columns:1fr}.project-heading h3{font-size:21px}}@media print{.project-grid{display:grid;grid-template-columns:1fr 1fr}.project-case{break-before:auto;break-inside:avoid}.more-views{display:none}.project-main img{max-height:80mm}.interior-gallery{grid-template-columns:1fr 1fr}}
+
+@media print{.business-plan-page{--paper:#fff;--white:#fff;--ink:#202e2a;--muted:#64736c;--green:#294c3d;--soft:#e6ebe1;--line:#d7dcd2;--orange:#bf603c;--on-accent:#fff;color-scheme:light}.note.warm,.label.idea{background:#f5e9dc;color:#994d32}}
+</style>

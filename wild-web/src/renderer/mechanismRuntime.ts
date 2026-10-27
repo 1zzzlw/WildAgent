@@ -77,6 +77,7 @@ export function tickMechanisms(root: THREE.Object3D | null, delta: number): bool
   let active = false
   const dt = THREE.MathUtils.clamp(delta, 0, 0.1)
   for (const state of roots.get(root)?.values() ?? []) {
+    if (state.kind === 'rotor' ? state.speed === 0 && state.level === 0 : state.phase === 'idle' && !state.queue.length) continue
     // 最后一次状态变化也必须绘制，下一帧才允许按需渲染休眠。
     active ||= state.kind === 'rotor' ? state.speed > 0 || state.level > 0 : state.phase !== 'idle' || state.queue.length > 0
     if (state.kind === 'rotor') {

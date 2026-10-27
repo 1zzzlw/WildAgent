@@ -1,0 +1,92 @@
+{
+  "directory": "02-松雨回廊-新中式合院",
+  "file": "松雨回廊.wild",
+  "name": "松雨回廊 · 新中式合院",
+  "bytes": 40301,
+  "sha256": "f1bc5669ba80bee1b1fcddb2399f3c79ff4b00a46952466b92e95ccf1a81c8a5",
+  "elements": 191,
+  "components": 17,
+  "materials": 15,
+  "status": "PASS",
+  "compiledElements": 370,
+  "meshes": 412,
+  "diagnostics": [
+    {
+      "level": "info",
+      "code": "PARTIAL_CAPABILITY",
+      "message": "furniture: 基础参数化家具",
+      "elementType": "furniture"
+    },
+    {
+      "level": "info",
+      "code": "PARTIAL_CAPABILITY",
+      "message": "roof: 基础屋顶、中式曲面与重檐屋顶",
+      "elementType": "roof"
+    },
+    {
+      "level": "info",
+      "code": "PARTIAL_CAPABILITY",
+      "message": "opening: 墙体洞口及门窗覆盖几何",
+      "elementType": "opening"
+    }
+  ],
+  "holes": [
+    {
+      "floor": "site",
+      "center": [
+        0,
+        1.3999999999999986
+      ],
+      "clear": true
+    },
+    {
+      "floor": "court_pond_coping",
+      "center": [
+        -2.220446049250313e-16,
+        1.3999999999999997
+      ],
+      "clear": true
+    },
+    {
+      "floor": "court",
+      "center": [
+        0,
+        1.3999999999999986
+      ],
+      "clear": true
+    }
+  ],
+  "stairs": [
+    {
+      "id": "arrival_steps",
+      "finishY": 0.32,
+      "dimensionsClosed": true
+    }
+  ],
+  "bounds": {
+    "min": [
+      -15,
+      -0.5050000002980233,
+      -15
+    ],
+    "max": [
+      15,
+      5.669999998658896,
+      15
+    ]
+  },
+  "checks": [
+    "raw Schema",
+    "unique IDs",
+    "references",
+    "Core compilation/reconstruction",
+    "finite geometry and material refs",
+    "real mesh floor holes",
+    "stair dimensions and upper landing",
+    "whole site bounds"
+  ],
+  "visual_review": {
+    "complete": false,
+    "reason": "此报告为静态/Core检查；真实渲染和人工审图另记"
+  }
+}

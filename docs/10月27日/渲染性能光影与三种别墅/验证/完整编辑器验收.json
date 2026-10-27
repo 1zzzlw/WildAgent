@@ -1,0 +1,16 @@
+{
+  "status": "PASS",
+  "villaImportedAndPersisted": true,
+  "allMaterialRecipesPreserved": true,
+  "realEditorLeftClicks": true,
+  "elevatorRoundTrip": [
+    0,
+    2,
+    0
+  ],
+  "fanLowHighOff": true,
+  "idleRenderSleeps": true,
+  "blueprintAndRevisionUnchanged": true,
+  "fanParameterEditedThroughUi": true,
+  "errors": []
+}

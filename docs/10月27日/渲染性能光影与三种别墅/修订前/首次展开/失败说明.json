@@ -1,0 +1,15 @@
+{
+  "stage": "Core compilation",
+  "case": "栖坡陶院",
+  "errors": [
+    {
+      "code": "COMPONENT_COMPILE_FAILED",
+      "message": "组合构件 id 重复",
+      "ids": [
+        "wing_outer_window_-1",
+        "wing_outer_window_1"
+      ]
+    }
+  ],
+  "resolution": "给每侧两扇外窗加入所在Z标识，保持设计、宿主和尺寸不变"
+}

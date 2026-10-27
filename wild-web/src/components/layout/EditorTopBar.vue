@@ -38,17 +38,24 @@
         }}
       </span>
     </div>
+    <RouterLink class="business-plan-link" to="/business-plan">商业计划书 ↗</RouterLink>
+    <button class="theme-toggle" type="button" :aria-label="theme.isDark ? '切换为亮色主题' : '切换为暗色主题'" :title="theme.isDark ? '亮色主题' : '暗色主题'" @click="theme.toggle()">
+      <el-icon><Sunny v-if="theme.isDark" /><Moon v-else /></el-icon>
+    </button>
     <OnlinePresence />
   </header>
 </template>
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { DocumentAdd, FolderOpened, Upload, Download, RefreshLeft, RefreshRight, Switch } from '@element-plus/icons-vue'
+import { RouterLink } from 'vue-router'
+import { DocumentAdd, FolderOpened, Upload, Download, RefreshLeft, RefreshRight, Switch, Sunny, Moon } from '@element-plus/icons-vue'
 import { useHistoryStore } from '../../stores/historyStore'
 import { useSceneStore } from '../../stores/sceneStore'
 import { useUIStore } from '../../stores/uiStore'
 import { useWorkspaceStore } from '../../stores/workspaceStore'
 import OnlinePresence from '../../extensions/presence/OnlinePresence.vue'
+import { useThemeStore } from '../../stores/themeStore'
+const theme = useThemeStore()
 const scene = useSceneStore()
 const ui = useUIStore()
 const workspace = useWorkspaceStore()
@@ -93,7 +100,7 @@ async function restore(redo: boolean) {
   gap: 9px;
   background: none;
   border: 0;
-  color: #f1f4f7;
+  color: var(--studio-text);
   font-size: 15px;
   font-weight: 650;
   cursor: pointer;
@@ -105,9 +112,9 @@ async function restore(redo: boolean) {
   place-items: center;
   width: 28px;
   height: 28px;
-  border: 1px solid #a6c3b54a;
+  border: 1px solid var(--studio-border);
   border-radius: 8px;
-  background: #a6c3b518;
+  background: var(--studio-hover);
   color: var(--studio-accent);
   font-family: Georgia, serif;
   font-size: 21px
@@ -116,7 +123,7 @@ async function restore(redo: boolean) {
 .brand small {
   font-size: 9px;
   letter-spacing: 2px;
-  color: #77858e;
+  color: var(--studio-muted);
   font-weight: 500
 }
 
@@ -127,7 +134,7 @@ async function restore(redo: boolean) {
   flex: 1;
   min-width: 0;
   font-size: 12px;
-  color: #d5dde1
+  color: var(--studio-text)
 }
 
 .document-title>span:first-child {
@@ -139,11 +146,11 @@ async function restore(redo: boolean) {
 .save-state {
   font-size: 10px;
   white-space: nowrap;
-  color: #8fb7a1
+  color: var(--studio-muted)
 }
 
 .save-state.dirty {
-  color: #dbb57c
+  color: var(--studio-orange)
 }
 
 .file-toolbar {
@@ -161,15 +168,15 @@ async function restore(redo: boolean) {
   border: 1px solid transparent;
   border-radius: 7px;
   background: transparent;
-  color: #b7c6ce;
+  color: var(--studio-muted);
   cursor: pointer;
   font-size: 11px;
   white-space: nowrap
 }
 
 .file-toolbar button:hover:not(:disabled) {
-  background: #ffffff0c;
-  color: #edf5f0
+  background: var(--studio-hover);
+  color: var(--studio-text)
 }
 
 .file-toolbar button:disabled {
@@ -178,9 +185,9 @@ async function restore(redo: boolean) {
 }
 
 .file-toolbar .save-button {
-  color: #b6d7c3;
-  background: #a6c3b513;
-  border-color: #a6c3b527
+  color: var(--studio-text);
+  background: var(--studio-hover);
+  border-color: var(--studio-border)
 }
 
 .toolbar-divider {
@@ -193,6 +200,20 @@ async function restore(redo: boolean) {
 .file-input {
   display: none
 }
+
+.business-plan-link {
+  flex-shrink: 0;
+  padding: 7px 11px;
+  border: 1px solid var(--studio-border);
+  border-radius: 3px;
+  color: var(--studio-accent);
+  font-size: 11px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.business-plan-link:hover { background: var(--studio-hover) }
+.theme-toggle { flex-shrink: 0; display: grid; place-items: center; width: 31px; height: 31px; border: 1px solid var(--studio-border); border-radius: 3px; background: transparent; color: var(--studio-accent); cursor: pointer }
+.theme-toggle:hover { background: var(--studio-hover) }
 
 @media(max-width:1000px) {
   .brand small {
@@ -233,6 +254,9 @@ async function restore(redo: boolean) {
 }
 
 @media(max-width:700px) {
+  .file-toolbar { flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none }
+  .file-toolbar button { flex-shrink: 0 }
+  .document-title { display: none }
   .editor-header {
     gap: 10px;
     padding: 0 10px

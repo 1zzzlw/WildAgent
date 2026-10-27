@@ -14,6 +14,7 @@ import type { ComponentSpec, ProceduralMaterial } from 'wild-core/types'
 import type {
   MaterialEnvironmentResponse,
   SurfaceFamily,
+  SurfacePattern,
 } from 'wild-core/materials'
 export type { ComponentSpec } from 'wild-core/types'
 
@@ -93,12 +94,14 @@ export interface MaterialDef {
   attenuationDistance?: number
   clearcoat?: number
   clearcoatRoughness?: number
+  anisotropy?: number
+  anisotropyRotation?: number
   sheen?: number
   sheenColor?: [number, number, number]
   emissiveIntensity?: number
   procedural?: ProceduralMaterial
   surfaceFamily?: SurfaceFamily
-  surfacePattern?: 'quartz' | 'planks'
+  surfacePattern?: SurfacePattern
   environmentResponse?: MaterialEnvironmentResponse
   requiredFeatures?: string[]
   [key: string]: unknown

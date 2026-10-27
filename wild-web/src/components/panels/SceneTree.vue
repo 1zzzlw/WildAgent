@@ -113,7 +113,7 @@ function handleSelect(id: string, event: MouseEvent) {
   padding: 8px 12px;
   font-size: 13px;
   font-weight: 500;
-  border-bottom: 1px solid #3e3e42;
+  border-bottom: 1px solid var(--studio-border);
 }
 
 .tree-content {
@@ -134,18 +134,18 @@ function handleSelect(id: string, event: MouseEvent) {
 }
 
 .tree-item:hover {
-  background: #2a2d2e;
+  background: var(--studio-surface);
 }
 
 .tree-item.selected {
-  background: #094771;
+  background: var(--studio-hover);
 }
 .tree-expand, .tree-spacer { width: 16px; flex: 0 0 16px; }
 .tree-expand { border: 0; padding: 0; background: transparent; color: inherit; cursor: pointer; }
 
 .group-title {
   padding: 8px 8px 4px;
-  color: #777777;
+  color: var(--studio-muted);
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.08em;
@@ -153,7 +153,7 @@ function handleSelect(id: string, event: MouseEvent) {
 }
 
 .component-item {
-  border-left: 2px solid #3b82a0;
+  border-left: 2px solid var(--studio-accent-border);
 }
 
 .element-icon {
@@ -171,13 +171,13 @@ function handleSelect(id: string, event: MouseEvent) {
 
 .element-type {
   font-size: 11px;
-  color: #888888;
+  color: var(--studio-muted);
 }
 
 .empty-state {
   padding: 24px;
   text-align: center;
-  color: #666666;
+  color: var(--studio-muted);
   font-size: 13px;
 }
 </style>

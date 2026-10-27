@@ -1,12 +1,22 @@
 import * as THREE from 'three'
-import type { RenderMaterialDescriptor, SurfaceFamily } from 'wild-core/materials'
+import type { RenderMaterialDescriptor, SurfaceFamily, SurfacePattern } from 'wild-core/materials'
 import { PROCEDURAL_NOISE_GLSL } from '../proceduralMaterials/noise.glsl'
 import {
   getWorldEnvironmentUniforms,
   getWorldRenderingUniforms,
 } from '../worldEnvironmentRuntime'
 
-const SHADER_VERSION = 'default-surface-v2'
+const SHADER_VERSION = 'default-surface-v4'
+const PATTERNS: Record<SurfacePattern, { code: number; color: number; roughness: number; relief: number }> = {
+  quartz: { code: 1, color: 0.2, roughness: 0.08, relief: 0.0003 },
+  planks: { code: 2, color: 0.38, roughness: 0.12, relief: 0.0015 },
+  plaster: { code: 3, color: 0.16, roughness: 0.12, relief: 0.0006 },
+  concrete: { code: 4, color: 0.22, roughness: 0.2, relief: 0.001 },
+  travertine: { code: 5, color: 0.32, roughness: 0.22, relief: 0.0016 },
+  tiles: { code: 6, color: 0.7, roughness: 0.3, relief: 0.002 },
+  brushed: { code: 7, color: 0.09, roughness: 0.1, relief: 0.00004 },
+  linen: { code: 8, color: 0.25, roughness: 0.15, relief: 0.00035 },
+}
 
 interface MutableShader {
   uniforms: Record<string, { value: unknown }>
@@ -18,6 +28,7 @@ interface DefaultSurfaceParams {
   family: SurfaceFamily
   familyCode: number
   patternCode: number
+  uvScale: [number, number]
   seed: number
   scale: number
   colorVariation: number
@@ -74,10 +85,12 @@ const RELIEF_PRESETS: Record<SurfaceFamily, {
   grainFrequency: number
 }> = {
   masonry: { relief: 0.009, reliefRoughness: 0.3, courseCells: [3.3, 6.6], grainFrequency: 6 },
-  mineral: { relief: 0.016, reliefRoughness: 0.22, courseCells: [3.3, 6.6], grainFrequency: 12 },
-  wood: { relief: 0.010, reliefRoughness: 0.18, courseCells: [3.3, 6.6], grainFrequency: 16 },
-  metal: { relief: 0.004, reliefRoughness: 0.14, courseCells: [3.3, 6.6], grainFrequency: 20 },
-  neutral: { relief: 0.010, reliefRoughness: 0.2, courseCells: [3.3, 6.6], grainFrequency: 12 },
+  // 默认表面表现微起伏；厘米级振幅会让抹灰、木材和金属都长出粗颗粒。
+  // 砖缝与显式木板/石英石图案仍由各自配方控制。
+  mineral: { relief: 0.0012, reliefRoughness: 0.22, courseCells: [3.3, 6.6], grainFrequency: 12 },
+  wood: { relief: 0.0005, reliefRoughness: 0.18, courseCells: [3.3, 6.6], grainFrequency: 16 },
+  metal: { relief: 0.00004, reliefRoughness: 0.14, courseCells: [3.3, 6.6], grainFrequency: 20 },
+  neutral: { relief: 0.0008, reliefRoughness: 0.2, courseCells: [3.3, 6.6], grainFrequency: 12 },
   glass: { relief: 0, reliefRoughness: 0, courseCells: [3.3, 6.6], grainFrequency: 12 },
 }
 
@@ -89,9 +102,10 @@ export function applyDefaultSurfaceMaterial(
   material: THREE.MeshStandardMaterial,
   descriptor: RenderMaterialDescriptor,
   materialSeed: string,
+  uvScale: [number, number] = [1, 1],
 ): void {
   if (descriptor.family === 'glass' || descriptor.quality === 'fallback') return
-  const params = createDefaultSurfaceParams(descriptor, materialSeed)
+  const params = createDefaultSurfaceParams(descriptor, materialSeed, uvScale)
   material.userData.wildDefaultSurface = params
   material.userData.wildDefaultSurfaceShaderVersion = SHADER_VERSION
   material.customProgramCacheKey = () => `wild-surface:${SHADER_VERSION}`
@@ -108,6 +122,7 @@ export function installDefaultSurfaceShader(
   Object.assign(shader.uniforms, {
     wildSurfaceFamily: { value: params.familyCode },
     wildSurfacePattern: { value: params.patternCode },
+    wildPatternUvScale: { value: new THREE.Vector2(...params.uvScale) },
     wildSurfaceSeed: { value: params.seed },
     wildSurfaceScale: { value: params.scale },
     wildSurfaceColorVariation: { value: params.colorVariation },
@@ -139,14 +154,11 @@ export function installDefaultSurfaceShader(
     .replace(
       '#include <common>',
       `#include <common>
-varying vec2 vWildDefaultSurfaceUv;
+varying vec2 vWildPatternUv;
 varying vec3 vWildDefaultWorldNormal;
 varying vec3 vWildDefaultWorldPosition;`,
     )
-    .replace(
-      '#include <uv_vertex>',
-      '#include <uv_vertex>\nvWildDefaultSurfaceUv = uv;',
-    )
+    .replace('#include <uv_vertex>', '#include <uv_vertex>\nvWildPatternUv = uv;')
     .replace(
       '#include <defaultnormal_vertex>',
       `#include <defaultnormal_vertex>
@@ -167,7 +179,8 @@ vWildDefaultWorldPosition = (modelMatrix * wildDefaultWorldPosition).xyz;`,
     .replace(
       '#include <common>',
       `#include <common>
-varying vec2 vWildDefaultSurfaceUv;
+varying vec2 vWildPatternUv;
+uniform vec2 wildPatternUvScale;
 varying vec3 vWildDefaultWorldNormal;
 varying vec3 vWildDefaultWorldPosition;
 uniform int wildSurfaceFamily;
@@ -252,15 +265,15 @@ vec2 wildSurfacePlaster(vec2 metric, float seed) {
 }
 
 // Only these explicit patterns use the extra sampling; existing materials keep their appearance.
-vec2 wildQuartzSurface(vec2 metric, float seed) {
+vec3 wildQuartzSurface(vec2 metric, float seed) {
   float fade = 1.0 - smoothstep(0.5, 1.5, max(fwidth(metric.x), fwidth(metric.y)) * 180.0);
   float grain = wildValueNoise(metric * 180.0 + seed * 0.0013);
   float flecks = smoothstep(0.64, 0.9, grain) * fade;
   float cloud = wildValueNoise(metric * 1.4 + seed * 0.0031) - 0.5;
-  return vec2(cloud * 0.24 + (flecks - 0.08) * 0.65, (grain - 0.5) * fade);
+  return vec3(cloud * 0.45 + (flecks - 0.08) * 0.9, (grain - 0.5) * fade, -flecks * 0.4);
 }
 
-vec2 wildPlankSurface(vec2 metric, float seed) {
+vec3 wildPlankSurface(vec2 metric, float seed) {
   vec2 grid = metric / vec2(0.18, 1.2);
   grid.y += mod(floor(grid.x), 3.0) / 3.0;
   vec2 cell = floor(grid);
@@ -269,9 +282,56 @@ vec2 wildPlankSurface(vec2 metric, float seed) {
   float seam = (1.0 - smoothstep(0.0008, 0.0025, min(edge.x, edge.y)))
     * (1.0 - smoothstep(0.008, 0.03, px));
   float board = wildHash21(cell + seed * 0.0017) - 0.5;
+  float rings = sin(metric.x * 82.0 + wildFbm(metric * vec2(5.0, 0.35)) * 15.0 + board * 4.0);
   float grain = sin(metric.x * 460.0 + wildValueNoise(metric * vec2(4.0, 0.8)) * 14.0)
     * (1.0 - smoothstep(0.003, 0.012, px));
-  return vec2(board * 0.65 + grain * 0.12 - seam * 1.5, grain * 0.08 - seam);
+  return vec3(board * 0.65 + rings * 0.22 + grain * 0.12 - seam,
+    rings * 0.04 + grain * 0.08 - seam, grain * 0.1 + seam * 0.5);
+}
+
+vec3 wildPatternSurface(vec2 metric, float seed, int pattern) {
+  if (pattern == 1) return wildQuartzSurface(metric, seed);
+  if (pattern == 2) return wildPlankSurface(metric, seed);
+  float px = max(fwidth(metric.x), fwidth(metric.y));
+  if (pattern == 3) {
+    vec2 plaster = wildSurfacePlaster(metric, seed);
+    float grain = wildSurfaceGrain(metric, 95.0, seed)
+      * (1.0 - smoothstep(0.004, 0.018, px));
+    return vec3(plaster.x * 0.65 + plaster.y * 0.45, plaster.x * 0.4 + grain * 0.2, grain);
+  }
+  if (pattern == 4) {
+    float cloud = wildFbm(metric * 2.8 + seed * 0.0017) - 0.5;
+    float pores = smoothstep(0.74, 0.9, wildValueNoise(metric * 125.0 + seed * 0.003))
+      * (1.0 - smoothstep(0.003, 0.014, px));
+    vec2 panel = min(fract(metric / vec2(1.2, 0.6)), 1.0 - fract(metric / vec2(1.2, 0.6))) * vec2(1.2, 0.6);
+    float joint = 1.0 - smoothstep(0.0005, 0.0015, min(panel.x, panel.y));
+    return vec3(cloud * 1.3 - pores * 0.45 - joint * 0.1, cloud * 0.12 - pores * 0.45 - joint * 0.15, pores * 0.4);
+  }
+  if (pattern == 5) {
+    float flow = wildFbm(metric * vec2(0.8, 3.5) + seed * 0.001);
+    float layers = sin(metric.y * 42.0 + flow * 9.0) * 0.22;
+    float pores = smoothstep(0.64, 0.86, wildValueNoise(metric * vec2(90.0, 230.0) + seed * 0.002))
+      * (1.0 - smoothstep(0.002, 0.01, px));
+    return vec3(layers + (flow - 0.5) * 0.7 - pores * 0.6, layers * 0.08 - pores * 0.6, pores * 0.65);
+  }
+  if (pattern == 6) {
+    vec2 cell = floor(metric / 0.6);
+    vec2 edge = min(fract(metric / 0.6), 1.0 - fract(metric / 0.6)) * 0.6;
+    float joint = 1.0 - smoothstep(0.0012, 0.0028, min(edge.x, edge.y));
+    float tile = wildHash21(cell + seed * 0.0017) - 0.5;
+    float grain = wildSurfaceGrain(metric, 85.0, seed) * (1.0 - smoothstep(0.004, 0.015, px));
+    return vec3(tile * 0.16 + grain * 0.04 - joint * 0.7, grain * 0.025 - joint, joint * 0.8);
+  }
+  if (pattern == 7) {
+    float fade = 1.0 - smoothstep(0.0005, 0.003, px);
+    float brush = sin(metric.y * 3600.0 + wildValueNoise(metric * vec2(2.0, 65.0)) * 7.0) * fade;
+    return vec3(brush * 0.3, brush * 0.4, brush * 0.35);
+  }
+  float fade = 1.0 - smoothstep(0.001, 0.006, px);
+  vec2 weave = sin(metric * 3600.0) * fade;
+  float over = mod(floor(metric.x * 570.0) + floor(metric.y * 570.0), 2.0);
+  float thread = mix(weave.x * 0.65 + weave.y * 0.2, weave.y * 0.65 + weave.x * 0.2, over);
+  return vec3(thread * 0.5, thread, -abs(thread) * 0.3);
 }`,
     )
     .replace(
@@ -287,16 +347,17 @@ float wildDefaultPattern = 0.0;
 float wildSurfaceReliefUnit = 0.0;
 // 抹面特征只在 mineral 分支里赋值；这里先给初值是为了让它在外层 if 之外也可读。
 vec2 wildPlaster = vec2(0.0);
-vec2 wildSpecialSurface = vec2(0.0);
+vec3 wildSpecialSurface = vec3(0.0);
 if (wildDefaultSurfaceAmount > 0.0 || wildWeatherAmount * (wildWorldSnow + wildWorldDust) > 0.0) {
-  vec2 wildDefaultUv = vWildDefaultSurfaceUv * wildSurfaceScale;
+  // 色差与凹凸共用米制坐标，避免归一化 UV 把同一木纹/金属拉丝拉伸到整件构件。
+  vec2 wildDefaultUv = (wildSurfacePattern > 0 ? vWildPatternUv * wildPatternUvScale
+    : wildSurfaceMetricUv(vWildDefaultWorldPosition, normalize(vWildDefaultWorldNormal))) * wildSurfaceScale;
   wildDefaultNoise = wildFbm(wildDefaultUv + vec2(wildSurfaceSeed * 0.0017));
   wildDefaultDetail = wildFbm(wildDefaultUv * 3.1 + vec2(wildSurfaceSeed * 0.0041));
   wildDefaultPattern = (wildDefaultNoise - 0.5) * 0.72 + (wildDefaultDetail - 0.5) * 0.28;
   if (wildSurfacePattern > 0) {
-    vec2 metric = wildSurfaceMetricUv(vWildDefaultWorldPosition, normalize(vWildDefaultWorldNormal));
-    wildSpecialSurface = wildSurfacePattern == 1
-      ? wildQuartzSurface(metric, wildSurfaceSeed) : wildPlankSurface(metric, wildSurfaceSeed);
+    vec2 metric = vWildPatternUv * wildPatternUvScale;
+    wildSpecialSurface = wildPatternSurface(metric, wildSurfaceSeed, wildSurfacePattern);
     wildDefaultPattern = wildSpecialSurface.x;
   } else if (wildSurfaceFamily == 2) {
     float wildWoodWave = sin(
@@ -401,6 +462,7 @@ diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.52, 0.44, 0.32), clamp(wildDustM
 roughnessFactor = clamp(
   roughnessFactor
     + wildDefaultPattern * wildSurfaceRoughnessVariation * wildDefaultSurfaceAmount
+    + wildSpecialSurface.z * wildSurfaceRoughnessVariation * wildDefaultSurfaceAmount
     - wildSurfaceReliefUnit * wildSurfaceReliefRoughness * wildDefaultSurfaceAmount
     - wildMaterialWetness * wildWetnessRoughnessReduction,
   0.04,
@@ -442,6 +504,7 @@ if (wildDefaultSurfaceAmount > 0.0 && wildSurfaceReliefUnit != 0.0) {
 function createDefaultSurfaceParams(
   descriptor: RenderMaterialDescriptor,
   materialSeed: string,
+  uvScale: [number, number],
 ): DefaultSurfaceParams {
   const family = descriptor.family
   // 各族的基础不匀度。mineral 单独一档（不像 masonry 那样靠砖块哈希出变化，
@@ -456,16 +519,18 @@ function createDefaultSurfaceParams(
           ? { scale: 8.5, color: 0.045, roughness: 0.065 }
           : { scale: 3.5, color: 0.04, roughness: 0.05 }
   const relief = RELIEF_PRESETS[family]
-  const patternCode = descriptor.pattern === 'quartz' ? 1 : descriptor.pattern === 'planks' ? 2 : 0
+  const pattern = descriptor.pattern ? PATTERNS[descriptor.pattern] : undefined
+  const patternCode = pattern?.code ?? 0
   return {
     family,
     familyCode: FAMILY_CODE[family],
     patternCode,
+    uvScale,
     seed: hashString(materialSeed) % 65521,
     scale: base.scale,
-    colorVariation: patternCode === 1 ? 0.12 : patternCode === 2 ? 0.3 : base.color,
-    roughnessVariation: patternCode === 1 ? 0.04 : patternCode === 2 ? 0.08 : base.roughness,
-    relief: patternCode === 1 ? 0.0004 : patternCode === 2 ? 0.0015 : relief.relief,
+    colorVariation: pattern?.color ?? base.color,
+    roughnessVariation: pattern?.roughness ?? base.roughness,
+    relief: pattern?.relief ?? relief.relief,
     reliefRoughness: patternCode ? 0.04 : relief.reliefRoughness,
     courseCells: relief.courseCells,
     grainFrequency: relief.grainFrequency,

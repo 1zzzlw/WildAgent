@@ -840,18 +840,18 @@ function loadDraftSessionsFromLocal(): any[] {
 <style scoped>
 /* ── 基础变量 ── */
 .ai-chat-panel {
-  --bg-primary: #1e1e20;
-  --bg-secondary: #252528;
-  --bg-tertiary: #2c2c30;
-  --bg-hover: #323236;
-  --border: rgba(255, 255, 255, 0.05);
-  --border-strong: rgba(255, 255, 255, 0.08);
-  --text-primary: #e4e4e7;
-  --text-secondary: #a0a0a8;
-  --text-muted: #6b6b75;
-  --accent: #6899d4;
-  --accent-soft: rgba(104, 153, 212, 0.10);
-  --accent-border: rgba(104, 153, 212, 0.18);
+  --bg-primary: var(--studio-surface);
+  --bg-secondary: var(--studio-surface);
+  --bg-tertiary: var(--studio-surface);
+  --bg-hover: var(--studio-hover);
+  --border: var(--studio-border);
+  --border-strong: var(--studio-border);
+  --text-primary: var(--studio-text);
+  --text-secondary: var(--studio-muted);
+  --text-muted: var(--studio-muted);
+  --accent: var(--studio-accent);
+  --accent-soft: var(--studio-accent);
+  --accent-border: var(--studio-accent-border);
   --success: #6bbf9b;
   --warn: #d4b871;
   --error: #e07060;
@@ -939,7 +939,7 @@ function loadDraftSessionsFromLocal(): any[] {
 .content-filter.active {
   border-color: var(--accent-border);
   background: var(--accent-soft);
-  color: #9fc5ed;
+  color: var(--studio-accent);
 }
 
 .locate-turn-button {
@@ -1061,7 +1061,7 @@ function loadDraftSessionsFromLocal(): any[] {
 .message.system::before {
   content: "✦";
   font-size: 9px;
-  color: rgba(212, 184, 113, 0.45);
+  color: var(--studio-orange);
   flex-shrink: 0;
 }
 
@@ -1111,7 +1111,7 @@ function loadDraftSessionsFromLocal(): any[] {
   overflow: hidden;
   padding: 2px 5px;
   border-radius: 3px;
-  background: rgba(78, 161, 243, 0.09);
+  background: var(--studio-hover);
   color: var(--accent);
   font-family: 'JetBrains Mono', 'Consolas', monospace;
   text-overflow: ellipsis;
@@ -1140,7 +1140,7 @@ function loadDraftSessionsFromLocal(): any[] {
 .feedback-button:hover:not(:disabled),
 .feedback-button.active {
   border-color: var(--border-strong);
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--studio-hover);
   filter: none;
   opacity: 1;
 }
@@ -1216,23 +1216,23 @@ function loadDraftSessionsFromLocal(): any[] {
   margin: 8px 0;
   padding: 4px 12px;
   border-left: 3px solid var(--accent);
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--studio-hover);
   color: var(--text-secondary);
 }
 
 .message-content :deep(code) {
   font-family: 'JetBrains Mono', 'Consolas', 'Menlo', monospace;
   font-size: 12px;
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--studio-hover);
   padding: 1px 5px;
   border-radius: 3px;
-  color: #ce9178;
+  color: var(--studio-danger);
 }
 
 .message-content :deep(pre.hljs) {
   margin: 8px 0;
   padding: 12px;
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--studio-bg);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   overflow-x: auto;
@@ -1313,7 +1313,7 @@ function loadDraftSessionsFromLocal(): any[] {
   padding: 7px 8px;
   border-left: 2px solid var(--accent);
   border-radius: var(--radius-sm);
-  background: rgba(78, 161, 243, 0.07);
+  background: var(--studio-hover);
   font-size: 11px;
 }
 
@@ -1326,14 +1326,14 @@ function loadDraftSessionsFromLocal(): any[] {
   font-size: 12px;
   border-radius: var(--radius-sm);
   background: var(--accent-soft);
-  border: 1px solid rgba(78, 161, 243, 0.2);
+  border: 1px solid var(--studio-accent-border);
   color: var(--accent);
   cursor: pointer;
   transition: all 0.15s;
 }
 
 .patch-btn:hover {
-  background: rgba(78, 161, 243, 0.2);
+  background: var(--studio-hover);
 }
 
 .patch-actions {
@@ -1348,9 +1348,9 @@ function loadDraftSessionsFromLocal(): any[] {
 }
 
 .reject-btn:hover {
-  background: rgba(224, 112, 96, 0.08);
+  background: rgba(166, 78, 60, 0.08);
   color: var(--error);
-  border-color: rgba(224, 112, 96, 0.2);
+  border-color: var(--studio-orange);
 }
 
 /* ── Processing ── */
@@ -1419,8 +1419,8 @@ function loadDraftSessionsFromLocal(): any[] {
 /* ── Thinking Stream ── */
 .thinking-stream {
   align-self: stretch;
-  background: rgba(104, 153, 212, 0.05);
-  border: 1px solid rgba(104, 153, 212, 0.10);
+  background: var(--studio-hover);
+  border: 1px solid var(--studio-accent-border);
   border-radius: 8px;
   padding: 12px 14px;
   font-size: 12px;
@@ -1479,8 +1479,8 @@ function loadDraftSessionsFromLocal(): any[] {
   align-items: center;
   gap: 10px;
   padding: 12px 16px;
-  background: rgba(107, 191, 155, 0.07);
-  border: 1px solid rgba(107, 191, 155, 0.15);
+  background: var(--studio-hover);
+  border: 1px solid var(--studio-accent-border);
   border-radius: 8px;
   font-size: 13px;
   color: var(--success);
@@ -1559,17 +1559,17 @@ function loadDraftSessionsFromLocal(): any[] {
 }
 
 :global(.agent-detail-level-dropdown.el-popper) {
-  --bg-secondary: #252528;
-  --bg-tertiary: #2c2c30;
-  --border: rgba(255, 255, 255, 0.08);
-  --text-secondary: #a0a0a8;
-  --accent: #6899d4;
+  --bg-secondary: var(--studio-surface);
+  --bg-tertiary: var(--studio-surface);
+  --border: var(--studio-border);
+  --text-secondary: var(--studio-muted);
+  --accent: var(--studio-accent);
   --el-bg-color-overlay: var(--bg-secondary);
   --el-border-color-light: var(--border);
   background: var(--bg-secondary);
   border: 1px solid var(--border);
   border-radius: 8px;
-  box-shadow: 0 6px 20px #0006;
+  box-shadow: 0 6px 20px rgba(41, 76, 61, 0.12);
   min-width: 72px;
 }
 
@@ -1663,7 +1663,7 @@ function loadDraftSessionsFromLocal(): any[] {
   padding: 0 22px;
   background: var(--accent);
   border: none;
-  color: #fff;
+  color: var(--studio-text);
   cursor: pointer;
   font-size: 13px;
   font-weight: 500;
@@ -1679,7 +1679,7 @@ function loadDraftSessionsFromLocal(): any[] {
 }
 
 .send-btn.stop-btn {
-  background: #bc4848;
+  background: rgba(166, 78, 60, 0.08);
 }
 
 .stop-icon {
@@ -1702,10 +1702,10 @@ function loadDraftSessionsFromLocal(): any[] {
   z-index: 8;
   padding: 7px 12px;
   color: var(--text-primary);
-  background: rgba(44, 44, 48, 0.96);
+  background: var(--studio-surface);
   border: 1px solid var(--accent-border);
   border-radius: 999px;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
+  box-shadow: 0 6px 18px rgba(41, 76, 61, 0.12);
   cursor: pointer;
   font-size: 12px;
 }

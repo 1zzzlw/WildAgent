@@ -1,0 +1,21 @@
+{
+  "status": "FAIL",
+  "workspace": "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\wild-render-kit-RfrbSc",
+  "results": [
+    {
+      "name": "npm ci wild-core",
+      "command": [
+        "C:WindowsSystem32cmd.exe",
+        "/d",
+        "/c",
+        "npm ci --ignore-scripts --no-audit --no-fund"
+      ],
+      "cwd": "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\wild-render-kit-RfrbSc\\wild-blueprint-authoring\\references\\blueprint-kit\\核心资料\\wild-core",
+      "startedAt": "2026-10-27T07:14:43.078Z",
+      "endedAt": "2026-10-27T07:14:43.080Z",
+      "exitCode": "ENOENT",
+      "stdout": "",
+      "stderr": "spawn C:WindowsSystem32cmd.exe ENOENT"
+    }
+  ]
+}

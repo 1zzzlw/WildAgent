@@ -27,7 +27,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, onActivated, onDeactivated, onMounted, onUnmounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useSceneStore } from '../../stores/sceneStore'
 import { useSelectionStore } from '../../stores/selectionStore'
@@ -267,6 +267,16 @@ onMounted(() => {
   startRenderLoop()
 })
 
+onActivated(() => {
+  handleResize()
+  if (!renderLoopActive) startRenderLoop()
+})
+onDeactivated(() => {
+  renderLoopActive = false
+  if (animationFrameId !== null) cancelAnimationFrame(animationFrameId)
+  animationFrameId = null
+  weatherClock.stop()
+})
 onUnmounted(() => {
   document.removeEventListener('visibilitychange', markNeedsRender)
   unsubscribeWorldLook?.()
@@ -668,6 +678,7 @@ function renderFrame() {
   const controlsAnimating = !roaming.active && (controls?.update() ?? false)
   if (characterAnimating || mechanismAnimating) {
     needsRender = true
+    waterReflection?.invalidate()
     const now = performance.now()
     if (now - lastShadowDirtyTime >= SHADOW_DIRTY_THROTTLE_MS) {
       lastShadowDirtyTime = now
@@ -675,7 +686,7 @@ function renderFrame() {
     }
   }
   const effects = getWorldEffectState()
-  const waterAnimating = hasWaterSurface
+  const waterAnimating = hasWaterSurface && !!camera && !!waterReflection?.hasVisibleSurface(camera)
   const effectsAnimating = effects.clouds || effects.ripples || waterAnimating
   if (effectsAnimating) {
     effectClock += Math.min(0.05, Math.max(0, delta))
@@ -723,7 +734,7 @@ function renderFrame() {
   if (needsRender && renderer && scene && camera) {
     const renderStarted = performance.now()
     renderer.info.reset()
-    if (fixtureLighting.update(camera, adaptiveQualityApplied ? 'low' : qualityLevel.value)) markShadowsDirty()
+    if (fixtureLighting.update(camera, adaptiveQualityApplied ? 'low' : qualityLevel.value)) renderer.shadowMap.needsUpdate = true
     waterReflection?.update(camera)
     if (composer) composer.render()
     else renderer.render(scene, camera)
@@ -1719,7 +1730,7 @@ function applyQualityPreset() {
     weatherQuality: worldLookRuntime.getActiveProfile().quality?.weatherTier || qualityLevel.value,
   })
   if (postProcessing) applyWorldRenderQuality(renderer, postProcessing, lightingRig, qualityLevel.value, timeOfDay.value, window.devicePixelRatio || 1)
-  if (waterReflection) waterReflection.enabled = qualityLevel.value !== 'low'
+  if (waterReflection) waterReflection.enabled = qualityLevel.value === 'high'
   markShadowsDirty()
   configureMaterialRendering(renderer.capabilities.getMaxAnisotropy(), markNeedsRender)
   handleResize()
@@ -1938,8 +1949,8 @@ function takeScreenshot() {
   if (!renderer || !scene || !camera) return
   // preserveDrawingBuffer=false：合成器当场再渲一帧，否则 toDataURL 读到空缓冲。
   renderer.info.reset()
-  if (fixtureLighting.update(camera, adaptiveQualityApplied ? 'low' : qualityLevel.value)) markShadowsDirty()
-  waterReflection?.update(camera)
+  if (fixtureLighting.update(camera, adaptiveQualityApplied ? 'low' : qualityLevel.value)) renderer.shadowMap.needsUpdate = true
+  waterReflection?.update(camera, true)
   if (composer) composer.render()
   else renderer.render(scene, camera)
   publishRenderStats()
@@ -1958,6 +1969,8 @@ function markShadowsDirty() {
   if (!renderer || !directionalLight) return
   renderer.shadowMap.needsUpdate = true
   directionalLight.shadow.needsUpdate = true
+  fixtureLighting.invalidateShadows()
+  waterReflection?.invalidate()
   // shadowMap.needsUpdate 只在【下一次 renderer.render()】里被消费并清零（autoUpdate=false）。
   // 只置位不请求渲染会有两种失效：
   //   1) 此刻队列里没有任何待渲染帧（相机静止、无动画）→ 标记永远悬空，阴影不刷新；
@@ -2077,11 +2090,11 @@ canvas {
   position: absolute;
   top: 12px;
   left: 12px;
-  background: rgba(0, 0, 0, 0.6);
+  background: var(--studio-bg);
   padding: 8px 12px;
   border-radius: 4px;
   font-size: 12px;
-  color: #cccccc;
+  color: var(--studio-text);
   font-family: monospace;
 }
 
@@ -2092,10 +2105,10 @@ canvas {
   transform: translateX(-50%);
   max-width: calc(100% - 32px);
   padding: 10px 16px;
-  border: 1px solid #35d7ff66;
+  border: 1px solid var(--studio-accent-border);
   border-radius: 8px;
-  background: #142630eb;
-  color: #b9efff;
+  background: var(--studio-surface);
+  color: var(--studio-accent);
   font-size: 13px;
   text-align: center;
 }
@@ -2120,10 +2133,10 @@ canvas {
   gap: 7px;
   min-width: 76px;
   padding: 8px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid var(--studio-border);
   border-radius: 8px;
-  background: rgba(18, 23, 33, 0.78);
-  color: #f4f7fb;
+  background: var(--studio-bg);
+  color: var(--studio-text);
   font-size: 13px;
   line-height: 1;
   cursor: pointer;
@@ -2133,8 +2146,8 @@ canvas {
 
 .viewport-action:hover,
 .viewport-action.active {
-  background: rgba(28, 36, 50, 0.92);
-  border-color: rgba(255, 255, 255, 0.36);
+  background: var(--studio-surface);
+  border-color: var(--studio-border);
 }
 
 .viewport-action:active {
@@ -2144,7 +2157,7 @@ canvas {
 /* FPS 显示已移入渲染控制面板（RenderControlPanel.vue） */
 
 .viewport-action:focus-visible {
-  outline: 2px solid #8fc7ff;
+  outline: 2px solid var(--studio-accent-border);
   outline-offset: 2px;
 }
 
@@ -2162,6 +2175,6 @@ canvas {
 }
 
 .diagnostics {
-  color: #ffd27a;
+  color: var(--studio-orange);
 }
 </style>

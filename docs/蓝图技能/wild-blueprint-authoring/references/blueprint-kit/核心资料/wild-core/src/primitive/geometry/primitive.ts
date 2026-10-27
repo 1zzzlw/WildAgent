@@ -13,7 +13,7 @@ interface GeometryBuffers {
   uvs?: Float32Array;
 }
 
-export function buildPrimitive(params: PrimitiveParams): MeshData[] {
+export function buildPrimitive(params: PrimitiveParams, metricUVs = false): MeshData[] {
   if (params.caps && params.shape !== 'profile_sweep') throw new Error('primitive.caps only applies to profile_sweep');
   if (params.label && (params.shape !== 'box' || typeof params.label.text !== 'string'
     || !params.label.text.trim() || params.label.text.length > 256)) {
@@ -33,13 +33,13 @@ export function buildPrimitive(params: PrimitiveParams): MeshData[] {
       buffers = buildBox(params);
       break;
     case 'sphere':
-      buffers = buildSphere(params);
+      buffers = buildSphere(params, metricUVs);
       break;
     case 'cylinder':
-      buffers = buildCylinder(params);
+      buffers = buildCylinder(params, metricUVs);
       break;
     case 'profile_sweep':
-      buffers = buildProfileSweep(params);
+      buffers = buildProfileSweep(params, metricUVs);
       break;
     default:
       throw new Error(`Unsupported primitive shape: ${(params as any).shape}`);
@@ -94,7 +94,7 @@ function buildBox(params: PrimitiveParams): GeometryBuffers {
   };
 }
 
-function buildSphere(params: PrimitiveParams): GeometryBuffers {
+function buildSphere(params: PrimitiveParams, metricUVs: boolean): GeometryBuffers {
   const radius = params.radius ?? 0.5;
   const widthSegments = clampInteger(params.segments ?? 32, 8, 128);
   const heightSegments = clampInteger(params.heightSegments ?? Math.round(widthSegments / 2), 4, 64);
@@ -119,7 +119,7 @@ function buildSphere(params: PrimitiveParams): GeometryBuffers {
     vertices.push(p[0], p[1], p[2]);
     const invRadius = 1 / radius;
     normals.push(p[0] * invRadius, p[1] * invRadius, p[2] * invRadius);
-    uvs.push(u, v);
+    uvs.push(u * (metricUVs ? 2 * Math.PI * radius : 1), v * (metricUVs ? Math.PI * radius : 1));
   };
 
   for (let y = 0; y < heightSegments; y++) {
@@ -146,7 +146,7 @@ function buildSphere(params: PrimitiveParams): GeometryBuffers {
   return sequentialBuffers(vertices, normals, uvs);
 }
 
-function buildCylinder(params: PrimitiveParams): GeometryBuffers {
+function buildCylinder(params: PrimitiveParams, metricUVs: boolean): GeometryBuffers {
   const radiusBottom = params.radiusBottom ?? params.radius ?? 0.5;
   const radiusTop = params.radiusTop ?? params.radius ?? radiusBottom;
   const height = params.height ?? 1;
@@ -159,11 +159,16 @@ function buildCylinder(params: PrimitiveParams): GeometryBuffers {
   const normals: number[] = [];
   const uvs: number[] = [];
   const halfHeight = height / 2;
+  const circumference = Math.PI * (radiusBottom + radiusTop);
 
   const push = (p: Vec3, n: Vec3, uv: Vec2) => {
     vertices.push(...p);
     normals.push(...n);
-    uvs.push(...uv);
+    uvs.push(...(metricUVs
+      ? Math.abs(n[1]) > 0.5
+        ? [p[0], p[2]]
+        : [uv[0] * circumference, uv[1] * Math.hypot(height, radiusTop - radiusBottom)]
+      : uv));
   };
 
   for (let i = 0; i < segments; i++) {
@@ -198,7 +203,7 @@ function buildCylinder(params: PrimitiveParams): GeometryBuffers {
   return sequentialBuffers(vertices, normals, uvs);
 }
 
-function buildProfileSweep(params: PrimitiveParams): GeometryBuffers {
+function buildProfileSweep(params: PrimitiveParams, metricUVs: boolean): GeometryBuffers {
   const path = params.path || [];
   if (path.length < 2) throw new Error('profile_sweep requires at least two path points');
   path.forEach((point, index) => assertFiniteVec3(point, `path[${index}]`));
@@ -232,6 +237,11 @@ function buildProfileSweep(params: PrimitiveParams): GeometryBuffers {
     cumulative.push(cumulative[i - 1] + distance(path[i - 1], path[i]));
   }
   const totalLength = Math.max(cumulative[cumulative.length - 1], 1e-6);
+  const profileDistances = [0];
+  for (let i = 0; i < edgeCount; i++) {
+    const a = profile[i], b = profile[(i + 1) % profile.length];
+    profileDistances.push(profileDistances[i] + Math.hypot(b[0] - a[0], b[1] - a[1]));
+  }
 
   const vertices: number[] = [];
   const normals: number[] = [];
@@ -258,12 +268,12 @@ function buildProfileSweep(params: PrimitiveParams): GeometryBuffers {
   };
 
   for (let pi = 0; pi < path.length - 1; pi++) {
-    const pathU0 = cumulative[pi] / totalLength;
-    const pathU1 = cumulative[pi + 1] / totalLength;
+    const pathU0 = cumulative[pi] / (metricUVs ? 1 : totalLength);
+    const pathU1 = cumulative[pi + 1] / (metricUVs ? 1 : totalLength);
     for (let pj = 0; pj < edgeCount; pj++) {
       const next = (pj + 1) % profile.length;
-      const profileV0 = pj / edgeCount;
-      const profileV1 = (pj + 1) / edgeCount;
+      const profileV0 = metricUVs ? profileDistances[pj] : pj / edgeCount;
+      const profileV1 = metricUVs ? profileDistances[pj + 1] : (pj + 1) / edgeCount;
       const a = sweptPoint(pi, pj);
       const b = sweptPoint(pi + 1, pj);
       const c = sweptPoint(pi + 1, next);

@@ -3,7 +3,7 @@ import { resolve } from 'node:path'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { launchEditorBrowser } from './editor-browser.mjs'
 
-const output = resolve('../deliveries/render-upgrade/regression')
+const output = resolve(process.argv[2] || '../deliveries/render-upgrade/regression')
 await mkdir(output, { recursive: true })
 const browser = await launchEditorBrowser((process.env.EDITOR_URL || 'http://127.0.0.1:5178') + '/scripts/render-upgrade-preview.html')
 try {

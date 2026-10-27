@@ -1,0 +1,110 @@
+{
+  "status": "passed",
+  "checks": [
+    {
+      "name": "light-dark-theme",
+      "light": "rgb(255, 254, 250)",
+      "dark": "rgb(27, 36, 45)"
+    },
+    {
+      "name": "public-content-and-routing",
+      "chapters": 12,
+      "projects": 10,
+      "noEditorialMetadata": true,
+      "agentStatus": true,
+      "expandedProductContent": true
+    },
+    {
+      "name": "book-follows-workbench-theme",
+      "dark": {
+        "background": "rgb(17, 24, 32)",
+        "color": "rgb(213, 223, 229)",
+        "panel": "rgb(27, 36, 45)",
+        "table": "rgb(40, 54, 65)",
+        "inputScheme": "dark"
+      },
+      "light": {
+        "background": "rgb(245, 244, 238)",
+        "color": "rgb(32, 46, 42)",
+        "panel": "rgb(255, 254, 250)",
+        "inputScheme": "light"
+      },
+      "darkImageViewer": true
+    },
+    {
+      "name": "complete-frame-images",
+      "images": 24,
+      "visible": 24,
+      "noCropping": true
+    },
+    {
+      "name": "vue-image-viewer",
+      "openAndClose": true
+    },
+    {
+      "name": "reactive-calculator",
+      "initialCorrect": true,
+      "negativeContribution": true,
+      "invalidUserCount": true,
+      "reset": true
+    },
+    {
+      "name": "responsive-layout",
+      "width": 1024,
+      "bodyWidth": 1024,
+      "pageWidth": 1014,
+      "clientWidth": 1014,
+      "columns": 2
+    },
+    {
+      "name": "responsive-layout",
+      "width": 768,
+      "bodyWidth": 768,
+      "pageWidth": 758,
+      "clientWidth": 758,
+      "columns": 2
+    },
+    {
+      "name": "responsive-layout",
+      "width": 390,
+      "bodyWidth": 390,
+      "pageWidth": 380,
+      "clientWidth": 380,
+      "columns": 1
+    },
+    {
+      "name": "return-preserves-workbench",
+      "sameCanvas": true,
+      "sameBlueprint": true,
+      "camera": [
+        28.542414425013526,
+        23.55053838600974,
+        28.542414425013533
+      ],
+      "beforeCamera": [
+        28.542414425013526,
+        23.55053838600974,
+        28.542414425013533
+      ],
+      "running": true,
+      "theme": "light"
+    },
+    {
+      "name": "mobile-workbench-navigation",
+      "width": 390,
+      "headerWidth": 390,
+      "link": 267.234375,
+      "theme": 308.234375
+    },
+    {
+      "name": "theme-persistence",
+      "afterReload": "dark"
+    },
+    {
+      "name": "direct-route-refresh",
+      "works": true,
+      "retainedDarkTheme": true
+    }
+  ],
+  "browserErrors": []
+}

@@ -13,6 +13,10 @@ function bakeEffects(
   assets: Record<string, PBRTextureSetAsset>,
   materialRef: string,
 ): MaterialParams {
+  const textureSize = base.textureSet ? assets[base.textureSet]?.realWorldSizeMeters : undefined;
+  const uvScale = textureSize?.every(value => Number.isFinite(value) && value > 0)
+    ? [(base.uvScale?.[0] ?? 1) / textureSize[0], (base.uvScale?.[1] ?? 1) / textureSize[1]] as [number, number]
+    : base.uvScale;
   let bc = normalizeColor(base.baseColor, [0.5, 0.5, 0.5]);
   let r = normalizeUnit(base.roughness, 0.8);
   const m = normalizeUnit(base.metallic, 0);
@@ -69,7 +73,7 @@ function bakeEffects(
       ? assets[base.textureSet]?.maps || base.textures
       : base.textures,
     normalScale: base.normalScale,
-    uvScale: base.uvScale,
+    uvScale,
     materialClass: base.materialClass,
     side: base.side,
     transmission: base.transmission,
@@ -79,6 +83,8 @@ function bakeEffects(
     attenuationDistance: base.attenuationDistance,
     clearcoat: base.clearcoat,
     clearcoatRoughness: base.clearcoatRoughness,
+    anisotropy: base.anisotropy,
+    anisotropyRotation: base.anisotropyRotation,
     sheen: base.sheen,
     sheenColor: base.sheenColor,
     emissiveIntensity: base.emissiveIntensity,
@@ -132,6 +138,8 @@ function normalizeMaterial(value: MaterialDef | undefined, name: string): Materi
     transmission: normalizeUnit(value.transmission, isWater ? 0.96 : 0),
     clearcoat: normalizeUnit(value.clearcoat, 0),
     clearcoatRoughness: normalizeUnit(value.clearcoatRoughness, 0),
+    anisotropy: normalizeUnit(value.anisotropy, 0),
+    anisotropyRotation: Number.isFinite(value.anisotropyRotation) ? value.anisotropyRotation : 0,
     sheen: normalizeUnit(value.sheen, 0),
     ior: normalizeRange(value.ior, 1, 2.333, isWater ? 1.333 : 1.5),
     thickness: normalizeNonNegative(value.thickness, isWater ? 0.3 : 0),

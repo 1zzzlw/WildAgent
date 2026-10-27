@@ -112,6 +112,8 @@ export class WorldLightingRig {
     this.key.shadow.map?.dispose()
     this.key.shadow.map = null
     this.key.shadow.mapSize.set(next, next)
+    this.key.shadow.normalBias = Math.max(0.001, SHADOW_NORMAL_BIAS_TEXELS * 2 * this.shadowExtent / Math.max(1, next))
+    this.key.shadow.needsUpdate = true
     return true
   }
 
@@ -134,33 +136,40 @@ export class WorldLightingRig {
       THREE.MathUtils.degToRad(SHADOW_MIN_ELEVATION_DEG),
       Math.asin(THREE.MathUtils.clamp(keyLightDirection.y, -1, 1)),
     )
-    const sinElevation = Math.sin(elevation)
-    const cosElevation = Math.cos(elevation)
     const horizontalRadius = 0.5 * Math.hypot(size.x, size.z)
     const halfHeight = Math.max(0, size.y) * 0.5
     // 正交框 U 轴水平、V 轴在太阳所在竖直面内，所以两个方向的上界分别是：
     //   U ≤ 足迹半对角线
     //   V ≤ 足迹半对角线 × sin(高度角) + 半高 × cos(高度角)
     // （与全量蓝图复算一致：tiantan 白天需 U 11.31 / V 13.44。）
-    const extent = Math.max(horizontalRadius, horizontalRadius * sinElevation + halfHeight * cosElevation) + 1
+    // 用光空间中的 AABB 投影代替足迹对角线正方形，保留同样投影体并提高纹素利用率。
+    const direction = keyLightDirection.clone().normalize()
+    const right = new THREE.Vector3().crossVectors(new THREE.Vector3(0, 1, 0), direction)
+    if (right.lengthSq() < 1e-8) right.set(1, 0, 0)
+    else right.normalize()
+    const up = new THREE.Vector3().crossVectors(direction, right).normalize()
+    const extentX = (Math.abs(right.x) * size.x + Math.abs(right.y) * size.y + Math.abs(right.z) * size.z) * 0.5 + 1
+    const extentY = (Math.abs(up.x) * size.x + Math.abs(up.y) * size.y + Math.abs(up.z) * size.z) * 0.5 + 1
+    const extent = Math.max(extentX, extentY)
     this.shadowExtent = extent
     // 落影行程 = 建筑高度 / tan(高度角)：6° 时约为高度的 9.5 倍。
     const shadowTravel = (halfHeight * 2) / Math.tan(elevation)
     const halfDiagonal = Math.hypot(horizontalRadius, halfHeight)
-    const lightDistance = extent * 2.5
+    const lightDistance = Math.max(extent * 2.5, halfDiagonal * 2 + 1)
 
-    this.key.position.copy(center).addScaledVector(keyLightDirection, lightDistance)
+    this.key.position.copy(center).addScaledVector(direction, lightDistance)
     this.key.target.position.copy(center)
     this.key.target.updateMatrixWorld()
     const shadowCamera = this.key.shadow.camera
-    shadowCamera.left = -extent
-    shadowCamera.right = extent
-    shadowCamera.top = extent
-    shadowCamera.bottom = -extent
+    shadowCamera.up.copy(up)
+    shadowCamera.left = -extentX
+    shadowCamera.right = extentX
+    shadowCamera.top = extentY
+    shadowCamera.bottom = -extentY
     // near 按投影体的最近深度收紧（原来恒为 0.1，配 far≈130 时深度精度被白白浪费）。
     shadowCamera.near = Math.max(0.1, lightDistance - halfDiagonal * 2)
     // far 必须覆盖【落影行程】，否则低角度下长影会在中途被硬切。
-    shadowCamera.far = lightDistance + shadowTravel + horizontalRadius + extent + 2
+    shadowCamera.far = lightDistance + Math.max(halfDiagonal, shadowTravel + horizontalRadius + extent) + 2
     shadowCamera.updateProjectionMatrix()
 
     // normalBias 按纹素表达。只写 `extent * 0.0015` 只在 mapSize = 2048 时恰好等于 1.5 纹素，

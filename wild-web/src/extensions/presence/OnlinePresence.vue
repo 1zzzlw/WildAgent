@@ -111,12 +111,12 @@ async function changeVisitorName() {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #7f848e;
+  background: var(--studio-surface);
 }
 
 .presence-dot.online {
-  background: #67c23a;
-  box-shadow: 0 0 6px rgba(103, 194, 58, 0.65);
+  background: var(--studio-hover);
+  box-shadow: 0 0 6px rgba(41, 76, 61, 0.12);
 }
 
 .presence-panel-title,
@@ -158,7 +158,7 @@ async function changeVisitorName() {
   height: 8px;
   flex: none;
   border-radius: 50%;
-  background: #67c23a;
+  background: var(--studio-hover);
 }
 
 .presence-client-main {

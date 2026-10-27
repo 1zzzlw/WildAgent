@@ -92,6 +92,8 @@ export interface MaterialParams {
   attenuationDistance?: number
   clearcoat?: number
   clearcoatRoughness?: number
+  anisotropy?: number
+  anisotropyRotation?: number
   sheen?: number
   sheenColor?: [number, number, number]
   emissiveIntensity?: number
@@ -120,6 +122,7 @@ export function createMaterialFromParams(
     || (params.transmission ?? 0) > 0
     || (params.clearcoat ?? 0) > 0
     || (params.sheen ?? 0) > 0
+    || (params.anisotropy ?? 0) > 0
   const material: PBRMaterial = usePhysicalMaterial
     ? new THREE.MeshPhysicalMaterial()
     : new THREE.MeshStandardMaterial()
@@ -161,6 +164,8 @@ export function createMaterialFromParams(
     }
     material.clearcoat = params.clearcoat ?? (isGlass && !isWater ? 0.08 : 0)
     material.clearcoatRoughness = params.clearcoatRoughness ?? 0.12
+    material.anisotropy = params.anisotropy ?? 0
+    material.anisotropyRotation = params.anisotropyRotation ?? 0
     material.sheen = params.sheen ?? (params.materialClass === 'fabric' ? 0.35 : 0)
     if (params.sheenColor) {
       material.sheenColor = new THREE.Color().setRGB(
@@ -523,6 +528,8 @@ function materialSignature(params: MaterialParams): string {
     attenuationDistance: params.attenuationDistance,
     clearcoat: params.clearcoat,
     clearcoatRoughness: params.clearcoatRoughness,
+    anisotropy: params.anisotropy,
+    anisotropyRotation: params.anisotropyRotation,
     sheen: params.sheen,
     sheenColor: params.sheenColor,
     procedural: params.procedural,

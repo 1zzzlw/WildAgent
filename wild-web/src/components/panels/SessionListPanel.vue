@@ -145,19 +145,19 @@ function statusLabel(status: SessionInfo['status']) {
 :global(.session-dialog),
 :global(.session-menu),
 :global(.session-rename-dialog) {
-  --el-color-primary: #6899d4;
-  --el-color-primary-light-9: #2b3646;
-  --el-bg-color: #252528;
-  --el-bg-color-overlay: #252528;
-  --el-fill-color-blank: #202023;
-  --el-fill-color-light: #303039;
-  --el-text-color-primary: #e4e4e7;
-  --el-text-color-regular: #c5c5cd;
-  --el-text-color-secondary: #94949e;
-  --el-text-color-placeholder: #767681;
-  --el-border-color: #42424c;
-  --el-border-color-light: #393941;
-  --el-border-color-lighter: #32323a;
+  --el-color-primary: var(--studio-accent);
+  --el-color-primary-light-9: var(--studio-muted);
+  --el-bg-color: var(--studio-surface);
+  --el-bg-color-overlay: var(--studio-surface);
+  --el-fill-color-blank: var(--studio-surface);
+  --el-fill-color-light: var(--studio-hover);
+  --el-text-color-primary: var(--studio-text);
+  --el-text-color-regular: var(--studio-muted);
+  --el-text-color-secondary: var(--studio-muted);
+  --el-text-color-placeholder: var(--studio-muted);
+  --el-border-color: var(--studio-border);
+  --el-border-color-light: var(--studio-border);
+  --el-border-color-lighter: var(--studio-border);
   color-scheme: dark;
 }
 
@@ -167,8 +167,8 @@ function statusLabel(status: SessionInfo['status']) {
   gap: 8px;
   padding: 8px 10px;
   flex-shrink: 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
-  background: rgba(0, 0, 0, 0.15);
+  border-bottom: 1px solid var(--studio-border);
+  background: var(--studio-hover);
 }
 
 .session-picker {
@@ -179,9 +179,9 @@ function statusLabel(status: SessionInfo['status']) {
   min-width: 0;
   height: 32px;
   padding: 0 10px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--studio-border);
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--studio-hover);
   color: var(--el-text-color-secondary);
   cursor: pointer;
   transition: background-color 0.15s, border-color 0.15s;
@@ -189,8 +189,8 @@ function statusLabel(status: SessionInfo['status']) {
 
 .session-picker:hover,
 .session-card:hover {
-  border-color: rgba(104, 153, 212, 0.45);
-  background-color: rgba(104, 153, 212, 0.08);
+  border-color: var(--studio-accent-border);
+  background-color: var(--studio-hover);
 }
 
 .current-session-name,
@@ -209,7 +209,7 @@ function statusLabel(status: SessionInfo['status']) {
 .switch-label {
   flex-shrink: 0;
   font-size: 12px;
-  color: #9dbce1;
+  color: var(--studio-accent);
 }
 
 .new-session-btn {
@@ -227,9 +227,9 @@ function statusLabel(status: SessionInfo['status']) {
   flex-shrink: 0;
 }
 
-.dot-saved { background: #6bbf9b; }
-.dot-draft { background: #d4b871; }
-.dot-generating { background: #6899d4; }
+.dot-saved { background: var(--studio-hover); }
+.dot-draft { background: var(--studio-warm); }
+.dot-generating { background: var(--studio-hover); }
 
 .session-picker-tools {
   display: grid;
@@ -277,7 +277,7 @@ function statusLabel(status: SessionInfo['status']) {
 
 .session-active {
   border-color: var(--el-color-primary);
-  background: rgba(104, 153, 212, 0.1);
+  background: var(--studio-hover);
 }
 
 .session-select {
@@ -342,7 +342,7 @@ function statusLabel(status: SessionInfo['status']) {
 }
 
 .menu-trigger:hover {
-  background: rgba(104, 153, 212, 0.15);
+  background: var(--studio-hover);
 }
 
 .danger-item {

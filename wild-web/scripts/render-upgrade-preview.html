@@ -39,7 +39,7 @@ let currentQuality;window.frame=(quality='high',reflect=true,seconds=0)=>{
 };
 window.readPixels=()=>{const gl=renderer.getContext();const pixels=new Uint8Array(960*720*4);gl.readPixels(0,0,960,720,gl.RGBA,gl.UNSIGNED_BYTE,pixels);return pixels};
 window.setCamera=(x,y,z)=>{camera.position.set(x,y,z);camera.lookAt(0,0,-1)};
-window.setReflectionBuilding=visible=>{group.children.find(mesh=>mesh.userData.elementId==='reflection-building').visible=visible};
+window.setReflectionBuilding=visible=>{group.children.find(mesh=>mesh.userData.elementId==='reflection-building').visible=visible;reflection.invalidate();reflection.update(camera,true)};
 window.runShadowProbe=async()=>{
  const probe=await reconstructEntity({meta:{version:'1.1',type:'building',name:'局部灯遮挡验证'},geometry:{elements:[
   {type:'floor',id:'receiver',from:[-4,0,-4],to:[4,0,4],thickness:.1,material:'white'},

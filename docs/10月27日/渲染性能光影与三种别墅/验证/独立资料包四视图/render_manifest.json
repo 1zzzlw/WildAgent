@@ -1,0 +1,100 @@
+{
+  "baselineVersion": "p7a.1",
+  "inputSha256": "b9cc7732d11c95ba6c94f1e02830621d89bd0fd435fe2deccd366753ee8f9c5a",
+  "renderer": "wild-web/createSceneGroupFromEntity",
+  "settings": {
+    "width": 1280,
+    "height": 960,
+    "pipeline": "editor-presentation-v1",
+    "time": "day",
+    "quality": "high",
+    "environment": "minimal",
+    "toneMappingExposure": 0.29928,
+    "lighting": {
+      "hemisphereSkyColor": 14478846,
+      "hemisphereGroundColor": 6772036,
+      "hemisphereIntensity": 0.6156108000000001,
+      "keyColor": 16707797,
+      "keyIntensity": 11.009400000000001
+    },
+    "sunDirection": [
+      0.5254827454987588,
+      0.6691306063588582,
+      -0.5254827454987588
+    ],
+    "ground": {
+      "color": 7699314,
+      "y": -1.2050000002980232
+    },
+    "ambientOcclusion": "gtao"
+  },
+  "views": [
+    "front",
+    "side",
+    "top",
+    "perspective"
+  ],
+  "chromium": "C:\\Users\\Administrator\\AppData\\Local\\ms-playwright\\chromium-1243\\chrome-win64\\chrome.exe",
+  "browserVersion": {
+    "protocolVersion": "1.3",
+    "product": "Chrome/153.0.8010.12",
+    "revision": "@971a7443b0c9b0a9b2860529b33331b76077ec62",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Safari/537.36",
+    "jsVersion": "15.3.76.4"
+  },
+  "sourceDigest": "e6c08ae126d6cb96a84a997072f163ab25dfd9986655a9007eea2cffa9a453e1",
+  "glRenderer": "WebKit WebGL",
+  "glVendor": "WebKit",
+  "meshCount": 444,
+  "materialCount": 444,
+  "unmappedMaterials": 0,
+  "boundingBox": {
+    "min": [
+      -16,
+      -1.1850000002980232,
+      -14
+    ],
+    "max": [
+      16,
+      7.410000003576279,
+      14
+    ]
+  },
+  "compileErrors": 0,
+  "reconstructErrors": 0,
+  "shots": [
+    {
+      "view": "front",
+      "file": "E:\\AgentProject\\WildAgent\\docs\\10月27日\\渲染性能光影与三种别墅\\验证\\独立资料包四视图\\front.png",
+      "bytes": 408268
+    },
+    {
+      "view": "side",
+      "file": "E:\\AgentProject\\WildAgent\\docs\\10月27日\\渲染性能光影与三种别墅\\验证\\独立资料包四视图\\side.png",
+      "bytes": 483871
+    },
+    {
+      "view": "top",
+      "file": "E:\\AgentProject\\WildAgent\\docs\\10月27日\\渲染性能光影与三种别墅\\验证\\独立资料包四视图\\top.png",
+      "bytes": 322439
+    },
+    {
+      "view": "perspective",
+      "file": "E:\\AgentProject\\WildAgent\\docs\\10月27日\\渲染性能光影与三种别墅\\验证\\独立资料包四视图\\perspective.png",
+      "bytes": 460050
+    }
+  ],
+  "contextSha256": "6d7473a6234928bfbf69cbece2fd08cf53444940b9306a51f5c60582bd3528ed",
+  "visual_review": {
+    "complete": false,
+    "assistant_review": "completed",
+    "user_review": "pending",
+    "reviewedFiles": [
+      "front.png",
+      "side.png",
+      "top.png",
+      "perspective.png"
+    ],
+    "reason": "验证独立包真实显示；固定方位四视图与本轮自定义主视图构图不同"
+  }
+}

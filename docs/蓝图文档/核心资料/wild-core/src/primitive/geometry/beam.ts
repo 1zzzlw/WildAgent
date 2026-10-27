@@ -1,8 +1,29 @@
 import type { BeamParams, MeshData } from '../types';
-import { indexTriList, stripToTriList } from './mesh-helper';
+import { generateArchitecturalSurfaceAttributes, indexTriList, stripToTriList } from './mesh-helper';
 import { evalCurve, createBoxGeometry } from './wall';
 
-export function buildBeam(params: BeamParams): MeshData[] {
+export function buildBeam(params: BeamParams, metricUVs = false): MeshData[] {
+  const meshes = buildBeamGeometry(params);
+  if (!metricUVs) return meshes;
+  for (const mesh of meshes) {
+    if (params.crossSection !== 'circular') {
+      Object.assign(mesh, generateArchitecturalSurfaceAttributes(mesh.geometry));
+      continue;
+    }
+    const count = mesh.geometry.length / 3;
+    mesh.normals = new Float32Array(mesh.geometry.length);
+    mesh.uvs = new Float32Array(count * 2);
+    for (let i = 0; i < count; i++) {
+      const x = mesh.geometry[i * 3], y = mesh.geometry[i * 3 + 1];
+      const radius = Math.hypot(x, y);
+      mesh.normals.set([x / radius, y / radius, 0], i * 3);
+      mesh.uvs.set([Math.floor(i / 2) / (count / 2 - 1) * Math.PI * params.width, mesh.geometry[i * 3 + 2]], i * 2);
+    }
+  }
+  return meshes;
+}
+
+function buildBeamGeometry(params: BeamParams): MeshData[] {
   const { from, to, crossSection, width, height, material } = params;
   const curve = (params as any).curve;
 

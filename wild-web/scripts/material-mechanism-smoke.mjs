@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { launchEditorBrowser } from './editor-browser.mjs'
-const output='../docs/10月27日/验证';await mkdir(output,{recursive:true});
+const output=process.argv[2]||'../docs/10月27日/验证';await mkdir(output,{recursive:true});
 const browser=await launchEditorBrowser('http://127.0.0.1:5178/scripts/material-mechanism-preview.html');
 try{
  const p=browser.page;await p.wait('window.ready');

@@ -138,19 +138,19 @@ function handleAddComponent(type: ComponentSpec['type'], fixtureType?: 'bulb' | 
   padding: 8px 12px;
   font-size: 13px;
   font-weight: 500;
-  border-bottom: 1px solid #3e3e42;
+  border-bottom: 1px solid var(--studio-border);
 }
 
 .placement-help {
   margin: 8px 12px;
-  color: #aaa;
+  color: var(--studio-muted);
   font-size: 12px;
   line-height: 1.6;
 }
 
 .block-item.active {
-  border-color: #35d7ff;
-  background: #263e47;
+  border-color: var(--studio-accent-border);
+  background: var(--studio-hover);
 }
 
 .library-content {
@@ -166,7 +166,7 @@ function handleAddComponent(type: ComponentSpec['type'], fixtureType?: 'bulb' | 
 .category-title {
   font-size: 12px;
   font-weight: 500;
-  color: #888888;
+  color: var(--studio-muted);
   margin-bottom: 8px;
   text-transform: uppercase;
 }
@@ -183,16 +183,16 @@ function handleAddComponent(type: ComponentSpec['type'], fixtureType?: 'bulb' | 
   align-items: center;
   gap: 4px;
   padding: 12px 8px;
-  background: #2d2d30;
-  border: 1px solid #3e3e42;
+  background: var(--studio-surface);
+  border: 1px solid var(--studio-border);
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.15s;
 }
 
 .block-item:hover {
-  background: #3e3e42;
-  border-color: #4e4e52;
+  background: var(--studio-hover);
+  border-color: var(--studio-border);
 }
 
 .block-icon {

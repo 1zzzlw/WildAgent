@@ -297,13 +297,20 @@
         },
         {
           "$ref": "#/$defs/elevatorComponent"
+        },
+        {
+          "$ref": "#/$defs/fanComponent"
         }
       ]
     },
     "openingInteractionSetting": {
       "oneOf": [
-        { "const": false },
-        { "$ref": "#/$defs/openingInteractionSpec" }
+        {
+          "const": false
+        },
+        {
+          "$ref": "#/$defs/openingInteractionSpec"
+        }
       ]
     },
     "openingInteractionSpec": {
@@ -1118,6 +1125,19 @@
         },
         "draggable": {
           "type": "boolean"
+        },
+        "doorMaterial": {
+          "type": "string"
+        },
+        "floorMaterial": {
+          "type": "string"
+        },
+        "landingWalls": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "逐层入口墙，沿X轴且位于position.z+depth/2+0.08；编译器自动开洞"
         }
       }
     },
@@ -2123,8 +2143,17 @@
       "properties": {
         "surfacePattern": {
           "type": "string",
-          "enum": ["quartz", "planks"],
-          "description": "无贴图程序表面：石英石或木板；配合矿物或木材表面族"
+          "enum": [
+            "quartz",
+            "planks",
+            "plaster",
+            "concrete",
+            "travertine",
+            "tiles",
+            "brushed",
+            "linen"
+          ],
+          "description": "米制程序表面图案，包含颜色、粗糙度和微凹凸"
         },
         "baseColor": {
           "$ref": "#/$defs/color"
@@ -2156,7 +2185,7 @@
           "type": "number",
           "minimum": 0,
           "maximum": 1,
-          "default": 1.0
+          "default": 1
         },
         "lightingCondition": {
           "const": "D65_noon"
@@ -2202,6 +2231,14 @@
             "type": "number",
             "exclusiveMinimum": 0
           }
+        },
+        "anisotropy": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "anisotropyRotation": {
+          "type": "number"
         }
       }
     },
@@ -2665,6 +2702,64 @@
       },
       "minItems": 2,
       "maxItems": 2
+    },
+    "fanComponent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "id",
+        "position",
+        "controlPosition"
+      ],
+      "properties": {
+        "type": {
+          "const": "fan"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "slot_id": {
+          "type": "string"
+        },
+        "position": {
+          "$ref": "#/$defs/vec3"
+        },
+        "controlPosition": {
+          "$ref": "#/$defs/vec3"
+        },
+        "radius": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "bladeCount": {
+          "type": "integer",
+          "minimum": 3,
+          "maximum": 8
+        },
+        "drop": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "rpm": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 600
+        },
+        "initiallyOn": {
+          "type": "boolean"
+        },
+        "material": {
+          "type": "string"
+        },
+        "frameMaterial": {
+          "type": "string"
+        },
+        "draggable": {
+          "type": "boolean"
+        }
+      }
     }
   }
 }

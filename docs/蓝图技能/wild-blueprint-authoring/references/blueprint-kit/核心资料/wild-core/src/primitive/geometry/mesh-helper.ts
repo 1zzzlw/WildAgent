@@ -1,6 +1,7 @@
 /**
  * 几何体索引辅助 — 统一将各类顶点格式转为带索引的三角面列表
  */
+import type { MeshData } from '../types';
 
 /** 为三角面列表顶点数据添加顺序索引（每 3 个顶点 = 1 个三角形） */
 export function indexTriList(vertices: Float32Array): { geometry: Float32Array; indices: Uint16Array } {
@@ -151,4 +152,39 @@ export function generateArchitecturalSurfaceAttributes(vertices: Float32Array): 
     }
   }
   return { normals, uvs };
+}
+
+/** 实例缩放后，按表面 U/V 切向长度修正米制密度；不改变旧图片的 UV。 */
+export function scaleMetricUVs(mesh: MeshData): void {
+  const { geometry, indices, uvs, transform: { scale } } = mesh;
+  if (!uvs || scale.every(value => value === 1)) return;
+  const factors = new Float32Array(uvs.length);
+  const counts = new Uint32Array(uvs.length / 2);
+  const count = indices?.length ?? geometry.length / 3;
+  for (let offset = 0; offset + 2 < count; offset += 3) {
+    const ids = [0, 1, 2].map(i => indices ? indices[offset + i] : offset + i);
+    const [a, b, c] = ids;
+    const du1 = uvs[b * 2] - uvs[a * 2], dv1 = uvs[b * 2 + 1] - uvs[a * 2 + 1];
+    const du2 = uvs[c * 2] - uvs[a * 2], dv2 = uvs[c * 2 + 1] - uvs[a * 2 + 1];
+    const determinant = du1 * dv2 - du2 * dv1;
+    if (Math.abs(determinant) < 1e-12) continue;
+    const tangent = [0, 1, 2].map(axis => ((geometry[b * 3 + axis] - geometry[a * 3 + axis]) * dv2
+      - (geometry[c * 3 + axis] - geometry[a * 3 + axis]) * dv1) / determinant);
+    const bitangent = [0, 1, 2].map(axis => ((geometry[c * 3 + axis] - geometry[a * 3 + axis]) * du1
+      - (geometry[b * 3 + axis] - geometry[a * 3 + axis]) * du2) / determinant);
+    const uLength = Math.hypot(...tangent), vLength = Math.hypot(...bitangent);
+    if (uLength < 1e-12 || vLength < 1e-12) continue;
+    const uFactor = Math.hypot(...tangent.map((v, i) => v * scale[i])) / uLength;
+    const vFactor = Math.hypot(...bitangent.map((v, i) => v * scale[i])) / vLength;
+    for (const id of ids) {
+      factors[id * 2] += uFactor;
+      factors[id * 2 + 1] += vFactor;
+      counts[id]++;
+    }
+  }
+  for (let i = 0; i < counts.length; i++) {
+    if (!counts[i]) continue;
+    uvs[i * 2] *= factors[i * 2] / counts[i];
+    uvs[i * 2 + 1] *= factors[i * 2 + 1] / counts[i];
+  }
 }

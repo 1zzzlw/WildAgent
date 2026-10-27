@@ -1,7 +1,7 @@
 import type { ColumnParams, MeshData, Vec3 } from '../types';
 import { buildPrimitive } from './primitive';
 
-export function buildColumn(params: ColumnParams): MeshData[] {
+export function buildColumn(params: ColumnParams, metricUVs = false): MeshData[] {
   const { base, height, bottomRadius, topRadius, material, style } = params;
   if (height <= 0 || bottomRadius <= 0 || topRadius <= 0) {
     throw new Error('column height and radii must be greater than zero');
@@ -51,7 +51,7 @@ export function buildColumn(params: ColumnParams): MeshData[] {
       surfaceNormals.set(key, normal);
     }
     normals.push(...normal);
-    uvs.push(u, v);
+    uvs.push(u * (metricUVs ? Math.PI * (bottomRadius + topRadius) : 1), v * (metricUVs ? height : 1));
   };
 
   for (let ring = 0; ring < heightSegments; ring++) {
@@ -82,13 +82,14 @@ export function buildColumn(params: ColumnParams): MeshData[] {
     materialRef,
   };
 
-  return [shaft, ...buildStyleDetails(params, materialRef, inclinationDirection)];
+  return [shaft, ...buildStyleDetails(params, materialRef, inclinationDirection, metricUVs)];
 }
 
 function buildStyleDetails(
   params: ColumnParams,
   materialRef: string,
   inclinationDirection: Vec3,
+  metricUVs: boolean,
 ): MeshData[] {
   const { base, height, bottomRadius, topRadius, style } = params;
   if (style === 'modern') return [];
@@ -113,7 +114,7 @@ function buildStyleDetails(
       segments: 32,
       position,
       material: materialRef,
-    }));
+    }, metricUVs));
   };
 
   if (style === 'doric') {

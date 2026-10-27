@@ -1,0 +1,38 @@
+{
+  "status": "PASS",
+  "elevators": [
+    {
+      "floorCount": 1,
+      "initialFloor": 0,
+      "target": 0,
+      "passengerRoundTrip": true
+    },
+    {
+      "floorCount": 3,
+      "initialFloor": 0,
+      "target": 1,
+      "passengerRoundTrip": true
+    },
+    {
+      "floorCount": 3,
+      "initialFloor": 2,
+      "target": 0,
+      "passengerRoundTrip": true
+    },
+    {
+      "floorCount": 5,
+      "initialFloor": 1,
+      "target": 2,
+      "passengerRoundTrip": true
+    }
+  ],
+  "queueStops": [
+    2,
+    1
+  ],
+  "fan": {
+    "independentControls": true,
+    "lowHighOff": true,
+    "idleSleeps": true
+  }
+}

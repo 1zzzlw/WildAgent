@@ -71,7 +71,7 @@ varying vec3 vWildBrickWorldPosition;`,
     )
     .replace(
       '#include <defaultnormal_vertex>',
-      '#include <defaultnormal_vertex>\nvWildBrickWorldNormal = normalize(mat3(modelMatrix) * transformedNormal);',
+      '#include <defaultnormal_vertex>\nvWildBrickWorldNormal = inverseTransformDirection(transformedNormal, viewMatrix);',
     )
     .replace(
       '#include <worldpos_vertex>',

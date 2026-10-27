@@ -7,6 +7,7 @@ export type SurfaceFamily =
   | 'glass'
 
 export type SurfaceSourceKind = 'constant' | 'procedural' | 'texture-set' | 'hybrid'
+export type SurfacePattern = 'quartz' | 'planks' | 'plaster' | 'concrete' | 'travertine' | 'tiles' | 'brushed' | 'linen'
 
 export type SurfaceQuality = 'low' | 'medium' | 'high' | 'fallback'
 
@@ -31,7 +32,7 @@ export interface MaterialEnvironmentResponse {
 /** core 输出给 renderer 的稳定材质中间表示，不包含任何 GPU 代码。 */
 export interface RenderMaterialDescriptor {
   family: SurfaceFamily
-  pattern?: 'quartz' | 'planks'
+  pattern?: SurfacePattern
   source: SurfaceSourceKind
   implementation: string
   implementationVersion: number

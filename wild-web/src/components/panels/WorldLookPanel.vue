@@ -15,8 +15,8 @@ import WorldPackagePanel from './WorldPackagePanel.vue'
 </script>
 
 <style scoped>
-.look-panel { display: flex; height: 100%; flex-direction: column; color: #cccccc; }
-.panel-header { padding: 8px 12px; border-bottom: 1px solid #3e3e42; font-size: 13px; font-weight: 500; }
+.look-panel { display: flex; height: 100%; flex-direction: column; color: var(--studio-text); }
+.panel-header { padding: 8px 12px; border-bottom: 1px solid var(--studio-border); font-size: 13px; font-weight: 500; }
 .panel-body { display: flex; min-height: 0; flex: 1; flex-direction: column; gap: 8px; overflow-y: auto; padding: 10px; }
-.hint { color: #8f8f96; font-size: 11px; line-height: 1.5; }
+.hint { color: var(--studio-muted); font-size: 11px; line-height: 1.5; }
 </style>

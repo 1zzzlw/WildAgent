@@ -89,6 +89,8 @@ export interface MaterialParams {
   attenuationDistance?: number;
   clearcoat?: number;
   clearcoatRoughness?: number;
+  anisotropy?: number;
+  anisotropyRotation?: number;
   sheen?: number;
   sheenColor?: import('../../types').Color;
   emissiveIntensity?: number;

@@ -1,0 +1,92 @@
+{
+  "directory": "03-栖坡陶院-地中海坡顶",
+  "file": "栖坡陶院.wild",
+  "name": "栖坡陶院 · 地中海坡顶别墅",
+  "bytes": 54101,
+  "sha256": "acc5f492665d1b0d7a51f51f03f54960c1a979e31912f1ec4803b1136ad62f12",
+  "elements": 207,
+  "components": 31,
+  "materials": 14,
+  "status": "PASS",
+  "compiledElements": 658,
+  "meshes": 689,
+  "diagnostics": [
+    {
+      "level": "info",
+      "code": "PARTIAL_CAPABILITY",
+      "message": "roof: 基础屋顶、中式曲面与重檐屋顶",
+      "elementType": "roof"
+    },
+    {
+      "level": "info",
+      "code": "PARTIAL_CAPABILITY",
+      "message": "furniture: 基础参数化家具",
+      "elementType": "furniture"
+    },
+    {
+      "level": "info",
+      "code": "PARTIAL_CAPABILITY",
+      "message": "opening: 墙体洞口及门窗覆盖几何",
+      "elementType": "opening"
+    },
+    {
+      "level": "info",
+      "code": "PARTIAL_CAPABILITY",
+      "message": "beam: 矩形、圆形与工字梁",
+      "elementType": "beam"
+    }
+  ],
+  "holes": [
+    {
+      "floor": "med_upper",
+      "center": [
+        -0.6000000000000005,
+        -5.5
+      ],
+      "clear": true
+    }
+  ],
+  "stairs": [
+    {
+      "id": "garden_steps",
+      "finishY": 0.12,
+      "dimensionsClosed": true
+    },
+    {
+      "id": "main_stair",
+      "finishY": 3.5,
+      "dimensionsClosed": true
+    },
+    {
+      "id": "porch_steps",
+      "finishY": 0.3,
+      "dimensionsClosed": true
+    }
+  ],
+  "bounds": {
+    "min": [
+      -16,
+      -0.359999997317791,
+      -14
+    ],
+    "max": [
+      16,
+      8.959999998658896,
+      14
+    ]
+  },
+  "checks": [
+    "raw Schema",
+    "unique IDs",
+    "references",
+    "Core compilation/reconstruction",
+    "finite geometry and material refs",
+    "real mesh floor holes",
+    "stair dimensions and upper landing",
+    "whole site bounds"
+  ],
+  "visual_review": {
+    "complete": false,
+    "reason": "此报告为静态/Core检查；真实渲染和人工审图另记"
+  }
+}

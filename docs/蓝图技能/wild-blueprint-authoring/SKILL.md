@@ -19,6 +19,7 @@ description: "根据建筑需求、参考图片或已有WILD，原创设计并�
 | 要执行检查、真实渲染或接入原项目 | [运行与验证](references/runtime.md) |
 | Schema通过后仍有空间/地块问题，或要参考独立创作后的实测经验 | [独立创作验证复盘](references/independent-authoring.md)，按故障类型阅读，不复用该例布局 |
 | 用户要求参考成品或比较某构造 | [十二例索引](references/blueprint-kit/案例/README.md)，按需读一两例，不把全套案例加载为默认模板 |
+| 材质库、电梯/风扇、阴影/水面，或参考本轮三种原创方案 | [渲染与三案复盘](references/rendering-and-three-villas.md)，按问题阅读，不复用整栋模板 |
 | 图片复建的尺寸推定、坡顶瓦垄、浅拱、露台及失败复盘 | [图片复建复盘](references/photo-reconstruction.md)；本轮三例待深化，不作为质量标杆 |
 | 把实际创作经验或其他Agent的测试反馈整理进技能 | [经验整理与迭代](references/experience-loop.md)，仅维护技能时读取 |
 | 旧v2条款与当前规范冲突 | [v2采纳说明](references/blueprint-kit/03-v2.0参考采纳说明.md)；原始v2文本仅作待核对资料，不作为并行规则 |
@@ -49,12 +50,13 @@ description: "根据建筑需求、参考图片或已有WILD，原创设计并�
 - WILD文件版本写`meta.version:"1.1"`，不是主语言的3.0。仅用当前支持的类型/字段，全部数组展开、ID唯一、引用存在，禁止省略号、内部运行状态和伪造外部资源。
 - 核心目标是极小文件表达精细建筑，不引入GLB/GLTF模型或内嵌网格/base64。用参数化构件、轮廓/路径、材料复用表达细节；紧凑装配/实例/运动未完成契约前，不自行发明repeat/spin字段或省略必填内容。
 - floor的Y是板底并向上加厚；普通原语position是几何中心、家具是底面。门窗from是沿墙距离/世界Y/法向偏移；转角内部延伸不要求作者再加半墙厚。
-- 当前Core/前端的door/window/bay_window省略interaction也默认可开合：门平开、普通窗双扇平开、凸窗正面推拉，初始关闭；已有配置优先，固定门窗写interaction:false。opening和普通原语装饰不按名称自动识别；旧后端的门检查仍可能要求显式对象，新默认与false方式未做本轮运行验收。
+- 当前Core/前端的door/window/bay_window省略interaction也默认可开合：门平开、普通窗双扇平开、凸窗正面推拉，初始关闭；已有配置优先，固定门窗写interaction:false。opening和普通原语装饰不按名称自动识别；旧后端的门检查仍可能要求显式对象；后端完整验收另记，不能由前端回归推断。
 - 修改时保留源构件ID，不直接编辑编译生成的框/玻璃ID；楼板/屋面附件使用宿主局部参数，宿主与附件一起移动不得重复加位移。编辑分组不等于几何依附，不重复写parentId/children；具体编辑限制见主语言§8.8。
 - 当前前端/Core支持floor.shape=polygon及局部米制polygon/holes；扫掠端盖须显式caps=true且截面闭合。旧后端设计/校验链本次未更新，需要经过它时用兼容拆板；不能把前端能力当作Agent全链支持。
 - 楼梯终点、平台、完整梯宽、层间孔、上口转向和门要连通；不能只检查踏步数。平顶、坡顶、扫掠端盖等边界查主语言，不凭建筑直觉猜。
 - `label`只用于box的局部+Z面，字在WILD里且检查遮挡；`emissive`不等于照亮周围，真实光源用lightSource或light；水先有场地开口/池底/池壁再谈透明度和波纹。
-- 石英石/木板使用材质顶层surfacePattern=quartz/planks与surfaceFamily=mineral/wood，不写procedural wood或虚假纹理；新增表面与水面固定显示策略见主语言§6/§7.3。本轮用户保留测试，新增代码与快照未作构建或视觉验收，后续创作不得沿用旧报告宣称已通过。
+- 8种surfacePattern及13套完整配方见主语言§6；仅改材质名不会应用配方，必须保存完整对象。不写procedural wood或虚假资源。低/中/高实时灯预算2/4/8，所有入选灯投影；这不等于完整全局光照。
+- 电梯入口+Z，逐层井孔、landingWalls和真实可达前厅一起设计；风扇扫掠半径、顶板及controlPosition一起核对。源JSON只保存设计参数。字段与复盘见主语言§5.2和[专项资料](references/rendering-and-three-villas.md)。
 - 原始Schema、引用/尺寸检查、Core重建、完整后端、真渲染/看图和审美分别报告。AABB交叠不等于实体碰撞；现有案例的局部复核/旧图不证明新稿已通过。
 - 检查成品实际包络时计入檐口、家具和植物叶冠；检查房间通路时计入净门宽及门后的固定设施。宿主合法、门洞存在或网格有限都不能证明地块边界和转入通行成立，具体复核见[独立创作验证复盘](references/independent-authoring.md)。
 

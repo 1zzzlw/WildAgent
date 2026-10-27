@@ -29,6 +29,7 @@ def project_drawing(document: DesignDocument) -> ResolvedDesign:
     from .coordinates import (representative_floor_indices, floor_elevations, design_geometry_context, floor_layout_conflicts,
                               design_relation_checks, opening_coordinate_errors, DesignCoordinateConflict)
     from .relations import opening_target
+    from .construction_systems import construction_spec, check_opening_bounds
     from .openings import is_open_side
     from app.agent.knowledge.component_names import resolve_component_name
 
@@ -86,6 +87,8 @@ def project_drawing(document: DesignDocument) -> ResolvedDesign:
         role = marker["design"].get("material_role")
         if role in material_ids:
             marker["material_id"] = material_ids[role]
+        if construction_spec(marker["design"]) is not None:
+            marker["construction_materials"] = material_ids
     for marker in markers:
         if marker["host"] in frames:
             marker["diagram_host"] = frames[marker["host"]]
@@ -93,6 +96,15 @@ def project_drawing(document: DesignDocument) -> ResolvedDesign:
             if (resolve_component_name(marker["type"])["entity_type"] in {"door", "window"}
                     and marker["entity"].get("position") and size.get("width") and size.get("height")):
                 marker["entity"]["from"] = opening_target(marker, marker["diagram_host"], size["width"], size["height"])
+            spec = construction_spec(marker["design"])
+            if spec is not None and spec["system"] in {"entrance", "framed_opening"}:
+                origin = opening_target(marker, marker["diagram_host"], size["width"], size["height"])
+                if origin is None:
+                    raise ValueError(f"{marker['design_path']}/placement：可执行构造缺少门窗定位")
+                try:
+                    check_opening_bounds(spec, {"type": marker["type"], "from": origin, **size}, marker["diagram_host"])
+                except ValueError as exc:
+                    raise ValueError(f"{marker['design_path']}/form/construction：{exc}") from exc
     relation_errors, relation_reviews = design_relation_checks(d.model_dump(mode="json"), markers, frames)
     relation_errors.extend({"code": "design_opening_conflict", "path": message.partition("：")[0],
                             "reason": message.partition("：")[2]}
