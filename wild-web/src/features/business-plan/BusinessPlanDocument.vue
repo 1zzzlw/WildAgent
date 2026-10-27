@@ -11,7 +11,7 @@
     <aside class="sidebar" aria-label="计划书目录">
       <div class="nav-title">CONTENTS / 阅读导航</div>
       <nav>
-        <a href="#summary" :aria-current="activeChapter === '#summary' ? 'location' : undefined"><span>01</span>项目摘要</a><a href="#problem" :aria-current="activeChapter === '#problem' ? 'location' : undefined"><span>02</span>问题与机会</a><a href="#product" :aria-current="activeChapter === '#product' ? 'location' : undefined"><span>03</span>产品与核心价值</a><a href="#showcase" :aria-current="activeChapter === '#showcase' ? 'location' : undefined"><span>04</span>近期成果展示</a><a href="#customers" :aria-current="activeChapter === '#customers' ? 'location' : undefined"><span>05</span>客户与市场切口</a><a href="#business" :aria-current="activeChapter === '#business' ? 'location' : undefined"><span>06</span>商业模式</a><a href="#advantage" :aria-current="activeChapter === '#advantage' ? 'location' : undefined"><span>07</span>竞争与长期壁垒</a><a href="#growth" :aria-current="activeChapter === '#growth' ? 'location' : undefined"><span>08</span>获客与验证</a><a href="#roadmap" :aria-current="activeChapter === '#roadmap' ? 'location' : undefined"><span>09</span>产品路线</a><a href="#finance" :aria-current="activeChapter === '#finance' ? 'location' : undefined"><span>10</span>收入与成本试算</a><a href="#team" :aria-current="activeChapter === '#team' ? 'location' : undefined"><span>11</span>团队与合作需求</a><a href="#risks" :aria-current="activeChapter === '#risks' ? 'location' : undefined"><span>12</span>不足与改进方向</a>
+        <a href="#summary" :aria-current="activeChapter === '#summary' ? 'location' : undefined"><span>01</span>项目摘要</a><a href="#problem" :aria-current="activeChapter === '#problem' ? 'location' : undefined"><span>02</span>问题与机会</a><a href="#product" :aria-current="activeChapter === '#product' ? 'location' : undefined"><span>03</span>产品与核心价值</a><a href="#showcase" :aria-current="activeChapter === '#showcase' ? 'location' : undefined"><span>04</span>近期成果展示</a><a href="#customers" :aria-current="activeChapter === '#customers' ? 'location' : undefined"><span>05</span>客户与市场切口</a><a href="#business" :aria-current="activeChapter === '#business' ? 'location' : undefined"><span>06</span>商业模式</a><a href="#advantage" :aria-current="activeChapter === '#advantage' ? 'location' : undefined"><span>07</span>竞争与长期壁垒</a><a href="#growth" :aria-current="activeChapter === '#growth' ? 'location' : undefined"><span>08</span>获客与验证</a><a href="#roadmap" :aria-current="activeChapter === '#roadmap' ? 'location' : undefined"><span>09</span>发展规划</a><a href="#finance" :aria-current="activeChapter === '#finance' ? 'location' : undefined"><span>10</span>收入与成本试算</a><a href="#team" :aria-current="activeChapter === '#team' ? 'location' : undefined"><span>11</span>团队与合作需求</a><a href="#risks" :aria-current="activeChapter === '#risks' ? 'location' : undefined"><span>12</span>能力边界</a>
       </nav>
       <div class="sidebar-foot">AI 是新的土地。<b>WILD 蓝图，是种子。</b>建筑创作 · 轻量蓝图 · 持续编辑</div>
     </aside>
@@ -64,17 +64,17 @@
         </div>
         <div class="subsection-heading"><div class="eyebrow">Design · blueprint · change</div><h3>三份数据契约，贯通从想法到持续修改</h3><p>将设计判断、建筑资产与改动提案分别保存，让人能够确认意图，让程序能够计算与检查，也让每次修改有明确的范围。</p></div>
         <div class="table-wrap"><table><thead><tr><th scope="col">契约</th><th scope="col">保存什么</th><th scope="col">对创作的意义</th></tr></thead><tbody>
-          <tr><td>DesignDocument · 设计文档</td><td>体量、层数、立面分格、屋顶、构件需求和材质意图</td><td>在落地前确认方案，区分设计意图与实际实现</td></tr>
-          <tr><td>Blueprint · WILD 蓝图</td><td>构件身份、参数、位置、依附关系与材质</td><td>形成可保存、重建、版本管理和继续编辑的资产</td></tr>
-          <tr><td>ScenePatch · 修改提案</td><td>增删改构件、调整材质等结构化操作</td><td>对话改动先经过预检与确认，应用失败时回退，减少无关变化</td></tr>
+          <tr><td data-label="契约">DesignDocument · 设计文档</td><td data-label="保存什么">体量、层数、立面分格、屋顶、构件需求和材质意图</td><td data-label="对创作的意义">在落地前确认方案，区分设计意图与实际实现</td></tr>
+          <tr><td data-label="契约">Blueprint · WILD 蓝图</td><td data-label="保存什么">构件身份、参数、位置、依附关系与材质</td><td data-label="对创作的意义">形成可保存、重建、版本管理和继续编辑的资产</td></tr>
+          <tr><td data-label="契约">ScenePatch · 修改提案</td><td data-label="保存什么">增删改构件、调整材质等结构化操作</td><td data-label="对创作的意义">对话改动先经过预检与确认，应用失败时回退，减少无关变化</td></tr>
         </tbody></table></div>
         <div class="note"><strong>例如“把这扇窗加宽”。</strong>用户可以直接调整参数，也可以提出对话修改意图。程序根据支持的构件和宿主关系检查改动，再重建相应几何；改变的是已有资产中的设计参数，作品仍可继续编辑。涉及更复杂联动的场景，需要持续补齐约束与验证。</div>
         <div class="subsection-heading"><div class="eyebrow">Product foundation &amp; delivery</div><h3>已有能力如何进入可用的产品</h3></div>
         <div class="table-wrap"><table><thead><tr><th scope="col">产品层</th><th scope="col">已有基础</th><th scope="col">对应的客户价值</th><th scope="col">商业化仍需完成</th></tr></thead><tbody>
-          <tr><td>WILD 蓝图与引擎</td><td>结构化建筑描述、组合构件编译与参数化重建</td><td>保存设计参数，便于版本管理与重复利用</td><td>兼容性承诺、版本迁移与外部接入文档</td></tr>
-          <tr><td>网页创作工作台</td><td>属性、场景树、构件库、拖拽、材质与光影操作</td><td>小修改直接完成，减少重复对话</td><td>新手引导、可靠保存、用户任务验证与支持体系</td></tr>
-          <tr><td>自研 AI 创作服务</td><td>开发中的设计审核、知识检索、执行编排与修改协作</td><td>降低入门操作成本，组织多步骤创作</td><td>真实任务通过率、单次成本与付费额度管理</td></tr>
-          <tr><td>开放与内容生态</td><td>可复用协议、构件和材质能力提供技术基础</td><td>未来可复用他人作品、构件与扩展包</td><td><span class="label idea">规划</span> 分发、授权、交易、结算及生态治理</td></tr>
+          <tr><td data-label="产品层">WILD 蓝图与引擎</td><td data-label="已有基础">结构化建筑描述、组合构件编译与参数化重建</td><td data-label="对应的客户价值">保存设计参数，便于版本管理与重复利用</td><td data-label="商业化仍需完成">兼容性承诺、版本迁移与外部接入文档</td></tr>
+          <tr><td data-label="产品层">网页创作工作台</td><td data-label="已有基础">属性、场景树、构件库、拖拽、材质与光影操作</td><td data-label="对应的客户价值">小修改直接完成，减少重复对话</td><td data-label="商业化仍需完成">新手引导、可靠保存、用户任务验证与支持体系</td></tr>
+          <tr><td data-label="产品层">自研 AI 创作服务</td><td data-label="已有基础">开发中的设计审核、知识检索、执行编排与修改协作</td><td data-label="对应的客户价值">降低入门操作成本，组织多步骤创作</td><td data-label="商业化仍需完成">真实任务通过率、单次成本与付费额度管理</td></tr>
+          <tr><td data-label="产品层">开放与内容生态</td><td data-label="已有基础">可复用协议、构件和材质能力提供技术基础</td><td data-label="对应的客户价值">未来可复用他人作品、构件与扩展包</td><td data-label="商业化仍需完成"><span class="label idea">规划</span> 分发、授权、交易、结算及生态治理</td></tr>
         </tbody></table></div>
         
       </section>
@@ -100,10 +100,10 @@
       <section class="chapter" id="customers">
         <div class="chapter-heading"><span class="chapter-num">05</span><div><div class="eyebrow">Customers & market entry</div><h2>从高频修改、边界清楚的场景进入</h2></div></div>
         <div class="table-wrap"><table><thead><tr><th scope="col">客户与优先级</th><th scope="col">首个任务</th><th scope="col">可能的付费理由</th><th scope="col">需要验证的门槛</th></tr></thead><tbody>
-          <tr><td>优先：独立场景创作者<br>与小型三维团队</td><td>制作可修改的庭院、低层住宅、街区单体；持续调整风格与材质</td><td>节省搭建与反复修改的时间，保留可复用蓝图</td><td>能否直接进入其工作流；是否接受当前构件与渲染边界</td></tr>
-          <tr><td>优先：网页三维与<br>互动展示团队</td><td>在网页中呈现、修改与交付建筑场景</td><td>轻量描述、浏览器重建，以及统一编辑入口</td><td>集成工作量、移动设备表现、版本兼容和资源总成本</td></tr>
-          <tr><td>次优先：设计教育<br>与方案表达用户</td><td>学习构件与风格，比较概念方案，完成交流演示</td><td>直观表达与迭代便利</td><td>使用频次、预算与采购周期；不依赖专业施工交付</td></tr>
-          <tr><td>后续：企业平台<br>与互动世界开发者</td><td>把蓝图和生成服务接入自有应用</td><td>可复用资产供给、定制构件和服务支持</td><td>真实接入项目、服务可靠性、授权、成本与维护责任</td></tr>
+          <tr><td data-label="客户与优先级">优先：独立场景创作者<br>与小型三维团队</td><td data-label="首个任务">制作可修改的庭院、低层住宅、街区单体；持续调整风格与材质</td><td data-label="可能的付费理由">节省搭建与反复修改的时间，保留可复用蓝图</td><td data-label="需要验证的门槛">能否直接进入其工作流；是否接受当前构件与渲染边界</td></tr>
+          <tr><td data-label="客户与优先级">优先：网页三维与<br>互动展示团队</td><td data-label="首个任务">在网页中呈现、修改与交付建筑场景</td><td data-label="可能的付费理由">轻量描述、浏览器重建，以及统一编辑入口</td><td data-label="需要验证的门槛">集成工作量、移动设备表现、版本兼容和资源总成本</td></tr>
+          <tr><td data-label="客户与优先级">次优先：设计教育<br>与方案表达用户</td><td data-label="首个任务">学习构件与风格，比较概念方案，完成交流演示</td><td data-label="可能的付费理由">直观表达与迭代便利</td><td data-label="需要验证的门槛">使用频次、预算与采购周期；不依赖专业施工交付</td></tr>
+          <tr><td data-label="客户与优先级">后续：企业平台<br>与互动世界开发者</td><td data-label="首个任务">把蓝图和生成服务接入自有应用</td><td data-label="可能的付费理由">可复用资产供给、定制构件和服务支持</td><td data-label="需要验证的门槛">真实接入项目、服务可靠性、授权、成本与维护责任</td></tr>
         </tbody></table></div>
         <div class="subsection-heading"><div class="eyebrow">Tasks people can actually use</div><h3>围绕完整任务，而非一次生成结果</h3></div>
         <div class="two-col">
@@ -129,9 +129,9 @@
       <section class="chapter" id="advantage">
         <div class="chapter-heading"><span class="chapter-num">07</span><div><div class="eyebrow">Positioning & defensibility</div><h2>差异来自资产与工作流，价值要靠使用证明</h2></div></div>
         <div class="table-wrap"><table><thead><tr><th scope="col">用户可选路线</th><th scope="col">通常关注的结果</th><th scope="col">WILD 的选择</th><th scope="col">验证重点</th></tr></thead><tbody>
-          <tr><td>成熟建模与专业建筑工具</td><td>广泛的建模能力、专业工作流与成熟生态</td><td>聚焦浏览器里的参数化建筑创作和轻量交付</td><td>在具体小型任务中能否减少操作与交接</td></tr>
-          <tr><td>AI 三维资产生成</td><td>快速获得形体或可视化资产</td><td>围绕建筑构件、参数与引用保留可修改信息</td><td>编辑与复用价值是否足以支持迁移成本</td></tr>
-          <tr><td>通用编程 Agent + 渲染代码</td><td>灵活实现自定义三维场景</td><td>将规范、引擎、校验和直接编辑沉淀在工作台</td><td>实际任务的成本、耗时与修改准确性</td></tr>
+          <tr><td data-label="用户可选路线">成熟建模与专业建筑工具</td><td data-label="通常关注的结果">广泛的建模能力、专业工作流与成熟生态</td><td data-label="WILD 的选择">聚焦浏览器里的参数化建筑创作和轻量交付</td><td data-label="验证重点">在具体小型任务中能否减少操作与交接</td></tr>
+          <tr><td data-label="用户可选路线">AI 三维资产生成</td><td data-label="通常关注的结果">快速获得形体或可视化资产</td><td data-label="WILD 的选择">围绕建筑构件、参数与引用保留可修改信息</td><td data-label="验证重点">编辑与复用价值是否足以支持迁移成本</td></tr>
+          <tr><td data-label="用户可选路线">通用编程 Agent + 渲染代码</td><td data-label="通常关注的结果">灵活实现自定义三维场景</td><td data-label="WILD 的选择">将规范、引擎、校验和直接编辑沉淀在工作台</td><td data-label="验证重点">实际任务的成本、耗时与修改准确性</td></tr>
         </tbody></table></div>
         <p class="small muted gap-top">本表按产品路线讨论取舍，不构成对特定厂商最新功能的评测。通用 Agent 也能编写 WILD；“采用专门工作流”本身不能证明效果优于其他方案。</p>
         <div class="three-col gap-top"><article class="panel"><h3>现在的积累</h3><p>统一协议、构件实现、知识与校验规则、编辑和渲染入口，形成了需要持续维护的工程资产。其价值在于一致性和复用。</p></article><article class="panel"><h3>需要形成的壁垒</h3><p>稳定的兼容性、真实任务覆盖、优质内容、外部接入与创作者复用。只有真实使用和长期维护，才能将代码能力转化为迁移成本与信任。</p></article><article class="panel"><h3>模型进步带来的位置</h3><p>设计入口可以随模型升级而改善；已有蓝图与工作流需要继续可用。保持模型可替换，把差异沉淀在资产、规则与交互体验中。</p></article></div>
@@ -148,23 +148,25 @@
         <div class="chapter-heading"><span class="chapter-num">08</span><div><div class="eyebrow">Go-to-market & validation</div><h2>以真实任务验证增长，先找到愿意留下的人</h2></div></div>
         <p class="lead">首期采用创始人直接参与的用户开发：展示完整创作过程，邀请用户带自己的任务试用，再对明确有价值的使用方式收费。下面是建议的首轮实验目标，均非已取得结果。</p>
         <div class="table-wrap"><table><thead><tr><th scope="col">阶段与动作</th><th scope="col">建议样本 / 目标</th><th scope="col">怎样判断有效</th><th scope="col">不通过时怎么调整</th></tr></thead><tbody>
-          <tr><td>访谈与问题确认</td><td>访谈 20 位目标用户；覆盖创作者与小团队</td><td>至少 10 位能描述真实近期任务及重复修改痛点</td><td>缩小场景，重新确定用户与任务</td></tr>
-          <tr><td>邀请制任务试用</td><td>招募 10–20 位设计伙伴；任务中记录失败与人工介入</td><td>能完成“创建 → 修改 → 保存 → 重开”的完整任务</td><td>先修复阻塞，不以注册量替代完成率</td></tr>
-          <tr><td>付费试点</td><td>争取 3–5 个明确范围的付费项目或订阅意向转化</td><td>客户按约定验收付款，人工交付成本可记录</td><td>检查价值、边界、定价或服务成本</td></tr>
-          <tr><td>留存与可重复收入</td><td>至少观察连续 2 个付费周期</td><td>复用与续费发生，单位贡献为正，人工投入趋于可控</td><td>暂缓扩大投放，优先修复留存原因</td></tr>
+          <tr><td data-label="阶段与动作">访谈与问题确认</td><td data-label="建议样本 / 目标">访谈 20 位目标用户；覆盖创作者与小团队</td><td data-label="怎样判断有效">至少 10 位能描述真实近期任务及重复修改痛点</td><td data-label="不通过时怎么调整">缩小场景，重新确定用户与任务</td></tr>
+          <tr><td data-label="阶段与动作">邀请制任务试用</td><td data-label="建议样本 / 目标">招募 10–20 位设计伙伴；任务中记录失败与人工介入</td><td data-label="怎样判断有效">能完成“创建 → 修改 → 保存 → 重开”的完整任务</td><td data-label="不通过时怎么调整">先修复阻塞，不以注册量替代完成率</td></tr>
+          <tr><td data-label="阶段与动作">付费试点</td><td data-label="建议样本 / 目标">争取 3–5 个明确范围的付费项目或订阅意向转化</td><td data-label="怎样判断有效">客户按约定验收付款，人工交付成本可记录</td><td data-label="不通过时怎么调整">检查价值、边界、定价或服务成本</td></tr>
+          <tr><td data-label="阶段与动作">留存与可重复收入</td><td data-label="建议样本 / 目标">至少观察连续 2 个付费周期</td><td data-label="怎样判断有效">复用与续费发生，单位贡献为正，人工投入趋于可控</td><td data-label="不通过时怎么调整">暂缓扩大投放，优先修复留存原因</td></tr>
         </tbody></table></div>
         <div class="two-col gap-top"><article class="panel"><h3>首批用户从哪里来</h3><p>通过代码仓库、演示站、建筑与三维创作者社群发布任务型演示：展示“同一座建筑如何改三次”，同时提供可体验的蓝图。与独立开发者、网页展示团队建立小规模试点。</p></article><article class="panel"><h3>核心指标怎么定义</h3><p>激活：用户独立完成并重开一个作品。任务成功：格式、空间关系和实际渲染通过，且满足用户验收。留存：按用户批次统计下一周期再次创作与续费；同时记录每次成功交付的全成本。</p></article></div>
       </section>
 
       <section class="chapter" id="roadmap">
-        <div class="chapter-heading"><span class="chapter-num">09</span><div><div class="eyebrow">Roadmap & gates</div><h2>先把工作台做稳，再让生态生长</h2></div></div>
+        <div class="chapter-heading"><span class="chapter-num">09</span><div><div class="eyebrow">Roadmap & gates</div><h2>发展规划：从可用工作台到创作生态</h2></div></div>
         <p class="small muted">相对周期自正式启动商业验证起算，属于建议计划；需按团队资源和试点结果调整。</p><div class="subsection-heading"><div class="eyebrow">Where this can grow</div><h3>发展前景：资产可以脱离一次生成，持续创造价值</h3></div><div class="two-col"><article class="panel"><h3>建筑与场景创作工作台</h3><p>将生成后的调参、拖拽、材质和光影操作做得可靠，逐步补齐批量替换、阵列和楼层复用。价值来自持续创作效率，需要通过实际任务验证。</p></article><article class="panel"><h3>面向应用的轻量资产供给</h3><p>向网页展示、互动叙事、教育和场景平台提供可编辑建筑。以版本化协议和引擎接入为基础，验证跨应用传递和重复使用的价值。</p></article><article class="panel"><h3>构件、风格与材质内容</h3><p>将已有材料与形态能力发展为可制作、预览、保存和分享的扩展包，让创作者积累可复用内容。交易和分发机制在真实复用形成后建设。</p></article><article class="panel"><h3>更开放的互动世界</h3><p>在建筑可编辑、操作可靠的基础上，探索漫游、互动设备、角色行为与持续变化的场景。长期价值依赖状态、权限、性能与内容治理能力逐步成熟。</p></article></div>
         <div class="subsection-heading"><div class="eyebrow">From built-in capability to creator tools</div><h3>让已有底层能力，逐步成为创作者可以使用的工具</h3><p>风格配置、材质运行时、光影参数和世界包提供了扩展基础。下一步的重点，是把这些能力整理成可制作、预览、保存和复用的内容流程。下表中的产品化工作仍属于规划。</p></div>
-        <div class="table-wrap"><table><thead><tr><th scope="col">已有基础</th><th scope="col">规划中的产品形态</th><th scope="col">需要补齐</th></tr></thead><tbody>
-          <tr><td>形态与风格配置</td><td>由创作者制作和分享风格扩展包</td><td>编辑入口、参数范围、版本管理及使用说明</td></tr>
-          <tr><td>程序化材质与 PBR 资源</td><td>独立保存、预览、导入与复用材质配方</td><td>制作流程、引用兼容、授权与资源管理</td></tr>
-          <tr><td>环境、时段与光影参数</td><td>可命名的光影方案，在同一建筑上切换效果</td><td>持久化、组合规则和一致机位下的效果预览</td></tr>
-          <tr><td>世界包解析与应用基础</td><td>建筑与外观内容一起交付给应用</td><td>覆盖顺序、迁移策略、外部集成和性能验证</td></tr>
+        <div class="table-wrap"><table><thead><tr><th scope="col">发展方向</th><th scope="col">已有基础</th><th scope="col">规划中的交付与验收重点</th></tr></thead><tbody>
+          <tr><td data-label="发展方向">光影扩展包 <span class="label idea">规划</span></td><td data-label="已有基础">已有环境、时段、曝光、阴影与后期参数</td><td data-label="规划中的交付与验收重点">把调整结果保存为可命名、可版本化的方案；明确与世界包、当前设置的合并规则，支持导入后重现效果</td></tr>
+          <tr><td data-label="发展方向">材质扩展包 <span class="label idea">规划</span></td><td data-label="已有基础">已有程序化材质、PBR 参数及独立渲染运行时</td><td data-label="规划中的交付与验收重点">将配方保存为可编辑资产；检查参数合法范围、蓝图引用和资源授权，使材质能在不同作品间复用</td></tr>
+          <tr><td data-label="发展方向">扩展制作页面 <span class="label idea">规划</span></td><td data-label="已有基础">已有形态配置、材质与光影能力</td><td data-label="规划中的交付与验收重点">提供参数表单与独立预览，支持创建、保存、导入、导出与本地管理；制作过程不影响正在编辑的建筑</td></tr>
+          <tr><td data-label="发展方向">世界导入与效果预览 <span class="label idea">规划</span></td><td data-label="已有基础">已有世界包解析、资源寻址与应用基础</td><td data-label="规划中的交付与验收重点">在相同机位下切换光影和材质方案；定义多包覆盖顺序、版本兼容与增量更新，便于比较和选择</td></tr>
+          <tr><td data-label="发展方向">建筑编辑增强 <span class="label idea">规划</span></td><td data-label="已有基础">已有拖拽、参数调节、构件增删和结构化修改提案</td><td data-label="规划中的交付与验收重点">逐步补齐对齐、阵列、批量替换、楼层复制和多选联动；统一撤销与事务边界，让整体参数修改有一致的作用范围</td></tr>
+          <tr><td data-label="发展方向">生成稳定性收敛 <span class="label idea">规划</span></td><td data-label="已有基础">已有生成记录、校验反馈与构件实现基础</td><td data-label="规划中的交付与验收重点">建立固定任务集和失败分类；优先用确定性算法接管宿主解析、立面分格和坐标推导，分别统计通过率、人工介入与交付成本</td></tr>
         </tbody></table></div>
         <div class="timeline">
           <article class="milestone"><span class="period">0–3 MONTHS</span><h3>验证可用与需求</h3><p>限定建筑范围，建立真实任务评测；完善首次体验、保存重开与问题反馈。完成用户访谈和邀请试用，测量生成成本、人工介入及任务完成情况。</p><div class="gate"><strong>进入下一阶段：</strong>关键任务可复现，3–5 个用户或项目出现真实付费，失败原因可归类。</div></article>
@@ -206,15 +208,31 @@
       </section>
 
       <section class="chapter" id="risks">
-        <div class="chapter-heading"><span class="chapter-num">12</span><div><div class="eyebrow">Limitations & next steps</div><h2>承认当前不足，把下一步做扎实</h2></div></div><div class="two-col gap-top"><article class="panel"><h3>自研 Agent 的效果与投入</h3><p>目前受研发资源限制，自研 Agent 在复杂设计、稳定执行和成品一致性上仍落后于成熟智能体。优先完善可计算的坐标、关系与校验，把模型能力集中在设计判断。</p></article><article class="panel"><h3>从单件编辑到生产效率</h3><p>工作台已有直接操作基础，批量对齐、阵列、楼层复制与参数层级仍需逐步补齐。完整工程图纸、结构计算和法规审查不在当前交付范围内。</p></article><article class="panel"><h3>实时画质与表达边界</h3><p>当前采用实时光栅化渲染。家具和植被仍有简化形体，程序纹理不等于真实几何起伏；全局照明、焦散与扫描级细节需要额外能力。小文件也不能直接保证低渲染成本。</p></article><article class="panel"><h3>产品化与生态仍需验证</h3><p>托管服务、计费、团队协作、外部兼容和内容授权需要完善。用户是否持续使用、是否愿意付费，以及支持成本能否控制，需要实际商业试点回答。</p></article></div>
+        <div class="chapter-heading"><span class="chapter-num">12</span><div><div class="eyebrow">Limitations & next steps</div><h2>能力边界：明确支持与交付范围</h2></div></div><div class="two-col gap-top"><article class="panel"><h3>自研 Agent 的效果与投入</h3><p>目前受研发资源限制，自研 Agent 在复杂设计、稳定执行和成品一致性上仍落后于成熟智能体。优先完善可计算的坐标、关系与校验，把模型能力集中在设计判断。</p></article><article class="panel"><h3>从单件编辑到生产效率</h3><p>工作台已有直接操作基础，批量对齐、阵列、楼层复制与参数层级仍需逐步补齐。完整工程图纸、结构计算和法规审查不在当前交付范围内。</p></article><article class="panel"><h3>实时画质与表达边界</h3><p>当前采用实时光栅化渲染。家具和植被仍有简化形体，程序纹理不等于真实几何起伏；全局照明、焦散与扫描级细节需要额外能力。小文件也不能直接保证低渲染成本。</p></article><article class="panel"><h3>产品化与生态仍需验证</h3><p>托管服务、计费、团队协作、外部兼容和内容授权需要完善。用户是否持续使用、是否愿意付费，以及支持成本能否控制，需要实际商业试点回答。</p></article></div>
+        <div class="subsection-heading"><div class="eyebrow">Expression, reconstruction &amp; generation</div><h3>把表达能力与自动生成稳定性分开看</h3><p>WILD 蓝图能保存的细节、引擎能重建的形态，以及自研 Agent 能稳定完成的设计，是三个不同层面。成熟智能体、人工和脚本可以创作丰富蓝图；自研 Agent 的复杂任务仍在持续收敛，已有作品的渲染效果不能直接视为一次自动生成的成功率。</p></div>
+        <div class="table-wrap"><table><thead><tr><th scope="col">自研 Agent 粒度</th><th scope="col">目标生成范围</th><th scope="col">当前边界与完善重点</th></tr></thead><tbody>
+          <tr><td data-label="自研 Agent 粒度">低 · minimal</td><td data-label="目标生成范围">建筑主体、必要门窗、屋顶、楼梯与基础照明</td><td data-label="当前边界与完善重点">作为基础链路的优先交付范围，具体任务仍需校验、渲染和人工确认</td></tr>
+          <tr><td data-label="自研 Agent 粒度">中 · simple</td><td data-label="目标生成范围">进一步加入阳台、露台、雨棚、栏杆和入口构件</td><td data-label="当前边界与完善重点">复杂体量中的附属构件宿主、位置和立面槽位仍可能冲突，尚需收敛稳定性</td></tr>
+          <tr><td data-label="自研 Agent 粒度">高 · standard</td><td data-label="目标生成范围">开口分格、檐口、门廊、柱饰、屋面节点与分层材质</td><td data-label="当前边界与完善重点">设计字段与构件实现的对应关系需要继续完善，不能承诺所有细节组合都能稳定落地</td></tr>
+          <tr><td data-label="自研 Agent 粒度">极高 · detailed</td><td data-label="目标生成范围">进一步表达室内空间、通行、家具陈设与室内外照明</td><td data-label="当前边界与完善重点">目标范围与实际支持能力分开判断；室内对象的坐标、归属与自动布局尚不足以作为稳定交付承诺</td></tr>
+        </tbody></table></div>
+        <div class="note"><strong>直接编辑已有基础。</strong>三轴拖拽、属性调参、场景树与构件库增删，以及对话触发的结构化修改提案，构成持续创作的现有入口。小修改可以直接操作；更复杂的批量、对齐和整体参数联动属于后续编辑增强规划。</div>
+        <div class="subsection-heading"><div class="eyebrow">Explicit delivery boundaries</div><h3>当前暂不承诺的自动设计与交付类型</h3></div>
+        <div class="table-wrap"><table><thead><tr><th scope="col">能力边界</th><th scope="col">当前说明</th></tr></thead><tbody>
+          <tr><td data-label="能力边界">自动房间平面与功能布局</td><td data-label="当前说明">不承诺自动完成房间位置、功能分区和内部隔墙规划。蓝图能够表达室内构件与家具，不等于自研 Agent 已具备完整的房间布局能力</td></tr>
+          <tr><td data-label="能力边界">自动场地语义规划</td><td data-label="当前说明">车库、后院、花园等空间的功能划分仍有缺口；庭院和景观构件可以在蓝图中表达，完整自动场地规划需要进一步建设</td></tr>
+          <tr><td data-label="能力边界">二维平面图与剖面图交付</td><td data-label="当前说明">当前以三维蓝图、渲染与设计表达为主，不能将已有体量或立面示意当作专业平剖面和施工图交付</td></tr>
+          <tr><td data-label="能力边界">任意有机造型与扫描级细节</td><td data-label="当前说明">任意复杂曲面、扫描网格和真实复杂人物超出当前参数化构件的通用覆盖；需要新增相应几何、资源与校验能力</td></tr>
+        </tbody></table></div>
+        <div class="subsection-heading"><div class="eyebrow">Risks &amp; validation</div><h3>把能力边界转化为明确的验证任务</h3></div>
         <div class="table-wrap"><table><thead><tr><th scope="col">关键风险</th><th scope="col">当前判断</th><th scope="col">控制与验证</th></tr></thead><tbody>
-          <tr><td>复杂生成质量不稳定</td><td>精细渲染样例不等于复杂任务稳定自动交付</td><td>限定支持范围；分别统计结构、空间、渲染和用户验收；记录人工介入</td></tr>
-          <tr><td>需求与付费不足</td><td>付费转化与跨周期留存尚未充分验证</td><td>真实任务访谈、有限付费试点与跨周期续费验证</td></tr>
-          <tr><td>成本随用量上升</td><td>AI 调用、失败重试和支持会影响单位贡献</td><td>按质量档设额度；监测成功交付成本；超额计费前验证价格接受度</td></tr>
-          <tr><td>格式采用与兼容</td><td>自定义协议需要外部工具愿意接入</td><td>版本化规范、兼容测试、迁移策略与首个真实外部应用</td></tr>
-          <tr><td>设备性能与资产总成本</td><td>蓝图小不代表展开后网格、贴图或运行成本小</td><td>同时测文件体积、外部资源、首屏、内存与目标设备交互表现</td></tr>
-          <tr><td>许可与内容权利</td><td>拟开放范围及第三方素材商业授权仍需核对</td><td>上线前明确许可证、资源清单、作品授权及平台内容规则</td></tr>
-          <tr><td>团队与范围失控</td><td>独立开发资源有限，远景容易分散投入</td><td>先完成工作台与商业验证；社区交易、自主世界按里程碑启动</td></tr>
+          <tr><td data-label="关键风险">复杂生成质量不稳定</td><td data-label="当前判断">精细渲染样例不等于复杂任务稳定自动交付</td><td data-label="控制与验证">限定支持范围；分别统计结构、空间、渲染和用户验收；记录人工介入</td></tr>
+          <tr><td data-label="关键风险">需求与付费不足</td><td data-label="当前判断">付费转化与跨周期留存尚未充分验证</td><td data-label="控制与验证">真实任务访谈、有限付费试点与跨周期续费验证</td></tr>
+          <tr><td data-label="关键风险">成本随用量上升</td><td data-label="当前判断">AI 调用、失败重试和支持会影响单位贡献</td><td data-label="控制与验证">按质量档设额度；监测成功交付成本；超额计费前验证价格接受度</td></tr>
+          <tr><td data-label="关键风险">格式采用与兼容</td><td data-label="当前判断">自定义协议需要外部工具愿意接入</td><td data-label="控制与验证">版本化规范、兼容测试、迁移策略与首个真实外部应用</td></tr>
+          <tr><td data-label="关键风险">设备性能与资产总成本</td><td data-label="当前判断">蓝图小不代表展开后网格、贴图或运行成本小</td><td data-label="控制与验证">同时测文件体积、外部资源、首屏、内存与目标设备交互表现</td></tr>
+          <tr><td data-label="关键风险">许可与内容权利</td><td data-label="当前判断">拟开放范围及第三方素材商业授权仍需核对</td><td data-label="控制与验证">上线前明确许可证、资源清单、作品授权及平台内容规则</td></tr>
+          <tr><td data-label="关键风险">团队与范围失控</td><td data-label="当前判断">独立开发资源有限，远景容易分散投入</td><td data-label="控制与验证">先完成工作台与商业验证；社区交易、自主世界按里程碑启动</td></tr>
         </tbody></table></div>
         <div class="note"><strong>商业化前需要验证：</strong>负责人和公司主体、项目许可与资源授权、核心任务真实完成率、付费客户与留存、按任务统计的成本、月度现金预算及融资目标。相关指标将随试点与产品进展持续完善。</div>
         <div class="endline">从一份可编辑的蓝图，<br>长出更多可以被创造的世界。</div>
@@ -500,4 +518,22 @@ onBeforeUnmount(() => {
 .business-plan-page{color-scheme:inherit}.home-link{display:inline-flex;align-items:center;padding:7px 13px;border:1px solid var(--studio-accent-border);border-radius:3px;font-size:12px;color:var(--green);text-decoration:none;white-space:nowrap}.project-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:26px 22px;margin-top:28px}.project-case{min-width:0;padding:20px 0 22px}.project-heading{align-items:flex-start;gap:12px}.project-heading h3{font-size:20px;line-height:1.6}.project-size{display:flex;flex-direction:column;align-items:flex-end;font-size:15px;padding-top:5px}.project-story{font-size:12px;min-height:65px;margin:7px 0 15px!important}.project-main img,.project-detail img{width:100%;height:auto;object-fit:contain;aspect-ratio:auto}.project-main figcaption{padding:8px 0 11px}.more-views{border-top:1px solid var(--line);padding-top:9px}.more-views summary{font-size:11px;color:var(--green);cursor:pointer}.more-views[open] .project-detail{margin-top:12px}.interior-gallery{grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.interior-gallery figcaption{display:block;line-height:1.8}.interior-gallery figcaption span{display:block}@media(max-width:640px){.project-grid{grid-template-columns:1fr}.project-story{min-height:0}.interior-gallery{grid-template-columns:1fr}.project-heading h3{font-size:21px}}@media print{.project-grid{display:grid;grid-template-columns:1fr 1fr}.project-case{break-before:auto;break-inside:avoid}.more-views{display:none}.project-main img{max-height:80mm}.interior-gallery{grid-template-columns:1fr 1fr}}
 
 @media print{.business-plan-page{--paper:#fff;--white:#fff;--ink:#202e2a;--muted:#64736c;--green:#294c3d;--soft:#e6ebe1;--line:#d7dcd2;--orange:#bf603c;--on-accent:#fff;color-scheme:light}.note.warm,.label.idea{background:#f5e9dc;color:#994d32}}
+
+@media screen and (max-width:640px){
+ .business-plan-page{scroll-padding-top:124px}
+ .chapter{scroll-margin-top:0}
+ .home-link{min-height:40px;padding:8px 12px}
+ .sidebar nav a{min-height:40px;align-items:center}
+ .project-heading>div{min-width:0}
+ .table-wrap{overflow:visible}
+ .table-wrap table,.table-wrap.narrow table{display:block;min-width:0;width:100%;font-size:12px}
+ .table-wrap thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+ .table-wrap tbody{display:grid;gap:12px}
+ .table-wrap tr{display:block;border:1px solid var(--line);border-radius:4px;background:var(--white);overflow:hidden}
+ .table-wrap td{display:block;max-width:100%;padding:11px 14px;overflow-wrap:anywhere}
+ .table-wrap td:first-child{background:var(--soft)}
+ .table-wrap td:last-child{border-bottom:0}
+ .table-wrap td::before{content:attr(data-label);display:block;margin-bottom:4px;color:var(--muted);font-size:10px;font-weight:500}
+}
+@media screen{.business-plan-page{position:fixed;inset:0}}
 </style>
