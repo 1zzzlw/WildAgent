@@ -1,1 +1,0 @@
-/components/0/form：stair_1 每跑 rises×riser_height 与实际半层高差 1.95 不符

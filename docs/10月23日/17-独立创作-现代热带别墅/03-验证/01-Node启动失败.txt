@@ -1,1 +1,0 @@
-第一次 Core 命令退出 1，Node 初始化 Assertion failed: ncrypto::CSPRNG(nullptr, 0)。检查发现进程缺少 SystemRoot/WINDIR；修复为 [Environment]::GetFolderPath(Windows) 返回的 C:/Windows 后 node -e 正常。未改任何项目源码。

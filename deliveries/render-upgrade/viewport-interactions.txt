@@ -1,4 +1,0 @@
-PASS initial world time, repeat noon selection, day/sunset/night switching
-PASS environment icons match each preset and current category
-PASS click highlight, double-click gizmo, native/component drag, undo, multiselect, mode and blank/orbit reset
-PASS FPS icon/number centered at desktop and compact sizes; no runtime/shader errors

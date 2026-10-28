@@ -1,4 +1,0 @@
-interface:
-  display_name: "WILD 建筑蓝图创作"
-  short_description: "根据需求或参考图片原创设计丰富建筑，生成WILD并按实际能力校验和看图修订"
-  default_prompt: "使用 $wild-blueprint-authoring，根据我的建筑需求重新设计空间、构造和材料，交付完整自足的WILD，并执行当前环境可用的检查与真实渲染。"

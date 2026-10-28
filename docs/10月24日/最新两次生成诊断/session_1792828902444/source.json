@@ -1,9 +1,0 @@
-{
-  "session_id": "session_1792828902444",
-  "request_id": "req_1792828910741_tfntshsit",
-  "checkpoint_id": "1f1cf8d3-bd4d-6a9c-800f-347daffe4379",
-  "session_file": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\sessions\\session_1792828902444.json",
-  "trace_file": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\sessions\\rag_traces\\session_1792828902444\\req_1792828910741_tfntshsit.json",
-  "read_only": true,
-  "new_model_calls": 0
-}
