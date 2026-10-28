@@ -31,11 +31,11 @@
 
       <section class="chapter" id="summary">
         <div class="chapter-heading"><span class="chapter-num">01</span><div><div class="eyebrow">Executive summary</div><h2>用一份蓝图，连接创作与交付</h2></div></div>
-        <p class="lead">WILD（旷野）基于现有 WildAgent 项目，围绕“小体积蓝图表达丰富建筑”构建建筑创作与展示工作台。成熟智能体可以依据项目文档、蓝图语言和示例编写 WILD，再由引擎重建并进入编辑。项目希望把“生成一张好看的结果”推进为“得到一份可以继续使用的建筑资产”：既能在浏览器中呈现，也能按构件修改、保存和复用。</p>
+        <p class="lead">WILD（旷野）基于现有 WildAgent 项目，围绕“小体积蓝图表达丰富建筑”构建建筑创作与展示工作台，将游戏与互动场景中的轻量建筑资产供给作为主要应用方向。成熟智能体可以依据项目文档、蓝图语言和示例编写 WILD，再由引擎重建并进入编辑。项目希望把“生成一张好看的结果”推进为“得到一份可以继续使用的建筑资产”：既能在浏览器中呈现，也能按构件修改、保存和复用，并通过目标游戏引擎适配进入实际场景。</p>
         <div class="brand-story"><div class="eyebrow">WILD / Wild Iterative Language for Design</div><h3>旷野 · 迭代 · 设计语言</h3><p>“旷野”代表不被模板固化的自由创作：让 AI 提出独立的建筑设计，让人可以持续修改与完善。<span class="mono">.wild</span> 是承载设计的蓝图文件后缀。</p><div class="brand-letters"><div><b>W</b><span><strong>Write</strong> 写蓝图</span></div><div><b>I</b><span><strong>Iterate</strong> 迭代 · 联动重算</span></div><div><b>L</b><span><strong>Learn</strong> 读入 · 学习与校验</span></div><div><b>D</b><span><strong>Design</strong> 设计</span></div></div><p class="brand-footnote">四个词表达品牌理念；实际创作先明确设计，再写入蓝图、校验和迭代。</p></div>
         <div class="three-col">
           <article class="panel"><div class="eyebrow">The foundation</div><h3>核心资产是什么</h3><p>WILD 蓝图语言、自研参数化几何与编译引擎，以及网页渲染编辑工作台。成熟智能体、人工与脚本都可依据规范创作，自研 Agent 同步迭代。 </p></article>
-          <article class="panel"><div class="eyebrow">The first market</div><h3>先服务谁</h3><p>建议先面向独立场景创作者、小型三维团队和网页互动项目：他们需要可反复修改的建筑，愿意接受明确的构件范围，交付不依赖施工图与工程计算。</p></article>
+          <article class="panel"><div class="eyebrow">The first market</div><h3>先服务谁</h3><p>优先面向独立游戏开发者、小型游戏场景团队与网页互动项目，先验证单体建筑的制作、接入和持续修改，再扩展到街区与更多建筑变体。交付范围由支持的构件、目标引擎与设备预算共同确定。</p></article>
           <article class="panel"><div class="eyebrow">The business</div><h3>如何形成收入</h3><p>先验证托管工作台订阅与有边界的项目试点；待复用与留存成立，再拓展团队协作、API 服务和创作者内容交易。商业模式与价格均为本稿建议。</p></article>
         </div>
         <div class="statement"><p>土地是 AI 时代，种子是 WILD 蓝图。<br>近期让种子可用，长期让更多人参与创造。</p><div class="small">从可编辑的建筑出发，逐步探索内容社区、互动场景与更开放的创作生态。</div></div>
@@ -98,9 +98,10 @@
 </section>
 
       <section class="chapter" id="customers">
-        <div class="chapter-heading"><span class="chapter-num">05</span><div><div class="eyebrow">Customers & market entry</div><h2>从高频修改、边界清楚的场景进入</h2></div></div>
+        <div class="chapter-heading"><span class="chapter-num">05</span><div><div class="eyebrow">Customers & market entry</div><h2>优先进入游戏与互动场景的建筑资产工作流</h2></div></div>
+        <p class="lead">主要验证方向，是让开发者用小体积 WILD 保存和分发丰富建筑，在目标场景重建、复用与修改。先把一栋建筑的接入做完整，再逐步验证重复建筑和街区规模；游戏引擎适配与性能收益需要实际项目证明。</p>
         <div class="table-wrap"><table><thead><tr><th scope="col">客户与优先级</th><th scope="col">首个任务</th><th scope="col">可能的付费理由</th><th scope="col">需要验证的门槛</th></tr></thead><tbody>
-          <tr><td data-label="客户与优先级">优先：独立场景创作者<br>与小型三维团队</td><td data-label="首个任务">制作可修改的庭院、低层住宅、街区单体；持续调整风格与材质</td><td data-label="可能的付费理由">节省搭建与反复修改的时间，保留可复用蓝图</td><td data-label="需要验证的门槛">能否直接进入其工作流；是否接受当前构件与渲染边界</td></tr>
+          <tr><td data-label="客户与优先级">首要：独立游戏开发者<br>与小型游戏场景团队</td><td data-label="首个任务">把可修改的住宅、庭院或街区单体接入一个真实游戏场景</td><td data-label="可能的付费理由">轻量建筑分发、参数变体与重复利用，减少制作和更新工作量</td><td data-label="需要验证的门槛">目标引擎适配、材质一致性、碰撞与交互，以及目标设备上的完整资源与帧时间预算</td></tr>
           <tr><td data-label="客户与优先级">优先：网页三维与<br>互动展示团队</td><td data-label="首个任务">在网页中呈现、修改与交付建筑场景</td><td data-label="可能的付费理由">轻量描述、浏览器重建，以及统一编辑入口</td><td data-label="需要验证的门槛">集成工作量、移动设备表现、版本兼容和资源总成本</td></tr>
           <tr><td data-label="客户与优先级">次优先：设计教育<br>与方案表达用户</td><td data-label="首个任务">学习构件与风格，比较概念方案，完成交流演示</td><td data-label="可能的付费理由">直观表达与迭代便利</td><td data-label="需要验证的门槛">使用频次、预算与采购周期；不依赖专业施工交付</td></tr>
           <tr><td data-label="客户与优先级">后续：企业平台<br>与互动世界开发者</td><td data-label="首个任务">把蓝图和生成服务接入自有应用</td><td data-label="可能的付费理由">可复用资产供给、定制构件和服务支持</td><td data-label="需要验证的门槛">真实接入项目、服务可靠性、授权、成本与维护责任</td></tr>
@@ -108,8 +109,16 @@
         <div class="subsection-heading"><div class="eyebrow">Tasks people can actually use</div><h3>围绕完整任务，而非一次生成结果</h3></div>
         <div class="two-col">
           <article class="panel"><h3>方案交流与设计学习</h3><p>在相同视角和光照下，比较体量、立面节奏、屋顶与材料；保留每个方案的蓝图，继续调参和讲解。适合概念阶段的讨论、教学与创作演示，工程结构和施工图仍由专业流程承担。</p></article>
-          <article class="panel"><h3>从单体建筑到场景内容</h3><p>住宅、咖啡空间、展馆和亭榭可以作为展示内容；家具、器物与景观构件也能沿用参数化描述和材质能力。街区、游戏或互动叙事是后续应用方向，需验证场景规模、外部接入和交互需求。</p></article>
+          <article class="panel"><h3>从单体建筑到游戏场景</h3><p>优先用住宅、咖啡空间、展馆和亭榭完成实际游戏接入，再验证街区、建筑变体与互动叙事。家具、器物与景观构件可以沿用参数化表达；场景规模、碰撞、导航与交互仍需分别建设和验收。</p></article>
         </div>
+        <div class="subsection-heading"><div class="eyebrow">Compact blueprints for game worlds</div><h3>把小蓝图的优势，落实为游戏中的资产收益</h3><p>WILD 将尺寸、构件关系和材质参数保留为轻量描述，共用构件规则在加载时重建几何。它为建筑变体、内容更新和按需加载提供基础；资产包还应计入共用运行时、纹理与其他外部资源。</p></div>
+        <div class="table-wrap"><table><thead><tr><th scope="col">收益层面</th><th scope="col">轻量蓝图能带来什么</th><th scope="col">仍取决于什么</th></tr></thead><tbody>
+          <tr><td data-label="收益层面">存储与网络传输</td><td data-label="轻量蓝图能带来什么">对于适合参数化描述的建筑，用紧凑参数保存细节，有利于缩小建筑数据、分发变体和传递更新</td><td data-label="仍取决于什么">比较完整资源包与共享资源摊销；蓝图变小并不代表纹理、运行时和资源缓存同时变小</td></tr>
+          <tr><td data-label="收益层面">内存与显存</td><td data-label="轻量蓝图能带来什么">让建筑在需要时重建，为共享几何、共享材质、缓存复用和离开区域后卸载提供组织基础</td><td data-label="仍取决于什么">实际展开的顶点、索引、纹理、缓存副本及资源生命周期。若最终几何与材质相同，仅改变源文件表达方式不会自动降低运行占用</td></tr>
+          <tr><td data-label="收益层面">帧率与场景规模</td><td data-label="轻量蓝图能带来什么">构件与参数信息便于规划重复对象实例化、空间分块，以及近景精细、远景简化的细节分级</td><td data-label="仍取决于什么">绘制次数、可见面数、着色与阴影成本、剔除和更新策略。这些优化需逐项实现与实测，文件小不能单独证明帧率更高</td></tr>
+          <tr><td data-label="收益层面">加载与首次呈现</td><td data-label="轻量蓝图能带来什么">减少需要传输的建筑描述，并支持将重建工作按区域或时机安排</td><td data-label="仍取决于什么">解析、构件编译、几何生成和 GPU 上传仍需时间；应一起测下载、重建、首帧及加载时的卡顿</td></tr>
+        </tbody></table></div>
+        <div class="two-col gap-top"><article class="panel"><h3>游戏接入的实施重点</h3><p>已有独立 Core 可以输出网格与材质参数。下一步先选择一个目标引擎，完成几何、材质、坐标、碰撞与交互适配，再按实际瓶颈完善共享缓存、重复构件实例化、按需加载与卸载，以及细节分级。</p><p>这些属于游戏交付的待完善工作，当前网页渲染能力仅作为接入基础。</p></article><article class="panel"><h3>性能收益怎样验收</h3><p>使用单栋、重复建筑和街区三类场景，在相同设备、视角与相近视觉质量下，记录完整下载量、重建耗时、首帧、加载峰值与稳定内存、可测的显存资源、绘制次数和帧时间。</p><p>同时核对碰撞、导航与修改后的行为。以完整运行数据判断收益，不预设节省比例，也不以源文件大小代替运行成本。</p></article></div>
         <p class="decision">首个付费承诺建议：“在约定建筑类型与复杂度内，交付可加载、可修改、可再次打开的 WILD 场景。”先通过试点明确支持范围，再谈规模。</p>
         <div class="two-col gap-top"><article class="panel"><h3>可触达市场的测量方法</h3><p>先建立目标团队名录，核实每月相关任务量、现有工具费用、决策人和付费意愿。以“可触达团队数 × 可接受月费”形成首期收入空间测算，并记录访谈依据。</p></article><article class="panel"><h3>不把远景当作首期市场</h3><p>专业 BIM、施工图与结构计算要求更完整的专业能力和责任体系。自主数字世界需要额外的角色、行为与持续状态系统；本稿将其放在远期拓展阶段。</p></article></div>
       </section>
@@ -131,10 +140,23 @@
         <div class="table-wrap"><table><thead><tr><th scope="col">用户可选路线</th><th scope="col">通常关注的结果</th><th scope="col">WILD 的选择</th><th scope="col">验证重点</th></tr></thead><tbody>
           <tr><td data-label="用户可选路线">成熟建模与专业建筑工具</td><td data-label="通常关注的结果">广泛的建模能力、专业工作流与成熟生态</td><td data-label="WILD 的选择">聚焦浏览器里的参数化建筑创作和轻量交付</td><td data-label="验证重点">在具体小型任务中能否减少操作与交接</td></tr>
           <tr><td data-label="用户可选路线">AI 三维资产生成</td><td data-label="通常关注的结果">快速获得形体或可视化资产</td><td data-label="WILD 的选择">围绕建筑构件、参数与引用保留可修改信息</td><td data-label="验证重点">编辑与复用价值是否足以支持迁移成本</td></tr>
-          <tr><td data-label="用户可选路线">通用编程 Agent + 渲染代码</td><td data-label="通常关注的结果">灵活实现自定义三维场景</td><td data-label="WILD 的选择">将规范、引擎、校验和直接编辑沉淀在工作台</td><td data-label="验证重点">实际任务的成本、耗时与修改准确性</td></tr>
+          <tr><td data-label="用户可选路线">通用编程 Agent + WILD / 场景代码</td><td data-label="通常关注的结果">读取规范和示例，创作蓝图或自定义三维场景</td><td data-label="WILD 的选择">将规范、引擎、校验和直接编辑沉淀在工作台</td><td data-label="验证重点">实际任务的成品质量、成本、耗时与修改准确性</td></tr>
         </tbody></table></div>
         <p class="small muted gap-top">本表按产品路线讨论取舍，不构成对特定厂商最新功能的评测。通用 Agent 也能编写 WILD；“采用专门工作流”本身不能证明效果优于其他方案。</p>
-        <div class="three-col gap-top"><article class="panel"><h3>现在的积累</h3><p>统一协议、构件实现、知识与校验规则、编辑和渲染入口，形成了需要持续维护的工程资产。其价值在于一致性和复用。</p></article><article class="panel"><h3>需要形成的壁垒</h3><p>稳定的兼容性、真实任务覆盖、优质内容、外部接入与创作者复用。只有真实使用和长期维护，才能将代码能力转化为迁移成本与信任。</p></article><article class="panel"><h3>模型进步带来的位置</h3><p>设计入口可以随模型升级而改善；已有蓝图与工作流需要继续可用。保持模型可替换，把差异沉淀在资产、规则与交互体验中。</p></article></div>
+        <div class="subsection-heading"><div class="eyebrow">Architectural modeling · feature mapping</div><h3>与现有建筑建模工作流，逐项对应功能</h3><p>以 SketchUp 的几何与组件工作流、Revit 的参数化与 BIM 工作流为参照，说明用户熟悉的操作在 WILD 中对应什么。不同工具各有侧重，下表区分已有基础、部分支持和后续工作。</p></div>
+        <div class="table-wrap"><table><thead><tr><th scope="col">建模环节</th><th scope="col">现有建模工具的对应功能</th><th scope="col">WILD 当前对应能力</th><th scope="col">边界与后续工作</th></tr></thead><tbody>
+          <tr><td data-label="建模环节">体量与建筑构件</td><td data-label="现有建模工具的对应功能">SketchUp 用几何与组件组织模型；Revit 提供墙、门窗等参数化建筑构件</td><td data-label="WILD 当前对应能力">已有墙、楼板、楼梯和通用几何基础；门窗等组合构件由参数编译展开，屋顶、柱梁和家具等仍为部分支持</td><td data-label="边界与后续工作">持续补齐构件与组合质量；任意曲面、扫描级造型及完整专业建筑体系超出当前覆盖</td></tr>
+          <tr><td data-label="建模环节">精确定位与尺寸调整</td><td data-label="现有建模工具的对应功能">SketchUp 支持按轴、距离或坐标移动；参数化工具通过构件属性调整尺寸</td><td data-label="WILD 当前对应能力">已有三轴拖拽、属性调参，以及带宿主信息的构件放置基础</td><td data-label="边界与后续工作">对齐、阵列、批量替换、楼层复制和多选联动仍需完善</td></tr>
+          <tr><td data-label="建模环节">组件复用与整体联动</td><td data-label="现有建模工具的对应功能">SketchUp 以组件定义和实例复用几何，修改定义可以同步到实例，支持替换组件</td><td data-label="WILD 当前对应能力">已有构件库、参数化构件和声明式重复展开基础，可用紧凑描述生成细节</td><td data-label="边界与后续工作">定义与实例联动、共享缓存及批量修改的产品体验仍需补齐；重复声明不等于 GPU 实例化</td></tr>
+          <tr><td data-label="建模环节">材质与视觉表现</td><td data-label="现有建模工具的对应功能">SketchUp 可对面和组件赋予材质；Revit 可连接 Twinmotion 等表现工具</td><td data-label="WILD 当前对应能力">已有 PBR 参数与纹理、程序化材质、环境光影和网页实时预览</td><td data-label="边界与后续工作">完善可复用材质与光影方案，以及目标游戏引擎中的材质映射；实时预览不能代替各类离线渲染能力</td></tr>
+          <tr><td data-label="建模环节">对象组织与关联修改</td><td data-label="现有建模工具的对应功能">SketchUp 用嵌套组与组件组织对象；Revit 通过同一建筑模型关联项目视图</td><td data-label="WILD 当前对应能力">蓝图保留构件 ID、参数和宿主引用；场景树组织对象，ScenePatch 提供结构化修改与预检</td><td data-label="边界与后续工作">继续完善跨构件约束和整体参数联动；当前语义关系不能等同于完整 BIM 数据体系</td></tr>
+          <tr><td data-label="建模环节">剖切、图纸与工程统计</td><td data-label="现有建模工具的对应功能">Revit 可生成平面、立面、剖面、图纸及明细表，并进行数量与材料统计</td><td data-label="WILD 当前对应能力">已有可调高度的水平剖切预览，可查看建筑内部；同时提供三维蓝图、构件编辑、设计示意与渲染展示</td><td data-label="边界与后续工作">已有三维剖切查看能力；带尺寸标注与规范出图流程的专业平剖面图纸、工程算量、结构计算和施工交付仍不属于当前承诺</td></tr>
+          <tr><td data-label="建模环节">文件交换与游戏接入</td><td data-label="现有建模工具的对应功能">成熟工具通过各自支持的模型格式、API 与插件交换数据，例如 Revit 的 BIM/CAD 格式与开发接口</td><td data-label="WILD 当前对应能力">本地 .wild 保存参数与关系，独立 Core 输出网格和材质参数，为外部渲染适配提供基础</td><td data-label="边界与后续工作">目标游戏引擎的加载、材质、碰撞、导航和更新流程仍需实际适配；性能收益按完整场景验收</td></tr>
+          <tr><td data-label="建模环节">项目协作与版本管理</td><td data-label="现有建模工具的对应功能">Revit 提供共享模型协作、同步和图纸修订管理</td><td data-label="WILD 当前对应能力">已有蓝图保存、场景版本检查、修改提案和本地过程记录基础</td><td data-label="边界与后续工作">团队空间、多用户并发、权限和完整版本协作仍属产品化工作，不能以单场景修改机制替代</td></tr>
+        </tbody></table></div>
+        <div class="note"><strong>对应功能，也说明产品定位。</strong>本地文件、组件复用、参数化和外部接入在成熟工具中也有实践。WILD 将轻量蓝图、智能体创作、确定性重建与网页编辑组织为面向游戏建筑资产的工作流，其价值需要通过具体任务的质量、修改效率和交付成本验证。</div>
+        <div class="subsection-heading"><div class="eyebrow">Questions that shape the product</div><h3>三个问题，明确专用工作流的价值</h3></div>
+        <div class="three-col"><article class="panel"><h3>有了规范，为什么还需要 Agent？</h3><p>规范和示例已经能帮助模型生成 WILD，偶尔创作一份文件可以直接使用成熟智能体。自研 Agent 要解决反复创作时的资料准备、任务组织、结果检查和连续修改，把这些步骤衔接起来。</p><p>这套流程也会增加调用、等待和维护成本，需要用人工操作是否减少、成功交付是否更稳定来判断价值。</p></article><article class="panel"><h3>成熟智能体也能做，差异在哪里？</h3><p>成熟智能体能够生成优秀蓝图，也能够组织类似工作流。WildAgent 将项目知识、构件规则、渲染与编辑沉淀为可以反复使用的产品，让用户在同一工作台完成创作、修改、保存和复用。</p><p>优势需要在真实任务中证明：成品质量、修改准确性、耗时和完整交付成本都要衡量；稳定兼容、优质内容和持续使用才能逐步形成壁垒。</p></article><article class="panel"><h3>模型继续进步，项目如何积累价值？</h3><p>保持模型可替换，持续积累统一协议、构件能力、校验规则、编辑体验和可复用资产。模型升级可以改善设计入口，已有蓝图也应继续可用。</p><p>WILD 保存构件、参数和关系，在加载时重建几何，使小体积蓝图能够承载丰富细节。其价值要通过持续修改与应用复用验证，资产总成本仍需计入纹理、展开后网格和运行资源。</p></article></div>
         <div class="subsection-heading"><div class="eyebrow">Knowledge, control &amp; reuse</div><h3>把经验沉淀进工具，让创作可以反复发生</h3></div>
         <div class="two-col">
           <article class="panel"><h3>按需提供专有知识</h3><p>构件知识库重点保存 WILD 规范、写法与引擎能力边界，按任务检索相关内容。成熟智能体可以直接阅读这些资料，自研 Agent 则继续完善检索与编排，减少每次会话重新理解整个项目的准备工作。</p><p>过程记录用于定位模型、检索、构件和装配的问题，帮助修正文档与实现；它们不会自动训练模型，也不能保证同类错误不再出现。</p></article>
@@ -142,6 +164,11 @@
           <article class="panel"><h3>表现层可以独立迭代</h3><p>材质、光影和世界外观不必绑定一次 AI 生成。用户可以在已有建筑上持续调整视觉表达，构件与表现能力也可以独立开发、调试和复用。</p></article>
           <article class="panel"><h3>给外部应用留下接入空间</h3><p>服务端封装模型调用、知识检索与生成编排，并有 REST 与 WebSocket 接入基础；几何重建独立于编辑界面。其他应用可以探索复用相应能力，商用接入仍需明确版本、授权、稳定性与支持责任。</p></article>
         </div>
+        <div class="subsection-heading"><div class="eyebrow">Creator-held assets &amp; interoperability</div><h3>去中心化的建筑资产：由创作者持有，在不同应用中流转</h3></div>
+        <p>WILD 希望让建筑成为创作者可以自行保存、管理和携带的数字资产。一份蓝图保留建筑的构件、参数、材质与关系，在兼容的引擎和资源条件下重建，并继续修改与复用。</p>
+        <p>这里的去中心化，主要体现在建筑资产的持有、使用与流转：用户保存自己的蓝图，开发者依据统一规范构建兼容工具，游戏与应用按需接入建筑内容。项目的发展目标，是让创作成果能够跨工具、跨应用使用，减少对单一平台的依赖。</p>
+        <p>小体积蓝图为这一方向提供了基础。建筑可以通过紧凑的参数描述进行保存和分发，共用的构件规则负责重建细节，有利于建筑变体、用户创作内容和游戏场景的持续更新。运行时的内存与渲染性能，则通过资源共享、按需加载和目标设备实测逐步优化。</p>
+        <p>当前项目已具备本地蓝图文件和独立几何重建引擎的基础。后续将围绕规范开放、版本兼容、资源寻址、授权约定和第三方适配，逐步建设可独立使用、可自由流转的建筑资产生态。商业价值可围绕创作工具、托管计算、协作与优质内容服务形成。</p>
       </section>
 
       <section class="chapter" id="growth">
@@ -158,6 +185,18 @@
 
       <section class="chapter" id="roadmap">
         <div class="chapter-heading"><span class="chapter-num">09</span><div><div class="eyebrow">Roadmap & gates</div><h2>发展规划：从可用工作台到创作生态</h2></div></div>
+        <div class="subsection-heading"><div class="eyebrow">Agent capability &amp; quality goals</div><h3>自研 Agent 的核心目标：缩小建筑成品的质量差距</h3><p>提升自研 Agent 的建筑创作与可靠执行能力，缩小不同底层模型在建筑任务中的实际成品差距，逐步接近 Codex 等成熟智能体在同类任务中的设计完整度、细节表达和修改质量。希望让更多可选模型在明确的范围与预算内，交付丰富、紧凑且可以继续编辑的 WILD 蓝图，减少人工补救。</p></div>
+        <div class="note"><strong>研发目标与当前结果分开。</strong>知识、工具、约束和反馈可以减少流程中的信息遗漏与执行错误，底层模型的推理、设计判断和审美差异仍会影响结果。目前尚无同条件评测证明已达到成熟智能体的成品水平；进展需要由真实建筑任务验证。</div>
+        <div class="subsection-heading"><div class="eyebrow">How capability improves</div><h3>从六个方面提升，让设计意图更可靠地落地</h3><p>项目已有设计文档、按需检索、参数展开、校验和过程记录等基础。下面列出继续完善的重点，按问题复现与任务影响安排投入。</p></div>
+        <div class="table-wrap"><table><thead><tr><th scope="col">提升方向</th><th scope="col">下一步怎么做</th><th scope="col">验证重点</th></tr></thead><tbody>
+          <tr><td data-label="提升方向">设计判断与需求保持</td><td data-label="下一步怎么做">在当前支持范围内，先明确体量比例、入口、屋面、立面层次与材质分工，再落实装饰和陈设。审核方案时同时保留用户硬性条件与可自由设计的部分</td><td data-label="验证重点">设计与成品是否一致，入口及屋面是否完整，比例和层次是否合理；更高粒度是否带来实际表达提升</td></tr>
+          <tr><td data-label="提升方向">知识检索与提示组织</td><td data-label="下一步怎么做">按当前构件、宿主和任务阶段提供真实可用的字段规则与最小局部示例；核对知识与引擎能力，减少无关内容和整栋案例对设计的牵引</td><td data-label="验证重点">关键规则是否被召回并落实，字段误用和照搬是否减少；统计完整任务的上下文消耗</td></tr>
+          <tr><td data-label="提升方向">参数化执行与构件复用</td><td data-label="下一步怎么做">模型选择形态、比例和材料，程序计算已确定的标高、宿主位置、重复分格与依赖关系。复用既有构造展开和编译入口，减少重复坐标输出，保持蓝图紧凑</td><td data-label="验证重点">改变跨度、层高、朝向和数量后，几何及关系仍符合设计；同时检查文件体积与展开后的资源成本</td></tr>
+          <tr><td data-label="提升方向">跨阶段约束与局部修订</td><td data-label="下一步怎么做">让已批准的尺寸、楼层、洞口和材料要求贯穿设计、任务、装配与最终验收。反馈指出失败字段、宿主及预期值，定向修订失败范围并保留通过结果；缺失项明确报告</td><td data-label="验证重点">需求是否逐项落实，修改是否影响无关构件，失败与人工介入是否可追踪；节点完成与最终验收分别记录</td></tr>
+          <tr><td data-label="提升方向">真实渲染与视觉反馈</td><td data-label="下一步怎么做">在结构检查之外固定多视图渲染与人工审图，检查遮挡、悬空、屋面交接、比例和材质。将可复现的视觉问题转为修订依据，逐步建设受约束的自动看图反馈</td><td data-label="验证重点">格式通过后是否仍有视觉缺陷，修订是否改善真实画面。当前主链尚无完整自动看图修订闭环，此项自动化仍属规划</td></tr>
+          <tr><td data-label="提升方向">运行诊断与质量成本评测</td><td data-label="下一步怎么做">沿运行记录核对输入、检索、模型输出和校验反馈，定位首个偏差环节；按失败类型修正文档、检索或代码，在调用与时间预算内迭代，并回归固定任务集</td><td data-label="验证重点">分别统计解析、编译、空间关系、渲染和用户验收；计入失败、重试、人工修订后的成功交付率、Token、耗时及成本</td></tr>
+        </tbody></table></div>
+        <div class="note"><strong>怎样判断差距正在缩小？</strong>先在同一底层模型、固定任务集和一致预算下验证工作流带来的收益，再以成熟智能体在同类任务中的成品作为质量参照。使用一致的验收标准，并记录模型、可用工具、资料和预算差异；同时看建筑质量、修改准确性与交付成本。离线检查通过、单个样例成功或构件数量增加，都不足以证明整体质量已经提升。</div>
         <p class="small muted">相对周期自正式启动商业验证起算，属于建议计划；需按团队资源和试点结果调整。</p><div class="subsection-heading"><div class="eyebrow">Where this can grow</div><h3>发展前景：资产可以脱离一次生成，持续创造价值</h3></div><div class="two-col"><article class="panel"><h3>建筑与场景创作工作台</h3><p>将生成后的调参、拖拽、材质和光影操作做得可靠，逐步补齐批量替换、阵列和楼层复用。价值来自持续创作效率，需要通过实际任务验证。</p></article><article class="panel"><h3>面向应用的轻量资产供给</h3><p>向网页展示、互动叙事、教育和场景平台提供可编辑建筑。以版本化协议和引擎接入为基础，验证跨应用传递和重复使用的价值。</p></article><article class="panel"><h3>构件、风格与材质内容</h3><p>将已有材料与形态能力发展为可制作、预览、保存和分享的扩展包，让创作者积累可复用内容。交易和分发机制在真实复用形成后建设。</p></article><article class="panel"><h3>更开放的互动世界</h3><p>在建筑可编辑、操作可靠的基础上，探索漫游、互动设备、角色行为与持续变化的场景。长期价值依赖状态、权限、性能与内容治理能力逐步成熟。</p></article></div>
         <div class="subsection-heading"><div class="eyebrow">From built-in capability to creator tools</div><h3>让已有底层能力，逐步成为创作者可以使用的工具</h3><p>风格配置、材质运行时、光影参数和世界包提供了扩展基础。下一步的重点，是把这些能力整理成可制作、预览、保存和复用的内容流程。下表中的产品化工作仍属于规划。</p></div>
         <div class="table-wrap"><table><thead><tr><th scope="col">发展方向</th><th scope="col">已有基础</th><th scope="col">规划中的交付与验收重点</th></tr></thead><tbody>
@@ -221,7 +260,7 @@
         <div class="table-wrap"><table><thead><tr><th scope="col">能力边界</th><th scope="col">当前说明</th></tr></thead><tbody>
           <tr><td data-label="能力边界">自动房间平面与功能布局</td><td data-label="当前说明">不承诺自动完成房间位置、功能分区和内部隔墙规划。蓝图能够表达室内构件与家具，不等于自研 Agent 已具备完整的房间布局能力</td></tr>
           <tr><td data-label="能力边界">自动场地语义规划</td><td data-label="当前说明">车库、后院、花园等空间的功能划分仍有缺口；庭院和景观构件可以在蓝图中表达，完整自动场地规划需要进一步建设</td></tr>
-          <tr><td data-label="能力边界">二维平面图与剖面图交付</td><td data-label="当前说明">当前以三维蓝图、渲染与设计表达为主，不能将已有体量或立面示意当作专业平剖面和施工图交付</td></tr>
+          <tr><td data-label="能力边界">专业二维平剖面图纸交付</td><td data-label="当前说明">前端已有可调高度的水平剖切预览，用于查看建筑内部；当前尚不提供带尺寸标注、图框与规范出图流程的专业二维平剖面图纸及施工交付</td></tr>
           <tr><td data-label="能力边界">任意有机造型与扫描级细节</td><td data-label="当前说明">任意复杂曲面、扫描网格和真实复杂人物超出当前参数化构件的通用覆盖；需要新增相应几何、资源与校验能力</td></tr>
         </tbody></table></div>
         <div class="subsection-heading"><div class="eyebrow">Risks &amp; validation</div><h3>把能力边界转化为明确的验证任务</h3></div>

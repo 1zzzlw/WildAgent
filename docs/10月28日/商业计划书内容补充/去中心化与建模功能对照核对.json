@@ -1,0 +1,100 @@
+{
+  "status": "passed",
+  "scope": "去中心化资产文案、建模功能对照和响应布局；没有新增模型调用、功能实现或第三方适配验证",
+  "checks": [
+    {
+      "check": "approved-copy-and-functional-comparison",
+      "rows": 8,
+      "columns": 4,
+      "functions": [
+        "体量与建筑构件",
+        "精确定位与尺寸调整",
+        "组件复用与整体联动",
+        "材质与视觉表现",
+        "对象组织与关联修改",
+        "图纸与工程统计",
+        "文件交换与游戏接入",
+        "项目协作与版本管理"
+      ],
+      "paragraphs": [
+        "WILD 希望让建筑成为创作者可以自行保存、管理和携带的数字资产。一份蓝图保留建筑的构件、参数、材质与关系，在兼容的引擎和资源条件下重建，并继续修改与复用。",
+        "这里的去中心化，主要体现在建筑资产的持有、使用与流转：用户保存自己的蓝图，开发者依据统一规范构建兼容工具，游戏与应用按需接入建筑内容。项目的发展目标，是让创作成果能够跨工具、跨应用使用，减少对单一平台的依赖。",
+        "小体积蓝图为这一方向提供了基础。建筑可以通过紧凑的参数描述进行保存和分发，共用的构件规则负责重建细节，有利于建筑变体、用户创作内容和游戏场景的持续更新。运行时的内存与渲染性能，则通过资源共享、按需加载和目标设备实测逐步优化。",
+        "当前项目已具备本地蓝图文件和独立几何重建引擎的基础。后续将围绕规范开放、版本兼容、资源寻址、授权约定和第三方适配，逐步建设可独立使用、可自由流转的建筑资产生态。商业价值可围绕创作工具、托管计算、协作与优质内容服务形成。"
+      ]
+    },
+    {
+      "check": "functional-table-responsive-theme",
+      "width": 390,
+      "theme": "light",
+      "documentWidth": 390,
+      "clientWidth": 380,
+      "scrollWidth": 380,
+      "missingLabels": 0,
+      "wideCells": 0,
+      "cellDisplay": "block",
+      "headerTop": 0
+    },
+    {
+      "check": "functional-table-responsive-theme",
+      "width": 390,
+      "theme": "dark",
+      "documentWidth": 390,
+      "clientWidth": 380,
+      "scrollWidth": 380,
+      "missingLabels": 0,
+      "wideCells": 0,
+      "cellDisplay": "block",
+      "headerTop": 0
+    },
+    {
+      "check": "functional-table-responsive-theme",
+      "width": 768,
+      "theme": "light",
+      "documentWidth": 768,
+      "clientWidth": 758,
+      "scrollWidth": 758,
+      "missingLabels": 0,
+      "wideCells": 0,
+      "cellDisplay": "table-cell",
+      "headerTop": 0
+    },
+    {
+      "check": "functional-table-responsive-theme",
+      "width": 768,
+      "theme": "dark",
+      "documentWidth": 768,
+      "clientWidth": 758,
+      "scrollWidth": 758,
+      "missingLabels": 0,
+      "wideCells": 0,
+      "cellDisplay": "table-cell",
+      "headerTop": 0
+    },
+    {
+      "check": "functional-table-responsive-theme",
+      "width": 1440,
+      "theme": "light",
+      "documentWidth": 1440,
+      "clientWidth": 1430,
+      "scrollWidth": 1430,
+      "missingLabels": 0,
+      "wideCells": 0,
+      "cellDisplay": "table-cell",
+      "headerTop": 0
+    },
+    {
+      "check": "functional-table-responsive-theme",
+      "width": 1440,
+      "theme": "dark",
+      "documentWidth": 1440,
+      "clientWidth": 1430,
+      "scrollWidth": 1430,
+      "missingLabels": 0,
+      "wideCells": 0,
+      "cellDisplay": "table-cell",
+      "headerTop": 0
+    }
+  ],
+  "browserErrors": []
+}
