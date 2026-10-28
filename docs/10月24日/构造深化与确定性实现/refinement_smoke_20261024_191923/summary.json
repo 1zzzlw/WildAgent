@@ -1,9 +1,0 @@
-{
-  "model": "qwen3.8-flash",
-  "source": "E:\\AgentProject\\WildAgent\\docs\\10月24日\\Agent参数化执行\\parametric_smoke_20261024_092741\\state.json",
-  "scope": "一次真实深化，其余沿用保存片段；非整栋重新生成",
-  "status": "failed",
-  "error": "ValueError: 1 validation error for DesignDocument\ndecisions.architecture.components.0\n  Value error, form.construction 字段应为 ['frameDepth', 'frameMaterial', 'frameWidth', 'interaction', 'leafDepth', 'leafMaterial', 'system']，可选 ['surround'] [type=value_error, input_value={'type': 'door', 'id': 'e..., 'material_role': None}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/value_error",
-  "model_calls": 1,
-  "seconds": 14.844
-}
