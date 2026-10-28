@@ -1,0 +1,204 @@
+{
+  "status": "passed",
+  "pageCount": 23,
+  "chapterHeadings": 12,
+  "missingHeadings": [],
+  "splitHeadings": [],
+  "imageOccurrences": 15,
+  "imagesWithoutCropping": true,
+  "outOfPageText": [],
+  "pages": [
+    {
+      "page": 1,
+      "width": 594.9599609375,
+      "height": 841.9199829101562,
+      "textLength": 234,
+      "images": 1,
+      "whiteMargin": true
+    },
+    {
+      "page": 2,
+      "width": 594.9599609375,
+      "height": 841.9199829101562,
+      "textLength": 925,
+      "images": 1,
+      "whiteMargin": true
+    },
+    {
+      "page": 3,
+      "width": 594.9599609375,
+      "height": 841.9199829101562,
+      "textLength": 726,
+      "images": 0,
+      "whiteMargin": true
+    },
+    {
+      "page": 4,
+      "width": 594.9599609375,
+      "height": 841.9199829101562,
+      "textLength": 800,
+      "images": 0,
+      "whiteMargin": true
+    },
+    {
+      "page": 5,
+      "width": 594.9599609375,
+      "height": 841.9199829101562,
+      "textLength": 934,
+      "images": 0,
+      "whiteMargin": true
+    },
+    {
+      "page": 6,
+      "width": 594.9599609375,
+      "height": 841.9199829101562,
+      "textLength": 581,
+      "images": 0,
+      "whiteMargin": true
+    },
+    {
+      "page": 7,
+      "width": 594.9599609375,
+      "height": 841.9199829101562,
+      "textLength": 262,
+      "images": 4,
+      "whiteMargin": true
+    },
+    {
+      "page": 8,
+      "width": 594.9599609375,
+      "height": 841.9199829101562,
+      "textLength": 268,
+      "images": 4,
+      "whiteMargin": true
+    },
+    {
+      "page": 9,
+      "width": 594.9599609375,
+      "height": 841.9199829101562,
+      "textLength": 256,
+      "images": 4,
+      "whiteMargin": true
+    },
+    {
+      "page": 10,
+      "width": 594.9599609375,
+      "height": 841.9199829101562,
+      "textLength": 635,
+      "images": 1,
+      "whiteMargin": true
+    },
+    {
+      "page": 11,
+      "width": 594.9599609375,
+      "height": 841.9199829101562,
+      "textLength": 951,
+      "images": 0,
+      "whiteMargin": true
+    },
+    {
+      "page": 12,
+      "width": 594.9599609375,
+      "height": 841.9199829101562,
+      "textLength": 886,
+      "images": 0,
+      "whiteMargin": true
+    },
+    {
+      "page": 13,
+      "width": 594.9599609375,
+      "height": 841.9199829101562,
+      "textLength": 726,
+      "images": 0,
+      "whiteMargin": true
+    },
+    {
+      "page": 14,
+      "width": 594.9599609375,
+      "height": 841.9199829101562,
+      "textLength": 1434,
+      "images": 0,
+      "whiteMargin": true
+    },
+    {
+      "page": 15,
+      "width": 594.9599609375,
+      "height": 841.9199829101562,
+      "textLength": 1170,
+      "images": 0,
+      "whiteMargin": true
+    },
+    {
+      "page": 16,
+      "width": 594.9599609375,
+      "height": 841.9199829101562,
+      "textLength": 1170,
+      "images": 0,
+      "whiteMargin": true
+    },
+    {
+      "page": 17,
+      "width": 594.9599609375,
+      "height": 841.9199829101562,
+      "textLength": 1162,
+      "images": 0,
+      "whiteMargin": true
+    },
+    {
+      "page": 18,
+      "width": 594.9599609375,
+      "height": 841.9199829101562,
+      "textLength": 1060,
+      "images": 0,
+      "whiteMargin": true
+    },
+    {
+      "page": 19,
+      "width": 594.9599609375,
+      "height": 841.9199829101562,
+      "textLength": 825,
+      "images": 0,
+      "whiteMargin": true
+    },
+    {
+      "page": 20,
+      "width": 594.9599609375,
+      "height": 841.9199829101562,
+      "textLength": 823,
+      "images": 0,
+      "whiteMargin": true
+    },
+    {
+      "page": 21,
+      "width": 594.9599609375,
+      "height": 841.9199829101562,
+      "textLength": 908,
+      "images": 0,
+      "whiteMargin": true
+    },
+    {
+      "page": 22,
+      "width": 594.9599609375,
+      "height": 841.9199829101562,
+      "textLength": 993,
+      "images": 0,
+      "whiteMargin": true
+    },
+    {
+      "page": 23,
+      "width": 594.9599609375,
+      "height": 841.9199829101562,
+      "textLength": 608,
+      "images": 0,
+      "whiteMargin": true
+    }
+  ],
+  "selectedPages": [
+    1,
+    6,
+    14,
+    17,
+    20,
+    23
+  ]
+}

@@ -1,0 +1,158 @@
+{
+  "status": "passed",
+  "checks": [
+    {
+      "check": "export-and-home-responsive",
+      "width": 320,
+      "theme": "light",
+      "documentWidth": 320,
+      "clientWidth": 310,
+      "scrollWidth": 310,
+      "exportRight": 212.921875,
+      "exportLeft": 148.65625,
+      "homeRight": 294,
+      "buttonHeight": 40
+    },
+    {
+      "check": "export-and-home-responsive",
+      "width": 320,
+      "theme": "dark",
+      "documentWidth": 320,
+      "clientWidth": 310,
+      "scrollWidth": 310,
+      "exportRight": 212.921875,
+      "exportLeft": 148.65625,
+      "homeRight": 294,
+      "buttonHeight": 40
+    },
+    {
+      "check": "export-and-home-responsive",
+      "width": 360,
+      "theme": "light",
+      "documentWidth": 360,
+      "clientWidth": 350,
+      "scrollWidth": 350,
+      "exportRight": 252.921875,
+      "exportLeft": 188.65625,
+      "homeRight": 334,
+      "buttonHeight": 40
+    },
+    {
+      "check": "export-and-home-responsive",
+      "width": 360,
+      "theme": "dark",
+      "documentWidth": 360,
+      "clientWidth": 350,
+      "scrollWidth": 350,
+      "exportRight": 252.921875,
+      "exportLeft": 188.65625,
+      "homeRight": 334,
+      "buttonHeight": 40
+    },
+    {
+      "check": "export-and-home-responsive",
+      "width": 390,
+      "theme": "light",
+      "documentWidth": 390,
+      "clientWidth": 380,
+      "scrollWidth": 380,
+      "exportRight": 282.921875,
+      "exportLeft": 218.65625,
+      "homeRight": 364,
+      "buttonHeight": 40
+    },
+    {
+      "check": "export-and-home-responsive",
+      "width": 390,
+      "theme": "dark",
+      "documentWidth": 390,
+      "clientWidth": 380,
+      "scrollWidth": 380,
+      "exportRight": 282.921875,
+      "exportLeft": 218.65625,
+      "homeRight": 364,
+      "buttonHeight": 40
+    },
+    {
+      "check": "export-and-home-responsive",
+      "width": 768,
+      "theme": "light",
+      "documentWidth": 768,
+      "clientWidth": 758,
+      "scrollWidth": 758,
+      "exportRight": 629.921875,
+      "exportLeft": 553.640625,
+      "homeRight": 738,
+      "buttonHeight": 38.1875
+    },
+    {
+      "check": "export-and-home-responsive",
+      "width": 768,
+      "theme": "dark",
+      "documentWidth": 768,
+      "clientWidth": 758,
+      "scrollWidth": 758,
+      "exportRight": 629.921875,
+      "exportLeft": 553.640625,
+      "homeRight": 738,
+      "buttonHeight": 38.1875
+    },
+    {
+      "check": "export-and-home-responsive",
+      "width": 1440,
+      "theme": "light",
+      "documentWidth": 1440,
+      "clientWidth": 1430,
+      "scrollWidth": 1430,
+      "exportRight": 1283.921875,
+      "exportLeft": 1207.640625,
+      "homeRight": 1392,
+      "buttonHeight": 38.1875
+    },
+    {
+      "check": "export-and-home-responsive",
+      "width": 1440,
+      "theme": "dark",
+      "documentWidth": 1440,
+      "clientWidth": 1430,
+      "scrollWidth": 1430,
+      "exportRight": 1283.921875,
+      "exportLeft": 1207.640625,
+      "homeRight": 1392,
+      "buttonHeight": 38.1875
+    },
+    {
+      "check": "button-loads-images-before-print",
+      "images": true,
+      "theme": "dark"
+    },
+    {
+      "check": "failed-image-prevents-incomplete-export-and-retry-works",
+      "passed": true
+    },
+    {
+      "check": "complete-white-print-layout-from-dark-scrolled-page",
+      "theme": "dark",
+      "position": "static",
+      "overflow": "visible",
+      "bodyOverflow": "visible",
+      "background": "rgb(255, 255, 255)",
+      "headerDisplay": "none",
+      "chapterCount": 12,
+      "height": 18542.078125
+    },
+    {
+      "check": "theme-remains-dark-after-print",
+      "passed": true
+    },
+    {
+      "check": "final-white-paper-and-heading-pagination",
+      "scheme": "light only",
+      "background": "rgb(255, 255, 255)",
+      "headingBreak": "avoid",
+      "leadBreak": "avoid"
+    }
+  ],
+  "browserErrors": [],
+  "pdf": "output/pdf/WILD商业计划书.pdf"
+}

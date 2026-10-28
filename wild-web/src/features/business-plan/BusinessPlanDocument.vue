@@ -4,9 +4,10 @@
   <header class="topbar">
     <a class="brand" href="#cover" aria-label="WILD 旷野商业计划书首页"><span class="brand-mark" aria-hidden="true">W</span><span class="brand-name">WILD <span class="brand-cn">/ 旷野</span></span></a>
     <span class="top-meta">BUSINESS PLAN / 商业计划书</span>
-    <div class="top-actions"><RouterLink class="home-link" to="/">回到主页 ↗</RouterLink></div>
+    <div class="top-actions"><button class="export-pdf" type="button" :disabled="preparingPdf" @click="exportPdf">{{ preparingPdf ? '准备中…' : '导出 PDF' }}</button><RouterLink class="home-link" to="/">回到主页 ↗</RouterLink></div>
     <div class="reading-progress" id="reading-progress" aria-hidden="true" :style="{ width: readingProgress + '%' }"></div>
   </header>
+  <p v-if="pdfError" class="pdf-error" role="alert">{{ pdfError }}</p>
   <div class="layout">
     <aside class="sidebar" aria-label="计划书目录">
       <div class="nav-title">CONTENTS / 阅读导航</div>
@@ -479,6 +480,28 @@ const interiors = [
 const pageRoot = ref<HTMLElement>()
 const imageViewer = ref<HTMLDialogElement>()
 const selectedImage = ref<{ src: string; alt: string } | null>(null)
+const preparingPdf = ref(false)
+const pdfError = ref('')
+async function exportPdf() {
+  if (preparingPdf.value) return
+  preparingPdf.value = true
+  pdfError.value = ''
+  try {
+    imageViewer.value?.close()
+    const images = Array.from(pageRoot.value!.querySelectorAll<HTMLImageElement>('img[src]'))
+    await Promise.all([document.fonts.ready, ...images.map(image => {
+      image.loading = 'eager'
+      return image.decode()
+    })])
+    await nextTick()
+    if (!pageRoot.value) return
+    window.print()
+  } catch {
+    pdfError.value = '图片或打印准备失败，请刷新页面后重试。'
+  } finally {
+    preparingPdf.value = false
+  }
+}
 const defaults: SubscriptionAssumptions = { price: 99, users: 300, 'model-cost': 18, 'service-cost': 8, 'fixed-cost': 45000 }
 const assumptions = reactive({ ...defaults })
 const lastValid = shallowRef({ ...defaults })
@@ -575,4 +598,17 @@ onBeforeUnmount(() => {
  .table-wrap td::before{content:attr(data-label);display:block;margin-bottom:4px;color:var(--muted);font-size:10px;font-weight:500}
 }
 @media screen{.business-plan-page{position:fixed;inset:0}}
+.export-pdf{display:inline-flex;align-items:center;white-space:nowrap;border:1px solid var(--studio-accent-border);background:var(--soft);padding:7px 13px;border-radius:3px;font-size:12px;color:var(--green)}
+.export-pdf:disabled{opacity:.65;cursor:wait}
+.pdf-error{padding:10px 20px;font-size:12px;color:var(--orange);border-bottom:1px solid var(--line)}
+@media screen and (max-width:560px){.topbar{gap:8px}.top-actions{gap:6px}.home-link,.export-pdf{min-height:40px;padding:8px 9px;font-size:11px}}
+@media screen and (max-width:380px){.brand-cn{display:none}.brand{gap:8px}}
+@media print{
+ :global(html:has(.business-plan-page)),:global(body:has(.business-plan-page)),:global(#app:has(.business-plan-page)){height:auto;overflow:visible;background:#fff;color-scheme:only light!important}
+ .pdf-error{display:none!important}
+ .business-plan-page{height:auto;overflow:visible}
+ .chapter-heading,.subsection-heading,.note,.formula,.lead{break-inside:avoid}
+ .hero-visual figcaption span:last-child{display:none}
+ p{orphans:3;widows:3}
+}
 </style>
