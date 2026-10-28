@@ -16,6 +16,11 @@
       <button aria-label="导出 WILD" title="导出 WILD" :disabled="!scene.document" @click="exportFile"><el-icon>
           <Download />
         </el-icon><span>导出</span></button>
+      <button aria-label="导出 GLB" title="导出建筑与材质贴图；程序化表面按当前状态烘焙，光照与动态效果由查看器呈现"
+        :disabled="!scene.reconstructed?.meshes.length || scene.isReconstructing || busy || render.exportingGlb"
+        @click="render.requestGlbExport()"><el-icon>
+          <Box />
+        </el-icon><span>{{ render.exportingGlb ? '导出中…' : '导出 GLB' }}</span></button>
       <i class="toolbar-divider"></i>
       <button aria-label="撤销" title="撤销 · Ctrl+Z" :disabled="!history.canUndo || busy" @click="restore(false)"><el-icon>
           <RefreshLeft />
@@ -48,11 +53,12 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
-import { DocumentAdd, FolderOpened, Upload, Download, RefreshLeft, RefreshRight, Switch, Sunny, Moon } from '@element-plus/icons-vue'
+import { DocumentAdd, FolderOpened, Upload, Download, Box, RefreshLeft, RefreshRight, Switch, Sunny, Moon } from '@element-plus/icons-vue'
 import { useHistoryStore } from '../../stores/historyStore'
 import { useSceneStore } from '../../stores/sceneStore'
 import { useUIStore } from '../../stores/uiStore'
 import { useWorkspaceStore } from '../../stores/workspaceStore'
+import { useRenderPanelStore } from '../../stores/renderPanelStore'
 import OnlinePresence from '../../extensions/presence/OnlinePresence.vue'
 import { useThemeStore } from '../../stores/themeStore'
 const theme = useThemeStore()
@@ -60,6 +66,7 @@ const scene = useSceneStore()
 const ui = useUIStore()
 const workspace = useWorkspaceStore()
 const history = useHistoryStore()
+const render = useRenderPanelStore()
 const fileInput = ref<HTMLInputElement>()
 const busy = computed(() => workspace.isSaving || workspace.isImporting)
 async function importFile(event: Event) {

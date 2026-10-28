@@ -32,15 +32,15 @@
 
       <section class="chapter" id="summary">
         <div class="chapter-heading"><span class="chapter-num">01</span><div><div class="eyebrow">Executive summary</div><h2>用一份蓝图，连接创作与交付</h2></div></div>
-        <p class="lead">WILD（旷野）基于现有 WildAgent 项目，围绕“小体积蓝图表达丰富建筑”构建建筑创作与展示工作台，将游戏与互动场景中的轻量建筑资产供给作为主要应用方向。成熟智能体可以依据项目文档、蓝图语言和示例编写 WILD，再由引擎重建并进入编辑。项目希望把“生成一张好看的结果”推进为“得到一份可以继续使用的建筑资产”：既能在浏览器中呈现，也能按构件修改、保存和复用，并通过目标游戏引擎适配进入实际场景。</p>
+        <p class="lead">WILD（旷野）基于现有 WildAgent 项目，围绕“小体积蓝图表达丰富建筑”提供建筑资产的生成、编辑与交付工具。成熟智能体可以依据文档、蓝图语言和示例编写 WILD，由自研几何引擎重建，在网页工作台中预览和持续修改。游戏与互动项目是首期试点方向：通过模型文件及后续原生插件接入客户现有工具链，最终画面由客户的引擎渲染。近期验证制作、修改与复用效率，轻量蓝图的游戏内分发作为后续 SDK 方向验证。</p>
         <div class="brand-story"><div class="eyebrow">WILD / Wild Iterative Language for Design</div><h3>旷野 · 迭代 · 设计语言</h3><p>“旷野”代表不被模板固化的自由创作：让 AI 提出独立的建筑设计，让人可以持续修改与完善。<span class="mono">.wild</span> 是承载设计的蓝图文件后缀。</p><div class="brand-letters"><div><b>W</b><span><strong>Write</strong> 写蓝图</span></div><div><b>I</b><span><strong>Iterate</strong> 迭代 · 联动重算</span></div><div><b>L</b><span><strong>Learn</strong> 读入 · 学习与校验</span></div><div><b>D</b><span><strong>Design</strong> 设计</span></div></div><p class="brand-footnote">四个词表达品牌理念；实际创作先明确设计，再写入蓝图、校验和迭代。</p></div>
         <div class="three-col">
           <article class="panel"><div class="eyebrow">The foundation</div><h3>核心资产是什么</h3><p>WILD 蓝图语言、自研参数化几何与编译引擎，以及网页渲染编辑工作台。成熟智能体、人工与脚本都可依据规范创作，自研 Agent 同步迭代。 </p></article>
-          <article class="panel"><div class="eyebrow">The first market</div><h3>先服务谁</h3><p>优先面向独立游戏开发者、小型游戏场景团队与网页互动项目，先验证单体建筑的制作、接入和持续修改，再扩展到街区与更多建筑变体。交付范围由支持的构件、目标引擎与设备预算共同确定。</p></article>
-          <article class="panel"><div class="eyebrow">The business</div><h3>如何形成收入</h3><p>先验证托管工作台订阅与有边界的项目试点；待复用与留存成立，再拓展团队协作、API 服务和创作者内容交易。商业模式与价格均为本稿建议。</p></article>
+          <article class="panel"><div class="eyebrow">The first market</div><h3>先服务谁</h3><p>面向独立开发者、小型场景团队与网页互动项目开展首期试点，先验证一栋建筑的制作、多轮修改与目标应用接入。客户选择取决于实际任务收益和支付意愿，游戏内加载与街区规模按后续验证推进。</p></article>
+          <article class="panel"><div class="eyebrow">The business</div><h3>如何形成收入</h3><p>以蓝图体验和基础编辑降低采用门槛，先验证有额度的托管 AI 订阅与明确范围的项目试点。收费依据是节省制作、修改和接入时间；待复用与续费成立，再拓展团队服务、API 和内容交易。价格与转化仍需实测。</p></article>
         </div>
         <div class="statement"><p>土地是 AI 时代，种子是 WILD 蓝图。<br>近期让种子可用，长期让更多人参与创造。</p><div class="small">从可编辑的建筑出发，逐步探索内容社区、互动场景与更开放的创作生态。</div></div>
-        <p class="small muted"><span class="label proof">已有项目基础</span> 三包架构、蓝图与编辑工作台、近期渲染和交互证据。<span class="label idea">待商业验证</span> 客户需求、定价、付费留存与规模化交付。付费转化、留存与规模化交付仍需通过真实试点验证。</p>
+        <p class="small muted"><span class="label proof">已有项目基础</span> 三包架构、蓝图与编辑工作台、近期渲染和交互证据。<span class="label idea">待商业验证</span> 目标客户需求、付费转化、留存与规模化交付。同类产品的采用数据为市场判断提供参照，WILD 的商业表现由自身试点验证。</p>
       </section>
 
       <section class="chapter" id="problem">
@@ -51,7 +51,15 @@
           <article class="panel"><span class="eyebrow">03 / Reliability</span><h3>能表达，不等于能正确落地</h3><p>门窗需要宿主，楼梯需要对齐，参数需要合法。项目把可计算的几何与关系检查交给代码，让 AI 集中处理设计意图，并提供明确的错误反馈。</p></article>
         </div>
         <div class="note">商业机会假设：对需要频繁改方案的用户，价值可能更多来自“生成后仍然好改”，而非单次生成的新鲜感。首轮访谈应验证修改频率、现有流程耗时、返工原因与实际支付意愿。</div>
-        <p class="decision">市场判断方式：先证明一个具体工作流值得付费，再扩大用户范围。本稿暂不引用未经调研的行业规模或增长率。</p>
+        <div class="subsection-heading"><div class="eyebrow">Market evidence · Pascal Editor</div><h3>同类产品已吸引用户尝试，持续付费仍需验证</h3><p>Pascal Editor 是可供参考的浏览器建筑编辑产品，支持人与 AI 编辑同一份建筑模型。其公开数据为低门槛建筑创作提供了采用和收费方式的参照；WILD 进一步聚焦游戏与互动场景中的轻量资产交付。</p></div>
+        <p class="small muted">资料核查：2026 年 10 月 28 日。以下区分官方历史披露、查询时的社区快照和公开标价；均非 WILD 的经营数据。</p>
+        <div class="table-wrap"><table><thead><tr><th scope="col">观察维度</th><th scope="col">可核实的公开信息</th><th scope="col">对 WILD 的商业启示</th></tr></thead><tbody>
+          <tr><td data-label="观察维度">早期采用</td><td data-label="可核实的公开信息">Pascal 官方于 2026 年 4 月 14 日披露：上线三周，近 3 万人用其创建过内容。这是官方历史累计使用口径，未披露活跃、留存和付费人数。<a href="https://editor.pascal.app/changelog/2026-04-14-editor-evolution" target="_blank" rel="noopener noreferrer">来源：官方更新公告 ↗</a></td><td data-label="对 WILD 的商业启示">建筑创作工具能够吸引用户尝试。首期应进一步核实游戏与互动团队是否愿意用它完成自己的真实任务。</td></tr>
+          <tr><td data-label="观察维度">开发者关注</td><td data-label="可核实的公开信息">本次查询 GitHub 约 2.52 万 Stars、3,100 Forks；仓库以 MIT 许可证开放。关注和派生数量不等于实际使用或付费客户。<a href="https://github.com/pascalorg/editor" target="_blank" rel="noopener noreferrer">来源：官方仓库 ↗</a></td><td data-label="对 WILD 的商业启示">规范、可运行样例与接入文档可以成为获客入口；需要追踪从浏览样例到完成作品、再次使用和付费的转化。</td></tr>
+          <tr><td data-label="观察维度">公开收费</td><td data-label="可核实的公开信息">基础建模、编辑与分享免费；Pro 为 100 美元 / 席位 / 月，含 25,000 credits；Max 为 200 美元 / 席位 / 月，含 100,000 credits。AI 工作消耗额度，标价不代表实际成交或收入。<a href="https://editor.pascal.app/" target="_blank" rel="noopener noreferrer">来源：产品官网 ↗</a></td><td data-label="对 WILD 的商业启示">参考“基础体验 + 有额度的 AI 服务”结构，以目标客户预算、完整任务成本和续费反馈确定自己的价格。</td></tr>
+        </tbody></table></div>
+        <div class="note"><strong>商业对照的适用范围。</strong>Pascal 公司同时布局扫描、编辑和建筑维护，官网突出数据中心等场景；公司整体价值涉及编辑器之外的业务。<a href="https://www.pascal.app/" target="_blank" rel="noopener noreferrer">来源：公司官网 ↗</a> 本次未核实到可归属 Pascal Editor / Pascal Group 的“两亿美元融资”公告，也未取得可靠的 MAU、付费人数或 ARR 数据，本稿不据此推算 WILD 的收入或估值。</div>
+        <p class="decision">市场判断方式：用公开案例判断采用机会，用目标客户的任务、付费和续费判断 WILD 的商业价值；市场空间按可触达团队与可成交预算测算。</p>
       </section>
 
       <section class="chapter" id="product">
@@ -73,7 +81,7 @@
         <div class="subsection-heading"><div class="eyebrow">Product foundation &amp; delivery</div><h3>已有能力如何进入可用的产品</h3></div>
         <div class="table-wrap"><table><thead><tr><th scope="col">产品层</th><th scope="col">已有基础</th><th scope="col">对应的客户价值</th><th scope="col">商业化仍需完成</th></tr></thead><tbody>
           <tr><td data-label="产品层">WILD 蓝图与引擎</td><td data-label="已有基础">结构化建筑描述、组合构件编译与参数化重建</td><td data-label="对应的客户价值">保存设计参数，便于版本管理与重复利用</td><td data-label="商业化仍需完成">兼容性承诺、版本迁移与外部接入文档</td></tr>
-          <tr><td data-label="产品层">网页创作工作台</td><td data-label="已有基础">属性、场景树、构件库、拖拽、材质与光影操作</td><td data-label="对应的客户价值">小修改直接完成，减少重复对话</td><td data-label="商业化仍需完成">新手引导、可靠保存、用户任务验证与支持体系</td></tr>
+          <tr><td data-label="产品层">网页创作工作台</td><td data-label="已有基础">属性、场景树、构件库、拖拽、材质与光影操作，以及静态 GLB 模型导出</td><td data-label="对应的客户价值">小修改直接完成，保留 WILD 源资产并交付通用模型</td><td data-label="商业化仍需完成">新手引导、可靠保存、用户任务验证与目标应用导入验收</td></tr>
           <tr><td data-label="产品层">自研 AI 创作服务</td><td data-label="已有基础">开发中的设计审核、知识检索、执行编排与修改协作</td><td data-label="对应的客户价值">降低入门操作成本，组织多步骤创作</td><td data-label="商业化仍需完成">真实任务通过率、单次成本与付费额度管理</td></tr>
           <tr><td data-label="产品层">开放与内容生态</td><td data-label="已有基础">可复用协议、构件和材质能力提供技术基础</td><td data-label="对应的客户价值">未来可复用他人作品、构件与扩展包</td><td data-label="商业化仍需完成"><span class="label idea">规划</span> 分发、授权、交易、结算及生态治理</td></tr>
         </tbody></table></div>
@@ -99,10 +107,10 @@
 </section>
 
       <section class="chapter" id="customers">
-        <div class="chapter-heading"><span class="chapter-num">05</span><div><div class="eyebrow">Customers & market entry</div><h2>优先进入游戏与互动场景的建筑资产工作流</h2></div></div>
-        <p class="lead">主要验证方向，是让开发者用小体积 WILD 保存和分发丰富建筑，在目标场景重建、复用与修改。先把一栋建筑的接入做完整，再逐步验证重复建筑和街区规模；游戏引擎适配与性能收益需要实际项目证明。</p>
+        <div class="chapter-heading"><span class="chapter-num">05</span><div><div class="eyebrow">Customers & market entry</div><h2>从建筑资产制作与迭代，进入游戏和互动项目</h2></div></div>
+        <p class="lead">首期验证用户能否在 WILD 中更高效地制作、修改和复用建筑，再将产物接入自己的项目。网页工作台承担创作与预览，游戏中的渲染、物理和交互继续由客户现有引擎负责。GLB 导出已实现，实际游戏接入与付费需求仍需试点；原生插件和运行时 SDK 属于后续规划。</p>
         <div class="table-wrap"><table><thead><tr><th scope="col">客户与优先级</th><th scope="col">首个任务</th><th scope="col">可能的付费理由</th><th scope="col">需要验证的门槛</th></tr></thead><tbody>
-          <tr><td data-label="客户与优先级">首要：独立游戏开发者<br>与小型游戏场景团队</td><td data-label="首个任务">把可修改的住宅、庭院或街区单体接入一个真实游戏场景</td><td data-label="可能的付费理由">轻量建筑分发、参数变体与重复利用，减少制作和更新工作量</td><td data-label="需要验证的门槛">目标引擎适配、材质一致性、碰撞与交互，以及目标设备上的完整资源与帧时间预算</td></tr>
+          <tr><td data-label="客户与优先级">首期试点：独立游戏开发者<br>与小型游戏场景团队</td><td data-label="首个任务">制作一栋住宅、庭院或场景单体，完成多轮修改、模型导入与更新</td><td data-label="可能的付费理由">参数变体、持续修改与重复利用，节省资产制作和返工时间</td><td data-label="需要验证的门槛">材质、坐标、模型结构、碰撞和 LOD；接入与清理成本是否抵消制作效率收益</td></tr>
           <tr><td data-label="客户与优先级">优先：网页三维与<br>互动展示团队</td><td data-label="首个任务">在网页中呈现、修改与交付建筑场景</td><td data-label="可能的付费理由">轻量描述、浏览器重建，以及统一编辑入口</td><td data-label="需要验证的门槛">集成工作量、移动设备表现、版本兼容和资源总成本</td></tr>
           <tr><td data-label="客户与优先级">次优先：设计教育<br>与方案表达用户</td><td data-label="首个任务">学习构件与风格，比较概念方案，完成交流演示</td><td data-label="可能的付费理由">直观表达与迭代便利</td><td data-label="需要验证的门槛">使用频次、预算与采购周期；不依赖专业施工交付</td></tr>
           <tr><td data-label="客户与优先级">后续：企业平台<br>与互动世界开发者</td><td data-label="首个任务">把蓝图和生成服务接入自有应用</td><td data-label="可能的付费理由">可复用资产供给、定制构件和服务支持</td><td data-label="需要验证的门槛">真实接入项目、服务可靠性、授权、成本与维护责任</td></tr>
@@ -112,15 +120,15 @@
           <article class="panel"><h3>方案交流与设计学习</h3><p>在相同视角和光照下，比较体量、立面节奏、屋顶与材料；保留每个方案的蓝图，继续调参和讲解。适合概念阶段的讨论、教学与创作演示，工程结构和施工图仍由专业流程承担。</p></article>
           <article class="panel"><h3>从单体建筑到游戏场景</h3><p>优先用住宅、咖啡空间、展馆和亭榭完成实际游戏接入，再验证街区、建筑变体与互动叙事。家具、器物与景观构件可以沿用参数化表达；场景规模、碰撞、导航与交互仍需分别建设和验收。</p></article>
         </div>
-        <div class="subsection-heading"><div class="eyebrow">Compact blueprints for game worlds</div><h3>把小蓝图的优势，落实为游戏中的资产收益</h3><p>WILD 将尺寸、构件关系和材质参数保留为轻量描述，共用构件规则在加载时重建几何。它为建筑变体、内容更新和按需加载提供基础；资产包还应计入共用运行时、纹理与其他外部资源。</p></div>
-        <div class="table-wrap"><table><thead><tr><th scope="col">收益层面</th><th scope="col">轻量蓝图能带来什么</th><th scope="col">仍取决于什么</th></tr></thead><tbody>
-          <tr><td data-label="收益层面">存储与网络传输</td><td data-label="轻量蓝图能带来什么">对于适合参数化描述的建筑，用紧凑参数保存细节，有利于缩小建筑数据、分发变体和传递更新</td><td data-label="仍取决于什么">比较完整资源包与共享资源摊销；蓝图变小并不代表纹理、运行时和资源缓存同时变小</td></tr>
-          <tr><td data-label="收益层面">内存与显存</td><td data-label="轻量蓝图能带来什么">让建筑在需要时重建，为共享几何、共享材质、缓存复用和离开区域后卸载提供组织基础</td><td data-label="仍取决于什么">实际展开的顶点、索引、纹理、缓存副本及资源生命周期。若最终几何与材质相同，仅改变源文件表达方式不会自动降低运行占用</td></tr>
-          <tr><td data-label="收益层面">帧率与场景规模</td><td data-label="轻量蓝图能带来什么">构件与参数信息便于规划重复对象实例化、空间分块，以及近景精细、远景简化的细节分级</td><td data-label="仍取决于什么">绘制次数、可见面数、着色与阴影成本、剔除和更新策略。这些优化需逐项实现与实测，文件小不能单独证明帧率更高</td></tr>
-          <tr><td data-label="收益层面">加载与首次呈现</td><td data-label="轻量蓝图能带来什么">减少需要传输的建筑描述，并支持将重建工作按区域或时机安排</td><td data-label="仍取决于什么">解析、构件编译、几何生成和 GPU 上传仍需时间；应一起测下载、重建、首帧及加载时的卡顿</td></tr>
+        <div class="subsection-heading"><div class="eyebrow">Create in WILD · render in the customer's engine</div><h3>接入现有引擎，按阶段验证交付方式</h3><p>WILD 的几何重建与网页显示适配已经分开。游戏团队可以先使用模型交付；后续插件或 SDK 将蓝图转换为目标引擎的原生网格与材质，由目标引擎统一绘制。原生接入仍需开发语言、材质和资源生命周期等适配。</p></div>
+        <div class="table-wrap"><table><thead><tr><th scope="col">接入路线与状态</th><th scope="col">交付与渲染分工</th><th scope="col">客户价值与验证重点</th></tr></thead><tbody>
+          <tr><td data-label="接入路线与状态">制作期模型导出<br><span class="label proof">GLB 导出已实现</span></td><td data-label="交付与渲染分工">在网页工作台制作和修改，保留 .wild 源文件，导出静态 GLB 后交给客户现有引擎导入和渲染；游戏运行时使用导入后的资产</td><td data-label="客户价值与验证重点">先验证制作、多轮修改、重导入和返工的总时间。已通过本地 GLB 下载与重新加载检查，目标游戏引擎、材质与实例化扩展兼容性仍待验证；程序化效果与交互需另外适配</td></tr>
+          <tr><td data-label="接入路线与状态">编辑器原生导入插件<br><span class="label idea">规划</span></td><td data-label="交付与渲染分工">制作阶段读取 .wild，重建为目标编辑器中的原生网格与材质；最终游戏使用自身引擎，不需要运行网页渲染器</td><td data-label="客户价值与验证重点">在编辑器工作流中保留参数与更新关联。需验证导入和重导入规则、已有编辑如何保留、版本兼容及插件维护成本</td></tr>
+          <tr><td data-label="接入路线与状态">游戏内蓝图重建 SDK<br><span class="label idea">后续验证</span></td><td data-label="交付与渲染分工">游戏加载蓝图，由重建模块生成原生几何并交给客户引擎绘制；共用重建规则、纹理等资源仍需随应用部署</td><td data-label="客户价值与验证重点">验证轻量数据分发、动态变体和按需重建。需实测完整下载量、重建耗时、首帧、内存显存、帧时间及目标平台兼容性，不纳入首期交付承诺</td></tr>
         </tbody></table></div>
-        <div class="two-col gap-top"><article class="panel"><h3>游戏接入的实施重点</h3><p>已有独立 Core 可以输出网格与材质参数。下一步先选择一个目标引擎，完成几何、材质、坐标、碰撞与交互适配，再按实际瓶颈完善共享缓存、重复构件实例化、按需加载与卸载，以及细节分级。</p><p>这些属于游戏交付的待完善工作，当前网页渲染能力仅作为接入基础。</p></article><article class="panel"><h3>性能收益怎样验收</h3><p>使用单栋、重复建筑和街区三类场景，在相同设备、视角与相近视觉质量下，记录完整下载量、重建耗时、首帧、加载峰值与稳定内存、可测的显存资源、绘制次数和帧时间。</p><p>同时核对碰撞、导航与修改后的行为。以完整运行数据判断收益，不预设节省比例，也不以源文件大小代替运行成本。</p></article></div>
-        <p class="decision">首个付费承诺建议：“在约定建筑类型与复杂度内，交付可加载、可修改、可再次打开的 WILD 场景。”先通过试点明确支持范围，再谈规模。</p>
+        <p class="small muted gap-top">互通路径参照：<a href="https://docs.godotengine.org/en/stable/tutorials/assets_pipeline/importing_3d_scenes/available_formats.html" target="_blank" rel="noopener noreferrer">Godot 官方 glTF / GLB 导入说明 ↗</a>、<a href="https://dev.epicgames.com/documentation/en-us/unreal-engine/the-gl-transmission-format-gltf-in-unreal-engine" target="_blank" rel="noopener noreferrer">Unreal 官方 glTF 导入说明 ↗</a>。引擎支持格式提供了接入入口，WILD 产物在具体版本中的可用性仍需实际导入验证。</p>
+        <div class="two-col gap-top"><article class="panel"><h3>首个试点验收完整制作流程</h3><p>选择一个目标引擎，完成“制作一栋建筑 → 多轮修改 → 模型导入 → 修改后重导入”，检查比例、坐标、材质、对象组织、碰撞和 LOD，以及目标设备的绘制次数和帧时间。</p><p>与客户原有流程记录相同范围和质量要求下的总耗时，计入资产清理、重导入与人工支持。由实际收益判断是否继续扩大游戏场景投入。</p></article><article class="panel"><h3>小蓝图的收益，按使用阶段衡量</h3><p>制作期的小文件价值在于保存设计参数、生成变体、持续修改和复用。若最终交付展开后的 GLB，应按模型与纹理的完整体积评估游戏资产成本，不能用 .wild 的体积推算安装包收益。</p><p>运行期的轻量分发需要 SDK 接入证明；展开后的网格、纹理和渲染开销仍然存在。资源共享、按需加载与细节分级需分别实现和实测。</p></article></div>
+        <p class="decision">首个付费承诺建议：“在约定建筑类型与复杂度内，交付可继续编辑的 WILD 源资产与约定的模型产物。”目标应用的导入、材质和更新范围，按实际试点验收结果确定。</p>
         <div class="two-col gap-top"><article class="panel"><h3>可触达市场的测量方法</h3><p>先建立目标团队名录，核实每月相关任务量、现有工具费用、决策人和付费意愿。以“可触达团队数 × 可接受月费”形成首期收入空间测算，并记录访谈依据。</p></article><article class="panel"><h3>不把远景当作首期市场</h3><p>专业 BIM、施工图与结构计算要求更完整的专业能力和责任体系。自主数字世界需要额外的角色、行为与持续状态系统；本稿将其放在远期拓展阶段。</p></article></div>
       </section>
 
@@ -132,7 +140,8 @@
           <article class="panel price-card featured"><span class="label proof">首期付费实验</span><h3>创作者 Pro</h3><div class="price">¥99 <small>/ 月 · 试探价</small></div><ul class="compact-list"><li>托管创作与保存服务。</li><li>包含明确上限的 AI 生成额度。</li><li>超额按用量收费，价格另行验证。</li></ul><p class="small">目的：验证独立用户的持续支付意愿。</p></article>
           <article class="panel price-card"><span class="label">团队与项目试点</span><h3>工作室 / API 合作</h3><div class="price">按范围 <small>/ 报价</small></div><ul class="compact-list"><li>以明确验收项开展有限付费试点。</li><li>后续评估团队空间、额度与 API。</li><li>定制维护成本单独核算。</li></ul><p class="small">目的：发现可重复需求，避免无限定制。</p></article>
         </div>
-        <div class="two-col gap-top"><article class="panel"><h3>开源带来采用，托管带来收入</h3><p>建议公开稳定的蓝图规范、示例与接入文档，逐步评估引擎开放范围。让外部工具也能生成 WILD，以便扩大使用入口。具体开源范围、许可证与第三方资源授权需要确认。</p><p>收费价值放在托管计算、可靠存储、协作、运维支持和企业交付上。开放规范的商业作用，是降低采用成本并提高复用机会。</p></article><article class="panel"><h3>内容交易是后续收入选项</h3><p>当用户开始重复使用构件、风格或材质包，再验证付费内容与平台分成。抽成比例暂不设定，需要先有真实交易量、版权规则与结算能力。</p><p>初期保留少量高质量范例与官方内容，优先保障工作台可用性，不提前建设完整商城。</p></article></div>
+        <div class="note"><strong>价格实验如何使用竞品参照。</strong>Pascal 的美元席位价仅用于研究收费结构；WILD 的 ¥99 是面向自身目标用户的独立试探价，尚无价格优势或利润率结论。先记录完成一座建筑及多轮修改所需的模型、重试、存储和人工支持成本，再确定套餐额度与超额价格。成熟智能体可直接创作蓝图，托管服务需要以更省时、可靠的完整流程证明付费理由。</div>
+        <div class="two-col gap-top"><article class="panel"><h3>开放降低采用门槛，服务承接收费</h3><p>建议公开稳定的蓝图规范、示例与接入文档，逐步评估引擎开放范围。让外部工具也能生成 WILD，以便扩大使用入口。具体开源范围、许可证与第三方资源授权需要确认。</p><p>收费价值放在托管计算、可靠存储、协作、运维支持和企业交付上。开放规范的商业作用，是降低采用成本并提高复用机会。</p></article><article class="panel"><h3>内容交易是后续收入选项</h3><p>当用户开始重复使用构件、风格或材质包，再验证付费内容与平台分成。抽成比例暂不设定，需要先有真实交易量、版权规则与结算能力。</p><p>初期保留少量高质量范例与官方内容，优先保障工作台可用性，不提前建设完整商城。</p></article></div>
         <div class="flowline"><strong>开放规范与样例</strong><span class="arrow">→</span><span>完成第一次创作</span><span class="arrow">→</span><span>持续编辑与复用</span><span class="arrow">→</span><strong>托管订阅 / 团队服务</strong><span class="arrow">→</span><span>内容生态（后续）</span></div>
       </section>
 
@@ -140,10 +149,12 @@
         <div class="chapter-heading"><span class="chapter-num">07</span><div><div class="eyebrow">Positioning & defensibility</div><h2>差异来自资产与工作流，价值要靠使用证明</h2></div></div>
         <div class="table-wrap"><table><thead><tr><th scope="col">用户可选路线</th><th scope="col">通常关注的结果</th><th scope="col">WILD 的选择</th><th scope="col">验证重点</th></tr></thead><tbody>
           <tr><td data-label="用户可选路线">成熟建模与专业建筑工具</td><td data-label="通常关注的结果">广泛的建模能力、专业工作流与成熟生态</td><td data-label="WILD 的选择">聚焦浏览器里的参数化建筑创作和轻量交付</td><td data-label="验证重点">在具体小型任务中能否减少操作与交接</td></tr>
+          <tr><td data-label="用户可选路线">Pascal Editor 等浏览器建筑编辑产品</td><td data-label="通常关注的结果">结构化建筑模型、人与 AI 共同编辑，以及开放引擎、MCP 和 API 接入</td><td data-label="WILD 的选择">以紧凑的参数化蓝图承载细节，聚焦游戏与互动场景中的建筑变体、持续修改和资产分发</td><td data-label="验证重点">在相近视觉质量与编辑要求下，验证完整交付体积、修改耗时、生成与重建成本及目标场景接入</td></tr>
           <tr><td data-label="用户可选路线">AI 三维资产生成</td><td data-label="通常关注的结果">快速获得形体或可视化资产</td><td data-label="WILD 的选择">围绕建筑构件、参数与引用保留可修改信息</td><td data-label="验证重点">编辑与复用价值是否足以支持迁移成本</td></tr>
           <tr><td data-label="用户可选路线">通用编程 Agent + WILD / 场景代码</td><td data-label="通常关注的结果">读取规范和示例，创作蓝图或自定义三维场景</td><td data-label="WILD 的选择">将规范、引擎、校验和直接编辑沉淀在工作台</td><td data-label="验证重点">实际任务的成品质量、成本、耗时与修改准确性</td></tr>
         </tbody></table></div>
-        <p class="small muted gap-top">本表按产品路线讨论取舍，不构成对特定厂商最新功能的评测。通用 Agent 也能编写 WILD；“采用专门工作流”本身不能证明效果优于其他方案。</p>
+        <p class="small muted gap-top">Pascal 行依据其<a href="https://editor.pascal.app/" target="_blank" rel="noopener noreferrer">产品官网 ↗</a>与<a href="https://github.com/pascalorg/editor" target="_blank" rel="noopener noreferrer">官方仓库 ↗</a>的公开能力说明；本表讨论产品路线，未进行同条件质量或性能测试。通用 Agent 也能编写 WILD，采用专门工作流本身不能证明效果优于其他方案。</p>
+        <div class="two-col gap-top"><article class="panel"><h3>把共同能力作为竞争起点</h3><p>浏览器建模、结构化建筑对象、AI 修改与开放接口在同类产品中已有实践。WILD 需要让用户在一个真实工作流中感受到差异：更快完成修改、以紧凑蓝图保留建筑变体，并通过约定的产物接入目标应用。</p><p>同类开源方案降低了进入门槛，也提高了替代压力。支持范围、兼容性、可复用内容和交付体验需要在持续使用中积累。</p></article><article class="panel"><h3>让“小文件”对应可计量的客户收益</h3><p>WILD 的核心方向是用小体积参数化描述重建精细建筑。近期验证源资产的修改、变体生成与复用效率，同时计入模型交付和接入成本；GLB 导出后的文件大小单独统计。</p><p>未来运行时 SDK 若能可靠重建，再验证蓝图分发的下载与更新收益。源文件紧凑、游戏安装包大小和运行帧率是不同指标，各自需要证据。</p></article></div>
         <div class="subsection-heading"><div class="eyebrow">Architectural modeling · feature mapping</div><h3>与现有建筑建模工作流，逐项对应功能</h3><p>以 SketchUp 的几何与组件工作流、Revit 的参数化与 BIM 工作流为参照，说明用户熟悉的操作在 WILD 中对应什么。不同工具各有侧重，下表区分已有基础、部分支持和后续工作。</p></div>
         <div class="table-wrap"><table><thead><tr><th scope="col">建模环节</th><th scope="col">现有建模工具的对应功能</th><th scope="col">WILD 当前对应能力</th><th scope="col">边界与后续工作</th></tr></thead><tbody>
           <tr><td data-label="建模环节">体量与建筑构件</td><td data-label="现有建模工具的对应功能">SketchUp 用几何与组件组织模型；Revit 提供墙、门窗等参数化建筑构件</td><td data-label="WILD 当前对应能力">已有墙、楼板、楼梯和通用几何基础；门窗等组合构件由参数编译展开，屋顶、柱梁和家具等仍为部分支持</td><td data-label="边界与后续工作">持续补齐构件与组合质量；任意曲面、扫描级造型及完整专业建筑体系超出当前覆盖</td></tr>
@@ -152,7 +163,7 @@
           <tr><td data-label="建模环节">材质与视觉表现</td><td data-label="现有建模工具的对应功能">SketchUp 可对面和组件赋予材质；Revit 可连接 Twinmotion 等表现工具</td><td data-label="WILD 当前对应能力">已有 PBR 参数与纹理、程序化材质、环境光影和网页实时预览</td><td data-label="边界与后续工作">完善可复用材质与光影方案，以及目标游戏引擎中的材质映射；实时预览不能代替各类离线渲染能力</td></tr>
           <tr><td data-label="建模环节">对象组织与关联修改</td><td data-label="现有建模工具的对应功能">SketchUp 用嵌套组与组件组织对象；Revit 通过同一建筑模型关联项目视图</td><td data-label="WILD 当前对应能力">蓝图保留构件 ID、参数和宿主引用；场景树组织对象，ScenePatch 提供结构化修改与预检</td><td data-label="边界与后续工作">继续完善跨构件约束和整体参数联动；当前语义关系不能等同于完整 BIM 数据体系</td></tr>
           <tr><td data-label="建模环节">剖切、图纸与工程统计</td><td data-label="现有建模工具的对应功能">Revit 可生成平面、立面、剖面、图纸及明细表，并进行数量与材料统计</td><td data-label="WILD 当前对应能力">已有可调高度的水平剖切预览，可查看建筑内部；同时提供三维蓝图、构件编辑、设计示意与渲染展示</td><td data-label="边界与后续工作">已有三维剖切查看能力；带尺寸标注与规范出图流程的专业平剖面图纸、工程算量、结构计算和施工交付仍不属于当前承诺</td></tr>
-          <tr><td data-label="建模环节">文件交换与游戏接入</td><td data-label="现有建模工具的对应功能">成熟工具通过各自支持的模型格式、API 与插件交换数据，例如 Revit 的 BIM/CAD 格式与开发接口</td><td data-label="WILD 当前对应能力">本地 .wild 保存参数与关系，独立 Core 输出网格和材质参数，为外部渲染适配提供基础</td><td data-label="边界与后续工作">目标游戏引擎的加载、材质、碰撞、导航和更新流程仍需实际适配；性能收益按完整场景验收</td></tr>
+          <tr><td data-label="建模环节">文件交换与游戏接入</td><td data-label="现有建模工具的对应功能">成熟工具通过各自支持的模型格式、API 与插件交换数据，例如 Revit 的 BIM/CAD 格式与开发接口</td><td data-label="WILD 当前对应能力">本地 .wild 保存参数与关系，独立 Core 输出网格和材质参数；工作台已提供静态 GLB 导出与本地重新加载验证</td><td data-label="边界与后续工作">目标游戏引擎的材质、实例化扩展、碰撞、导航和重导入仍待实际验收；原生插件与运行时 SDK 属于规划</td></tr>
           <tr><td data-label="建模环节">项目协作与版本管理</td><td data-label="现有建模工具的对应功能">Revit 提供共享模型协作、同步和图纸修订管理</td><td data-label="WILD 当前对应能力">已有蓝图保存、场景版本检查、修改提案和本地过程记录基础</td><td data-label="边界与后续工作">团队空间、多用户并发、权限和完整版本协作仍属产品化工作，不能以单场景修改机制替代</td></tr>
         </tbody></table></div>
         <div class="note"><strong>对应功能，也说明产品定位。</strong>本地文件、组件复用、参数化和外部接入在成熟工具中也有实践。WILD 将轻量蓝图、智能体创作、确定性重建与网页编辑组织为面向游戏建筑资产的工作流，其价值需要通过具体任务的质量、修改效率和交付成本验证。</div>
@@ -178,10 +189,18 @@
         <div class="table-wrap"><table><thead><tr><th scope="col">阶段与动作</th><th scope="col">建议样本 / 目标</th><th scope="col">怎样判断有效</th><th scope="col">不通过时怎么调整</th></tr></thead><tbody>
           <tr><td data-label="阶段与动作">访谈与问题确认</td><td data-label="建议样本 / 目标">访谈 20 位目标用户；覆盖创作者与小团队</td><td data-label="怎样判断有效">至少 10 位能描述真实近期任务及重复修改痛点</td><td data-label="不通过时怎么调整">缩小场景，重新确定用户与任务</td></tr>
           <tr><td data-label="阶段与动作">邀请制任务试用</td><td data-label="建议样本 / 目标">招募 10–20 位设计伙伴；任务中记录失败与人工介入</td><td data-label="怎样判断有效">能完成“创建 → 修改 → 保存 → 重开”的完整任务</td><td data-label="不通过时怎么调整">先修复阻塞，不以注册量替代完成率</td></tr>
-          <tr><td data-label="阶段与动作">付费试点</td><td data-label="建议样本 / 目标">争取 3–5 个明确范围的付费项目或订阅意向转化</td><td data-label="怎样判断有效">客户按约定验收付款，人工交付成本可记录</td><td data-label="不通过时怎么调整">检查价值、边界、定价或服务成本</td></tr>
+          <tr><td data-label="阶段与动作">付费试点</td><td data-label="建议样本 / 目标">完成 3–5 个明确范围、实际付款的项目或订阅</td><td data-label="怎样判断有效">客户按约定验收付款，记录交付、支持和退款成本；意向单独统计</td><td data-label="不通过时怎么调整">检查价值、边界、定价或服务成本</td></tr>
           <tr><td data-label="阶段与动作">留存与可重复收入</td><td data-label="建议样本 / 目标">至少观察连续 2 个付费周期</td><td data-label="怎样判断有效">复用与续费发生，单位贡献为正，人工投入趋于可控</td><td data-label="不通过时怎么调整">暂缓扩大投放，优先修复留存原因</td></tr>
         </tbody></table></div>
-        <div class="two-col gap-top"><article class="panel"><h3>首批用户从哪里来</h3><p>通过代码仓库、演示站、建筑与三维创作者社群发布任务型演示：展示“同一座建筑如何改三次”，同时提供可体验的蓝图。与独立开发者、网页展示团队建立小规模试点。</p></article><article class="panel"><h3>核心指标怎么定义</h3><p>激活：用户独立完成并重开一个作品。任务成功：格式、空间关系和实际渲染通过，且满足用户验收。留存：按用户批次统计下一周期再次创作与续费；同时记录每次成功交付的全成本。</p></article></div>
+        <div class="two-col gap-top"><article class="panel"><h3>首批用户从哪里来</h3><p>通过代码仓库、演示站、建筑与三维创作者社群发布任务型演示：展示“同一座建筑如何改三次”，同时提供可体验的蓝图和实际下载体积。面向独立开发者与网页展示团队，演示从样例到目标场景的接入过程。</p></article><article class="panel"><h3>公开演示怎样转为真实采用</h3><p>以 Pascal 的社区关注作为渠道参照，分别记录演示访问、样例下载、完整任务、重复使用和实际付款。Stars、观看量与注册量用于判断触达，产品决策依据用户完成自己的任务和后续使用情况。</p></article></div>
+        <div class="subsection-heading"><div class="eyebrow">From interest to paid reuse</div><h3>把关注、任务价值和可持续收入分别衡量</h3><p>以下为试点记录口径，尚未形成实测结果。小样本同时报告人数与比例，按来源和开始使用的批次观察。</p></div>
+        <div class="table-wrap"><table><thead><tr><th scope="col">指标</th><th scope="col">记录口径</th><th scope="col">要回答的问题</th></tr></thead><tbody>
+          <tr><td data-label="指标">首次激活</td><td data-label="记录口径">首次试用后 7 天内，独立完成“创建 → 修改 → 保存 → 重开”的人数 / 已观察满 7 天的同批开始试用人数</td><td data-label="要回答的问题">用户能否把兴趣转为一份自己可用的作品？</td></tr>
+          <tr><td data-label="指标">任务价值与交付成本</td><td data-label="记录口径">格式、空间关系、真实渲染与用户验收分别记录；统计制作、多轮修改和接入耗时，以及完整资源体积。每次验收成功任务的成本计入失败、重试和人工支持</td><td data-label="要回答的问题">轻量蓝图是否节省了用户的时间与交付成本？</td></tr>
+          <tr><td data-label="指标">重复使用</td><td data-label="记录口径">首次激活后的第 8–30 天内，再次创作或修改的人数 / 已观察满 30 天的同批激活人数；另记资产被再次复用的情况</td><td data-label="要回答的问题">用户在新鲜感之后，是否仍需要这套工作流？</td></tr>
+          <tr><td data-label="指标">付费与续费</td><td data-label="记录口径">试点邀请后 30 天内实际付款人数 / 已观察满 30 天的同批受邀试用人数；下一周期续费人数 / 已到续费期订阅人数。分别列出项目款、订阅、退款与取消</td><td data-label="要回答的问题">需求是否转为真实收入，且能够持续？</td></tr>
+          <tr><td data-label="指标">单位贡献</td><td data-label="记录口径">每位付费用户的实际收入减 AI、失败重试、存储带宽、支付和随用户增长的支持成本；同时单列免费试用及渠道获客支出</td><td data-label="要回答的问题">更多使用与付费，能否带来可持续的经营贡献？</td></tr>
+        </tbody></table></div>
       </section>
 
       <section class="chapter" id="roadmap">
@@ -209,16 +228,16 @@
           <tr><td data-label="发展方向">生成稳定性收敛 <span class="label idea">规划</span></td><td data-label="已有基础">已有生成记录、校验反馈与构件实现基础</td><td data-label="规划中的交付与验收重点">建立固定任务集和失败分类；优先用确定性算法接管宿主解析、立面分格和坐标推导，分别统计通过率、人工介入与交付成本</td></tr>
         </tbody></table></div>
         <div class="timeline">
-          <article class="milestone"><span class="period">0–3 MONTHS</span><h3>验证可用与需求</h3><p>限定建筑范围，建立真实任务评测；完善首次体验、保存重开与问题反馈。完成用户访谈和邀请试用，测量生成成本、人工介入及任务完成情况。</p><div class="gate"><strong>进入下一阶段：</strong>关键任务可复现，3–5 个用户或项目出现真实付费，失败原因可归类。</div></article>
-          <article class="milestone"><span class="period">3–6 MONTHS</span><h3>验证持续付费</h3><p>按成本确定订阅额度，补齐稳定性与常用编辑操作。围绕反复出现的需求沉淀构件与示例，试行有限的团队服务与外部接入。</p><div class="gate"><strong>进入下一阶段：</strong>观察到续费，订阅单位贡献为正，支持和定制工作量保持可控。</div></article>
-          <article class="milestone"><span class="period">6–12 MONTHS</span><h3>验证可复制交付</h3><p>完善可复用 API 与版本兼容，支持优质内容制作和分发。选择一个外部平台做真实接入，验证蓝图在目标设备与应用中的交付表现。</p><div class="gate"><strong>继续扩展：</strong>形成可重复获客、续费与交付流程；具备内容复用或外部集成证据。</div></article>
+          <article class="milestone"><span class="period">0–3 MONTHS</span><h3>验证可用与需求</h3><p>限定建筑范围，完善首次体验和保存重开。完成用户访谈与邀请试用，选择一个目标引擎验证单体模型导入和修改后重导入，记录制作、接入与返工总耗时。</p><div class="gate"><strong>进入下一阶段：</strong>关键任务可复现，3–5 个用户或项目实际付费；游戏试点明确资产验收结果与效率收益。</div></article>
+          <article class="milestone"><span class="period">3–6 MONTHS</span><h3>验证持续付费</h3><p>按成本确定订阅额度，补齐稳定性与常用编辑操作。围绕重复需求沉淀构件、示例和模型交付规范，验证修改后再次接入、复用和客户续费。</p><div class="gate"><strong>进入下一阶段：</strong>观察到续费，订阅单位贡献为正，资产清理、支持和定制工作量保持可控。</div></article>
+          <article class="milestone"><span class="period">6–12 MONTHS</span><h3>验证可复制交付</h3><p>完善 API 与版本兼容；在反复出现的接入需求支持下，评估制作期原生导入插件。运行时 SDK 依据客户需求、重建性能与完整资源成本另行验证。</p><div class="gate"><strong>继续扩展：</strong>形成可重复获客、续费和外部交付证据。游戏内蓝图重建不计入首期交付或收入承诺。</div></article>
         </div>
         <div class="statement"><p>长期方向：创作工具 → 内容社区 → 可交互场景 → 更开放的数字世界。</p><div class="small">互动建筑、角色生活与 Agent 自主演化是长期探索方向，需要角色行为、寻路、状态和权限等新能力。启动时间由前期验证决定，不纳入首期收入预测。</div></div>
       </section>
 
       <section class="chapter" id="finance">
         <div class="chapter-heading"><span class="chapter-num">10</span><div><div class="eyebrow">Unit economics · interactive assumptions</div><h2>先算清一位用户，再讨论规模</h2></div></div>
-        <p class="lead">以下模型只测试个人订阅能否覆盖直接服务成本与固定运营费用。所有输入都是可修改的讨论假设，不代表实际成本、已售价格、客户数或收入预测。</p>
+        <p class="lead">以下模型只测试个人订阅能否覆盖直接服务成本与固定运营费用。所有输入都是可修改的讨论假设，不代表实际成本、已售价格、客户数或收入预测。付费人数与价格须由 WILD 自身获客和试点推导；Pascal 的累计使用人数、Stars 与公开标价均不代入本模型。</p>
         <div class="calculator">
           <div class="calc-inputs"><h3>调整试算假设</h3>
             <div class="field"><label for="price">订阅单价（元 / 人 / 月）</label><input id="price" type="number" v-model.number="assumptions['price']" :aria-invalid="!validInput('price')" min="1" max="100000" step="1" inputmode="decimal"></div>
@@ -267,16 +286,18 @@
         <div class="subsection-heading"><div class="eyebrow">Risks &amp; validation</div><h3>把能力边界转化为明确的验证任务</h3></div>
         <div class="table-wrap"><table><thead><tr><th scope="col">关键风险</th><th scope="col">当前判断</th><th scope="col">控制与验证</th></tr></thead><tbody>
           <tr><td data-label="关键风险">复杂生成质量不稳定</td><td data-label="当前判断">精细渲染样例不等于复杂任务稳定自动交付</td><td data-label="控制与验证">限定支持范围；分别统计结构、空间、渲染和用户验收；记录人工介入</td></tr>
-          <tr><td data-label="关键风险">需求与付费不足</td><td data-label="当前判断">付费转化与跨周期留存尚未充分验证</td><td data-label="控制与验证">真实任务访谈、有限付费试点与跨周期续费验证</td></tr>
+          <tr><td data-label="关键风险">需求与付费不足</td><td data-label="当前判断">同类产品的采用与定价提供参照，WILD 自身付费转化与跨周期留存尚未充分验证</td><td data-label="控制与验证">真实任务访谈、实际付款试点与跨周期续费；分别统计关注、使用、付费及人工支持成本</td></tr>
+          <tr><td data-label="关键风险">同类产品与开源替代</td><td data-label="当前判断">浏览器编辑与 AI 接入已有开放方案，基础功能容易被替代</td><td data-label="控制与验证">聚焦轻量建筑资产的持续修改和实际接入，以目标任务的质量、耗时、完整成本及复用验证选择理由</td></tr>
           <tr><td data-label="关键风险">成本随用量上升</td><td data-label="当前判断">AI 调用、失败重试和支持会影响单位贡献</td><td data-label="控制与验证">按质量档设额度；监测成功交付成本；超额计费前验证价格接受度</td></tr>
           <tr><td data-label="关键风险">格式采用与兼容</td><td data-label="当前判断">自定义协议需要外部工具愿意接入</td><td data-label="控制与验证">版本化规范、兼容测试、迁移策略与首个真实外部应用</td></tr>
+          <tr><td data-label="关键风险">游戏工具链接入成本</td><td data-label="当前判断">GLB 导出已实现，目标引擎中的材质、碰撞、LOD 和重导入仍待验收</td><td data-label="控制与验证">从制作期资产交付试点开始，由客户现有引擎渲染；将接入和返工计入总成本，再决定插件或 SDK 投入</td></tr>
           <tr><td data-label="关键风险">设备性能与资产总成本</td><td data-label="当前判断">蓝图小不代表展开后网格、贴图或运行成本小</td><td data-label="控制与验证">同时测文件体积、外部资源、首屏、内存与目标设备交互表现</td></tr>
           <tr><td data-label="关键风险">许可与内容权利</td><td data-label="当前判断">拟开放范围及第三方素材商业授权仍需核对</td><td data-label="控制与验证">上线前明确许可证、资源清单、作品授权及平台内容规则</td></tr>
           <tr><td data-label="关键风险">团队与范围失控</td><td data-label="当前判断">独立开发资源有限，远景容易分散投入</td><td data-label="控制与验证">先完成工作台与商业验证；社区交易、自主世界按里程碑启动</td></tr>
         </tbody></table></div>
         <div class="note"><strong>商业化前需要验证：</strong>负责人和公司主体、项目许可与资源授权、核心任务真实完成率、付费客户与留存、按任务统计的成本、月度现金预算及融资目标。相关指标将随试点与产品进展持续完善。</div>
         <div class="endline">从一份可编辑的蓝图，<br>长出更多可以被创造的世界。</div>
-        <div class="footer"><span>WILD · 旷野 · 商业计划书</span><span>WILD · 旷野 / 持续开发中</span></div>
+        <div class="footer"><span>WILD · 旷野 · 商业计划书</span><span>公开竞品资料核查：2026-10-28 / 产品持续开发中</span></div>
       </section>
     </main>
   </div>

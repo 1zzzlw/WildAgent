@@ -53,6 +53,7 @@ import {
   toggleRuntimeInteraction,
 } from '../../renderer/renderEntity'
 import { WorldRuntime } from '../../renderer/worldRuntime'
+import { exportBuildingGlb } from '../../renderer/glbExport'
 import {
   createEditorWorldDocument,
   saveWorldDocument,
@@ -414,6 +415,7 @@ watch(() => renderPanel.showGrid, () => {
 })
 watch(() => renderPanel.resetViewNonce, () => resetViewToPreset())
 watch(() => renderPanel.screenshotNonce, () => takeScreenshot())
+watch(() => renderPanel.glbExportNonce, () => exportGlb())
 watch(() => renderPanel.frameSelectionNonce, frameSelection)
 watch([() => renderPanel.sectionEnabled, () => renderPanel.sectionHeight], applySection)
 watch([timeOfDay, environmentPresetId, qualityLevel, cameraPresetId, viewMode], () => {
@@ -1942,6 +1944,29 @@ function resetViewToPreset() {
     camera.position.set(12, 10, 12)
     controls.update()
     markNeedsRender()
+  }
+}
+
+async function exportGlb() {
+  if (renderPanel.exportingGlb || !sceneGroup || sceneStore.isReconstructing) return
+  renderPanel.exportingGlb = true
+  const name = sceneStore.document?.name || 'scene'
+  try {
+    const { data, simplifiedMaterials, bakedMaterials, warnings } = await exportBuildingGlb(sceneGroup, name, renderer || undefined)
+    const url = URL.createObjectURL(new Blob([data], { type: 'model/gltf-binary' }))
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = name.replace(/[<>:"/\\|?*\u0000-\u001f]/g, '_').replace(/\.(wild|json|glb)$/i, '') + '.glb'
+    anchor.click()
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+    if (warnings.length) ElMessage.warning(`GLB 已导出；${warnings[0]}${warnings.length > 1 ? '，另有其他材质兼容提示' : ''}`)
+    else if (simplifiedMaterials) ElMessage.warning('GLB 已导出；已保留可烘焙的表面贴图，动态水面和其他运行时效果由查看器决定')
+    else ElMessage.success(bakedMaterials ? `GLB 已导出，已烘焙 ${bakedMaterials} 类材质贴图` : 'GLB 已导出')
+  } catch (error) {
+    console.error('[viewport] GLB 导出失败', error)
+    ElMessage.error(error instanceof Error ? error.message : 'GLB 导出失败，请重试')
+  } finally {
+    renderPanel.exportingGlb = false
   }
 }
 

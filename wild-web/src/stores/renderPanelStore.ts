@@ -79,6 +79,8 @@ export const useRenderPanelStore = defineStore('renderPanel', () => {
   const resetViewNonce = ref(0)
   /** 递增一次 = 请求把当前画布保存为 PNG 截图。 */
   const screenshotNonce = ref(0)
+  const glbExportNonce = ref(0)
+  const exportingGlb = ref(false)
   const frameSelectionNonce = ref(0)
   const presetRequest = ref<RenderPresetRequest | null>(null)
   const presets = ref({ camera: 'corner', environment: 'minimal', quality: 'medium', time: 'day', view: 'editor' })
@@ -105,6 +107,10 @@ export const useRenderPanelStore = defineStore('renderPanel', () => {
     screenshotNonce.value += 1
   }
 
+  function requestGlbExport() {
+    if (!exportingGlb.value) glbExportNonce.value += 1
+  }
+
   return {
     collapsed,
     showEdges,
@@ -114,6 +120,8 @@ export const useRenderPanelStore = defineStore('renderPanel', () => {
     autoRotateSpeed,
     resetViewNonce,
     screenshotNonce,
+    glbExportNonce,
+    exportingGlb,
     frameSelectionNonce,
     presetRequest,
     presets,
@@ -125,5 +133,6 @@ export const useRenderPanelStore = defineStore('renderPanel', () => {
     stats,
     requestResetView,
     requestScreenshot,
+    requestGlbExport,
   }
 })
