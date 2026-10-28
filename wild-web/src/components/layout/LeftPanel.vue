@@ -29,7 +29,7 @@
         <WorldLookPanel v-show="ui.activePanel === 'look'" />
         <AIChatPanel v-show="ui.activePanel === 'aiChat'" />
       </div>
-      <div class="dock-status"><span class="status-dot"></span><span>{{ scene.document?.dirty ? '修改尚未保存' : '准备就绪' }}</span><span>{{ selection.selectedIds.length ? selection.selectedIds.length + ' 项已选' : 'WILD 1.1' }}</span></div>
+      <div class="dock-status"><span class="status-dot"></span><span>{{ scene.document?.dirty ? '修改尚未保存' : '准备就绪' }}</span><span>{{ selection.selectedIds.length ? selection.selectedIds.length + ' 项已选' : 'WILD 1.0' }}</span></div>
       <button type="button" class="dock-resize" role="separator" aria-label="调整左侧面板宽度" aria-orientation="vertical"
         :aria-valuenow="ui.panelWidth" :aria-valuemin="300" :aria-valuemax="760" @pointerdown="startResize"
         @keydown.left.prevent="ui.setPanelWidth(ui.panelWidth-20)" @keydown.right.prevent="ui.setPanelWidth(ui.panelWidth+20)"></button>

@@ -29,7 +29,7 @@ async function renderThumbnails(): Promise<Record<string, string>> {
   try {
     for (const preset of SURFACE_MATERIAL_PRESETS) {
       const rounded = ['metal', 'glass'].includes(preset.material.surfaceFamily ?? '') || preset.material.materialClass === 'fabric'
-      const entity = await reconstructWildEntity({ meta: { version: '1.1', type: 'asset', name: preset.name },
+      const entity = await reconstructWildEntity({ meta: { version: '1.0', type: 'asset', name: preset.name },
         geometry: { elements: [{ type: 'primitive', id: 'sample', shape: rounded ? 'sphere' : 'box', radius: 0.32, dimensions: [0.65, 0.65, 0.08], material: preset.id }] },
         materials: { [preset.id]: preset.material } })
       const group = createSceneGroupFromEntity(entity)

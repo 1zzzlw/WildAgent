@@ -67,6 +67,7 @@ def close_connect():
 
 # ``app`` 是 Uvicorn 通过 ``main:app`` 导入的 ASGI 应用对象。
 app = FastAPI(
+    version="1.0",
     # 由上面的上下文管理器接管应用启动、关闭前后的逻辑。
     lifespan=lifespan
 )

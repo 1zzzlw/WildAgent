@@ -613,7 +613,7 @@ export interface BodyParams {
 }
 
 /**
- * 通用参数化形体（WILD v1.1）。
+ * 通用参数化形体（WILD 1.0）。
  *
  * 用少量可组合的数学形体表达篮球、檐口线脚等对象，避免为每个现实
  * 名词增加一个专用 element type。
@@ -764,7 +764,7 @@ export interface MaterialDef {
   lightingCondition: 'D65_noon';
   effects?: EffectLayer[];
   embeddedImage?: EmbeddedImageData;
-  /** WILD v1.1：可选的内嵌或 URL PBR 纹理通道 */
+  /** WILD 1.0：可选的内嵌或 URL PBR 纹理通道 */
   textures?: {
     baseColor?: TextureImageData;
     normal?: TextureImageData;

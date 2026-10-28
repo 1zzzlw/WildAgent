@@ -1,5 +1,5 @@
 # Python
-/__pycache__/
+__pycache__/
 *.py[cod]
 .venv/
 .env
@@ -12,7 +12,7 @@ wild-server/storage/geoip/*.mmdb
 wild-server/.langgraph_api/
 wild-server/rag_bg_sync_*
 wild-server/.probe_tmp/
-wild-web/lantu
+/wild-web/lantu/
 
 # Node
 node_modules/
@@ -24,6 +24,7 @@ dist/
 # IDE
 .idea/
 .vscode/
+!/wild-web/.vscode/
 .claude/
 .codex/
 .idea/

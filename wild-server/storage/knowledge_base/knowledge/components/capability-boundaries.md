@@ -66,7 +66,7 @@ synonyms: []
 
 ### 1.4 不支持的类型
 
-以下类型**不存在于 WILD v1.1**：
+以下类型**不存在于 WILD 1.0**：
 
 - 不支持：`truss`（桁架）→ 用多个 `beam` 或 `primitive` 组合
 - 不支持：`door`（作为 element）→ 应使用 `geometry.components` 中的 `door`

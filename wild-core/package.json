@@ -1,6 +1,6 @@
 {
   "name": "wild-core",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "description": "WILD 蓝图确定性几何重建引擎：原语编译、空间求解、材质契约与组合构件展开",
   "type": "module",

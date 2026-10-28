@@ -569,7 +569,7 @@ def validate_blueprint_structure(blueprint: dict) -> str:
     else:
         meta = blueprint["meta"]
         if "version" not in meta:
-            issues.append("❌ meta.version 缺失（当前支持 '1.0' / '1.1'）")
+            issues.append("❌ meta.version 缺失（当前规范为 '1.0'）")
         elif meta["version"] not in {"1.0", "1.1"}:
             issues.append(f"❌ meta.version='{meta['version']}' 不受支持")
         if "type" not in meta:

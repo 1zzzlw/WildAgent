@@ -24,7 +24,7 @@ synonyms: []
 
 # 构件组装关系约束
 
-> 基于 WILD v1.1 引擎实现的实际组装能力  
+> 基于 WILD 1.0 引擎实现的实际组装能力
 > 来源：`wild-core/resolver.ts`、`wild-compiler/index.ts`、组件编译器
 
 本文档只记录**引擎当前能够执行**的组装关系。未实现的设计不变量应移至 backlog。

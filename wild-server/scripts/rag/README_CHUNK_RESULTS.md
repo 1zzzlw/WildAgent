@@ -153,7 +153,7 @@ metadata 不需要全部背下来，可以分成三组。
 | `topic` | 本实体的主题分类 | 当前文件用 `schema` 表示 Schema 规则 |
 | `status` | 成熟度 | `supported` 可进入正式召回；`proposed` 会被排除 |
 | `authority` | 事实权威性 | `engine` 表示来自当前引擎事实；`inferred` 会被排除 |
-| `wild_version` | 适用版本 | 示例为 `1.1`，应与当前规范一致 |
+| `wild_version` | 适用版本 | 统一为 `1.0`，与当前规范一致 |
 | `primary_terms` | 主术语 | 正式实体名、稳定技术术语和实际 WILD 类型/字段 |
 | `synonyms` | 同义词 | 英文翻译、别名、俗称或用户常用输入；没有时为空字符串 |
 

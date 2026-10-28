@@ -31,7 +31,7 @@ export function parseBlueprint(json: string): Blueprint {
     throw new Error(`Invalid blueprint version: ${version}`);
   }
   if (major > 1 || (major === 1 && minor > 1)) {
-    throw new Error(`Unsupported blueprint version: ${version}. Engine uses 1.0 and accepts legacy 1.1`);
+    throw new Error(`Unsupported blueprint version: ${version}. Current WILD version: 1.0`);
   }
 
   if (obj.geometry.elements !== undefined && !Array.isArray(obj.geometry.elements)) {

@@ -445,21 +445,14 @@ def validate_enums(blueprint):
 def validate_version(blueprint):
     version = blueprint["meta"]["version"]
     
-    # 当前支持 1.0 和 1.1
+    # 当前规范统一为 1.0；1.1 仅作为旧文件导入兼容值。
     if version not in ["1.0", "1.1"]:
         raise ValueError(
-            f"Unsupported WILD version '{version}'. Supported: 1.0, 1.1"
+            f"Unsupported WILD version '{version}'. Current: 1.0"
         )
-    
-    # v1.0 不支持 primitive
-    if version == "1.0":
-        for element in blueprint["geometry"]["elements"]:
-            if element["type"] == "primitive":
-                raise ValueError(
-                    "primitive type requires WILD v1.1. "
-                    "Set meta.version to '1.1'"
-                )
 ```
+
+`primitive` 与 PBR 纹理均属于当前 WILD 1.0 的能力，编写蓝图时统一使用 `meta.version: "1.0"`。
 
 ---
 
