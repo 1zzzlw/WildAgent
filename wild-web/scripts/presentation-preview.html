@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="zh-CN"><meta charset="utf-8"><title>WILD 原生展示契约验证</title>
+<style>html,body,#app{margin:0;width:100%;height:100%;overflow:hidden}</style>
+<div id="app"></div>
+<script type="module">
+import { createApp, nextTick } from 'vue';
+import { createPinia } from 'pinia';
+import CanvasViewport from '/src/components/viewport/CanvasViewport.vue';
+import { useSceneStore } from '/src/stores/sceneStore.ts';
+import { useRenderPanelStore } from '/src/stores/renderPanelStore.ts';
+const pinia = createPinia();
+let app = createApp(CanvasViewport); app.use(pinia); app.mount('#app');
+window.presentationTest = { app, scene: useSceneStore(), render: useRenderPanelStore(), async remount() {
+  app.unmount(); app = createApp(CanvasViewport); app.use(pinia); app.mount('#app');
+  await nextTick(); window.presentationTest.app = app;
+  window.presentationTest.render.requestPreset({ type: 'view', value: 'presentation' });
+} };
+await nextTick();
+window.presentationTest.render.requestPreset({ type: 'view', value: 'presentation' });
+window.ready = true;
+</script></html>

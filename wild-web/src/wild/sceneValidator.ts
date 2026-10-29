@@ -23,9 +23,13 @@ import type { Blueprint } from '../types/blueprint'
 import type { ValidationIssue } from '../types/scenePatch'
 import { compileBlueprintComponents } from 'wild-core/compiler'
 import { validateGeometryRelations } from 'wild-core/relationships'
+import { validateBlueprintPresentation } from 'wild-core/primitive'
 
 export function validateBlueprint(blueprint: Blueprint): ValidationIssue[] {
   const issues: ValidationIssue[] = []
+  for (const message of validateBlueprintPresentation(blueprint.presentation)) {
+    issues.push({ level: 'error', path: 'presentation', message })
+  }
 
   // 校验 meta
   if (!blueprint.meta?.version) {
@@ -212,6 +216,12 @@ export function validateBlueprint(blueprint: Blueprint): ValidationIssue[] {
           elementId: component.id
         })
       }
+    }
+    if (component.type === 'door') for (const part of component.leafParts ?? []) {
+      if (!materialNames.has(part.material)) issues.push({
+        level: 'warning', message: `门扇附件 ${component.id}/${part.id} 引用了不存在的材质: ${part.material}`,
+        elementId: component.id,
+      })
     }
   }
 

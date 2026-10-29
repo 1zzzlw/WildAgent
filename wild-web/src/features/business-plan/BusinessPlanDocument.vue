@@ -90,14 +90,14 @@
 
       <section class="chapter" id="showcase">
   <div class="chapter-heading"><span class="chapter-num">04</span><div><div class="eyebrow">Architecture, material &amp; space</div><h2>一套语言，承载不同建筑与空间</h2></div></div>
-  <p class="lead">从住宅与合院，到展馆与咖啡空间，WILD 将建筑体量、构件细节、材质与关系保留在可以阅读和修改的蓝图中。这里展示不同风格的完整建筑，点击图片可以放大，展开卡片可查看另一侧视角。</p>
-  <div class="showcase-summary"><strong>{{ projects.length }} <small>座建筑</small></strong><strong>{{ projects.length * 2 }} <small>幅完整视角</small></strong><strong>1600 × 1000 <small>原始画幅</small></strong></div>
+  <p class="lead">从住宅与合院，到展馆、雨夜店铺与海边电车站，WILD 将建筑体量、构件细节、材质与关系保留在可以阅读和修改的蓝图中。这里展示不同风格的完整建筑与微缩场景，点击图片可以放大，展开卡片可查看另一侧视角。</p>
+  <div class="showcase-summary"><strong>{{ projects.length }} <small>项作品</small></strong><strong>{{ projects.length * 2 }} <small>幅完整视角</small></strong><strong>完整画幅 <small>保留原始比例</small></strong></div>
   <div class="project-grid">
     <article v-for="project in projects" :key="project.id" class="project-case">
       <div class="project-heading"><div><span class="eyebrow">{{ project.type }}</span><h3>{{ project.name }}</h3></div><span class="project-size mono">{{ project.size }}<small>蓝图</small></span></div>
       <p class="project-story">{{ project.story }}</p>
-      <figure class="project-main"><button class="image-open" type="button" data-zoom :aria-label="'放大' + project.name" @click="showImage(project.images[0]!)"><img :src="project.images[0]!.src" :alt="project.images[0]!.alt" width="1600" height="1000" loading="lazy"></button><figcaption>建筑全貌<span>点击放大 ↗</span></figcaption></figure>
-      <details class="more-views"><summary>另一侧完整视角</summary><figure class="project-detail"><button class="image-open" type="button" data-zoom :aria-label="'放大' + project.name + '另一侧视角'" @click="showImage(project.images[1]!)"><img :src="project.images[1]!.src" :alt="project.images[1]!.alt" width="1600" height="1000" loading="lazy"></button></figure></details>
+      <figure class="project-main"><button class="image-open" type="button" data-zoom :aria-label="'放大' + project.name" @click="showImage(project.images[0]!)"><img :src="project.images[0]!.src" :alt="project.images[0]!.alt" :width="project.imageWidth || 1600" :height="project.imageHeight || 1000" loading="lazy"></button><figcaption>作品全貌<span>点击放大 ↗</span></figcaption></figure>
+      <details class="more-views"><summary>另一侧完整视角</summary><figure class="project-detail"><button class="image-open" type="button" data-zoom :aria-label="'放大' + project.name + '另一侧视角'" @click="showImage(project.images[1]!)"><img :src="project.images[1]!.src" :alt="project.images[1]!.alt" :width="project.imageWidth || 1600" :height="project.imageHeight || 1000" loading="lazy"></button></figure></details>
     </article>
   </div>
   <div class="subsection-heading"><div class="eyebrow">Interior &amp; materials</div><h3>走进建筑，看见材料与空间</h3><p>木作、石材、玻璃、家具与光照，延续在同一份蓝图和同一个编辑环境中。</p></div>
@@ -312,6 +312,64 @@ import { calculateSubscription, money, type SubscriptionAssumptions } from './ca
 import { RouterLink } from 'vue-router'
 
 const projects = [
+  {
+    "id": "shiomi",
+    "name": "汐見駅 · 海边暮色",
+    "type": "海边交通微缩场景",
+    "story": "横向站房、抬高的站台、短电车与海堤，组成层次清晰的海边一角。黄昏光照、动态海水与可推拉车门，在同一份轻量蓝图中呈现。",
+    "size": "46.2 KiB",
+    "imageWidth": 1440,
+    "imageHeight": 1080,
+    "images": [
+      { "src": "/business-plan/shiomi-01.png", "alt": "汐見駅 · 站房、短电车与海岸全景" },
+      { "src": "/business-plan/shiomi-02.png", "alt": "汐見駅 · 候车站台与电车另一侧完整视角" }
+    ]
+  },
+  {
+    "id": "tomokoji",
+    "name": "灯巷らーめん · 雨夜街角",
+    "type": "日式餐饮微缩场景",
+    "story": "红灯笼与暖帘迎向雨夜，橱窗内是 L 形吧台、圆凳和拉面陈设。窄巷、贩卖机、踏板车与街角设施，把店铺延伸成一个完整的小场景。",
+    "size": "40.1 KiB",
+    "imageWidth": 1440,
+    "imageHeight": 1080,
+    "images": [
+      { "src": "/business-plan/tomokoji-01.png", "alt": "灯巷拉面屋 · 店面、暖帘与转角街道" },
+      { "src": "/business-plan/tomokoji-02.png", "alt": "灯巷拉面屋 · 贩卖机、窄巷与店铺另一侧" }
+    ]
+  },
+  {
+    "id": "yukiakari",
+    "name": "雪灯ベーカリー · 雪夜面包店",
+    "type": "日式雪夜微缩场景",
+    "story": "覆雪山墙、红白遮棚与温暖橱窗，围绕一间有烤炉、面包架和咖啡台的小店展开。门扇带动把手与护板开合，细节延续到街角和后巷。",
+    "size": "63.0 KiB",
+    "imageWidth": 1440,
+    "imageHeight": 1080,
+    "images": [
+      { "src": "/business-plan/yukiakari-01.png", "alt": "雪灯面包店 · 覆雪屋顶、暖色橱窗与街角" },
+      { "src": "/business-plan/yukiakari-02.png", "alt": "雪灯面包店 · 松树、自行车与店铺另一侧完整视角" }
+    ]
+  },
+  {
+    "id": "amayadori",
+    "name": "雨宿り · 雨夜便利店街角",
+    "type": "日式雨夜微缩场景",
+    "story": "便利店、玻璃橱窗、街角设施与积水反光，组成正方形底座上的雨夜微缩景观。画面为配套三渲二预览的真实截图。",
+    "size": "117.4 KiB",
+    "imageWidth": 1440,
+    "imageHeight": 1080,
+    "images": [
+      {
+        "src": "/business-plan/amayadori-01.png",
+        "alt": "雨宿り · 雨夜便利店街角 · 店面、室内陈列与贩卖机"
+      },
+      {
+        "src": "/business-plan/amayadori-02.png",
+        "alt": "雨宿り · 雨夜便利店街角 · 转角街道与完整底座"
+      }
+    ]
+  },
   {
     "id": "curated-linting",
     "name": "林庭石光馆",

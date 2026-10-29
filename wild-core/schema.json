@@ -93,6 +93,9 @@
         "$ref": "#/$defs/materialDef"
       }
     },
+    "presentation": {
+      "$ref": "#/$defs/blueprintPresentation"
+    },
     "behaviors": {
       "type": "object",
       "properties": {
@@ -112,6 +115,46 @@
     }
   },
   "$defs": {
+    "blueprintPresentation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "style": { "enum": ["pbr", "toon"] },
+        "stage": { "enum": ["world", "diorama"] },
+        "environment": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "timeOfDay": { "type": "number", "minimum": 0, "maximum": 24 },
+            "rain": { "type": "number", "minimum": 0, "maximum": 1 },
+            "wetness": { "type": "number", "minimum": 0, "maximum": 1 },
+            "snow": { "type": "number", "minimum": 0, "maximum": 1 },
+            "dust": { "type": "number", "minimum": 0, "maximum": 1 },
+            "wind": { "type": "number", "minimum": 0, "maximum": 1 },
+            "cloudCoverage": { "type": "number", "minimum": 0, "maximum": 1 },
+            "fog": { "type": "number", "minimum": 0, "maximum": 1 }
+          }
+        },
+        "camera": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["position", "target"],
+          "properties": {
+            "position": { "$ref": "#/$defs/vec3" },
+            "target": { "$ref": "#/$defs/vec3" }
+          }
+        },
+        "entrance": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "duration"],
+          "properties": {
+            "type": { "const": "assemble" },
+            "duration": { "type": "number", "exclusiveMinimum": 0 }
+          }
+        }
+      }
+    },
     "vec3": {
       "type": "array",
       "minItems": 3,
@@ -347,6 +390,43 @@
         }
       }
     },
+    "doorLeafPart": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "position",
+        "dimensions",
+        "material"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "position": {
+          "$ref": "#/$defs/vec3"
+        },
+        "dimensions": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          }
+        },
+        "material": {
+          "type": "string",
+          "minLength": 1
+        },
+        "leaf": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
     "doorComponent": {
       "type": "object",
       "additionalProperties": false,
@@ -401,6 +481,10 @@
         },
         "leafMaterial": {
           "type": "string"
+        },
+        "leafParts": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/doorLeafPart" }
         },
         "interaction": {
           "$ref": "#/$defs/openingInteractionSetting"

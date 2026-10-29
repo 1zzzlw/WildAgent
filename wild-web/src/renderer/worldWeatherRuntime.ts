@@ -174,6 +174,11 @@ export class WorldWeatherVisuals {
     this.group.scale.set(radius, height, radius)
   }
 
+  setDioramaBounds(center: THREE.Vector3, size: THREE.Vector3, groundY: number): void {
+    this.group.position.set(center.x, groundY, center.z)
+    this.group.scale.set(Math.max(.1, size.x), Math.max(2, size.y) * 1.1, Math.max(.1, size.z))
+  }
+
   setEnvironment(state: Readonly<WorldEnvironmentState>, enabled: boolean): void {
     this.rainStrength = enabled ? state.rain : 0
     this.snowStrength = enabled ? state.snow : 0

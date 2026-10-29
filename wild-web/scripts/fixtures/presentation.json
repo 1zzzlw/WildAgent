@@ -1,0 +1,32 @@
+{
+  "meta": { "version": "1.1", "type": "scene", "name": "展示契约回归" },
+  "geometry": {
+    "elements": [
+      { "type": "primitive", "id": "base", "shape": "box", "position": [0,-0.2,0], "dimensions": [6,0.4,6], "material": "blue" },
+      { "type": "wall", "id": "wall", "from": [-2,0,0], "to": [2,3,0], "thickness": 0.15, "material": "cream" }
+    ],
+    "components": [
+      { "type": "window", "id": "window", "parentWall": "wall", "from": [0.7,0.7,0], "width": 1.5, "height": 1.8, "frameMaterial": "blue", "glassMaterial": "glass", "interaction": false }
+    ],
+    "templates": {
+      "cube": { "type": "primitive", "id": "cube", "shape": "box", "position": [0,0,0], "dimensions": [0.4,0.4,0.4], "material": "cream" }
+    },
+    "instances": [
+      { "id": "i0", "ref": "cube", "position": [-1,0.2,1] },
+      { "id": "i1", "ref": "cube", "position": [0,0.2,1] },
+      { "id": "i2", "ref": "cube", "position": [1,0.2,1] }
+    ]
+  },
+  "materials": {
+    "blue": { "baseColor": [0.2,0.4,0.5], "roughness": 0.7, "metallic": 0, "albedo": 1, "lightingCondition": "D65_noon" },
+    "cream": { "baseColor": [0.8,0.75,0.6], "roughness": 0.7, "metallic": 0, "albedo": 1, "lightingCondition": "D65_noon" },
+    "glass": { "baseColor": [0.7,0.9,0.95], "roughness": 0.1, "metallic": 0, "albedo": 1, "lightingCondition": "D65_noon", "materialClass": "glass", "transmission": 0.9 }
+  },
+  "presentation": {
+    "style": "toon",
+    "stage": "diorama",
+    "environment": { "timeOfDay": 18, "rain": 0.3, "wetness": 0.5 },
+    "camera": { "position": [8,6,9], "target": [0,1,0] },
+    "entrance": { "type": "assemble", "duration": 2 }
+  }
+}

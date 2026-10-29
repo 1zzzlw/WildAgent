@@ -75,6 +75,16 @@ export class WorldPostProcessingRuntime {
     this.composer.addPass(this.ssao)
 
     this.bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.2, 0.35, 1.05)
+    // 辉光叠加颜色，保留原画面 alpha，避免把透明舞台填成不透明底色。
+    Object.assign(this.bloom.blendMaterial, {
+      blending: THREE.CustomBlending,
+      blendEquation: THREE.AddEquation,
+      blendSrc: THREE.SrcAlphaFactor,
+      blendDst: THREE.OneFactor,
+      blendEquationAlpha: THREE.AddEquation,
+      blendSrcAlpha: THREE.ZeroFactor,
+      blendDstAlpha: THREE.OneFactor,
+    })
     this.composer.addPass(this.bloom)
     this.composer.addPass(new OutputPass())
 

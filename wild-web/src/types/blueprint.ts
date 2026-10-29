@@ -10,7 +10,7 @@
  * 这些类型是整个项目的基础，所有场景数据都基于此结构。
  */
 
-import type { ComponentSpec, ProceduralMaterial } from 'wild-core/types'
+import type { BlueprintPresentation, ComponentSpec, ProceduralMaterial } from 'wild-core/types'
 import type {
   MaterialEnvironmentResponse,
   SurfaceFamily,
@@ -25,6 +25,7 @@ export interface Blueprint {
   assets?: Record<string, PBRTextureSetAsset>
   materialLibraries?: string[]
   renderProfile?: string
+  presentation?: BlueprintPresentation
   behaviors?: BehaviorsSection
   editor?: EditorMetadata
 }

@@ -1,6 +1,6 @@
 import type { DoorComponent, GeometryElement, OpeningInteractionSpec, OpeningParams } from '../../../types'
 import type { ComponentCompileContext } from '../types'
-import { assertFrameDimensions, assertWallDepthAlignment, createBox, createOpeningInteraction, resolveOpeningInteractionSpec, resolveStraightWallFrame, withMaterial } from './attachedToWall'
+import { assertFrameDimensions, assertNonEmptyString, assertPositive, assertVec3, assertWallDepthAlignment, createBox, createOpeningInteraction, resolveOpeningInteractionSpec, resolveStraightWallFrame, withMaterial } from './attachedToWall'
 import { buildOpeningContour } from '../../primitive/geometry/openingContour'
 
 /** 一个完整洞口，按轮廓生成门框；双开门的两扇共享操作、各绕自己的外侧铰链。 */
@@ -22,8 +22,37 @@ export function compileDoor(component: DoorComponent, context: ComponentCompileC
     opening._leafInteractions = [0, 1].map(index => ({ ...createOpeningInteraction({ ...interaction, hingeSide: index ? 'right' : 'left' }, frame, along + border + index * width / 2, bottom, offset, width / 2, height)!, groupId: component.id }))
   } else {
     opening._interaction = createOpeningInteraction(interaction, frame, along + border, bottom, offset, width, height)
+    if (opening._interaction && component.leafParts?.length) opening._interaction.groupId = component.id
   }
   const elements: GeometryElement[] = [opening]
+  const partIds = new Set<string>()
+  for (const part of component.leafParts ?? []) {
+    assertNonEmptyString(part.id, 'leafParts.id')
+    assertNonEmptyString(part.material, 'leafParts.material')
+    assertVec3(part.position, 'leafParts.position')
+    assertVec3(part.dimensions, 'leafParts.dimensions')
+    part.dimensions.forEach(value => assertPositive(value, 'leafParts.dimensions'))
+    if (partIds.has(part.id)) throw new Error(`leafParts.id 重复: ${part.id}`)
+    partIds.add(part.id)
+    const index = part.leaf ?? 0
+    if (index !== 0 && !(double && index === 1)) throw new Error('leafParts.leaf 超出门扇范围')
+    const leafWidth = width / (double ? 2 : 1)
+    const [x, y, z] = part.position
+    if (Math.abs(x) + part.dimensions[0] / 2 > leafWidth / 2 + 1e-6
+      || y - part.dimensions[1] / 2 < -1e-6 || y + part.dimensions[1] / 2 > height + 1e-6) {
+      throw new Error(`leafParts "${part.id}" 超出门扇平面范围`)
+    }
+    const centerAlong = along + component.width / 2
+    const center = frame.pointAt(centerAlong, bottom, offset)
+    const yaw = frame.rotationAt(centerAlong)
+    const leafX = x + (double ? (index - .5) * leafWidth : 0)
+    const position: [number, number, number] = [center[0] + Math.cos(yaw) * leafX + Math.sin(yaw) * z,
+      bottom + y, center[2] - Math.sin(yaw) * leafX + Math.cos(yaw) * z]
+    const element = createBox(`${component.id}__leafpart_${part.id}`, position, [...part.dimensions], yaw, part.material)
+    const behavior = opening._leafInteractions?.[index] ?? opening._interaction
+    if (behavior?.kind === 'opening') element._interaction = { ...behavior, groupId: component.id }
+    elements.push(element)
+  }
   if (!border) return elements
   const contour = buildOpeningContour(style, component.width / 2, component.height / 2, component.width, component.height)
   // 轮廓逆时针排列，跳过门槛，框向洞口内侧收进半个框宽。
