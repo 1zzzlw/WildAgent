@@ -561,14 +561,15 @@ fi
 echo ""
 echo "--- IP 直连拦截（预期 444，是nginx.conf 的 default_server 行为）---"
 # 这一条**期望 444**，用它反证 444 规则确实生效，而不是探活失败。
-code_ip=$(curl -s -o /dev/null -w '%{http_code}' --max-time 8 -H "Host: ${DEPLOY_SSH_HOST}" "http://127.0.0.1:${DEPLOY_WEB_PORT}/" || echo 000)
+# curl 在连接被关闭时已经输出 000，不再额外 echo，避免拼成 000000。
+code_ip=$(curl -s -o /dev/null -w '%{http_code}' --max-time 8 -H "Host: ${DEPLOY_SSH_HOST}" "http://127.0.0.1:${DEPLOY_WEB_PORT}/" || true)
 echo "GET / (Host: ${DEPLOY_SSH_HOST}) -> $code_ip（预期 000 或444）"
 if [ "$code_ip" != "444" ] && [ "$code_ip" != "000" ]; then
   echo "WARN: IP 直连返回 $code_ip 而非 444，default_server 拦截可能未生效"
 fi
 
 # IP 直连走 HTTPS 同样应被 443 default_server 拦掉。
-code_https_ip=$(curl -sk -o /dev/null -w '%{http_code}' --max-time 8 -H "Host: ${DEPLOY_SSH_HOST}" "https://127.0.0.1/" || echo 000)
+code_https_ip=$(curl -sk -o /dev/null -w '%{http_code}' --max-time 8 -H "Host: ${DEPLOY_SSH_HOST}" "https://127.0.0.1/" || true)
 echo "GET https://(Host: ${DEPLOY_SSH_HOST}) -> $code_https_ip（预期 000 或 444）"
 
 echo ""
@@ -588,7 +589,7 @@ fi
 
 # HTTPS 业务判据：**必须带域名 Host**（见本段开头说明）。
 # -k：走 127.0.0.1 自查时证书 CN 与 IP 不符，校验必然失败，这里只验"能不能握手+有没有页面"。
-code_https=$(curl -sk -o /dev/null -w '%{http_code}' --max-time 8 -H "Host: ${DEPLOY_PUBLIC_HOST}" "https://127.0.0.1/" || echo 000)
+code_https=$(curl -sk -o /dev/null -w '%{http_code}' --max-time 8 -H "Host: ${DEPLOY_PUBLIC_HOST}" "https://127.0.0.1/" || true)
 echo "GET https://127.0.0.1/ (Host: ${DEPLOY_PUBLIC_HOST}) -> $code_https（期望 200）"
 if [ "$code_https" != "200" ]; then
   echo "ERROR: HTTPS 业务未就绪（期望 200，实际 $code_https）"
@@ -599,7 +600,7 @@ if [ "$code_https" != "200" ]; then
 fi
 
 # HTTP 301 是**预期行为**（80 只做跳转），不是故障。
-code_redirect=$(curl -s -o /dev/null -w '%{http_code}' --max-time 8 -H "Host: ${DEPLOY_PUBLIC_HOST}" "http://127.0.0.1:${DEPLOY_WEB_PORT}/" || echo 000)
+code_redirect=$(curl -s -o /dev/null -w '%{http_code}' --max-time 8 -H "Host: ${DEPLOY_PUBLIC_HOST}" "http://127.0.0.1:${DEPLOY_WEB_PORT}/" || true)
 echo "GET http://(Host: ${DEPLOY_PUBLIC_HOST}) -> $code_redirect（预期 301）"
 if [ "$code_redirect" != "301" ]; then
   echo "ERROR: 域名 HTTP 未返回 301，实际 $code_redirect"
@@ -609,23 +610,23 @@ fi
 
 echo ""
 echo "--- 前端 API 反向代理可达性（HTTPS + 域名 Host）---"
-# 用 /api/config/llm（无需鉴权的真实路由）而不是状态码判 200：
-# 后端健康检查在 /health/ready，不在 /api/ 下；而不存在的路径会被 SPA 的
-# try_files 兜底成 index.html 200，只看状态码会假通过。
-api_body=$(curl -sk --max-time 8 -H "Host: ${DEPLOY_PUBLIC_HOST}" "https://127.0.0.1/api/config/llm" || true)
-case "$api_body" in
-  *storage_path*)
-    echo "GET /api/config/llm -> 反代生效（已拿到后端 JSON）"
+# 登录状态查询允许匿名访问，未登录时返回 JSON null；配置接口需要编辑权限。
+# 同时核对响应体和 HTTP 200，避免 SPA 的 index.html 兜底造成假通过。
+api_probe=$(curl -sk --max-time 8 -H "Host: ${DEPLOY_PUBLIC_HOST}" -w ':%{http_code}' "https://127.0.0.1/api/auth/session" || true)
+case "$api_probe" in
+  null:200)
+    echo "GET /api/auth/session -> 反代生效（HTTP 200，匿名会话为 null）"
     ;;
   *)
-    echo "ERROR: /api/ 反向代理未打通（nginx -> wild-server:8000），实际响应: $(echo "$api_body" | head -c 200)"
+    echo "ERROR: /api/auth/session 探测失败（期望 null:200），实际响应: $(echo "$api_probe" | head -c 200)"
     exit 1
     ;;
 esac
 
 docker exec wild-server python -c "from config import config; print('model='+config.chat.name); print('model_configured='+str(bool(config.chat.name.strip() and config.chat.api_key.strip())).lower()); print('base_url='+(config.chat.base_url or '(default)')); print('rag_enabled='+str(config.rag.enabled).lower()); print('embedding='+config.embedding.name); print('hash_fallback='+str(config.rag.allow_hash_fallback).lower())"
 docker exec wild-server python -c "import urllib.request; response=urllib.request.urlopen('http://127.0.0.1:8000/health/ready', timeout=10); body=response.read().decode('utf-8'); print('backend_http_status='+str(response.status)); print('backend_readiness='+body); assert response.status == 200"
-docker exec wild-server python -c "import json,urllib.request; data=json.load(urllib.request.urlopen('http://127.0.0.1:8000/api/config/llm', timeout=10)); print('runtime_config_path='+data['storage_path']); print('runtime_config_host_path='+(data.get('host_storage_path') or '(unknown)')); print('runtime_config_persistent='+str(data['persistent']).lower()); assert data['storage_path']=='/app/runtime-config/.env'; assert data['persistent'] is True"
+# 容器内直接读取配置路径元数据，不匿名调用受保护接口，也不输出配置内容。
+docker exec wild-server python -c "from app.utils.runtime_env import runtime_env_path,runtime_env_host_path,runtime_env_is_persistent; path=str(runtime_env_path()); persistent=runtime_env_is_persistent(); print('runtime_config_path='+path); print('runtime_config_host_path='+(runtime_env_host_path() or '(unknown)')); print('runtime_config_persistent='+str(persistent).lower()); assert path=='/app/runtime-config/.env'; assert persistent is True"
 REMOTE_SCRIPT
 
             echo "=== 部署后清理旧镜像 ==="
