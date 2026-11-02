@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { Capsule } from 'three/examples/jsm/math/Capsule.js'
 import { RobotAvatar } from './RobotAvatar'
 import { RoamingCollisionWorld } from './RoamingCollisionWorld'
+import type { BuildingApproach } from '../../renderer/buildingApproach'
 import type { CharacterView } from './store'
 
 interface RoamingOptions {
@@ -10,6 +11,7 @@ interface RoamingOptions {
   camera: THREE.PerspectiveCamera
   canvas: HTMLCanvasElement
   groundY: number
+  approach?: BuildingApproach | null
   view: CharacterView
   interact: (object: THREE.Object3D) => boolean
   onLockChange: (locked: boolean) => void
@@ -84,10 +86,40 @@ export class CharacterRoamingRuntime {
 
   private spawn(): void {
     const bounds = this.world.bounds
-    const feet = new THREE.Vector3(0, this.options.groundY + 0.02, bounds.isEmpty() ? 4 : bounds.max.z + 2)
-    if (!bounds.isEmpty()) feet.x = (bounds.min.x + bounds.max.x) / 2
-    this.body.start.copy(feet).y += RADIUS
-    this.body.end.copy(feet).y += HEIGHT - RADIUS
+    const center = bounds.isEmpty() ? new THREE.Vector3() : bounds.getCenter(new THREE.Vector3())
+    const approach = this.options.approach ?? {
+      position: new THREE.Vector3(center.x, this.options.groundY, bounds.isEmpty() ? 0 : bounds.max.z),
+      outward: new THREE.Vector3(0, 0, 1),
+    }
+    const right = new THREE.Vector3().crossVectors(THREE.Object3D.DEFAULT_UP, approach.outward).normalize()
+    const feet = new THREE.Vector3()
+    const findFloor = () => {
+      feet.y = approach.position.y + STEP_HEIGHT + 0.05
+      feet.y = (this.world.floorHeight(feet, Math.max(1, feet.y - this.options.groundY + 1))
+        ?? this.options.groundY) + 0.02
+      this.body.start.copy(feet).y += RADIUS
+      this.body.end.copy(feet).y += HEIGHT - RADIUS
+    }
+    // 从入口外的近处开始，避开门前摆件；落脚高度取真实地面，不落进底座。
+    let placed = false
+    for (const distance of [2.5, 4, 6]) {
+      for (const offset of [0, -1.2, 1.2, -2.4, 2.4]) {
+        feet.copy(approach.position).addScaledVector(approach.outward, distance).addScaledVector(right, offset)
+        findFloor()
+        if (this.world.canOccupy(this.body)) { placed = true; break }
+      }
+      if (placed) break
+    }
+    if (!placed) {
+      // 所有门前候选点都受阻时，退到整个场景包围盒以外。
+      const clearance = bounds.isEmpty() ? 4 : bounds.getSize(new THREE.Vector3()).length() + 2
+      feet.copy(approach.position).addScaledVector(approach.outward, clearance)
+      findFloor()
+    }
+    this.yaw = Math.atan2(feet.x - approach.position.x, feet.z - approach.position.z)
+    this.pitch = Math.atan2(approach.position.y + HEIGHT * 0.6 - feet.y - EYE_HEIGHT,
+      Math.hypot(feet.x - approach.position.x, feet.z - approach.position.z))
+    this.pitch = THREE.MathUtils.clamp(this.pitch, -0.25, 0.1)
     this.velocity.set(0, 0, 0)
     this.grounded = true
     this.syncAvatar(0)

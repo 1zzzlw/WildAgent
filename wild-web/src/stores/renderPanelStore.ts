@@ -87,7 +87,7 @@ export const useRenderPanelStore = defineStore('renderPanel', () => {
   const frameSelectionNonce = ref(0)
   const replayEntranceNonce = ref(0)
   const presetRequest = ref<RenderPresetRequest | null>(null)
-  const presets = ref({ camera: 'corner', environment: 'minimal', quality: 'medium', time: 'day', view: 'editor' })
+  const presets = ref({ camera: 'front', environment: 'minimal', quality: 'medium', time: 'day', view: 'editor' })
   const sectionEnabled = ref(false)
   const sectionHeight = ref(3.5)
 

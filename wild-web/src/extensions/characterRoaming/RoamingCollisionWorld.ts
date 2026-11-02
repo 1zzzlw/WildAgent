@@ -106,6 +106,15 @@ export class RoamingCollisionWorld {
     }
   }
 
+  /** 出生点只检查占用，不用碰撞推挤把人物挤进建筑或障碍另一侧。 */
+  canOccupy(capsule: Capsule): boolean {
+    return this.trees.every(tree => {
+      if (!tree.box || !capsule.intersectsBox(tree.box)) return true
+      const hit = tree.capsuleIntersect(capsule)
+      return !hit || hit.depth <= 1e-5
+    })
+  }
+
   resolve(capsule: Capsule, velocity: THREE.Vector3): { grounded: boolean; wall: boolean } {
     let grounded = false
     let wall = false

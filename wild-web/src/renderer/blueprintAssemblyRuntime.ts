@@ -10,6 +10,7 @@ interface AssemblyPart {
 
 /** 前端组装动画；不读取蓝图字段，不改写几何或文档。 */
 export class BlueprintAssemblyRuntime {
+  private readonly root: THREE.Group
   private parts: AssemblyPart[] = []
   private states = new Map<THREE.Mesh, { auto: boolean; culling: boolean }>()
   private elapsed = 0
@@ -19,7 +20,9 @@ export class BlueprintAssemblyRuntime {
   private readonly scale = new THREE.Matrix4()
   private readonly pivot = new THREE.Matrix4()
 
-  constructor(private readonly root: THREE.Group) {}
+  constructor(root: THREE.Group) {
+    this.root = root
+  }
 
   get active(): boolean { return this.parts.length > 0 }
   get progress(): number { return Math.min(1, this.elapsed / this.duration) }

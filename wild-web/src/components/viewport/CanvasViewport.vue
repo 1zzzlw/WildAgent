@@ -91,6 +91,7 @@ import { WorldLightingRig } from '../../renderer/lightingRuntime'
 import { WorldPostProcessingRuntime } from '../../renderer/postProcessingRuntime'
 import { applyWorldRenderQuality, configureWorldRenderer, resolveWorldIllumination, resolveWorldEnvironmentColor } from '../../renderer/worldRenderSettings'
 import { FixtureLightingRuntime } from '../../renderer/fixtureLightingRuntime'
+import { resolveBuildingApproach, type BuildingApproach } from '../../renderer/buildingApproach'
 import { isMechanismControl, tickMechanisms } from '../../renderer/mechanismRuntime'
 import { WaterReflectionRuntime } from '../../renderer/waterReflectionRuntime'
 import {
@@ -141,7 +142,7 @@ let roamingControlState: { orbitEnabled: boolean; transformEnabled: boolean } | 
 const timeOfDay = ref<TimeOfDay>('day')
 const viewMode = ref<ViewMode>('editor')
 const qualityLevel = ref<QualityLevel>('medium')
-const cameraPresetId = ref<CameraPresetId>('corner')
+const cameraPresetId = ref<CameraPresetId>('front')
 const environmentPresetId = ref<EnvironmentPresetId>('minimal')
 const fps = ref(0)
 
@@ -154,6 +155,7 @@ let animationFrameId: number | null = null
 let renderLoopActive = false
 let resizeObserver: ResizeObserver | null = null
 let sceneGroup: THREE.Group | null = null
+let buildingApproach: BuildingApproach | null = null
 const sectionPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), 3.5)
 let materialCache: MaterialCache | null = null
 let worldRuntime: WorldRuntime | null = null
@@ -208,6 +210,7 @@ let shadowExtent = 8
 let environmentGroundY = 0
 let hasSceneBounds = false
 let hasFramedScene = false
+let hasNavigatedScene = false
 let needsRender = true
 let hasWaterSurface = false
 let pointerDownPosition: { x: number; y: number } | null = null
@@ -308,6 +311,7 @@ watch(() => sceneStore.document?.id, () => {
   placement.cancel()
   roaming.stop()
   hasFramedScene = false
+  hasNavigatedScene = false
   componentTransformEnabled = false
   clearComponentTransformControl()
 })
@@ -381,6 +385,7 @@ function startCharacterRoaming() {
     characterRoaming = new CharacterRoamingRuntime({
       scene, worldRoot: sceneGroup, camera, canvas: renderer.domElement,
       groundY: environmentGroundY, view: roaming.view,
+      approach: buildingApproach,
       interact: object => toggleRuntimeInteraction(object, markShadowsDirty),
       onLockChange: locked => { roaming.locked = locked; markShadowsDirty() },
       onViewChange: view => { roaming.view = view; markShadowsDirty() },
@@ -532,7 +537,7 @@ function initThreeJS() {
   worldLookRuntime.setActivationContext({ renderer, scene })
 
   const aspect = containerRef.value.clientWidth / containerRef.value.clientHeight
-  camera = new THREE.PerspectiveCamera(CAMERA_PRESETS.corner.fov, aspect, 0.1, 2000)
+  camera = new THREE.PerspectiveCamera(CAMERA_PRESETS.front.fov, aspect, 0.1, 2000)
   camera.position.set(12, 10, 12)
 
   // 后期合成链路（SSAO 接触阴影 / Bloom / FXAA / MSAA）由引擎侧持有，
@@ -552,6 +557,7 @@ function initThreeJS() {
   controls.autoRotate = renderPanel.autoRotate
   controls.autoRotateSpeed = renderPanel.autoRotateSpeed
   controls.addEventListener('change', markNeedsRender)
+  controls.addEventListener('start', () => { hasNavigatedScene = true })
   controls.update()
 
   transformControls = new TransformControls(camera, renderer.domElement)
@@ -810,6 +816,8 @@ function updateScene() {
   if (!scene || !sceneGroup || !materialCache) return
   // 几何重建/切换会话后不能保留借用旧网格的碰撞索引。
   roaming.stop()
+  const previousApproach = buildingApproach
+  buildingApproach = null
   hasWaterSurface = false
 
   const entity = sceneStore.reconstructed
@@ -895,6 +903,11 @@ function updateScene() {
     // （方向光与阴影相机、内置环境、网格与地面）统一改用归一化后的中心。
     center.x = 0
     center.z = 0
+    if (sceneStore.document) {
+      buildingApproach = resolveBuildingApproach(sceneStore.document.blueprint, sceneGroup, entity.componentMapping)
+      // 流式生成可能先显示底座、后出现入口；用户还未调整镜头时补一次正面取景。
+      if (!previousApproach && buildingApproach && !hasNavigatedScene && !keepPlacementView) hasFramedScene = false
+    }
 
     sceneBoundsCenter.copy(center)
     sceneBoundsSize.copy(size)
@@ -1825,7 +1838,11 @@ function frameCameraToBounds(center: THREE.Vector3, size: THREE.Vector3) {
   camera.fov = preset.fov
   const tanVertical = Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2)
   const tanHorizontal = tanVertical * camera.aspect
-  const viewDirection = new THREE.Vector3(...preset.direction).normalize()
+  const front = buildingApproach?.outward ?? new THREE.Vector3(0, 0, 1)
+  const facadeRight = new THREE.Vector3().crossVectors(camera.up, front).normalize()
+  const viewDirection = facadeRight.multiplyScalar(preset.direction[0])
+    .addScaledVector(front, preset.direction[2])
+    .addScaledVector(camera.up, preset.direction[1]).normalize()
   const target = center.clone()
   if (cameraPresetId.value === 'human') {
     target.y = center.y - size.y / 2 + Math.min(1.7, Math.max(0.8, size.y * 0.25))
