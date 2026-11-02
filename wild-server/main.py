@@ -25,6 +25,7 @@ from app.api.assets import router as assets_router
 from app.api.config_api import router as config_router
 from app.api.rag_observability import router as rag_observability_router
 from app.api.designs import router as designs_router
+from app.api.auth import router as auth_router, enforce_write_access
 from app.services.agent_service import agent_service
 from config import config
 
@@ -82,6 +83,8 @@ app.add_middleware(
 )
 
 # 路由实现留在各自模块；入口只负责把它们挂到同一个应用上。
+app.middleware("http")(enforce_write_access)
+app.include_router(auth_router)
 app.include_router(ws_router, tags=["ws连接初始化"])
 app.include_router(scenes_router, tags=["场景API"])
 app.include_router(sessions_router, tags=["会话API"])

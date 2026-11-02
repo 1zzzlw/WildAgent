@@ -23,13 +23,9 @@ import type { Blueprint } from '../types/blueprint'
 import type { ValidationIssue } from '../types/scenePatch'
 import { compileBlueprintComponents } from 'wild-core/compiler'
 import { validateGeometryRelations } from 'wild-core/relationships'
-import { validateBlueprintPresentation } from 'wild-core/primitive'
 
 export function validateBlueprint(blueprint: Blueprint): ValidationIssue[] {
   const issues: ValidationIssue[] = []
-  for (const message of validateBlueprintPresentation(blueprint.presentation)) {
-    issues.push({ level: 'error', path: 'presentation', message })
-  }
 
   // 校验 meta
   if (!blueprint.meta?.version) {

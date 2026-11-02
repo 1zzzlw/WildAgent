@@ -2,8 +2,7 @@ import * as THREE from 'three'
 import type { ReconstructedEntity } from '../types/scene'
 import { MaterialCache } from './materialAdapter'
 import { clearSceneObjectResources, updateSceneGroup } from './renderEntity'
-import type { BlueprintPresentation } from 'wild-core/types'
-import { BlueprintPresentationRuntime } from './blueprintPresentationRuntime'
+import { BlueprintAssemblyRuntime } from './blueprintAssemblyRuntime'
 
 export interface BlueprintInstanceTransform {
   position?: [number, number, number]
@@ -18,7 +17,7 @@ export class BlueprintRenderInstance {
   readonly root: THREE.Group
   readonly materialScope: MaterialCache
   readonly instanceId: string
-  readonly presentation: BlueprintPresentationRuntime
+  readonly assembly: BlueprintAssemblyRuntime
   private disposed = false
 
   constructor(
@@ -28,19 +27,18 @@ export class BlueprintRenderInstance {
     if (!instanceId.trim()) throw new Error('Blueprint render instance id cannot be empty')
     this.instanceId = instanceId
     this.root = new THREE.Group()
-    this.presentation = new BlueprintPresentationRuntime(this.root)
+    this.assembly = new BlueprintAssemblyRuntime(this.root)
     this.root.name = `WildBlueprint:${instanceId}`
     this.root.userData.blueprintInstanceId = instanceId
     this.materialScope = new MaterialCache(`blueprint:${instanceId}`)
     this.setTransform(transform)
   }
 
-  update(entity: ReconstructedEntity, presentation?: BlueprintPresentation): void {
+  update(entity: ReconstructedEntity): void {
     this.assertActive()
-    this.presentation.reset()
+    this.assembly.finish()
     updateSceneGroup(this.root, entity, this.materialScope)
     this.root.userData.boundingBox = entity.boundingBox
-    this.presentation.setStyle(presentation?.style)
   }
 
   setTransform(transform: BlueprintInstanceTransform): void {
@@ -53,7 +51,7 @@ export class BlueprintRenderInstance {
 
   dispose(): void {
     if (this.disposed) return
-    this.presentation.reset()
+    this.assembly.finish()
     clearSceneObjectResources(this.root)
     this.materialScope.clear()
     this.root.removeFromParent()

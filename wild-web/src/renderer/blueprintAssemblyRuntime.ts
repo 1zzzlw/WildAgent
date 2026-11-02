@@ -1,30 +1,6 @@
 import * as THREE from 'three'
-import type { BlueprintPresentation } from 'wild-core/types'
-import {
-  getWorldEnvironmentState, getWorldRenderingState,
-  updateWorldEnvironmentState, updateWorldRenderingState,
-} from './worldEnvironmentRuntime'
 
-/** 在单蓝图查看器中应用作者默认值；离开后恢复查看器原来的选择。 */
-export class BlueprintPresentationDefaults {
-  private restore = () => {}
-
-  apply(presentation?: BlueprintPresentation): void {
-    this.reset()
-    const environment = { ...getWorldEnvironmentState() }
-    const style = getWorldRenderingState().style
-    if (presentation?.environment) updateWorldEnvironmentState(presentation.environment)
-    if (presentation?.style) updateWorldRenderingState({ style: presentation.style })
-    this.restore = () => {
-      if (presentation?.environment) updateWorldEnvironmentState(environment)
-      if (presentation?.style) updateWorldRenderingState({ style })
-    }
-  }
-
-  reset(): void { this.restore(); this.restore = () => {} }
-}
-
-interface EntrancePart {
+interface AssemblyPart {
   mesh: THREE.Mesh
   instance?: number
   matrix: THREE.Matrix4
@@ -32,55 +8,24 @@ interface EntrancePart {
   key: string
 }
 
-/** 展示变换与轮廓的生命周期；不修改几何数据、蓝图、历史或材质缓存。 */
-export class BlueprintPresentationRuntime {
-  private parts: EntrancePart[] = []
+/** 前端组装动画；不读取蓝图字段，不改写几何或文档。 */
+export class BlueprintAssemblyRuntime {
+  private parts: AssemblyPart[] = []
   private states = new Map<THREE.Mesh, { auto: boolean; culling: boolean }>()
-  private outlines = new Map<THREE.Mesh, THREE.LineSegments[]>()
-  private lineMaterial: THREE.LineBasicMaterial | null = null
   private elapsed = 0
-  private duration = 1
+  private readonly duration = 10
   private ground = 0
   private readonly work = new THREE.Matrix4()
   private readonly scale = new THREE.Matrix4()
   private readonly pivot = new THREE.Matrix4()
-  private readonly root: THREE.Group
 
-  constructor(root: THREE.Group) { this.root = root }
+  constructor(private readonly root: THREE.Group) {}
 
   get active(): boolean { return this.parts.length > 0 }
   get progress(): number { return Math.min(1, this.elapsed / this.duration) }
 
-  setStyle(style: BlueprintPresentation['style']): void {
-    this.clearOutlines()
-    if (style !== 'toon') return
-    this.lineMaterial = new THREE.LineBasicMaterial({ color: 0x203148, transparent: true, opacity: .45 })
-    for (const mesh of this.root.children) {
-      if (!(mesh instanceof THREE.Mesh)) continue
-      const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
-      if (materials.some(m => m.transparent || m instanceof THREE.MeshPhysicalMaterial && m.transmission > 0)) continue
-      const geometry = new THREE.EdgesGeometry(mesh.geometry, 35)
-      const lines: THREE.LineSegments[] = []
-      const count = mesh instanceof THREE.InstancedMesh ? mesh.count : 1
-      for (let index = 0; index < count; index++) {
-        const line = new THREE.LineSegments(geometry, this.lineMaterial)
-        line.name = 'PresentationOutline'
-        line.raycast = () => {}
-        if (mesh instanceof THREE.InstancedMesh) {
-          line.matrixAutoUpdate = false
-          mesh.getMatrixAt(index, line.matrix)
-        }
-        mesh.add(line)
-        lines.push(line)
-      }
-      this.outlines.set(mesh, lines)
-    }
-  }
-
-  start(entrance: BlueprintPresentation['entrance']): void {
+  start(): void {
     this.finish()
-    if (!entrance) return
-    this.duration = entrance.duration
     this.elapsed = 0
     let ordinal = 0
     let ground = Infinity
@@ -108,7 +53,7 @@ export class BlueprintPresentationRuntime {
     this.tick(0)
   }
 
-  /** 返回本帧是否改变显示，包括结束时恢复最终变换的那一帧。 */
+  /** 包括结束后恢复原变换的最后一帧。 */
   tick(delta: number): boolean {
     if (!this.active) return false
     this.elapsed += Number.isFinite(delta) ? Math.max(0, delta) : 0
@@ -146,32 +91,13 @@ export class BlueprintPresentationRuntime {
     this.elapsed = this.duration
   }
 
-  reset(): void {
-    this.finish()
-    this.clearOutlines()
-  }
-
-  private setMatrix(part: EntrancePart, matrix: THREE.Matrix4): void {
+  private setMatrix(part: AssemblyPart, matrix: THREE.Matrix4): void {
     if (part.instance !== undefined && part.mesh instanceof THREE.InstancedMesh) {
       part.mesh.setMatrixAt(part.instance, matrix)
       part.mesh.instanceMatrix.needsUpdate = true
-      const line = this.outlines.get(part.mesh)?.[part.instance]
-      if (line) { line.matrix.copy(matrix); line.matrixWorldNeedsUpdate = true }
     } else {
       part.mesh.matrix.copy(matrix)
       part.mesh.matrixWorldNeedsUpdate = true
     }
-  }
-
-  private clearOutlines(): void {
-    const geometries = new Set<THREE.BufferGeometry>()
-    for (const lines of this.outlines.values()) for (const line of lines) {
-      geometries.add(line.geometry)
-      line.removeFromParent()
-    }
-    geometries.forEach(geometry => geometry.dispose())
-    this.outlines.clear()
-    this.lineMaterial?.dispose()
-    this.lineMaterial = null
   }
 }

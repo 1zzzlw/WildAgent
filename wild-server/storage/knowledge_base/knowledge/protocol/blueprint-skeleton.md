@@ -17,8 +17,6 @@ primary_terms:
   - materials
   - assets
   - materialLibraries
-  - renderProfile
-  - presentation
   - behaviors
 synonyms: []
 ---
@@ -29,7 +27,7 @@ synonyms: []
 
 ## 顶层结构
 
-必须包含 `meta` 和 `geometry`，可选 `materials`、`assets`、`materialLibraries`、`renderProfile`、`presentation` 和 `behaviors`。
+必须包含 `meta` 和 `geometry`，可选 `materials`、`assets`、`materialLibraries` 和 `behaviors`。
 
 ```jsonc
 {
@@ -38,8 +36,6 @@ synonyms: []
   "materials": { ... },
   "assets": { ... },
   "materialLibraries": [ ... ],
-  "renderProfile": "builtin:default",
-  "presentation": { ... },
   "behaviors": { ... }
 }
 ```
@@ -51,39 +47,11 @@ synonyms: []
 | `materials` | 否 | 材质字典，键为材质名 |
 | `assets` | 否 | PBR 纹理集资产清单，键为 `assetId` |
 | `materialLibraries` | 否 | 全局材质库引用；蓝图只存引用，不复制全局资产 |
-| `renderProfile` | 否 | 世界光影配置引用；省略时使用 `builtin:default` |
-| `presentation` | 否 | 单蓝图的初始画面、环境、机位和入场意图；不修改几何或编辑器 UI |
 | `behaviors` | 否 | 物理、脚本与动画 |
 
-## 初始展示意图 (presentation)
+## 视口设置归属
 
-2026-10-29 新增的可选字段；沿用当前版本和原有坐标语义，旧蓝图不需要迁移。以下为字段片段，不是独立蓝图：
-
-```jsonc
-{
-  "presentation": {
-    "style": "toon",
-    "stage": "diorama",
-    "environment": { "timeOfDay": 22, "rain": 0.65, "wetness": 0.85 },
-    "camera": { "position": [-6.3, 7.6, 17.7], "target": [0, 1.6, 0] },
-    "entrance": { "type": "assemble", "duration": 12 }
-  }
-}
-```
-
-| 字段 | 契约与当前实现 |
-| --- | --- |
-| `style` | `pbr` 或 `toon`；toon 对漫反射分级并叠加轮廓，保留原材质、发光、透射与水面。`meta.style` 仍是语义标签 |
-| `stage` | `world` 或 `diorama`；后者收起外围地面、天空、天体与布景，雨雪范围按蓝图包围盒组织。不会自动生成正方形底座，底座仍须写入 geometry |
-| `environment` | 复用世界环境字段。`timeOfDay` 为 0～24 小时；rain/wetness/snow/dust/wind/cloudCoverage/fog 为 0～1，均可省略。rain 控制雨丝，wetness 控制材质湿润响应 |
-| `camera` | position 与 target 都必填，使用蓝图世界坐标和米制；两者不能重合。查看器居中偏移只在显示层应用一次，不改写这些坐标 |
-| `entrance` | 当前仅支持 `type:"assemble"`，duration 为正数秒。按实际网格包围盒从低到高入场，兼容实例批处理，不按构件命名推断顺序 |
-
-展示默认值在导入或切换蓝图时应用；切换到旧蓝图时恢复查看器原来的环境和风格。初始机位不会覆盖用户随后转动的视角。入场在首次加载时播放；开始交互、编辑重建或导出 GLB 前恢复最终变换，普通几何编辑不会重播。运行进度、临时矩阵、显示状态不进入蓝图或撤销历史。
-
-该字段保存数据与受控预设，不接受自定义 Shader、JavaScript、回调、任意时间轴或 UI 隐藏代码。分辨率、画质预算与界面显隐由应用决定。材质、天气和光影配置继续由既有渲染运行时实现，不把表现设置混进墙、门窗或物理约束。
-
-当前编辑器支持这套展示契约。多蓝图世界仍由 WorldDocument 的环境、主题和光影配置决定整体风格，不自动合并多个 Blueprint 的初始展示意图。后端 Schema 已添加同名字段，但自研 Agent 的设计规划、生成和 ScenePatch 尚未增加专门的展示编辑操作，不能据此声称全链自动生成已验收。
+蓝图只描述建筑、构件关系、材质和建筑交互。时间、天空背景、天气、世界光影、渲染风格、观察机位和组装播放由前端工作台设置，不写入 `.wild`。载入或切换蓝图不得覆盖工作台的环境设置。
 
 ## 元数据 (meta)
 
@@ -104,7 +72,7 @@ synonyms: []
 - `id`：唯一标识符
 - `material`：引用材质库中的材质名（可选）
 
-## 材质与资产四字段分工
+## 材质与资产分工
 
 材质与纹理资产不参与几何成形，只决定表面的最终外观。
 
@@ -113,7 +81,6 @@ synonyms: []
 | `materials` | object | 材质字典。键为材质名（如 `"wall_plaster"`），值为材质定义。构件的 `material` 字段引用这里的键 |
 | `assets` | object | PBR 纹理集资产清单。键为不可变 `assetId`，值为 `pbr_texture_set`（含各通道的资源地址、`mimeType`、`contentHash`）。材质通过 `textureSet` 引用它 |
 | `materialLibraries` | string[] | 引用全局材质库。蓝图只保存引用而不内联资产，避免同一贴图在多份蓝图里重复复制 |
-| `renderProfile` | string | 引用世界光影配置（`wild.render-profile`）。省略时使用 `builtin:default` |
 
 **引用方向**：`构件.material` → `materials[键]` → （可选）`materials[键].textureSet` → `assets[assetId]` → 资产地址。
 

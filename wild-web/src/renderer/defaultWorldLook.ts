@@ -36,6 +36,7 @@ export interface QualityPreset {
 export interface CameraPreset {
   label: string
   direction: [number, number, number]
+  fov: number
 }
 
 export interface EnvironmentPreset {
@@ -119,10 +120,11 @@ export const QUALITY_PRESETS: Record<QualityLevel, QualityPreset> = {
 
 export const CAMERA_ORDER: CameraPresetId[] = ['corner', 'human', 'bird', 'front']
 export const CAMERA_PRESETS: Record<CameraPresetId, CameraPreset> = {
-  corner: { label: '街角', direction: [1, 0.72, 1] },  // 从 0.62 提升到 0.72，抬高俯角让屋面更突出
-  human: { label: '人视', direction: [1, 0.18, 1] },
-  bird: { label: '鸟瞰', direction: [0.8, 1.25, 0.8] },
-  front: { label: '正立面', direction: [0, 0.12, 1] },
+  // 展示机位用较窄视角减轻近大远小；人视保留原来的视野。
+  corner: { label: '街角', direction: [1, 0.72, 1], fov: 35 },
+  human: { label: '人视', direction: [1, 0.18, 1], fov: 50 },
+  bird: { label: '鸟瞰', direction: [0.8, 1.25, 0.8], fov: 35 },
+  front: { label: '正立面', direction: [0, 0.12, 1], fov: 35 },
 }
 
 export const ENVIRONMENT_ORDER: EnvironmentPresetId[] = [

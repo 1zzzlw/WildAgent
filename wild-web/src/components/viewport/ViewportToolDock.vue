@@ -56,10 +56,12 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { Camera, Crop, Aim, Setting, Sunny, Sunset, Moon, User, Position, OfficeBuilding, Coordinate, Odometer, Cpu, MagicStick, View, Edit, Grid, Refresh, RefreshLeft, Download, InfoFilled, Top, Bottom, Close } from '@element-plus/icons-vue'
 import { useRenderPanelStore, type RenderPresetRequest } from '../../stores/renderPanelStore'
+import { useAuthStore } from '../../stores/authStore'
 import { CAMERA_PRESETS, ENVIRONMENT_PRESETS, TIME_PRESETS, QUALITY_PRESETS, type EnvironmentPresetId } from '../../renderer/defaultWorldLook'
 import EnvironmentIcon from './EnvironmentIcon.vue'
 import RenderControlPanel from './RenderControlPanel.vue'
 const render = useRenderPanelStore()
+const auth = useAuthStore()
 const dock = ref<HTMLElement>()
 const active = ref<'viewport' | 'render' | 'section' | null>(null)
 const branch = ref<RenderPresetRequest['type'] | null>(null)
@@ -88,7 +90,7 @@ const renderActions = computed(() => [
   { id: 'grid', label: '网格地面', icon: Grid, selected: render.showGrid, run: () => { render.showGrid = !render.showGrid } },
   { id: 'rotate', label: '自动旋转', icon: Refresh, selected: render.autoRotate, run: () => { render.autoRotate = !render.autoRotate } },
   { id: 'reset', label: '重置视角', icon: RefreshLeft, selected: false, run: () => render.requestResetView() },
-  { id: 'screenshot', label: '保存截图', icon: Download, selected: false, run: () => render.requestScreenshot() },
+  ...(auth.canEdit ? [{ id: 'screenshot', label: '保存截图', icon: Download, selected: false, run: () => render.requestScreenshot() }] : []),
 ])
 function position(index: number, count: number, radius: number) {
   const angle = (count === 1 ? 0 : -70 + 140 * index / (count - 1)) * Math.PI / 180

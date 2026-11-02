@@ -1,5 +1,5 @@
 <template>
-  <VisitorNameGate v-if="!editorReady" @confirmed="enterEditor" />
+  <LoginGate v-if="!auth.user || !editorReady" :checking="!auth.initialized" />
   <div v-else :class="['wild-editor', { 'viewport-focused': ui.viewportFocused, 'reduce-motion': !ui.animationsEnabled }]" @click.capture="handleClickSound">
     <EditorTopBar v-show="!ui.viewportFocused" />
     <div class="editor-main">
@@ -20,7 +20,8 @@
 import { nextTick, onActivated, onDeactivated, onMounted, onUnmounted, ref, watch } from 'vue'
 import { FullScreen } from '@element-plus/icons-vue'
 import { agentBridge } from '../agent/agentBridge'
-import VisitorNameGate from '../extensions/presence/VisitorNameGate.vue'
+import LoginGate from '../components/auth/LoginGate.vue'
+import { useAuthStore } from '../stores/authStore'
 import { usePresenceStore } from '../extensions/presence/store'
 import { useUIStore, PANEL_IDS } from '../stores/uiStore'
 import { useSceneStore } from '../stores/sceneStore'
@@ -42,16 +43,21 @@ const history = useHistoryStore()
 const workspace = useWorkspaceStore()
 const render = useRenderPanelStore()
 const presence = usePresenceStore()
+const auth = useAuthStore()
 const roaming = useCharacterRoamingStore()
 const editorReady = ref(false)
 const viewportRef = ref<HTMLElement>()
 let nativeFullscreen = false
 function enterEditor() {
-  if (editorReady.value) return
+  if (editorReady.value || !auth.user) return
   editorReady.value = true
+  presence.setVisitorName(auth.user.username)
+  if (!auth.canEdit) ui.openPanel('sceneTree')
   scene.document = scene.createEmptyDocument()
+  agentBridge.disconnect()
   agentBridge.connect()
 }
+watch(() => auth.user, user => { if (user) enterEditor() }, { flush: 'sync' })
 watch(() => ui.viewportFocused, async focused => {
   await nextTick()
   if (focused && viewportRef.value?.requestFullscreen) {
@@ -76,6 +82,7 @@ async function handleKeydown(event: KeyboardEvent) {
   if (modifier && event.key.toLowerCase() === 'b') { event.preventDefault(); ui.panelOpen = !ui.panelOpen; return }
   if (modifier && ['z', 'y'].includes(event.key.toLowerCase())) {
     event.preventDefault()
+    if (!auth.canEdit) return
     const redo = event.key.toLowerCase() === 'y' || event.shiftKey
     const entry = redo ? history.redo() : history.undo()
     if (entry) await scene.restoreBlueprint(redo ? entry.after : entry.before)
@@ -89,8 +96,10 @@ async function handleKeydown(event: KeyboardEvent) {
   }
   if (event.key === '?') ui.shortcutsVisible = true
 }
-onMounted(() => {
-  if (presence.hasVisitorName) enterEditor()
+onMounted(async () => {
+  agentBridge.connect()
+  await auth.restore()
+  if (auth.user) enterEditor()
   window.addEventListener('keydown', handleKeydown)
   document.addEventListener('fullscreenchange', syncFullscreen)
 })

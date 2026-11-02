@@ -6,7 +6,7 @@ import {
   getWorldRenderingUniforms,
 } from '../worldEnvironmentRuntime'
 
-const SHADER_VERSION = 'default-surface-v4'
+const SHADER_VERSION = 'default-surface-v5'
 const PATTERNS: Record<SurfacePattern, { code: number; color: number; roughness: number; relief: number }> = {
   quartz: { code: 1, color: 0.2, roughness: 0.08, relief: 0.0003 },
   planks: { code: 2, color: 0.38, roughness: 0.12, relief: 0.0015 },
@@ -138,6 +138,7 @@ export function installDefaultSurfaceShader(
     wildWorldSnow: environment.snow,
     wildWorldDust: environment.dust,
     wildSurfaceEnabled: rendering.surfaceEnabled,
+    wildSurfaceToonEnabled: rendering.toonEnabled,
     wildSurfaceQuality: rendering.surfaceQuality,
     wildWeatherEnabled: rendering.weatherEnabled,
     wildWeatherQuality: rendering.weatherQuality,
@@ -194,6 +195,7 @@ uniform float wildWorldRain;
 uniform float wildWorldSnow;
 uniform float wildWorldDust;
 uniform float wildSurfaceEnabled;
+uniform float wildSurfaceToonEnabled;
 uniform float wildSurfaceQuality;
 uniform float wildWeatherEnabled;
 uniform float wildWeatherQuality;
@@ -338,6 +340,8 @@ vec3 wildPatternSurface(vec2 metric, float seed, int pattern) {
       '#include <map_fragment>',
       `#include <map_fragment>
 float wildDefaultSurfaceAmount = wildSurfaceEnabled * wildSurfaceQuality;
+// 动画表现收敛默认微噪声；显式石材、木板、瓷砖图案保持原有细节。
+if (wildSurfacePattern == 0) wildDefaultSurfaceAmount *= mix(1.0, 0.2, wildSurfaceToonEnabled);
 float wildWeatherAmount = wildWeatherEnabled * wildWeatherQuality;
 // 表面微变化噪声只在「表面层启用」或「雪/尘天气启用」时才计算；
 // 关闭功能时通过 uniform 分支直接跳过，输出与原来完全一致。

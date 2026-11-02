@@ -509,21 +509,21 @@ watch(() => agentStore.connectionStatus, (newStatus) => {
   previousStatus = newStatus
   switch (newStatus) {
     case 'connected':
-      ElNotification({ title: '已连接', message: 'Agent 服务连接成功', type: 'success', duration: 3000 })
+      ElNotification({ title: '已连接', message: 'Agent 服务连接成功', type: 'success', duration: 3000, offset: 64 })
       break
     case 'disconnected':
       if (agentStore.networkError)
-        ElNotification({ title: '连接断开', message: agentStore.networkError, type: 'error', duration: 6000 })
+        ElNotification({ title: '连接断开', message: agentStore.networkError, type: 'error', duration: 6000, offset: 64 })
       break
     case 'reconnecting':
-      ElNotification({ title: '连接中断', message: '正在尝试重新连接...', type: 'warning', duration: 4000 })
+      ElNotification({ title: '连接中断', message: '正在尝试重新连接...', type: 'warning', duration: 4000, offset: 64 })
       break
   }
 })
 
 watch(() => agentStore.networkError, (error) => {
   if (error)
-    ElNotification({ title: '网络异常', message: error, type: 'error', duration: 8000 })
+    ElNotification({ title: '网络异常', message: error, type: 'error', duration: 8000, offset: 64 })
 })
 
 // 监听滚动事件

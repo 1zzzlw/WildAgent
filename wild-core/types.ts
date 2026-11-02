@@ -9,7 +9,6 @@ import type {
   MaterialEnvironmentResponse,
   SurfaceFamily,
   SurfacePattern,
-  WorldEnvironmentState,
 } from './src/materials/contracts';
 
 // ========== 基础向量与颜色 ==========
@@ -880,18 +879,6 @@ export interface Meta {
 }
 
 // ========== 蓝图顶层结构 ==========
-/** 单蓝图的初始展示意图；不改变几何、宿主、物理或编辑器 UI。 */
-export interface BlueprintPresentation {
-  style?: 'pbr' | 'toon';
-  /** diorama 收起外围地面、天空与布景，天气范围随蓝图包围盒。 */
-  stage?: 'world' | 'diorama';
-  environment?: Partial<WorldEnvironmentState>;
-  /** 蓝图世界坐标，和 geometry 使用同一个坐标系。 */
-  camera?: { position: Vec3; target: Vec3 };
-  /** 按构件包围盒从低到高入场；秒，正数；运行进度不写回蓝图。 */
-  entrance?: { type: 'assemble'; duration: number };
-}
-
 export interface Blueprint {
   // 元数据
   meta: Meta;
@@ -913,9 +900,6 @@ export interface Blueprint {
   assets?: Record<string, PBRTextureSetAsset>;
   /** 全局材质库引用；Blueprint 不复制全局资产。 */
   materialLibraries?: string[];
-  /** 世界光影配置引用；未填写时使用 builtin:default。 */
-  renderProfile?: string;
-  presentation?: BlueprintPresentation;
   // 动态行为，定义场景的物理、脚本和动画行为，不属于几何本身，但附加在场景上：
   behaviors?: {
     // 物理属性

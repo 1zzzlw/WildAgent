@@ -3,21 +3,7 @@ import wildSchema from '../../schema.json';
 type JsonSchema = Record<string, any>;
 
 export function validateBlueprintSchema(value: unknown): string[] {
-  const errors = validate(value, wildSchema as JsonSchema, '$');
-  if (errors.length === 0 && isObject(value)) errors.push(...validateBlueprintPresentation(value.presentation));
-  return errors;
-}
-
-export function validateBlueprintPresentation(value: unknown): string[] {
-  if (value === undefined) return [];
-  const errors = validate(value, wildSchema.$defs.blueprintPresentation, '$.presentation');
-  if (!errors.length && isObject(value)) {
-    const camera = value.camera;
-    if (camera && camera.position.every((v: number, i: number) => v === camera.target[i])) {
-      errors.push('$.presentation.camera 的 position 和 target 不能重合');
-    }
-  }
-  return errors;
+  return validate(value, wildSchema as JsonSchema, '$');
 }
 
 function validate(value: unknown, inputSchema: JsonSchema, path: string): string[] {

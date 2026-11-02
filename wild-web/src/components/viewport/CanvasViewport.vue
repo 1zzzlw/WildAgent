@@ -35,6 +35,7 @@ import { useBlockPlacementStore } from '../../stores/blockPlacementStore'
 import { useUIStore } from '../../stores/uiStore'
 import { useWorldPackageStore } from '../../stores/worldPackageStore'
 import { useRenderPanelStore } from '../../stores/renderPanelStore'
+import { useAuthStore } from '../../stores/authStore'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js'
@@ -53,8 +54,6 @@ import {
   toggleRuntimeInteraction,
 } from '../../renderer/renderEntity'
 import { WorldRuntime } from '../../renderer/worldRuntime'
-import { BlueprintPresentationDefaults } from '../../renderer/blueprintPresentationRuntime'
-import { validateBlueprintPresentation } from 'wild-core/primitive'
 import { exportBuildingGlb } from '../../renderer/glbExport'
 import {
   createEditorWorldDocument,
@@ -134,6 +133,7 @@ let keepPlacementView = false
 const uiStore = useUIStore()
 const worldPackageStore = useWorldPackageStore()
 const renderPanel = useRenderPanelStore()
+const auth = useAuthStore()
 const roaming = useCharacterRoamingStore()
 let characterRoaming: CharacterRoamingRuntime | null = null
 let roamingControlState: { orbitEnabled: boolean; transformEnabled: boolean } | null = null
@@ -157,7 +157,6 @@ let sceneGroup: THREE.Group | null = null
 const sectionPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), 3.5)
 let materialCache: MaterialCache | null = null
 let worldRuntime: WorldRuntime | null = null
-const presentationDefaults = new BlueprintPresentationDefaults()
 let entrancePending = false
 let gridHelper: THREE.GridHelper | null = null
 let environmentRuntime: WorldEnvironmentMapRuntime | null = null
@@ -254,12 +253,17 @@ onMounted(() => {
     applyTimePreset(timeChanged)
     markNeedsRender()
   })
-  unsubscribeWorldRendering = subscribeWorldRendering(() => {
-    applyTimePreset(true)
+  let weatherEnabled = getWorldRenderingState().weatherEnabled
+  unsubscribeWorldRendering = subscribeWorldRendering(rendering => {
+    // 材质开关只需更新共享 uniform；天气总开关才影响环境照明。
+    if (rendering.weatherEnabled !== weatherEnabled) {
+      weatherEnabled = rendering.weatherEnabled
+      applyTimePreset(true)
+    }
     markNeedsRender()
   })
   unsubscribeWorldEffects = subscribeWorldEffects(() => {
-    cloudLayer?.setVisible(getWorldEffectState().clouds && !isDiorama())
+    cloudLayer?.setVisible(getWorldEffectState().clouds)
     weatherVisuals?.setEnvironment(getWorldEnvironmentState(), getWorldRenderingState().weatherEnabled)
     configureSceneFog()
     applyGroundVisibility()
@@ -307,12 +311,8 @@ watch(() => sceneStore.document?.id, () => {
   componentTransformEnabled = false
   clearComponentTransformControl()
 })
-watch([
-  () => sceneStore.document?.id,
-  () => JSON.stringify(sceneStore.document?.blueprint.presentation),
-], () => {
+watch(() => sceneStore.document?.id, () => {
   finishEntrance()
-  presentationDefaults.apply(currentPresentation())
   hasFramedScene = false
   entrancePending = true
 }, { immediate: true })
@@ -384,6 +384,7 @@ function startCharacterRoaming() {
       interact: object => toggleRuntimeInteraction(object, markShadowsDirty),
       onLockChange: locked => { roaming.locked = locked; markShadowsDirty() },
       onViewChange: view => { roaming.view = view; markShadowsDirty() },
+      onFlightChange: flying => { roaming.flying = flying; markShadowsDirty() },
       onTargetChange: label => { roaming.interactionLabel = label },
       onMessage: message => { roaming.message = message },
       requestRender: markNeedsRender,
@@ -426,6 +427,11 @@ watch(() => renderPanel.autoRotate, enabled => {
 watch(() => renderPanel.autoRotateSpeed, speed => {
   if (controls) controls.autoRotateSpeed = speed
 })
+watch(() => renderPanel.entranceEnabled, enabled => {
+  if (enabled) playEntrance()
+  else finishEntrance()
+})
+watch(() => renderPanel.replayEntranceNonce, playEntrance)
 watch(() => renderPanel.showGrid, () => {
   ensureGridVisible()
   markNeedsRender()
@@ -512,7 +518,6 @@ function initThreeJS() {
     // 恒定 false：主光栅化走 EffectComposer 的离屏 RT，canvas 默认帧缓冲只用来贴最终一张全屏四边形，
     // 这里的 MSAA 既无效又白占显存。几何抗锯齿改在合成离屏 RT 上做。
     antialias: false,
-    alpha: true,
     powerPreference: 'high-performance',
   })
   configureWorldRenderer(renderer)
@@ -527,7 +532,7 @@ function initThreeJS() {
   worldLookRuntime.setActivationContext({ renderer, scene })
 
   const aspect = containerRef.value.clientWidth / containerRef.value.clientHeight
-  camera = new THREE.PerspectiveCamera(50, aspect, 0.1, 2000)
+  camera = new THREE.PerspectiveCamera(CAMERA_PRESETS.corner.fov, aspect, 0.1, 2000)
   camera.position.set(12, 10, 12)
 
   // 后期合成链路（SSAO 接触阴影 / Bloom / FXAA / MSAA）由引擎侧持有，
@@ -660,6 +665,7 @@ function initThreeJS() {
 }
 
 function persistEditorWorldState(): void {
+  if (!auth.canEdit) return
   if (!sceneStore.document) return
   saveWorldDocument(createEditorWorldDocument(sceneStore.document, {
     materialLibraries: worldPackageStore.materialPackages.map(item => item.manifest.packageId),
@@ -694,8 +700,8 @@ function renderFrame() {
   animationFrameId = null
   if (!renderLoopActive || document.hidden) return
   const delta = weatherClock.getDelta()
-  const presentationRuntime = worldRuntime?.getInstance('editor:active-blueprint')?.presentation
-  const entranceAnimating = presentationRuntime?.tick(delta) ?? false
+  const assemblyRuntime = worldRuntime?.getInstance('editor:active-blueprint')?.assembly
+  const entranceAnimating = assemblyRuntime?.tick(delta) ?? false
   const mechanismAnimating = !entranceAnimating && tickMechanisms(sceneGroup, delta)
   const characterAnimating = characterRoaming?.tick(delta) ?? false
   const controlsAnimating = !roaming.active && (controls?.update() ?? false)
@@ -704,7 +710,7 @@ function renderFrame() {
     waterReflection?.invalidate()
     const now = performance.now()
     if (now - lastShadowDirtyTime >= SHADOW_DIRTY_THROTTLE_MS
-      || entranceAnimating && !presentationRuntime?.active) {
+      || entranceAnimating && !assemblyRuntime?.active) {
       lastShadowDirtyTime = now
       markShadowsDirty()
     }
@@ -808,7 +814,7 @@ function updateScene() {
 
   const entity = sceneStore.reconstructed
   if (!entity) {
-    worldRuntime?.getInstance('editor:active-blueprint')?.presentation?.reset()
+    worldRuntime?.getInstance('editor:active-blueprint')?.assembly?.finish()
     fixtureLighting.setRoot(null)
     waterReflection?.setRoot(null)
     // 清空蓝图实例，但保留场景灯光、地面和 GridHelper。
@@ -830,8 +836,7 @@ function updateScene() {
     return
   }
 
-  const presentation = currentPresentation()
-  worldRuntime?.updateInstance('editor:active-blueprint', entity, presentation)
+  worldRuntime?.updateInstance('editor:active-blueprint', entity)
   fixtureLighting.setRoot(sceneGroup)
   waterReflection?.setRoot(sceneGroup)
   sceneGroup.traverse(object => {
@@ -909,16 +914,6 @@ function updateScene() {
 
     if (!hasFramedScene && controls && camera) {
       frameCameraToBounds(center, size)
-      if (presentation?.camera && sceneGroup) {
-        sceneGroup.updateMatrixWorld(true)
-        camera.position.copy(sceneGroup.localToWorld(new THREE.Vector3(...presentation.camera.position)))
-        controls.target.copy(sceneGroup.localToWorld(new THREE.Vector3(...presentation.camera.target)))
-        const distance = camera.position.distanceTo(controls.target)
-        controls.maxDistance = Math.max(controls.maxDistance, distance * 4)
-        camera.far = Math.max(camera.far, distance * 20)
-        camera.updateProjectionMatrix()
-        controls.update()
-      }
       hasFramedScene = true
     }
   }
@@ -931,26 +926,32 @@ function updateScene() {
   refreshPlacement()
   if (entrancePending) {
     entrancePending = false
-    worldRuntime?.getInstance('editor:active-blueprint')?.presentation?.start(presentation?.entrance)
+    playEntrance()
   }
   markNeedsRender()
 }
 
+function playEntrance() {
+  if (!renderPanel.entranceEnabled || !sceneStore.reconstructed?.meshes.length
+    || sceneStore.isReconstructing || roaming.active || placement.request || transformControls?.dragging) return
+  const entrance = worldRuntime?.getInstance('editor:active-blueprint')?.assembly
+  if (!entrance) return
+  entrance.start()
+  // 静态场景可能已休眠很久，新动画不能把空闲时间算成第一帧的播放时长。
+  weatherClock.getDelta()
+  waterReflection?.invalidate()
+  markShadowsDirty()
+  markNeedsRender()
+}
+
 function finishEntrance() {
-  const entrance = worldRuntime?.getInstance('editor:active-blueprint')?.presentation
+  const entrance = worldRuntime?.getInstance('editor:active-blueprint')?.assembly
   if (!entrance?.active) return
   entrance.finish()
   waterReflection?.invalidate()
   markShadowsDirty()
   markNeedsRender()
 }
-
-function currentPresentation() {
-  const value = sceneStore.document?.blueprint.presentation
-  return validateBlueprintPresentation(value).length ? undefined : value
-}
-
-function isDiorama() { return currentPresentation()?.stage === 'diorama' }
 
 function handlePlacementPointerMove(event: PointerEvent) {
   placementPointer = { clientX: event.clientX, clientY: event.clientY }
@@ -1026,6 +1027,7 @@ function refreshPlacement() {
 }
 
 async function commitPlacement() {
+  if (!auth.canEdit) return
   if (!placementDraft || !placement.request || !sceneStore.document || sceneStore.isReconstructing || placementCommitting) return
   const draft = placementDraft
   const request = placement.request
@@ -1268,6 +1270,7 @@ function clearSelectionHelpers() {
 /** 原生与组合构件共用三轴移动；组合构件可显式锁定。 */
 function syncComponentTransformControl() {
   clearComponentTransformControl()
+  if (!auth.canEdit) return
   if (
     roaming.active
     || viewMode.value === 'presentation'
@@ -1706,8 +1709,8 @@ function updateCelestialBodies(center = lightingCenter, extent = lightingExtent)
   moonBody.position.copy(center).addScaledVector(sunDirection, -radius)
   sunBody.scale.set(size * 1.62, size * 1.62, 1)
   moonBody.scale.set(size, size, 1)
-  sunBody.visible = !isDiorama() && timeOfDay.value !== 'night'
-  moonBody.visible = !isDiorama() && timeOfDay.value === 'night'
+  sunBody.visible = timeOfDay.value !== 'night'
+  moonBody.visible = timeOfDay.value === 'night'
   ;(sunBody.material as THREE.SpriteMaterial).opacity = Math.max(
     0.12,
     1 - atmosphere.cloud * 0.76 - atmosphere.rain * 0.18 - atmosphere.fog * 0.32,
@@ -1724,8 +1727,8 @@ function applyGroundVisibility() {
   const presenting = viewMode.value === 'presentation'
   const scenic = environmentPresetId.value !== 'minimal'
   const effects = getWorldEffectState()
-  presentationGround.visible = !isDiorama() && (presenting || scenic
-    || effects.puddles || effects.ripples || effects.reflections)
+  presentationGround.visible = presenting || scenic
+    || effects.puddles || effects.ripples || effects.reflections
 }
 
 function configureSceneFog() {
@@ -1757,16 +1760,13 @@ function applyViewMode() {
   if (!scene) return
   const presenting = viewMode.value === 'presentation'
   const scenic = environmentPresetId.value !== 'minimal'
-  const diorama = isDiorama()
-  scene.background = diorama ? null
-    : resolveWorldIllumination(timeOfDay.value, environmentPresetId.value).background
-  renderer?.setClearAlpha(diorama ? 0 : 1)
-  if (sky) sky.visible = !diorama && TIME_PRESETS[timeOfDay.value].skyVisible
-  cloudLayer?.setVisible(getWorldEffectState().clouds && !diorama)
+  scene.background = resolveWorldIllumination(timeOfDay.value, environmentPresetId.value).background
+  if (sky) sky.visible = TIME_PRESETS[timeOfDay.value].skyVisible
+  cloudLayer?.setVisible(getWorldEffectState().clouds)
   ensureGridVisible()
-  if (shadowGround) shadowGround.visible = !diorama
+  if (shadowGround) shadowGround.visible = true
   applyGroundVisibility()
-  if (builtInEnvironment) builtInEnvironment.visible = scenic && !diorama
+  if (builtInEnvironment) builtInEnvironment.visible = scenic
   if (transformControls) transformControls.visible = !presenting && !roaming.active
   if (presenting) {
     componentTransformEnabled = false
@@ -1814,30 +1814,44 @@ function updateLightingToBounds(center: THREE.Vector3, size: THREE.Vector3) {
   })
   shadowExtent = fit.extent
   updateCelestialBodies(center, lightingExtent)
-  if (isDiorama()) weatherVisuals?.setDioramaBounds(center, size, environmentGroundY)
-  else weatherVisuals?.setBounds(center, lightingExtent, environmentGroundY)
+  weatherVisuals?.setBounds(center, lightingExtent, environmentGroundY)
   configureSceneFog()
 }
 
 function frameCameraToBounds(center: THREE.Vector3, size: THREE.Vector3) {
   if (roaming.active) return
   if (!camera || !controls) return
-  const verticalFov = THREE.MathUtils.degToRad(camera.fov)
-  const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * camera.aspect)
-  const verticalDistance = size.y / Math.max(2 * Math.tan(verticalFov / 2), 0.01)
-  const horizontalDistance = Math.max(size.x, size.z) / Math.max(2 * Math.tan(horizontalFov / 2), 0.01)
-  const distance = Math.max(verticalDistance, horizontalDistance, 2) * 1.50  // 从 1.55 降低到 1.50，更接近建筑
   const preset = CAMERA_PRESETS[cameraPresetId.value]
+  camera.fov = preset.fov
+  const tanVertical = Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2)
+  const tanHorizontal = tanVertical * camera.aspect
   const viewDirection = new THREE.Vector3(...preset.direction).normalize()
   const target = center.clone()
   if (cameraPresetId.value === 'human') {
     target.y = center.y - size.y / 2 + Math.min(1.7, Math.max(0.8, size.y * 0.25))
   }
+  const right = new THREE.Vector3().crossVectors(camera.up, viewDirection).normalize()
+  const up = new THREE.Vector3().crossVectors(viewDirection, right).normalize()
+  const corner = new THREE.Vector3()
+  let distance = 2
+  let nearestOffset = 0
+  // 八角点分别约束水平、垂直视锥；同时考虑每个点到镜头的深度。
+  // 只取 max(width, depth) 会低估街角投影宽度，长底座或窄屏容易被裁切。
+  for (const x of [-1, 1]) for (const y of [-1, 1]) for (const z of [-1, 1]) {
+    corner.set(center.x + x * size.x / 2, center.y + y * size.y / 2, center.z + z * size.z / 2).sub(target)
+    const depth = corner.dot(viewDirection)
+    nearestOffset = Math.max(nearestOffset, depth)
+    distance = Math.max(distance,
+      depth + Math.abs(corner.dot(right)) * 1.15 / tanHorizontal,
+      depth + Math.abs(corner.dot(up)) * 1.15 / tanVertical,
+    )
+  }
+  distance = Math.max(distance, nearestOffset + 0.1)
   controls.target.copy(target)
   controls.minDistance = Math.max(0.2, distance * 0.08)
   controls.maxDistance = Math.max(50, distance * 8)
   camera.position.copy(target).addScaledVector(viewDirection, distance)
-  camera.near = Math.max(0.03, distance / 500)
+  camera.near = Math.max(0.01, Math.min(distance / 500, (distance - nearestOffset) / 2))
   camera.far = Math.max(500, distance * 20)
   camera.updateProjectionMatrix()
   controls.update()
@@ -1991,7 +2005,7 @@ function applyEdgeMode() {
     clearEdges()
     applyViewMode()
     updateCelestialBodies()
-    cloudLayer?.setVisible(getWorldEffectState().clouds && !isDiorama())
+    cloudLayer?.setVisible(getWorldEffectState().clouds)
   }
 }
 
@@ -2035,6 +2049,7 @@ async function exportGlb() {
 }
 
 function takeScreenshot() {
+  if (!auth.canEdit) return
   if (!renderer || !scene || !camera) return
   // preserveDrawingBuffer=false：合成器当场再渲一帧，否则 toDataURL 读到空缓冲。
   renderer.info.reset()
@@ -2071,7 +2086,6 @@ function markShadowsDirty() {
 }
 
 function cleanup() {
-  presentationDefaults.reset()
   placement.cancel()
   placementUpdate++
   placementPreview?.dispose()

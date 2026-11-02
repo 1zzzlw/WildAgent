@@ -8,13 +8,24 @@ import { createPinia } from 'pinia';
 import CanvasViewport from '/src/components/viewport/CanvasViewport.vue';
 import { useSceneStore } from '/src/stores/sceneStore.ts';
 import { useRenderPanelStore } from '/src/stores/renderPanelStore.ts';
+import { useAuthStore } from '/src/stores/authStore.ts';
 const pinia = createPinia();
 let app = createApp(CanvasViewport); app.use(pinia); app.mount('#app');
+// 离线几何回归显式使用编辑权限；真实登录与服务端鉴权由 auth-browser-smoke 验证。
+useAuthStore().user = { username: 'fixture-editor', role: 'editor' };
 window.presentationTest = { app, scene: useSceneStore(), render: useRenderPanelStore(), async remount() {
   app.unmount(); app = createApp(CanvasViewport); app.use(pinia); app.mount('#app');
   await nextTick(); window.presentationTest.app = app;
   window.presentationTest.render.requestPreset({ type: 'view', value: 'presentation' });
 } };
+if (new URLSearchParams(location.search).has('controls')) {
+  await import('/src/style.css');
+  await import('element-plus/es/components/icon/style/css');
+  const { ElIcon } = await import('element-plus');
+  const { default: ViewportToolDock } = await import('/src/components/viewport/ViewportToolDock.vue');
+  const dock = document.createElement('div'); document.body.append(dock);
+  createApp(ViewportToolDock).use(pinia).use(ElIcon).mount(dock);
+}
 await nextTick();
 window.presentationTest.render.requestPreset({ type: 'view', value: 'presentation' });
 window.ready = true;

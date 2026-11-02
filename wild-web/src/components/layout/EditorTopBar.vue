@@ -3,17 +3,17 @@
     <button class="brand" type="button" aria-label="打开场景树" @click="ui.openPanel('sceneTree')"><span>W</span> WildAgent
       <small>STUDIO</small></button>
     <nav class="file-toolbar" aria-label="文件操作">
-      <button aria-label="新建场景" title="新建场景" :disabled="busy" @click="workspace.newScene()"><el-icon>
+      <button v-if="auth.canEdit" aria-label="新建场景" title="新建场景" :disabled="busy" @click="workspace.newScene()"><el-icon>
           <DocumentAdd />
         </el-icon><span>新建</span></button>
-      <button aria-label="打开 WILD" title="打开 WILD，导入后自动保存到服务器" :disabled="busy" @click="fileInput?.click()"><el-icon>
+      <button v-if="auth.canEdit" aria-label="打开 WILD" title="打开 WILD，导入后自动保存到服务器" :disabled="busy" @click="fileInput?.click()"><el-icon>
           <FolderOpened />
         </el-icon><span>打开</span></button>
-      <button class="save-button" aria-label="保存到服务器" title="保存到服务器 · Ctrl+S" :disabled="!scene.document || busy"
+      <button v-if="auth.canEdit" class="save-button" aria-label="保存到服务器" title="保存到服务器 · Ctrl+S" :disabled="!scene.document || busy"
         @click="workspace.saveScene()"><el-icon>
           <Upload />
         </el-icon><span>{{ workspace.isSaving ? '保存中' : '保存' }}</span></button>
-      <button aria-label="导出 WILD" title="导出 WILD" :disabled="!scene.document" @click="exportFile"><el-icon>
+      <button v-if="auth.canEdit" aria-label="导出 WILD" title="导出 WILD" :disabled="!scene.document" @click="exportFile"><el-icon>
           <Download />
         </el-icon><span>导出</span></button>
       <button aria-label="导出 GLB" title="导出建筑与材质贴图；程序化表面按当前状态烘焙，光照与动态效果由查看器呈现"
@@ -21,11 +21,11 @@
         @click="render.requestGlbExport()"><el-icon>
           <Box />
         </el-icon><span>{{ render.exportingGlb ? '导出中…' : '导出 GLB' }}</span></button>
-      <i class="toolbar-divider"></i>
-      <button aria-label="撤销" title="撤销 · Ctrl+Z" :disabled="!history.canUndo || busy" @click="restore(false)"><el-icon>
+      <i v-if="auth.canEdit" class="toolbar-divider"></i>
+      <button v-if="auth.canEdit" aria-label="撤销" title="撤销 · Ctrl+Z" :disabled="!history.canUndo || busy" @click="restore(false)"><el-icon>
           <RefreshLeft />
         </el-icon></button>
-      <button aria-label="重做" title="重做 · Ctrl+Shift+Z" :disabled="!history.canRedo || busy"
+      <button v-if="auth.canEdit" aria-label="重做" title="重做 · Ctrl+Shift+Z" :disabled="!history.canRedo || busy"
         @click="restore(true)"><el-icon>
           <RefreshRight />
         </el-icon></button>
@@ -48,10 +48,12 @@
       <el-icon><Sunny v-if="theme.isDark" /><Moon v-else /></el-icon>
     </button>
     <OnlinePresence />
+    <button class="account-button" type="button" aria-label="退出登录" @click="logout">{{ auth.isGuest ? '游客 · 只读' : auth.user?.username }} · 退出</button>
   </header>
 </template>
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { RouterLink } from 'vue-router'
 import { DocumentAdd, FolderOpened, Upload, Download, Box, RefreshLeft, RefreshRight, Switch, Sunny, Moon } from '@element-plus/icons-vue'
 import { useHistoryStore } from '../../stores/historyStore'
@@ -61,6 +63,8 @@ import { useWorkspaceStore } from '../../stores/workspaceStore'
 import { useRenderPanelStore } from '../../stores/renderPanelStore'
 import OnlinePresence from '../../extensions/presence/OnlinePresence.vue'
 import { useThemeStore } from '../../stores/themeStore'
+import { useAuthStore } from '../../stores/authStore'
+const auth = useAuthStore()
 const theme = useThemeStore()
 const scene = useSceneStore()
 const ui = useUIStore()
@@ -76,6 +80,7 @@ async function importFile(event: Event) {
   input.value = ''
 }
 function exportFile() {
+  if (!auth.canEdit) return
   const url = URL.createObjectURL(new Blob([scene.exportWild()], { type: 'application/json' }))
   const link = document.createElement('a')
   link.href = url
@@ -84,8 +89,19 @@ function exportFile() {
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 async function restore(redo: boolean) {
+  if (!auth.canEdit) return
   const entry = redo ? history.redo() : history.undo()
   if (entry) await scene.restoreBlueprint(redo ? entry.after : entry.before)
+}
+async function logout() {
+  if (scene.document?.dirty) {
+    try { await ElMessageBox.confirm('当前修改尚未保存，退出后将丢失。确认退出？', '退出登录', { type: 'warning' }) }
+    catch { return }
+  }
+  try {
+    await auth.logout()
+    window.location.reload()
+  } catch (error) { ElMessage.error(error instanceof Error ? error.message : '退出失败') }
 }
 </script>
 <style scoped>
@@ -164,10 +180,13 @@ async function restore(redo: boolean) {
   display: flex;
   align-items: center;
   gap: 3px;
-  flex-shrink: 0
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none
 }
 
 .file-toolbar button {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -221,6 +240,7 @@ async function restore(redo: boolean) {
 .business-plan-link:hover { background: var(--studio-hover) }
 .theme-toggle { flex-shrink: 0; display: grid; place-items: center; width: 31px; height: 31px; border: 1px solid var(--studio-border); border-radius: 3px; background: transparent; color: var(--studio-accent); cursor: pointer }
 .theme-toggle:hover { background: var(--studio-hover) }
+.account-button { flex-shrink: 0; border: 1px solid var(--studio-border); border-radius: 6px; background: transparent; color: var(--studio-muted); padding: 7px 9px; font-size: 11px; cursor: pointer; white-space: nowrap }
 
 @media(max-width:1000px) {
   .brand small {
@@ -261,6 +281,7 @@ async function restore(redo: boolean) {
 }
 
 @media(max-width:700px) {
+  .business-plan-link { display: none }
   .file-toolbar { flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none }
   .file-toolbar button { flex-shrink: 0 }
   .document-title { display: none }

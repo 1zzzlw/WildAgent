@@ -7,7 +7,6 @@ import type {
 } from 'wild-core/world'
 import { validateWorldDocument } from 'wild-core/world'
 import { BlueprintRenderInstance } from './blueprintRenderInstance'
-import type { BlueprintPresentation } from 'wild-core/types'
 
 export interface WorldRuntimeStats {
   instances: number
@@ -59,10 +58,10 @@ export class WorldRuntime {
     return instance
   }
 
-  updateInstance(instanceId: string, entity: ReconstructedEntity, presentation?: BlueprintPresentation): void {
+  updateInstance(instanceId: string, entity: ReconstructedEntity): void {
     const instance = this.instances.get(instanceId)
     if (!instance) throw new Error(`World instance is not mounted: ${instanceId}`)
-    instance.update(entity, presentation)
+    instance.update(entity)
   }
 
   unloadChunk(chunkId: string): number {

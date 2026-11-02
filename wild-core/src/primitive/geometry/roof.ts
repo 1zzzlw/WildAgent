@@ -708,8 +708,9 @@ type Pt3 = [number, number, number];
 /** 朝上面判据：法线 y 分量占比高于该值才算屋面（竖直面 / 朝下面排除在外）。 */
 const EAVE_UP_MIN_NY = 0.05;
 
-/** 折线转角超过该角度就断成独立构件：转角处直接端封，避免斜接尖刺（屋脊尖端近 180° 反转）。 */
-const EAVE_RUN_BREAK_COS = Math.cos((75 * Math.PI) / 180);
+/** 正常转角连续斜接；只在接近水平反转时端封，避免退化截面。 */
+const EAVE_RUN_BREAK_COS = Math.cos((175 * Math.PI) / 180);
+const EAVE_MITER_LIMIT = 4;
 
 /**
  * 提取屋面"朝上面"的外边界环（局部坐标，与传入几何同一坐标系）。
@@ -804,7 +805,8 @@ export function splitEaveRuns(loop: Pt3[]): Array<{ pts: Pt3[]; closed: boolean 
     const pts: Pt3[] = [];
     for (let i = from; ; i = (i + 1) % n) {
       pts.push(loop[i]);
-      if (i === to) break;
+      // 只有一个断点时仍需绕完整圈，不能把整条檐口丢成单点。
+      if (i === to && pts.length > 1) break;
     }
     if (pts.length >= 2) runs.push({ pts, closed: false });
   }
@@ -836,13 +838,12 @@ function orientSolidOutward(tris: number[]): number[] {
  * 沿一段檐口折线扫掠线脚截面，返回闭合实体的三角面。
  *
  * 截面定义在 (u=水平外挑, v=竖直) 平面里：封檐板 + 外下方滴水线，合成一个
- * 6 边形。逐点取"背离檐口环质心"的水平方向作为外挑方向，转角处自然形成斜接。
+ * 8 边凹多边形。相邻边共享转角截面，按斜接系数保持线脚的法向厚度。
  */
 function sweepEaveRun(
   pts: Pt3[],
   closed: boolean,
   spec: EaveTrimSpec,
-  centroid: [number, number],
 ): number[] {
   // 截面（局部原点在檐口线上，u 向外、v 向上）：
   //   封檐板主体 [-embed, outset] × [-drop, top]，外下方再挂一道滴水线。
@@ -861,7 +862,7 @@ function sweepEaveRun(
   const count = pts.length;
   const out: number[] = [];
 
-  // 逐点外挑方向：相邻两条水平边的法线平均（转角处即斜接方向）
+  // 向上三角面的有向边界，其水平左法线朝外；不以质心判断，凹转角也一致。
   const outward: Array<[number, number]> = [];
   for (let i = 0; i < count; i++) {
     const prev = pts[(i - 1 + count) % count], cur = pts[i], next = pts[(i + 1) % count];
@@ -869,7 +870,7 @@ function sweepEaveRun(
     const push = (ax: number, az: number, bx: number, bz: number) => {
       const dx = bx - ax, dz = bz - az;
       const len = Math.hypot(dx, dz);
-      if (len > 1e-9) dirs.push([dz / len, -dx / len]);
+      if (len > 1e-9) dirs.push([-dz / len, dx / len]);
     };
     if (closed || i > 0) push(prev[0], prev[2], cur[0], cur[2]);
     if (closed || i < count - 1) push(cur[0], cur[2], next[0], next[2]);
@@ -877,14 +878,13 @@ function sweepEaveRun(
     for (const d of dirs) { ux += d[0]; uz += d[1]; }
     const len = Math.hypot(ux, uz);
     if (len < 1e-9) {
-      ux = cur[0] - centroid[0];
-      uz = cur[2] - centroid[1];
-      const l2 = Math.hypot(ux, uz) || 1;
-      ux /= l2; uz /= l2;
+      [ux, uz] = dirs[0] ?? [1, 0];
     } else { ux /= len; uz /= len; }
-    // 统一朝外：背离檐口环质心
-    if (ux * (cur[0] - centroid[0]) + uz * (cur[2] - centroid[1]) < 0) { ux = -ux; uz = -uz; }
-    outward.push([ux, uz]);
+    // 单位角平分线本身会缩窄转角（直角只剩 0.707 倍厚度），需除以半角余弦。
+    const normal = dirs[0] ?? [ux, uz];
+    const projection = ux * normal[0] + uz * normal[1];
+    const miter = Math.min(EAVE_MITER_LIMIT, 1 / Math.max(1e-9, projection));
+    outward.push([ux * miter, uz * miter]);
   }
 
   const section = (i: number): Pt3[] => profile.map(([u, v]) => (
@@ -902,11 +902,14 @@ function sweepEaveRun(
   }
 
   if (!closed) {
-    // 两端端封（端面是截面多边形，凸六边形用扇形剖分即可）
+    // 滴水线截面有凹点，端封使用耳切，避免扇形剖分跨过凹口。
     const first = section(0), last = section(count - 1);
-    for (let k = 1; k + 1 < m; k++) {
-      pushSolidTriangle(out, first[0], first[k + 1], first[k]);
-      pushSolidTriangle(out, last[0], last[k], last[k + 1]);
+    const order = profile.map((_, index) => index);
+    if (polygonSignedArea(profile) < 0) order.reverse();
+    for (const [a, b, c] of earClipTriangles(order.map(index => profile[index]))) {
+      const i = order[a], j = order[b], k = order[c];
+      pushSolidTriangle(out, first[i], first[j], first[k]);
+      pushSolidTriangle(out, last[k], last[j], last[i]);
     }
   }
 
@@ -921,11 +924,8 @@ function buildEaveTrim(
 ): number[] {
   const out: number[] = [];
   for (const loop of extractEaveLoops(geometry, indices)) {
-    let cx = 0, cz = 0;
-    for (const p of loop) { cx += p[0]; cz += p[2]; }
-    const centroid: [number, number] = [cx / loop.length, cz / loop.length];
     for (const run of splitEaveRuns(loop)) {
-      out.push(...sweepEaveRun(run.pts, run.closed, spec, centroid));
+      out.push(...sweepEaveRun(run.pts, run.closed, spec));
     }
   }
   return out;

@@ -21,7 +21,7 @@ import type { ProceduralMaterial } from 'wild-core/types'
 import type { RenderMaterialDescriptor } from 'wild-core/materials'
 import { recordTextureLoad } from './textureLoadMonitor'
 import { applyRegisteredSurfaceMaterial } from './materialFeatures'
-import { applyToonMaterial } from './materialFeatures/toonMaterial'
+import { applyAnimatedDiffuseMaterial } from './materialFeatures/animatedDiffuseMaterial'
 import { worldMaterialRuntime } from './worldMaterialRuntime'
 import { applyWaterSurfaceMaterial, isWaterMaterial } from './waterSurfaceMaterial'
 
@@ -230,8 +230,7 @@ export function createMaterialFromParams(
   // 7. core 只输出实现 ID 和参数，实际 Shader 通过 renderer 注册表选择。
   applyRegisteredSurfaceMaterial(material, materialName, params)
   if (isWater) applyWaterSurfaceMaterial(material)
-  if (!isWater && !(material instanceof THREE.MeshPhysicalMaterial && material.transmission > 0)
-    && materialName !== '__text_label') applyToonMaterial(material)
+  if (!isWater && params.materialClass !== 'glass' && !usesTransmission) applyAnimatedDiffuseMaterial(material)
 
   // 8. 兼容既有开放网格与历史构件中不一致的面绕序，默认双面渲染。
   // 只有已经验证为封闭实体的材质才通过 side: 'front' 显式开启背面剔除。

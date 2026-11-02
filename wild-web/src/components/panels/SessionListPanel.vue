@@ -7,7 +7,7 @@
       <span class="switch-label">切换会话</span>
       <el-icon><ArrowDown /></el-icon>
     </button>
-    <el-button class="new-session-btn" size="small" @click="$emit('new')">
+    <el-button v-if="auth.canEdit" class="new-session-btn" size="small" @click="$emit('new')">
       <el-icon><Plus /></el-icon><span>新建</span>
     </el-button>
 
@@ -23,7 +23,7 @@
       <div class="session-picker-tools">
         <el-input ref="searchInput" v-model="searchQuery" placeholder="搜索会话名称或 ID"
           :prefix-icon="Search" clearable aria-label="搜索会话" />
-        <el-button type="primary" @click="createSession">
+        <el-button v-if="auth.canEdit" type="primary" @click="createSession">
           <el-icon><Plus /></el-icon><span>新建会话</span>
         </el-button>
       </div>
@@ -51,7 +51,7 @@
               <span class="session-id">{{ session.session_id }}</span>
             </span>
           </button>
-          <el-dropdown trigger="click" placement="bottom-end" popper-class="session-menu">
+          <el-dropdown v-if="auth.canEdit" trigger="click" placement="bottom-end" popper-class="session-menu">
             <button type="button" class="menu-trigger" :aria-label="`管理会话：${session.name || '新建筑'}`">···</button>
             <template #dropdown>
               <el-dropdown-menu>
@@ -78,6 +78,8 @@ import { ArrowDown, Plus, Search } from '@element-plus/icons-vue'
 import { useAgentStore, formatRelativeTime } from '../../stores/agentStore'
 import type { SessionInfo } from '../../types/agent'
 import { useUIStore } from '../../stores/uiStore'
+import { useAuthStore } from '../../stores/authStore'
+const auth = useAuthStore()
 
 const agentStore = useAgentStore()
 const emit = defineEmits<{

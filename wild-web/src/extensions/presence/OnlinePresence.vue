@@ -1,10 +1,9 @@
 <template>
   <el-popover
-    v-if="presenceStore.supported"
     placement="bottom-end"
     :width="320"
     trigger="click"
-    :disabled="!presenceStore.isConnected"
+    :disabled="!presenceStore.isConnected || !presenceStore.supported"
   >
     <template #reference>
       <el-tag
@@ -56,9 +55,10 @@ import { normalizeVisitorName, usePresenceStore } from './store'
 
 const presenceStore = usePresenceStore()
 const presenceText = computed(() => {
-  if (presenceStore.connectionStatus === 'connecting') return '连接中'
-  if (presenceStore.connectionStatus === 'reconnecting') return '重连中'
-  if (!presenceStore.isConnected) return '离线'
+  if (presenceStore.connectionStatus === 'connecting') return '在线状态连接中'
+  if (presenceStore.connectionStatus === 'reconnecting') return '在线状态重连中'
+  if (!presenceStore.isConnected) return '在线状态离线'
+  if (!presenceStore.supported) return '在线人数暂不可用'
   return `${presenceStore.onlineCount} 人在线`
 })
 

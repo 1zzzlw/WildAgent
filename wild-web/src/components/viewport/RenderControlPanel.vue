@@ -70,6 +70,11 @@
       <!-- 显示开关 -->
       <div class="rc-section">
         <div class="rc-section-title">显示</div>
+        <label class="rc-toggle" title="使用分级漫反射和更干净的默认表面；保留材质贴图、阴影和发光">
+          <span>动画明暗</span>
+          <input v-model="toonShading" type="checkbox" />
+          <span class="rc-switch" aria-hidden="true"></span>
+        </label>
         <label class="rc-toggle">
           <span>建筑线条</span>
           <input v-model="store.showEdges" type="checkbox" />
@@ -90,16 +95,24 @@
           <input v-model.number="store.autoRotateSpeed" type="range" min="0.2" max="4" step="0.2" class="rc-slider" />
           <span class="rc-slider-value">{{ store.autoRotateSpeed.toFixed(1) }}</span>
         </div>
+        <label class="rc-toggle" title="载入建筑时从下往上组装；关闭后立即显示完整建筑">
+          <span>组装入场</span>
+          <input v-model="store.entranceEnabled" type="checkbox" />
+          <span class="rc-switch" aria-hidden="true"></span>
+        </label>
       </div>
 
       <!-- 操作 -->
       <div class="rc-section">
         <div class="rc-section-title">操作</div>
         <div class="rc-actions">
+          <button type="button" class="rc-button rc-replay" :disabled="!store.entranceEnabled" @click="store.requestReplayEntrance()">
+            <span aria-hidden="true">↻</span> 重新播放组装
+          </button>
           <button type="button" class="rc-button" @click="store.requestResetView()">
             <span aria-hidden="true">⌖</span> 重置视角
           </button>
-          <button type="button" class="rc-button" @click="store.requestScreenshot()">
+          <button v-if="auth.canEdit" type="button" class="rc-button" @click="store.requestScreenshot()">
             <span aria-hidden="true">⤓</span> 保存截图
           </button>
         </div>
@@ -111,6 +124,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRenderPanelStore } from '../../stores/renderPanelStore'
+import { useAuthStore } from '../../stores/authStore'
+import { useWorldPackageStore } from '../../stores/worldPackageStore'
 
 /**
  * 渲染控制面板（毛玻璃、可收起）。
@@ -119,6 +134,12 @@ import { useRenderPanelStore } from '../../stores/renderPanelStore'
  * CanvasViewport 里（保持"面板无 three 依赖"的边界）。
  */
 const store = useRenderPanelStore()
+const auth = useAuthStore()
+const worldStore = useWorldPackageStore()
+const toonShading = computed({
+  get: () => worldStore.rendering.toonShading,
+  set: (value: boolean) => worldStore.setRendering({ toonShading: value }),
+})
 defineProps<{ embedded?: boolean }>()
 
 const fpsTier = computed(() =>
@@ -388,8 +409,12 @@ function formatCount(value: number): string {
 /* ── 操作按钮 ── */
 .rc-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
+
+.rc-button.rc-replay { flex-basis: 100%; }
+.rc-button:disabled { opacity: 0.45; cursor: default; }
 
 .rc-button {
   flex: 1;

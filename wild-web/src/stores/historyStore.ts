@@ -24,6 +24,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { Blueprint } from '../types/blueprint'
 import type { ScenePatch } from '../types/scenePatch'
+import { useAuthStore } from './authStore'
 
 export interface HistoryEntry {
   label: string
@@ -64,6 +65,7 @@ export const useHistoryStore = defineStore('history', () => {
   }
 
   function undo(): HistoryEntry | null {
+    if (!useAuthStore().canEdit) return null
     if (!canUndo.value) return null
     const entry = entries.value[currentIndex.value]
     currentIndex.value--
@@ -71,6 +73,7 @@ export const useHistoryStore = defineStore('history', () => {
   }
 
   function redo(): HistoryEntry | null {
+    if (!useAuthStore().canEdit) return null
     if (!canRedo.value) return null
     currentIndex.value++
     const entry = entries.value[currentIndex.value]

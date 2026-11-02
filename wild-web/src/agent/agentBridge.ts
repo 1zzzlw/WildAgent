@@ -43,6 +43,7 @@
 import { useAgentStore } from '../stores/agentStore'
 import { useSceneStore } from '../stores/sceneStore'
 import { useSelectionStore } from '../stores/selectionStore'
+import { useAuthStore } from '../stores/authStore'
 import { usePresenceStore } from '../extensions/presence/store'
 import { PRESENCE_VISITOR_NAME_CHANGED_EVENT } from '../extensions/presence/types'
 import { generateSceneSummary } from '../wild/sceneSummary'
@@ -160,8 +161,10 @@ export class AgentBridge {
     try {
       this.setupVisitorNameListener()
       this.ws = new WebSocket(this.buildConnectionUrl(presenceStore.visitorName))
+      const connection = this.ws
 
       this.ws.onopen = () => {
+        if (this.ws !== connection) return
         console.log('[AgentBridge] WebSocket 已连接')
         presenceStore.setConnectionStatus('connected')
         agentStore.setConnectionStatus('connected')
@@ -228,6 +231,7 @@ export class AgentBridge {
       }
 
       this.ws.onclose = () => {
+        if (this.ws !== connection) return
         console.log('[AgentBridge] WebSocket 已断开')
         this.stopHeartbeat()
         presenceStore.setConnectionStatus(
@@ -349,6 +353,7 @@ export class AgentBridge {
 
   /** 发送用户消息 */
   sendUserMessage(message: string): string | null {
+    if (!useAuthStore().canEdit) return null
     const agentStore = useAgentStore()
     const sceneStore = useSceneStore()
     const selectionStore = useSelectionStore()
@@ -421,6 +426,7 @@ export class AgentBridge {
   }
 
   stopCurrentGeneration(): boolean {
+    if (!useAuthStore().canEdit) return false
     const agentStore = useAgentStore()
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return false
     const turn = [...agentStore.currentTurns].reverse().find(item => item.status === 'running')
@@ -441,6 +447,7 @@ export class AgentBridge {
     action: 'confirm' | 'revise',
     feedback = '',
   ): string | null {
+    if (!useAuthStore().canEdit) return null
     const agentStore = useAgentStore()
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
       agentStore.addSystemMessage('未连接到 Agent 服务')
@@ -781,6 +788,7 @@ export class AgentBridge {
 
   /** 重连后重新附着后台任务，并从最后已处理序号继续补发关键事件。 */
   private resumeActiveGenerations() {
+    if (!useAuthStore().canEdit) return
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return
 
     const agentStore = useAgentStore()
@@ -961,6 +969,7 @@ export class AgentBridge {
     blueprint: Record<string, unknown>,
     target?: { sessionId: string; revision: number },
   ): Promise<boolean> {
+    if (!useAuthStore().canEdit) return false
     const agentStore = useAgentStore()
     const sceneStore = useSceneStore()
     const sessionId = target?.sessionId || agentStore.currentSessionId
@@ -1027,6 +1036,7 @@ export class AgentBridge {
 
   /** 删除会话记录、设计与关联蓝图；未保存的草稿同样使用会话接口。 */
   async deleteSession(sessionId: string): Promise<{ ok: boolean; error?: string }> {
+    if (!useAuthStore().canEdit) return { ok: false, error: '请使用账号密码登录后操作' }
     try {
       // 完成已有持久化请求后再删除，避免迟到的 Turn 写入重新创建会话。
       await Promise.all([this.turnSyncQueues.get(sessionId), this.messageSyncQueues.get(sessionId)])
@@ -1095,6 +1105,7 @@ export class AgentBridge {
     requestId: string,
     rating: 'up' | 'down',
   ): Promise<boolean> {
+    if (!useAuthStore().canEdit) return false
     const retryDelays = [0, 150, 400]
     for (const delay of retryDelays) {
       if (delay > 0) await new Promise(resolve => window.setTimeout(resolve, delay))
@@ -1135,9 +1146,11 @@ export class AgentBridge {
 
   /** 同步消息到后端 */
   async syncMessagesToServer(sessionId: string, messages: Array<{ id: string; role: string; content: string; timestamp: number }>): Promise<boolean> {
+    if (!useAuthStore().canEdit) return false
     const body = JSON.stringify(messages)
     const previous = this.messageSyncQueues.get(sessionId) || Promise.resolve(true)
     const current = previous.catch(() => false).then(async () => {
+      if (!useAuthStore().canEdit) return false
       try {
         const response = await fetch(`${this.httpBaseUrl}/api/sessions/${encodeURIComponent(sessionId)}/messages`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, body,
@@ -1156,9 +1169,11 @@ export class AgentBridge {
 
   /** 用当前快照替换服务端 Turn 历史。 */
   async syncTurnsToServer(sessionId: string, turns: AgentTurn[]): Promise<boolean> {
+    if (!useAuthStore().canEdit) return false
     const body = JSON.stringify({ turns })
     const previous = this.turnSyncQueues.get(sessionId) || Promise.resolve(true)
     const current = previous.catch(() => false).then(async () => {
+      if (!useAuthStore().canEdit) return false
       try {
         const response = await fetch(
           `${this.httpBaseUrl}/api/sessions/${encodeURIComponent(sessionId)}/turns`,
@@ -1194,6 +1209,7 @@ export class AgentBridge {
 
   /** 更新会话元数据（名称等） */
   async updateSessionMeta(sessionId: string, updates: { name?: string; building_type?: string }): Promise<boolean> {
+    if (!useAuthStore().canEdit) return false
     try {
       const baseUrl = this.httpBaseUrl
       const response = await fetch(`${baseUrl}/api/sessions/${sessionId}`, {

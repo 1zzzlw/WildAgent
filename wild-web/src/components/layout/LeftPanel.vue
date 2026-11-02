@@ -2,16 +2,16 @@
   <aside class="editor-dock" aria-label="编辑器功能">
     <nav class="icon-rail" aria-label="工作台导航">
       <div class="rail-panels">
-        <button v-for="(panel,index) in panels" :key="panel.id" type="button"
+        <button v-for="panel in visiblePanels" :key="panel.id" type="button"
           :class="['rail-button', { active: ui.activePanel === panel.id && ui.panelOpen }]"
           :aria-label="panel.label" :aria-pressed="ui.activePanel === panel.id && ui.panelOpen"
-          :title="panel.label + ' · Alt+' + (index+1)" @click="ui.selectPanel(panel.id)">
+          :title="panel.label + ' · Alt+' + (panels.indexOf(panel)+1)" @click="ui.selectPanel(panel.id)">
           <el-icon><component :is="panel.icon" /></el-icon><span>{{ panel.short }}</span>
           <i v-if="panel.id === 'validation' && errorCount" class="rail-badge">{{ errorCount }}</i>
         </button>
       </div>
       <div class="rail-footer">
-        <button type="button" class="rail-button" aria-label="模型配置" title="模型配置" @click="ui.modelConfigVisible = true"><el-icon><Cpu /></el-icon><span>模型</span></button>
+        <button v-if="auth.canEdit" type="button" class="rail-button" aria-label="模型配置" title="模型配置" @click="ui.modelConfigVisible = true"><el-icon><Cpu /></el-icon><span>模型</span></button>
         <button type="button" class="rail-button" aria-label="快捷键帮助" title="快捷键帮助 · ?" @click="ui.shortcutsVisible = true"><el-icon><QuestionFilled /></el-icon><span>帮助</span></button>
         <button type="button" class="rail-button" :aria-label="ui.panelOpen ? '收起左侧面板' : '展开左侧面板'" title="收起 / 展开 · Ctrl+B" @click="ui.panelOpen = !ui.panelOpen"><el-icon><Fold v-if="ui.panelOpen" /><Expand v-else /></el-icon></button>
       </div>
@@ -22,12 +22,12 @@
       </header>
       <div class="dock-content">
         <SceneTree v-show="ui.activePanel === 'sceneTree'" />
-        <BlockLibrary v-show="ui.activePanel === 'blockLibrary'" />
-        <PropertyPanel v-show="ui.activePanel === 'properties'" />
+        <BlockLibrary v-if="auth.canEdit" v-show="ui.activePanel === 'blockLibrary'" />
+        <PropertyPanel v-if="auth.canEdit" v-show="ui.activePanel === 'properties'" />
         <ValidationPanel v-show="ui.activePanel === 'validation'" />
-        <MaterialPanel v-show="ui.activePanel === 'assets'" />
-        <WorldLookPanel v-show="ui.activePanel === 'look'" />
-        <AIChatPanel v-show="ui.activePanel === 'aiChat'" />
+        <MaterialPanel v-if="auth.canEdit" v-show="ui.activePanel === 'assets'" />
+        <WorldLookPanel v-if="auth.canEdit" v-show="ui.activePanel === 'look'" />
+        <AIChatPanel v-show="auth.canEdit && ui.activePanel === 'aiChat'" />
       </div>
       <div class="dock-status"><span class="status-dot"></span><span>{{ scene.document?.dirty ? '修改尚未保存' : '准备就绪' }}</span><span>{{ selection.selectedIds.length ? selection.selectedIds.length + ' 项已选' : 'WILD 1.0' }}</span></div>
       <button type="button" class="dock-resize" role="separator" aria-label="调整左侧面板宽度" aria-orientation="vertical"
@@ -43,6 +43,7 @@ import { Cpu, Share, Box, Setting, CircleCheck, Brush, Sunny, ChatDotRound, Fold
 import { useUIStore, type PanelType } from '../../stores/uiStore'
 import { useSceneStore } from '../../stores/sceneStore'
 import { useSelectionStore } from '../../stores/selectionStore'
+import { useAuthStore } from '../../stores/authStore'
 import EditorTools from './EditorTools.vue'
 import SceneTree from '../panels/SceneTree.vue'
 import BlockLibrary from '../panels/BlockLibrary.vue'
@@ -54,6 +55,7 @@ import AIChatPanel from '../panels/AIChatPanel.vue'
 const ui = useUIStore()
 const scene = useSceneStore()
 const selection = useSelectionStore()
+const auth = useAuthStore()
 const panels = [
   { id: 'sceneTree' as PanelType, label: '场景树', short: '场景', icon: Share },
   { id: 'blockLibrary' as PanelType, label: '构件库', short: '构件', icon: Box },
@@ -64,6 +66,7 @@ const panels = [
   { id: 'aiChat' as PanelType, label: 'AI 对话', short: 'AI', icon: ChatDotRound },
 ]
 const currentPanel = computed(() => panels.find(p => p.id === ui.activePanel) || panels[0]!)
+const visiblePanels = computed(() => auth.canEdit ? panels : panels.filter(p => ['sceneTree', 'validation'].includes(p.id)))
 const errorCount = computed(() => scene.validationIssues.filter(issue => issue.level === 'error').length)
 let startX = 0
 let startWidth = 0

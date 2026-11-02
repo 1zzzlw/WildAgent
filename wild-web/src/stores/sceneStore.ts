@@ -29,6 +29,7 @@ import { useSelectionStore } from './selectionStore'
 import { buildGeometryRelationIndex } from 'wild-core/relationships'
 import { reconstructScene } from '../renderer/reconstructionClient'
 import { clearTextureLoadRecords } from '../renderer/textureLoadMonitor'
+import { useAuthStore } from './authStore'
 
 function compactSceneName(name: string): string {
   const firstClause = String(name).trim().replace(/\s+/g, ' ').split(/[：:，,；;。]/, 1)[0]?.trim() || '未命名建筑'
@@ -91,6 +92,7 @@ export const useSceneStore = defineStore('scene', () => {
   }
 
   async function applyPatch(patch: ScenePatch, historyGroup?: string): Promise<boolean> {
+    if (!useAuthStore().canEdit) return false
     if (!document.value) {
       console.error('无场景文档，无法应用 patch')
       return false
@@ -138,6 +140,7 @@ export const useSceneStore = defineStore('scene', () => {
 
   /** 恢复历史快照，不再次写入历史记录。 */
   async function restoreBlueprint(bp: Blueprint): Promise<boolean> {
+    if (!useAuthStore().canEdit) return false
     if (!document.value) return false
     const normalizedBlueprint = normalizeBlueprintInput(deepClone(bp)) as Blueprint
     validate(normalizedBlueprint)
@@ -185,6 +188,7 @@ export const useSceneStore = defineStore('scene', () => {
   }
 
   function exportWild(): string {
+    if (!useAuthStore().canEdit) return ''
     if (!document.value) return ''
     return JSON.stringify(document.value.blueprint, null, 2)
   }

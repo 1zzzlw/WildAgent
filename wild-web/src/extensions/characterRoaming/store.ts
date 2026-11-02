@@ -7,15 +7,16 @@ export type CharacterView = 'first' | 'third'
 export const useCharacterRoamingStore = defineStore('characterRoaming', () => {
   const active = ref(false)
   const locked = ref(false)
+  const flying = ref(false)
   const view = ref<CharacterView>('third')
   const interactionLabel = ref('')
   const message = ref('')
   const captureNonce = ref(0)
 
-  function start() { message.value = ''; active.value = true }
-  function stop() { active.value = false; locked.value = false; interactionLabel.value = '' }
+  function start() { message.value = ''; flying.value = false; active.value = true }
+  function stop() { active.value = false; locked.value = false; flying.value = false; interactionLabel.value = '' }
   function toggleView() { view.value = view.value === 'third' ? 'first' : 'third' }
   function capture() { captureNonce.value += 1 }
 
-  return { active, locked, view, interactionLabel, message, captureNonce, start, stop, toggleView, capture }
+  return { active, locked, flying, view, interactionLabel, message, captureNonce, start, stop, toggleView, capture }
 })

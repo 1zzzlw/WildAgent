@@ -5,8 +5,9 @@
       <span>人物漫游</span>
     </button>
     <section v-else class="roaming-panel" aria-label="人物漫游控制">
-      <div class="roaming-heading"><strong>机器人漫游</strong><span>{{ roaming.view === 'first' ? '第一视角' : '第三视角' }}</span></div>
-      <p>W A S D 移动 · 空格跳跃 · 鼠标转向</p>
+      <div class="roaming-heading"><strong>行旅者漫游</strong><span>{{ roaming.flying ? '飞行中' : '步行' }} · {{ roaming.view === 'first' ? '第一视角' : '第三视角' }}</span></div>
+      <p>W A S D 移动 · {{ roaming.flying ? '空格上升 · Shift 下降' : '空格跳跃' }} · 鼠标转向</p>
+      <p>双击空格{{ roaming.flying ? '取消飞行' : '进入飞行' }} · 飞行时仍会碰撞建筑</p>
       <p>F5 切换视角 · 右键交互 · Esc 释放鼠标</p>
       <div class="roaming-actions">
         <button v-if="!roaming.locked" type="button" @click="roaming.capture()">继续漫游</button>

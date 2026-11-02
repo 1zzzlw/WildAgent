@@ -14,6 +14,7 @@ interface RoamingOptions {
   interact: (object: THREE.Object3D) => boolean
   onLockChange: (locked: boolean) => void
   onViewChange: (view: CharacterView) => void
+  onFlightChange?: (flying: boolean) => void
   onTargetChange: (label: string) => void
   onMessage: (message: string) => void
   requestRender: () => void
@@ -23,7 +24,8 @@ const HEIGHT = 1.75
 const RADIUS = 0.24
 const EYE_HEIGHT = 1.58
 const STEP_HEIGHT = 0.32
-const MOVE_KEYS = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space'])
+const MOVE_KEYS = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space', 'ShiftLeft', 'ShiftRight'])
+const DOUBLE_SPACE_MS = 300
 
 /** 独立运行时：宿主只提供相机、显示根、交互回调和逐帧调用。无文档/编辑器依赖。 */
 export class CharacterRoamingRuntime {
@@ -43,6 +45,8 @@ export class CharacterRoamingRuntime {
   private pitch = -0.15
   private grounded = true
   private jumpQueued = false
+  private flying = false
+  private lastSpaceDown = -Infinity
   private view: CharacterView
   private targetClock = 0
   private targetLabel = ''
@@ -57,7 +61,7 @@ export class CharacterRoamingRuntime {
     }
     this.savedTabIndex = options.canvas.getAttribute('tabindex')
     this.world = new RoamingCollisionWorld(options.worldRoot, options.groundY)
-    this.robot = new RobotAvatar()
+    this.robot = new RobotAvatar(options.requestRender)
     options.scene.add(this.robot.root)
     this.spawn()
     options.camera.near = 0.04
@@ -158,7 +162,21 @@ export class CharacterRoamingRuntime {
     if (MOVE_KEYS.has(event.code)) {
       event.preventDefault()
       this.keys.add(event.code)
-      if (event.code === 'Space' && !event.repeat) this.jumpQueued = true
+      if (event.code === 'Space' && !event.repeat) {
+        const now = performance.now()
+        if (now - this.lastSpaceDown <= DOUBLE_SPACE_MS) {
+          this.lastSpaceDown = -Infinity
+          this.flying = !this.flying
+          this.grounded = false
+          this.velocity.y = 0
+          this.jumpQueued = false
+          this.options.onFlightChange?.(this.flying)
+          this.options.requestRender()
+        } else {
+          this.lastSpaceDown = now
+          if (!this.flying) this.jumpQueued = true
+        }
+      }
     }
   }
 
@@ -173,6 +191,7 @@ export class CharacterRoamingRuntime {
   private clearInput(): void {
     this.keys.clear()
     this.jumpQueued = false
+    this.lastSpaceDown = -Infinity
     this.velocity.set(0, 0, 0)
   }
 
@@ -198,7 +217,7 @@ export class CharacterRoamingRuntime {
   tick(delta: number): boolean {
     if (this.disposed || !this.locked) return false
     const elapsed = THREE.MathUtils.clamp(delta, 0, 0.05)
-    if (this.grounded && this.velocity.y <= 0) this.world.carryPlatform(this.body)
+    if (!this.flying && this.grounded && this.velocity.y <= 0) this.world.carryPlatform(this.body)
     this.world.syncMoving()
     const steps = Math.max(1, Math.ceil(elapsed / (1 / 120)))
     for (let i = 0; i < steps; i++) this.move(elapsed / steps)
@@ -222,11 +241,19 @@ export class CharacterRoamingRuntime {
     if (wish.lengthSq() > 0) wish.normalize().applyAxisAngle(THREE.Object3D.DEFAULT_UP, this.yaw).multiplyScalar(3.2)
     this.velocity.x = THREE.MathUtils.damp(this.velocity.x, wish.x, 14, delta)
     this.velocity.z = THREE.MathUtils.damp(this.velocity.z, wish.z, 14, delta)
+    if (this.flying) {
+      const vertical = Number(this.keys.has('Space')) - Number(this.keys.has('ShiftLeft') || this.keys.has('ShiftRight'))
+      this.velocity.y = THREE.MathUtils.damp(this.velocity.y, vertical * 3.2, 14, delta)
+      this.body.translate(this.velocity.clone().multiplyScalar(delta))
+      this.world.resolve(this.body, this.velocity)
+      return
+    }
     const wasGrounded = this.grounded
     const jumping = this.jumpQueued && wasGrounded
     this.jumpQueued = false
     if (jumping) this.velocity.y = 6
-    this.velocity.y -= 18 * delta
+    // 取消高空飞行后的下落也保持有限步长，避免速度持续累积穿过薄屋面。
+    this.velocity.y = Math.max(-20, this.velocity.y - 18 * delta)
     const before = this.body.clone()
     const movement = this.velocity.clone().multiplyScalar(delta)
     this.body.translate(movement)
@@ -288,7 +315,7 @@ export class CharacterRoamingRuntime {
 
   private syncAvatar(delta: number): void {
     this.robot.root.position.copy(this.body.start).y -= RADIUS
-    this.robot.update(delta, Math.hypot(this.velocity.x, this.velocity.z), this.grounded, this.yaw)
+    this.robot.update(delta, Math.hypot(this.velocity.x, this.velocity.z), this.grounded, this.yaw, this.flying)
   }
 
   private updateCamera(): void {
@@ -354,6 +381,7 @@ export class CharacterRoamingRuntime {
     camera.updateProjectionMatrix()
     camera.updateMatrixWorld(true)
     this.options.onLockChange(false)
+    this.options.onFlightChange?.(false)
     this.options.onTargetChange('')
   }
 }

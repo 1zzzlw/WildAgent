@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
+import { useAuthStore } from './authStore'
 
 export type PanelType = 'sceneTree' | 'blockLibrary' | 'properties' | 'validation' | 'assets' | 'look' | 'aiChat'
 export const PANEL_IDS: PanelType[] = ['sceneTree', 'blockLibrary', 'properties', 'validation', 'assets', 'look', 'aiChat']
@@ -19,6 +20,7 @@ export const useUIStore = defineStore('ui', () => {
   const animationsEnabled = true
   const soundsEnabled = true
   function openPanel(panel: PanelType) {
+    if (!useAuthStore().canEdit && !['sceneTree', 'validation'].includes(panel)) return
     activePanel.value = panel
     panelOpen.value = true
     viewportFocused.value = false

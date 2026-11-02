@@ -9,12 +9,14 @@ import { useSelectionStore } from './selectionStore'
 import { deepClone } from '../utils/common'
 import type { Blueprint } from '../types/blueprint'
 import { playUISound } from '../utils/uiSound'
+import { useAuthStore } from './authStore'
 
 export const useWorkspaceStore = defineStore('workspace', () => {
   const isSaving = ref(false)
   const isImporting = ref(false)
 
   async function saveScene(): Promise<boolean> {
+    if (!useAuthStore().canEdit) return false
     const scene = useSceneStore()
     const agent = useAgentStore()
     const doc = scene.document
@@ -51,6 +53,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   }
 
   async function newScene(): Promise<boolean> {
+    if (!useAuthStore().canEdit) return false
     const scene = useSceneStore()
     if (scene.document?.dirty && !await saveScene()) return false
     const agent = useAgentStore()
@@ -63,6 +66,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   }
 
   async function importFile(file: File): Promise<boolean> {
+    if (!useAuthStore().canEdit) return false
     if (isImporting.value || isSaving.value) return false
     isImporting.value = true
     try {

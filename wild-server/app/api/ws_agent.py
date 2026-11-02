@@ -87,6 +87,7 @@ from app.services.agent_delivery import (
 from app.services.generation_job_service import GenerationPaused, generation_job_service
 from app.extensions.presence import presence_service
 from app.utils.ws_heartbeat import WebSocketHeartbeat
+from app.api.auth import can_edit
 
 router = APIRouter()
 
@@ -454,6 +455,14 @@ async def agent_websocket(ws: WebSocket):
                 continue
 
             msg_type = data.get("type")
+
+            if msg_type not in {"ping", "presence_identify"} and not can_edit(ws):
+                await _send_event(ws, {
+                    "type": "error", "code": "permission_denied",
+                    "request_id": data.get("request_id"), "session_id": data.get("session_id"),
+                    "error": "请使用账号密码登录后操作",
+                })
+                continue
 
             if msg_type == "ping":
                 # 原样回传前端时间戳，便于前端计算往返延迟。

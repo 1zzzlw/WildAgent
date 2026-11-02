@@ -5,7 +5,7 @@ type EnvironmentListener = (state: Readonly<WorldEnvironmentState>) => void
 type RenderingListener = (state: Readonly<WorldRenderingState>) => void
 
 export interface WorldRenderingState {
-  style: 'pbr' | 'toon'
+  toonShading: boolean
   surfaceEnabled: boolean
   surfaceQuality: SurfaceQuality
   weatherEnabled: boolean
@@ -15,7 +15,7 @@ export interface WorldRenderingState {
 const state: WorldEnvironmentState = { ...DEFAULT_WORLD_ENVIRONMENT }
 const listeners = new Set<EnvironmentListener>()
 const renderingState: WorldRenderingState = {
-  style: 'pbr',
+  toonShading: false,
   surfaceEnabled: true,
   surfaceQuality: 'medium',
   weatherEnabled: true,
@@ -95,9 +95,9 @@ export function updateWorldRenderingState(
   patch: Partial<WorldRenderingState>,
 ): Readonly<WorldRenderingState> {
   let changed = false
-  if ((patch.style === 'pbr' || patch.style === 'toon') && patch.style !== renderingState.style) {
-    renderingState.style = patch.style
-    renderingUniforms.toonEnabled.value = patch.style === 'toon' ? 1 : 0
+  if (typeof patch.toonShading === 'boolean' && patch.toonShading !== renderingState.toonShading) {
+    renderingState.toonShading = patch.toonShading
+    renderingUniforms.toonEnabled.value = patch.toonShading ? 1 : 0
     changed = true
   }
   if (typeof patch.surfaceEnabled === 'boolean' && patch.surfaceEnabled !== renderingState.surfaceEnabled) {

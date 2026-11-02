@@ -12,7 +12,6 @@ const viewport = code => p.evaluate(`(()=>{const s=document.querySelector('.canv
 try {
   await p.wait('window.ready')
   const fixture = JSON.parse(await readFile(resolve('scripts/fixtures/presentation.json'), 'utf8'))
-  delete fixture.presentation.entrance
   assert.equal(await p.evaluate(`presentationTest.scene.loadBlueprint(${JSON.stringify(fixture)})`), true)
   const before = await viewport('return {json:JSON.stringify(s.sceneStore.document.blueprint),revision:s.sceneStore.document.revision};')
   await viewport(`

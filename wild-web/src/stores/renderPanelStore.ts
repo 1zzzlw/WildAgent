@@ -9,6 +9,7 @@
 
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import { useAuthStore } from './authStore'
 import { CAMERA_ORDER, type CameraPresetId, type EnvironmentPresetId, type QualityLevel, type TimeOfDay, type ViewMode } from '../renderer/defaultWorldLook'
 
 export type RenderPresetRequest =
@@ -73,6 +74,8 @@ export const useRenderPanelStore = defineStore('renderPanel', () => {
   const autoRotate = ref(false)
   /** 自动旋转速度（OrbitControls.autoRotateSpeed，2.0 = 30 秒一圈）。 */
   const autoRotateSpeed = ref(1.2)
+  /** 通用建筑组装入场；只影响显示，不写入蓝图。 */
+  const entranceEnabled = ref(true)
 
   // ── 一次性动作（视口用 nonce 侦听，避免面板直接持有 three 对象）──
   /** 递增一次 = 请求重置视角（回到当前相机机位预设）。 */
@@ -82,6 +85,7 @@ export const useRenderPanelStore = defineStore('renderPanel', () => {
   const glbExportNonce = ref(0)
   const exportingGlb = ref(false)
   const frameSelectionNonce = ref(0)
+  const replayEntranceNonce = ref(0)
   const presetRequest = ref<RenderPresetRequest | null>(null)
   const presets = ref({ camera: 'corner', environment: 'minimal', quality: 'medium', time: 'day', view: 'editor' })
   const sectionEnabled = ref(false)
@@ -94,6 +98,7 @@ export const useRenderPanelStore = defineStore('renderPanel', () => {
     requestPreset({ type: 'camera', value })
   }
   function requestFrameSelection() { frameSelectionNonce.value += 1 }
+  function requestReplayEntrance() { replayEntranceNonce.value += 1 }
   function requestPreset(request: RenderPresetRequest) { presetRequest.value = { ...request } }
 
   // ── 渲染统计（视口渲染循环写入，面板只读）──
@@ -104,6 +109,7 @@ export const useRenderPanelStore = defineStore('renderPanel', () => {
   }
 
   function requestScreenshot() {
+    if (!useAuthStore().canEdit) return
     screenshotNonce.value += 1
   }
 
@@ -118,16 +124,19 @@ export const useRenderPanelStore = defineStore('renderPanel', () => {
     sceneDimensions,
     autoRotate,
     autoRotateSpeed,
+    entranceEnabled,
     resetViewNonce,
     screenshotNonce,
     glbExportNonce,
     exportingGlb,
     frameSelectionNonce,
+    replayEntranceNonce,
     presetRequest,
     presets,
     sectionEnabled,
     sectionHeight,
     requestFrameSelection,
+    requestReplayEntrance,
     requestNextCamera,
     requestPreset,
     stats,
