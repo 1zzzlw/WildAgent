@@ -5,6 +5,7 @@ import type {
   WindowComponent,
 } from '../../../types'
 import type { ComponentCompileContext } from '../types'
+import { assertLeafCount, compileOpeningLeaf } from './openingLeaves'
 import {
   assertFrameDimensions,
   assertWallDepthAlignment,
@@ -34,6 +35,7 @@ export function compileWindow(
   assertWallDepthAlignment(component, frame.wall.thickness, frameDepth, glassDepth, 'glassDepth')
   assertNonNegativeInteger(verticalMullions, 'verticalMullions')
   assertNonNegativeInteger(horizontalMullions, 'horizontalMullions')
+  assertLeafCount(component.leaves, interaction ? 2 : 1)
 
   const [along, bottomY, normalOffset] = component.from
   const clearWidth = component.width - frameWidth * 2
@@ -66,7 +68,11 @@ export function compileWindow(
   )
 
   const sashes: OpeningParams[] = []
-  if (!interaction) sashes.push(createSash(`${component.id}__opening`, along, component.width))
+  if (!interaction) {
+    const opening = createSash(`${component.id}__opening`, along, component.width)
+    if (component.leaves) opening._cutoutOnly = true
+    sashes.push(opening)
+  }
 
   const elements: GeometryElement[] = [
     ...sashes,
@@ -102,6 +108,12 @@ export function compileWindow(
 
   if (interaction) {
     elements.push(...compileMovingSashes(component, interaction, frame, frameWidth, frameDepth, glassDepth, mullionWidth))
+    return elements
+  }
+
+  if (component.leaves) {
+    elements.push(...compileOpeningLeaf(`${component.id}__leaf_0`, component.leaves[0], frame,
+      along + frameWidth, bottomY + frameWidth, normalOffset, undefined, component.frameMaterial))
     return elements
   }
 
@@ -166,6 +178,10 @@ function compileMovingSashes(
       const travel = Math.max(0, Math.min(interaction.openDistance ?? limit, limit)) * (index ? -1 : 1)
       const direction = frame.directionAt(x + sashWidth / 2)
       behavior.openOffset = stacked ? [0, travel, 0] : [direction[0] * travel, 0, direction[2] * travel]
+    }
+    if (component.leaves) {
+      elements.push(...compileOpeningLeaf(id, component.leaves[index], frame, x, y, z, behavior, component.frameMaterial))
+      continue
     }
     elements.push(withMaterial<OpeningParams>({ type: 'opening', id, parentWall: component.parentWall, from: [x, y, z], width: sashWidth, height: sashHeight, depth: glassDepth, style: 'rectangular', _interaction: behavior, _skipWallCutout: true }, component.glassMaterial))
     const bar = (suffix: string, cx: number, cy: number, w: number, h: number) => {

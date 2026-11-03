@@ -31,6 +31,7 @@
     "typescript": "~6.0.2"
   },
   "dependencies": {
+    "@jscad/modeling": "2.13.0",
     "earcut": "^3.0.2"
   }
 }

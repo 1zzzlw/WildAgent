@@ -10,7 +10,7 @@
  *     -> 交给调用方的渲染适配层（不属于本包职责）
  *
  * 约束：
- * - 不依赖 Vue、Three.js、Agent，也没有任何 npm 运行时依赖。
+ * - 不依赖 Vue、Three.js、Agent；几何内核依赖 Earcut 与 JSCAD。
  * - 唯一外部输入是包内的 schema.json（由 primitive/schema-validator.ts import）。
  * - 需要 WILD 语言的全量类型定义时，从 `wild-core/types` 导入。
  */

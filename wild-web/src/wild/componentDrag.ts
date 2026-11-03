@@ -17,6 +17,9 @@ export function createComponentTranslationChanges(
   delta: Vec3,
   elements: readonly unknown[],
 ): Record<string, unknown> {
+  if (component.type === 'solid' && component.kind === 'boolean') {
+    throw new Error('布尔结果通过移动输入实体定位，请使用 createGeometryTranslationOperations')
+  }
   const editing = getComponentCompiler(component.type)?.editing
   const reference = getGeometryReferences(component)[0]
   if (reference?.coordinates === 'wall' && 'from' in component) {
@@ -75,6 +78,7 @@ export function createGeometryTranslationOperations(
   const affected = getGeometryTranslationIds(blueprint, selectedIds)
   return [...affected].filter(id => items.has(id)).flatMap(id => {
     const item = items.get(id)!
+    if (item.type === 'solid' && item.kind === 'boolean') return []
     const inherited = getGeometryReferences(item).find(ref => affected.has(ref.targetId))
     if (inherited?.coordinates === 'surface' || inherited?.field === 'parentFloor') return []
     const changes = inherited?.coordinates === 'wall' && 'from' in item
@@ -91,7 +95,17 @@ export function getGeometryTranslationIds(blueprint: Blueprint, selectedIds: rea
     const item = index.items.get(id)
     return item && (item as { draggable?: boolean }).draggable !== false
   })
-  return collectGeometryDependents(index, movable)
+  const roots = new Set(movable)
+  const queue = [...roots]
+  for (let i = 0; i < queue.length; i++) {
+    for (const ref of index.references.get(queue[i]!) || []) {
+      if (ref.field === 'operands' && !roots.has(ref.targetId)) {
+        roots.add(ref.targetId)
+        queue.push(ref.targetId)
+      }
+    }
+  }
+  return collectGeometryDependents(index, roots)
 }
 
 function translateWallCurve(curve: NonNullable<WallParams['curve']>, delta: Vec3): NonNullable<WallParams['curve']> {
@@ -115,7 +129,7 @@ export function createGeometryRotationOperations(
   if (attached.size > 1 && (item.type === 'floor' || item.type === 'roof')) return []
   if ([...attached].some(child => (relations.references.get(child) || []).some(ref => attached.has(ref.targetId) && ref.coordinates === 'world'))) return []
   let changes: Record<string, unknown>
-  if (item.type === 'primitive' || item.type === 'furniture') {
+  if (item.type === 'primitive' || item.type === 'furniture' || item.type === 'solid' && item.kind !== 'boolean') {
     const current = item.rotation || [0, 0, 0]
     changes = { rotation: [current[0], current[1] + Math.PI / 2, current[2]] }
   } else if (item.type === 'roof') {

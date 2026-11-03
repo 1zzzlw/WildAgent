@@ -1,4 +1,5 @@
 import type { EngineCapability, MeshData } from './types';
+import { buildSolid } from './geometry/solid';
 import {
   buildBeam,
   buildBody,
@@ -60,6 +61,7 @@ function registerBuiltins(): void {
     { type: 'dense_brick', status: 'experimental', description: '体素细节；等值面提取仍为实验能力', build: buildDenseBrick },
     { type: 'body', status: 'partial', description: '简化参数化人物', build: buildBody },
     { type: 'primitive', status: 'stable', description: 'WILD 通用 box/sphere/cylinder/profile_sweep', build: buildPrimitive },
+    { type: 'solid', status: 'stable', description: 'cone/pyramid/frustum/wedge/extrude/revolve/loft/sweep/boolean', build: buildSolid },
   ];
 
   for (const registration of builtins) registerElementBuilder(registration);

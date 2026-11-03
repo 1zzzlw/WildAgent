@@ -149,13 +149,15 @@ export function validateBlueprint(blueprint: Blueprint): ValidationIssue[] {
   }
 
   for (const element of blueprint.geometry.elements || []) {
-    const mat = (element as any).material
-    if (mat && typeof mat === 'string' && !materialNames.has(mat)) {
-      issues.push({
-        level: 'warning',
-        message: `构件 ${element.id} 引用了不存在的材质: ${mat}`,
-        elementId: element.id
-      })
+    for (const field of ['material', 'cutMaterial']) {
+      const mat = element[field]
+      if (mat && typeof mat === 'string' && !materialNames.has(mat)) {
+        issues.push({
+          level: 'warning',
+          message: `构件 ${element.id} 引用了不存在的材质: ${mat}`,
+          elementId: element.id
+        })
+      }
     }
   }
 
@@ -216,6 +218,12 @@ export function validateBlueprint(blueprint: Blueprint): ValidationIssue[] {
     if (component.type === 'door') for (const part of component.leafParts ?? []) {
       if (!materialNames.has(part.material)) issues.push({
         level: 'warning', message: `门扇附件 ${component.id}/${part.id} 引用了不存在的材质: ${part.material}`,
+        elementId: component.id,
+      })
+    }
+    if (component.type === 'door' || component.type === 'window') for (const leaf of component.leaves ?? []) {
+      for (const part of leaf.parts) if (part.material && !materialNames.has(part.material)) issues.push({
+        level: 'warning', message: `自定义扇体 ${component.id} 引用了不存在的材质: ${part.material}`,
         elementId: component.id,
       })
     }

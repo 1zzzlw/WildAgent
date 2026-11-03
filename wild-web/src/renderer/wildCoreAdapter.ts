@@ -71,6 +71,10 @@ export async function reconstructWildEntity(blueprint: Blueprint): Promise<Recon
       blueprint as unknown as Record<string, any>,
       coreEntity.meshes,
       compilation.mapping,
+      [
+        ...(coreEntity.hiddenElementIds || []),
+        ...coreEntity.diagnostics.filter(item => item.code === 'SOLID_BOOLEAN_EMPTY').flatMap(item => item.elementId ? [item.elementId] : []),
+      ],
     )
     coreEntity.diagnostics = [
       ...compilation.diagnostics,

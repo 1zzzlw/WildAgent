@@ -241,6 +241,10 @@ export async function reconstructEntity(bp: Blueprint): Promise<ReconstructedEnt
   // 2.5 展开 placement（此时父构件已定位）
   expandPlacements(bp, elements, diagnostics);
 
+  const solidEvaluator = elements.some(element => element.type === 'solid' && element.kind === 'boolean')
+    ? (await import('./solidEvaluator')).createSolidEvaluator(elements)
+    : undefined;
+  if (solidEvaluator) diagnostics.push(...solidEvaluator.notices);
 
   // 收集 physics constraints 的目标构件 ID（用于标记交互）
   const constrainedTargets = new Set<string>();
@@ -256,6 +260,7 @@ export async function reconstructEntity(bp: Blueprint): Promise<ReconstructedEnt
   const reportedCapabilityTypes = new Set<string>();
 
   for (const el of elements) {
+    if (solidEvaluator?.hidden.has(el.id)) continue;
     if (el.type === 'opening' && el._cutoutOnly) continue;
     let meshes: MeshData[];
     const registration = getElementBuilder((el as any).type);
@@ -286,7 +291,7 @@ export async function reconstructEntity(bp: Blueprint): Promise<ReconstructedEnt
       || Boolean(material?.surfacePattern)
       || Boolean(material?.textureSet && bp.assets?.[material.textureSet]?.realWorldSizeMeters);
     try {
-      meshes = registration.build(el, metricUVs);
+      meshes = el.type === 'solid' && solidEvaluator ? solidEvaluator.build(el) : registration.build(el, metricUVs);
     } catch (buildError) {
       diagnostics.push({
         level: 'error',
@@ -314,11 +319,15 @@ export async function reconstructEntity(bp: Blueprint): Promise<ReconstructedEnt
     const isInteractive = constrainedTargets.has(el.id) || !!interaction || isDraggable;
 
     for (const m of meshes) {
+      const meshMaterial = bp.materials?.[m.materialRef];
+      const meshMetricUVs = meshMaterial?.procedural?.type === 'brick'
+        || Boolean(meshMaterial?.surfacePattern)
+        || Boolean(meshMaterial?.textureSet && bp.assets?.[meshMaterial.textureSet]?.realWorldSizeMeters);
       m.elementId = el.id;
       if (isInteractive || m.interaction) m.interactive = true;
       if (interaction && !m.interaction) m.interaction = interaction;
       if (isDraggable) m.draggable = true;
-      if (!m.uvs && metricUVs) {
+      if (!m.uvs && meshMetricUVs) {
         // 无专用 UV 的实体逐面展开；共享顶点不能同时保存转角两侧的纹理坐标。
         if (m.indices) {
           const indices = m.indices;
@@ -337,7 +346,7 @@ export async function reconstructEntity(bp: Blueprint): Promise<ReconstructedEnt
       }
       if (!m.uvs) m.uvs = generatePlanarUVs(m.geometry);
       applyInstanceTransform(m, el);
-      if (metricUVs) scaleMetricUVs(m);
+      if (meshMetricUVs) scaleMetricUVs(m);
     }
 
     rawEntries.push({ elId: el.id, meshes });
@@ -355,6 +364,7 @@ export async function reconstructEntity(bp: Blueprint): Promise<ReconstructedEnt
   bakeProceduralColors(meshes, materialParams);
   return {
     meshes,
+    hiddenElementIds: solidEvaluator ? [...solidEvaluator.hidden] : [],
     materialParams,
     boundingBox,
     physics: bp.behaviors?.physics,

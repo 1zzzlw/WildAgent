@@ -1,6 +1,6 @@
 /** Explicit geometric hosts; editor groups and room membership are not ownership. */
 export interface GeometryReference {
-  field: 'parentWall' | 'parentFloor' | 'parentRoof' | 'attachment.parent' | 'onSurface.parent' | 'landingWalls'
+  field: 'parentWall' | 'parentFloor' | 'parentRoof' | 'attachment.parent' | 'onSurface.parent' | 'landingWalls' | 'operands'
   targetId: string
   expectedType?: 'wall' | 'floor' | 'roof'
   coordinates: 'wall' | 'local' | 'world' | 'surface'
@@ -26,6 +26,9 @@ export function getGeometryReferences(item: object): GeometryReference[] {
   ]
   if (Array.isArray(row.landingWalls)) for (const targetId of row.landingWalls) {
     candidates.push({ field: 'landingWalls', targetId, expectedType: 'wall', coordinates: 'world' })
+  }
+  if (row.type === 'solid' && row.kind === 'boolean' && Array.isArray(row.operands)) {
+    for (const targetId of row.operands) candidates.push({ field: 'operands', targetId, coordinates: 'world' })
   }
   return candidates.filter((ref): ref is GeometryReference => typeof ref.targetId === 'string' && ref.targetId.length > 0)
 }

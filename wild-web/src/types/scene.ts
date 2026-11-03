@@ -54,6 +54,7 @@ export interface ReconstructionReport {
 }
 
 export interface ReconstructedEntity {
+  hiddenElementIds?: string[]
   meshes: MeshData[]
   materialParams: MaterialParams[]
   boundingBox: BoundingBox

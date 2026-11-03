@@ -153,7 +153,9 @@ export function buildReconstructionDiagnostics(
   source: Record<string, any>,
   meshes: MeshLike[],
   componentMapping: unknown,
+  omittedElementIds: readonly string[] = [],
 ): { report: ReconstructionReport; diagnostics: DiagnosticLike[] } {
+  const omitted = new Set(omittedElementIds)
   const boundsByElement = new Map<string, ReconstructionBounds>()
   const meshCountByElement = new Map<string, number>()
   for (const mesh of meshes) {
@@ -244,7 +246,7 @@ export function buildReconstructionDiagnostics(
   }
 
   for (const element of sourceElements) {
-    if (!element?.id || element.type === 'opening') continue
+    if (!element?.id || element.type === 'opening' || omitted.has(element.id)) continue
     addObservation(
       element,
       [element.id],

@@ -321,11 +321,8 @@ function setOpeningInteractionProgress(mesh: THREE.Mesh, progress: number): void
       closedPosition[1],
       interaction.pivot[2] - dx * sine + dz * cosine,
     )
-    mesh.rotation.set(
-      closedRotation[0],
-      closedRotation[1] + deltaY,
-      closedRotation[2],
-    )
+    const closedQuaternion = new THREE.Quaternion().setFromEuler(new THREE.Euler(...closedRotation, 'XYZ'))
+    mesh.quaternion.copy(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), deltaY).multiply(closedQuaternion))
   } else {
     const offset = interaction.openOffset || [0, 0, 0]
     mesh.position.set(

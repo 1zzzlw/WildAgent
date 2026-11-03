@@ -62,6 +62,7 @@ export type GeometryElementType =
   | 'dense_brick'
   | 'body'
   | 'primitive'
+  | 'solid'
 
 export interface MaterialDef {
   baseColor: [number, number, number]

@@ -2,6 +2,7 @@ import type { DoorComponent, GeometryElement, OpeningInteractionSpec, OpeningPar
 import type { ComponentCompileContext } from '../types'
 import { assertFrameDimensions, assertNonEmptyString, assertPositive, assertVec3, assertWallDepthAlignment, createBox, createOpeningInteraction, resolveOpeningInteractionSpec, resolveStraightWallFrame, withMaterial } from './attachedToWall'
 import { buildOpeningContour } from '../../primitive/geometry/openingContour'
+import { assertLeafCount, compileOpeningLeaf } from './openingLeaves'
 
 /** 一个完整洞口，按轮廓生成门框；双开门的两扇共享操作、各绕自己的外侧铰链。 */
 export function compileDoor(component: DoorComponent, context: ComponentCompileContext): GeometryElement[] {
@@ -15,6 +16,8 @@ export function compileDoor(component: DoorComponent, context: ComponentCompileC
   const style = component.openingStyle ?? 'rectangular'
   const interaction = resolveOpeningInteractionSpec('door', component.interaction)
   const double = component.doorStyle === 'double' && (!interaction || interaction.mode === 'swing')
+  assertLeafCount(component.leaves, double ? 2 : 1)
+  if (component.leaves && component.leafParts) throw new Error('leaves 与 leafParts 不能同时声明')
   const width = component.width - border * 2
   const height = component.height - border
   const opening = withMaterial<OpeningParams>({ type: 'opening', id: `${component.id}__opening`, parentWall: component.parentWall, from: [...component.from], width: component.width, height: component.height, depth: leafDepth, style, _leafInset: border, _doorLeafDetail: createDoorLeafDetail(component, double, interaction) }, component.leafMaterial)
@@ -25,6 +28,22 @@ export function compileDoor(component: DoorComponent, context: ComponentCompileC
     if (opening._interaction && component.leafParts?.length) opening._interaction.groupId = component.id
   }
   const elements: GeometryElement[] = [opening]
+  if (component.leaves) {
+    if (style !== 'rectangular') throw new Error('自定义扇体仅支持 rectangular openingStyle')
+    opening._cutoutOnly = true
+    delete opening._interaction
+    delete opening._leafInteractions
+    component.leaves.forEach((leaf, index) => {
+      const leafWidth = width / (double ? 2 : 1)
+      const x = along + border + index * leafWidth
+      const behavior = createOpeningInteraction(interaction && {
+        ...interaction,
+        hingeSide: double ? (index ? 'right' : 'left') : interaction.hingeSide,
+      }, frame, x, bottom, offset, leafWidth, height)
+      if (behavior) behavior.groupId = component.id
+      elements.push(...compileOpeningLeaf(`${component.id}__leaf_${index}`, leaf, frame, x, bottom, offset, behavior, component.leafMaterial))
+    })
+  }
   const partIds = new Set<string>()
   for (const part of component.leafParts ?? []) {
     assertNonEmptyString(part.id, 'leafParts.id')

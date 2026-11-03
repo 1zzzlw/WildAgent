@@ -11,7 +11,7 @@ import type {
   PhysicsData, ScriptData, AnimationParams, Blueprint, Placement,
   WallParams, FloorParams, ColumnParams, BeamParams, RoofParams,
   OpeningParams, StairParams, FurnitureParams, DenseBrickParams, BodyParams,
-  PrimitiveParams,
+  PrimitiveParams, SolidParams, SolidProfile,
   InteractiveElementBehavior,
   WeatheringEffect, MossEffect, EdgeWearEffect, GrainEffect, EffectLayer,
   ConstraintData, HingeConstraint, SliderConstraint,
@@ -25,7 +25,7 @@ export type {
   Vec3, Color, Meta, GeometryElement, MaterialDef, PBRTextureSetAsset, PhysicsData, ScriptData, AnimationParams, Blueprint, Placement,
   WallParams, FloorParams, ColumnParams, BeamParams, RoofParams, OpeningParams, StairParams,
   FurnitureParams, DenseBrickParams, BodyParams,
-  PrimitiveParams,
+  PrimitiveParams, SolidParams, SolidProfile,
   InteractiveElementBehavior,
   WeatheringEffect, MossEffect, EdgeWearEffect, GrainEffect, EffectLayer,
   ConstraintData, HingeConstraint, SliderConstraint,
@@ -120,6 +120,8 @@ export interface AABB {
 
 /** 引擎重建后的完整实体 */
 export interface ReconstructedEntity {
+  /** 已成功参与布尔运算且不再单独显示的输入实体。 */
+  hiddenElementIds?: string[];
   meshes: MeshData[];
   materialParams: MaterialParams[];
   boundingBox: AABB;  // 所有网格在世界空间中的轴对齐包围盒

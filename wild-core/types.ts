@@ -59,7 +59,8 @@ export type GeometryElement =
   | FurnitureParams
   | DenseBrickParams
   | BodyParams
-  | PrimitiveParams;
+  | PrimitiveParams
+  | SolidParams;
 
 /**
  * 组合构件不是新的渲染原语。它们会在进入 wild-core 前被编译为
@@ -278,7 +279,14 @@ export interface DoorLeafPart {
   leaf?: 0 | 1;
 }
 
+/** 完整自定义扇体，原点为净开口左下角，+X 沿墙，+Z 沿墙法向。 */
+export interface OpeningLeaf {
+  parts: Array<Omit<PrimitiveParams, 'type' | 'id' | '_interaction' | 'lightSource' | 'label'>>;
+}
+
 export interface DoorComponent {
+  /** 替换默认门扇；与在默认门扇上添加附件的 leafParts 互斥。 */
+  leaves?: OpeningLeaf[];
   type: 'door';
   id: string;
   parentWall: string;
@@ -308,6 +316,8 @@ export interface DoorComponent {
 }
 
 export interface WindowComponent {
+  /** 替换默认玻璃、扇框和窗棂，固定外框保留。 */
+  leaves?: OpeningLeaf[];
   type: 'window';
   id: string;
   parentWall: string;
@@ -662,6 +672,53 @@ export interface PrimitiveParams {
   caps?: boolean;
   /** 仅供组合编译器和 renderer 使用。 */
   _interaction?: InteractiveElementBehavior;
+}
+
+export interface SolidProfile {
+  outer: Array<[number, number]>;
+  holes?: Array<Array<[number, number]>>;
+}
+
+/** 参数化封闭实体；boolean 引用世界空间输入，结果不接受额外 TRS。 */
+export interface SolidParams {
+  type: 'solid';
+  id: string;
+  kind: 'cone' | 'pyramid' | 'frustum' | 'wedge' | 'extrude' | 'revolve' | 'loft' | 'sweep' | 'boolean';
+  position?: Vec3;
+  rotation?: Vec3;
+  scale?: Vec3;
+  material?: string;
+  radius?: number;
+  height?: number;
+  apexOffset?: [number, number];
+  segments?: number;
+  base?: Array<[number, number]>;
+  bottom?: SolidProfile;
+  top?: SolidProfile;
+  topOffset?: [number, number];
+  width?: number;
+  depth?: number;
+  endHeights?: [number, number];
+  profile?: SolidProfile;
+  vector?: Vec3;
+  section?: SolidProfile;
+  startAngle?: number;
+  angle?: number;
+  sections?: Array<{
+    height?: number;
+    t?: number;
+    profile: SolidProfile;
+    offset?: [number, number];
+    twist?: number;
+  }>;
+  segmentsPerSpan?: number;
+  path?: Vec3[];
+  closedPath?: boolean;
+  operation?: 'union' | 'difference' | 'intersection';
+  operands?: string[];
+  keepOperands?: boolean;
+  cutMaterial?: string;
+  tolerance?: number;
 }
 
 // ========== 材质系统 ==========

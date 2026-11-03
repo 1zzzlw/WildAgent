@@ -10,6 +10,15 @@ function validate(value: unknown, inputSchema: JsonSchema, path: string): string
   const schema = inputSchema.$ref ? resolveReference(inputSchema.$ref) : inputSchema;
   const errors: string[] = [];
 
+  for (const rule of schema.allOf || []) errors.push(...validate(value, rule, path));
+  if (schema.not && validate(value, schema.not, path).length === 0) {
+    errors.push(`${path} 包含互斥字段或禁止的字段组合`);
+  }
+  if (schema.if) {
+    const rule = validate(value, schema.if, path).length === 0 ? schema.then : schema.else;
+    if (rule) errors.push(...validate(value, rule, path));
+  }
+
   if (schema.oneOf) {
     const candidates = (schema.oneOf as JsonSchema[]).map(candidate => validate(value, candidate, path));
     const matchCount = candidates.filter(candidateErrors => candidateErrors.length === 0).length;
@@ -69,6 +78,9 @@ function validate(value: unknown, inputSchema: JsonSchema, path: string): string
       value.forEach((item, index) => {
         errors.push(...validate(item, schema.items, `${path}[${index}]`));
       });
+    }
+    if (schema.uniqueItems && new Set(value.map(item => JSON.stringify(item))).size !== value.length) {
+      errors.push(`${path} 不允许重复项`);
     }
   }
 
