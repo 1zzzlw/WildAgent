@@ -1,0 +1,469 @@
+{
+ "meta": {
+  "version": "1.0",
+  "type": "asset",
+  "name": "整体厨房"
+ },
+ "geometry": {
+  "elements": [
+   {
+    "type": "primitive",
+    "id": "plinth",
+    "shape": "box",
+    "dimensions": [
+     2.32,
+     0.09,
+     0.76
+    ],
+    "position": [
+     0.0,
+     0.045,
+     -0.04
+    ],
+    "material": "accent"
+   },
+   {
+    "type": "primitive",
+    "id": "body",
+    "shape": "box",
+    "dimensions": [
+     2.38,
+     0.77,
+     0.84
+    ],
+    "position": [
+     0.0,
+     0.475,
+     -0.02
+    ],
+    "material": "wood"
+   },
+   {
+    "type": "primitive",
+    "id": "counter",
+    "shape": "box",
+    "dimensions": [
+     2.4,
+     0.04,
+     0.86
+    ],
+    "position": [
+     0.0,
+     0.88,
+     -0.01
+    ],
+    "material": "stone"
+   },
+   {
+    "type": "primitive",
+    "id": "drawer_0",
+    "shape": "box",
+    "dimensions": [
+     2.3,
+     0.2056,
+     0.02
+    ],
+    "position": [
+     0.0,
+     0.7522,
+     0.41
+    ],
+    "material": "wood"
+   },
+   {
+    "type": "primitive",
+    "id": "door_0",
+    "shape": "box",
+    "dimensions": [
+     0.5675,
+     0.5344,
+     0.02
+    ],
+    "position": [
+     -0.8662,
+     0.3672,
+     0.41
+    ],
+    "material": "wood"
+   },
+   {
+    "type": "primitive",
+    "id": "knob_0",
+    "shape": "box",
+    "dimensions": [
+     0.02,
+     0.1,
+     0.02
+    ],
+    "position": [
+     -0.6425,
+     0.4337,
+     0.43
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "door_1",
+    "shape": "box",
+    "dimensions": [
+     0.5675,
+     0.5344,
+     0.02
+    ],
+    "position": [
+     -0.2887,
+     0.3672,
+     0.41
+    ],
+    "material": "wood"
+   },
+   {
+    "type": "primitive",
+    "id": "knob_1",
+    "shape": "box",
+    "dimensions": [
+     0.02,
+     0.1,
+     0.02
+    ],
+    "position": [
+     -0.5125,
+     0.4337,
+     0.43
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "door_2",
+    "shape": "box",
+    "dimensions": [
+     0.5675,
+     0.5344,
+     0.02
+    ],
+    "position": [
+     0.2888,
+     0.3672,
+     0.41
+    ],
+    "material": "wood"
+   },
+   {
+    "type": "primitive",
+    "id": "knob_2",
+    "shape": "box",
+    "dimensions": [
+     0.02,
+     0.1,
+     0.02
+    ],
+    "position": [
+     0.5125,
+     0.4337,
+     0.43
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "door_3",
+    "shape": "box",
+    "dimensions": [
+     0.5675,
+     0.5344,
+     0.02
+    ],
+    "position": [
+     0.8662,
+     0.3672,
+     0.41
+    ],
+    "material": "wood"
+   },
+   {
+    "type": "primitive",
+    "id": "knob_3",
+    "shape": "box",
+    "dimensions": [
+     0.02,
+     0.1,
+     0.02
+    ],
+    "position": [
+     0.6425,
+     0.4337,
+     0.43
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "wall_cabinet",
+    "shape": "box",
+    "dimensions": [
+     2.38,
+     0.7,
+     0.34
+    ],
+    "position": [
+     0.0,
+     1.58,
+     -0.27
+    ],
+    "material": "wood"
+   },
+   {
+    "type": "primitive",
+    "id": "wall_door_0",
+    "shape": "box",
+    "dimensions": [
+     0.563,
+     0.66,
+     0.02
+    ],
+    "position": [
+     -0.8625,
+     1.58,
+     -0.095
+    ],
+    "material": "wood"
+   },
+   {
+    "type": "primitive",
+    "id": "wall_door_1",
+    "shape": "box",
+    "dimensions": [
+     0.563,
+     0.66,
+     0.02
+    ],
+    "position": [
+     -0.2875,
+     1.58,
+     -0.095
+    ],
+    "material": "wood"
+   },
+   {
+    "type": "primitive",
+    "id": "wall_door_2",
+    "shape": "box",
+    "dimensions": [
+     0.563,
+     0.66,
+     0.02
+    ],
+    "position": [
+     0.2875,
+     1.58,
+     -0.095
+    ],
+    "material": "wood"
+   },
+   {
+    "type": "primitive",
+    "id": "wall_door_3",
+    "shape": "box",
+    "dimensions": [
+     0.563,
+     0.66,
+     0.02
+    ],
+    "position": [
+     0.8625,
+     1.58,
+     -0.095
+    ],
+    "material": "wood"
+   },
+   {
+    "type": "primitive",
+    "id": "hob",
+    "shape": "box",
+    "dimensions": [
+     0.6,
+     0.02,
+     0.5
+    ],
+    "position": [
+     -0.55,
+     0.915,
+     0.0
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "burner_0",
+    "shape": "cylinder",
+    "height": 0.012,
+    "segments": 20,
+    "position": [
+     -0.75,
+     0.928,
+     0.0
+    ],
+    "material": "accent",
+    "radius": 0.1
+   },
+   {
+    "type": "primitive",
+    "id": "burner_1",
+    "shape": "cylinder",
+    "height": 0.012,
+    "segments": 20,
+    "position": [
+     -0.35,
+     0.928,
+     0.0
+    ],
+    "material": "accent",
+    "radius": 0.1
+   },
+   {
+    "type": "primitive",
+    "id": "sink",
+    "shape": "box",
+    "dimensions": [
+     0.56,
+     0.06,
+     0.44
+    ],
+    "position": [
+     0.55,
+     0.9,
+     0.0
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "faucet",
+    "shape": "cylinder",
+    "height": 0.26,
+    "segments": 12,
+    "position": [
+     0.55,
+     1.03,
+     -0.22
+    ],
+    "material": "metal",
+    "radius": 0.018
+   }
+  ]
+ },
+ "materials": {
+  "wood": {
+   "baseColor": [
+    0.42,
+    0.26,
+    0.14
+   ],
+   "roughness": 0.62,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "lightingCondition": "D65_noon"
+  },
+  "metal": {
+   "baseColor": [
+    0.16,
+    0.17,
+    0.18
+   ],
+   "roughness": 0.32,
+   "metallic": 0.8,
+   "albedo": 1.0,
+   "lightingCondition": "D65_noon"
+  },
+  "glass": {
+   "baseColor": [
+    0.72,
+    0.88,
+    0.96
+   ],
+   "roughness": 0.08,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "materialClass": "glass",
+   "transmission": 0.92,
+   "ior": 1.5,
+   "thickness": 0.012,
+   "lightingCondition": "D65_noon"
+  },
+  "stone": {
+   "baseColor": [
+    0.62,
+    0.6,
+    0.57
+   ],
+   "roughness": 0.78,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "lightingCondition": "D65_noon"
+  },
+  "fabric": {
+   "baseColor": [
+    0.46,
+    0.44,
+    0.42
+   ],
+   "roughness": 0.92,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "lightingCondition": "D65_noon"
+  },
+  "accent": {
+   "baseColor": [
+    0.42,
+    0.2,
+    0.09
+   ],
+   "roughness": 0.5,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "lightingCondition": "D65_noon"
+  },
+  "foliage": {
+   "baseColor": [
+    0.2,
+    0.34,
+    0.16
+   ],
+   "roughness": 0.86,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "lightingCondition": "D65_noon"
+  },
+  "screen": {
+   "baseColor": [
+    0.045,
+    0.048,
+    0.055
+   ],
+   "roughness": 0.16,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "emissive": [
+    0.02,
+    0.025,
+    0.03
+   ],
+   "emissiveIntensity": 1.0,
+   "lightingCondition": "D65_noon"
+  },
+  "porcelain": {
+   "baseColor": [
+    0.9,
+    0.9,
+    0.88
+   ],
+   "roughness": 0.18,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "lightingCondition": "D65_noon"
+  }
+ },
+ "behaviors": {}
+}

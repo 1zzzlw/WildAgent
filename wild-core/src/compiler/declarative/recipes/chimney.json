@@ -1,0 +1,201 @@
+{
+  "type": "chimney",
+  "description": "烟囱：四面薄壁筒体 + 顶部压顶；不做屋面布尔穿透",
+  "label": "烟囱",
+  "icon": "▥",
+  "materialFields": [
+    "material",
+    "capMaterial"
+  ],
+  "keywords": [
+    "烟囱",
+    "壁炉",
+    "排烟"
+  ],
+  "notes": "position 是烟囱底面中心；只做薄壁筒体，不对屋顶做布尔穿透。",
+  "defaults": {
+    "position": [
+      0,
+      0,
+      0
+    ]
+  },
+  "host": "roof",
+  "entityType": "chimney",
+  "params": {
+    "width": {
+      "type": "number",
+      "default": 0.7,
+      "min": 0.2,
+      "max": 4,
+      "step": 0.01,
+      "label": "宽"
+    },
+    "depth": {
+      "type": "number",
+      "default": 0.7,
+      "min": 0.2,
+      "max": 4,
+      "step": 0.01,
+      "label": "深"
+    },
+    "height": {
+      "type": "number",
+      "default": 2.0,
+      "min": 0.2,
+      "max": 12,
+      "step": 0.01,
+      "label": "高"
+    },
+    "wallThickness": {
+      "type": "number",
+      "default": 0.1,
+      "min": 0.04,
+      "max": 0.5,
+      "step": 0.01,
+      "label": "壁厚"
+    },
+    "capHeight": {
+      "type": "number",
+      "default": 0.08,
+      "min": 0.02,
+      "max": 0.5,
+      "step": 0.01,
+      "label": "压顶厚"
+    }
+  },
+  "guards": [
+    {
+      "expr": "position",
+      "message": "position 必须是 [x, y, z]",
+      "field": "position"
+    },
+    {
+      "expr": "(width ?? 0) > 0",
+      "message": "width 必须为正数",
+      "field": "width"
+    },
+    {
+      "expr": "(depth ?? 0) > 0",
+      "message": "depth 必须为正数",
+      "field": "depth"
+    },
+    {
+      "expr": "(height ?? 0) > 0",
+      "message": "height 必须为正数",
+      "field": "height"
+    },
+    {
+      "expr": "(wallThickness ?? 0.12) > 0",
+      "message": "wallThickness 必须为正数",
+      "field": "wallThickness"
+    },
+    {
+      "expr": "(capHeight ?? 0.08) > 0",
+      "message": "capHeight 必须为正数",
+      "field": "capHeight"
+    },
+    {
+      "expr": "(wallThickness ?? 0.12) * 2 < min(width, depth)",
+      "message": "wallThickness 必须小于烟囱宽度和深度的一半",
+      "field": "wallThickness"
+    }
+  ],
+  "elements": [
+    {
+      "id": "{id}__wall_left",
+      "type": "primitive",
+      "shape": "box",
+      "position": {
+        "$": "[pos.x - width / 2 + (wallThickness ?? 0.12) / 2, pos.y + height / 2, pos.z]"
+      },
+      "dimensions": {
+        "$": "[wallThickness ?? 0.12, height, depth]"
+      },
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "material": {
+        "$": "material"
+      }
+    },
+    {
+      "id": "{id}__wall_right",
+      "type": "primitive",
+      "shape": "box",
+      "position": {
+        "$": "[pos.x + width / 2 - (wallThickness ?? 0.12) / 2, pos.y + height / 2, pos.z]"
+      },
+      "dimensions": {
+        "$": "[wallThickness ?? 0.12, height, depth]"
+      },
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "material": {
+        "$": "material"
+      }
+    },
+    {
+      "id": "{id}__wall_front",
+      "type": "primitive",
+      "shape": "box",
+      "position": {
+        "$": "[pos.x, pos.y + height / 2, pos.z + depth / 2 - (wallThickness ?? 0.12) / 2]"
+      },
+      "dimensions": {
+        "$": "[width - (wallThickness ?? 0.12) * 2, height, wallThickness ?? 0.12]"
+      },
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "material": {
+        "$": "material"
+      }
+    },
+    {
+      "id": "{id}__wall_back",
+      "type": "primitive",
+      "shape": "box",
+      "position": {
+        "$": "[pos.x, pos.y + height / 2, pos.z - depth / 2 + (wallThickness ?? 0.12) / 2]"
+      },
+      "dimensions": {
+        "$": "[width - (wallThickness ?? 0.12) * 2, height, wallThickness ?? 0.12]"
+      },
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "material": {
+        "$": "material"
+      }
+    },
+    {
+      "id": "{id}__cap",
+      "type": "primitive",
+      "shape": "box",
+      "position": {
+        "$": "[pos.x, pos.y + height + (capHeight ?? 0.08) / 2, pos.z]"
+      },
+      "dimensions": {
+        "$": "[width + (wallThickness ?? 0.12), capHeight ?? 0.08, depth + (wallThickness ?? 0.12)]"
+      },
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "material": {
+        "$": "capMaterial ?? material"
+      }
+    }
+  ]
+}

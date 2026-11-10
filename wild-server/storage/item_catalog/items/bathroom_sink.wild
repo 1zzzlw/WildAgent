@@ -1,0 +1,409 @@
+{
+ "meta": {
+  "version": "1.0",
+  "type": "asset",
+  "name": "洗手台"
+ },
+ "geometry": {
+  "elements": [
+   {
+    "type": "primitive",
+    "id": "plinth",
+    "shape": "box",
+    "dimensions": [
+     1.77,
+     0.09,
+     0.55
+    ],
+    "position": [
+     0.0,
+     0.045,
+     -0.04
+    ],
+    "material": "accent"
+   },
+   {
+    "type": "primitive",
+    "id": "body",
+    "shape": "box",
+    "dimensions": [
+     1.83,
+     0.66,
+     0.63
+    ],
+    "position": [
+     0.0,
+     0.42,
+     -0.02
+    ],
+    "material": "wood"
+   },
+   {
+    "type": "primitive",
+    "id": "counter",
+    "shape": "box",
+    "dimensions": [
+     1.85,
+     0.04,
+     0.65
+    ],
+    "position": [
+     0.0,
+     0.77,
+     -0.01
+    ],
+    "material": "stone"
+   },
+   {
+    "type": "primitive",
+    "id": "door_0",
+    "shape": "box",
+    "dimensions": [
+     0.5767,
+     0.64,
+     0.02
+    ],
+    "position": [
+     -0.5867,
+     0.42,
+     0.305
+    ],
+    "material": "wood"
+   },
+   {
+    "type": "primitive",
+    "id": "knob_0",
+    "shape": "box",
+    "dimensions": [
+     0.02,
+     0.1,
+     0.02
+    ],
+    "position": [
+     -0.3583,
+     0.4992,
+     0.325
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "door_1",
+    "shape": "box",
+    "dimensions": [
+     0.5767,
+     0.64,
+     0.02
+    ],
+    "position": [
+     0.0,
+     0.42,
+     0.305
+    ],
+    "material": "wood"
+   },
+   {
+    "type": "primitive",
+    "id": "knob_1",
+    "shape": "box",
+    "dimensions": [
+     0.02,
+     0.1,
+     0.02
+    ],
+    "position": [
+     -0.2283,
+     0.4992,
+     0.325
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "door_2",
+    "shape": "box",
+    "dimensions": [
+     0.5767,
+     0.64,
+     0.02
+    ],
+    "position": [
+     0.5867,
+     0.42,
+     0.305
+    ],
+    "material": "wood"
+   },
+   {
+    "type": "primitive",
+    "id": "knob_2",
+    "shape": "box",
+    "dimensions": [
+     0.02,
+     0.1,
+     0.02
+    ],
+    "position": [
+     0.815,
+     0.4992,
+     0.325
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "basin_0",
+    "shape": "cylinder",
+    "height": 0.13,
+    "segments": 28,
+    "position": [
+     -0.4392,
+     0.76,
+     0.0
+    ],
+    "material": "stone",
+    "radius": 0.2
+   },
+   {
+    "type": "primitive",
+    "id": "faucet_0",
+    "shape": "cylinder",
+    "height": 0.22,
+    "segments": 12,
+    "position": [
+     -0.4392,
+     0.9,
+     -0.18
+    ],
+    "material": "metal",
+    "radius": 0.018
+   },
+   {
+    "type": "primitive",
+    "id": "spout_0",
+    "shape": "profile_sweep",
+    "profile": [
+     [
+      -0.01,
+      -0.01
+     ],
+     [
+      0.01,
+      -0.01
+     ],
+     [
+      0.01,
+      0.01
+     ],
+     [
+      -0.01,
+      0.01
+     ]
+    ],
+    "path": [
+     [
+      -0.4392,
+      1.17,
+      -0.16
+     ],
+     [
+      -0.4392,
+      1.17,
+      -0.06
+     ]
+    ],
+    "closedProfile": true,
+    "caps": true,
+    "material": "metal",
+    "position": [
+     0.0,
+     -0.18,
+     -0.02
+    ]
+   },
+   {
+    "type": "primitive",
+    "id": "basin_1",
+    "shape": "cylinder",
+    "height": 0.13,
+    "segments": 28,
+    "position": [
+     0.4392,
+     0.76,
+     0.0
+    ],
+    "material": "stone",
+    "radius": 0.2
+   },
+   {
+    "type": "primitive",
+    "id": "faucet_1",
+    "shape": "cylinder",
+    "height": 0.22,
+    "segments": 12,
+    "position": [
+     0.4392,
+     0.9,
+     -0.18
+    ],
+    "material": "metal",
+    "radius": 0.018
+   },
+   {
+    "type": "primitive",
+    "id": "spout_1",
+    "shape": "profile_sweep",
+    "profile": [
+     [
+      -0.01,
+      -0.01
+     ],
+     [
+      0.01,
+      -0.01
+     ],
+     [
+      0.01,
+      0.01
+     ],
+     [
+      -0.01,
+      0.01
+     ]
+    ],
+    "path": [
+     [
+      0.4392,
+      1.17,
+      -0.16
+     ],
+     [
+      0.4392,
+      1.17,
+      -0.06
+     ]
+    ],
+    "closedProfile": true,
+    "caps": true,
+    "material": "metal",
+    "position": [
+     0.0,
+     -0.18,
+     -0.02
+    ]
+   }
+  ]
+ },
+ "materials": {
+  "wood": {
+   "baseColor": [
+    0.42,
+    0.26,
+    0.14
+   ],
+   "roughness": 0.62,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "lightingCondition": "D65_noon"
+  },
+  "metal": {
+   "baseColor": [
+    0.16,
+    0.17,
+    0.18
+   ],
+   "roughness": 0.32,
+   "metallic": 0.8,
+   "albedo": 1.0,
+   "lightingCondition": "D65_noon"
+  },
+  "glass": {
+   "baseColor": [
+    0.72,
+    0.88,
+    0.96
+   ],
+   "roughness": 0.08,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "materialClass": "glass",
+   "transmission": 0.92,
+   "ior": 1.5,
+   "thickness": 0.012,
+   "lightingCondition": "D65_noon"
+  },
+  "stone": {
+   "baseColor": [
+    0.62,
+    0.6,
+    0.57
+   ],
+   "roughness": 0.78,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "lightingCondition": "D65_noon"
+  },
+  "fabric": {
+   "baseColor": [
+    0.46,
+    0.44,
+    0.42
+   ],
+   "roughness": 0.92,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "lightingCondition": "D65_noon"
+  },
+  "accent": {
+   "baseColor": [
+    0.42,
+    0.2,
+    0.09
+   ],
+   "roughness": 0.5,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "lightingCondition": "D65_noon"
+  },
+  "foliage": {
+   "baseColor": [
+    0.2,
+    0.34,
+    0.16
+   ],
+   "roughness": 0.86,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "lightingCondition": "D65_noon"
+  },
+  "screen": {
+   "baseColor": [
+    0.045,
+    0.048,
+    0.055
+   ],
+   "roughness": 0.16,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "emissive": [
+    0.02,
+    0.025,
+    0.03
+   ],
+   "emissiveIntensity": 1.0,
+   "lightingCondition": "D65_noon"
+  },
+  "porcelain": {
+   "baseColor": [
+    0.9,
+    0.9,
+    0.88
+   ],
+   "roughness": 0.18,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "lightingCondition": "D65_noon"
+  }
+ },
+ "behaviors": {}
+}

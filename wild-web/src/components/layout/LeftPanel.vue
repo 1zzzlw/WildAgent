@@ -22,7 +22,7 @@
       </header>
       <div class="dock-content">
         <SceneTree v-show="ui.activePanel === 'sceneTree'" />
-        <BlockLibrary v-if="auth.canEdit" v-show="ui.activePanel === 'blockLibrary'" />
+        <LibraryPanel v-if="auth.canEdit" v-show="ui.activePanel === 'library'" />
         <PropertyPanel v-if="auth.canEdit" v-show="ui.activePanel === 'properties'" />
         <ValidationPanel v-show="ui.activePanel === 'validation'" />
         <MaterialPanel v-if="auth.canEdit" v-show="ui.activePanel === 'assets'" />
@@ -46,7 +46,7 @@ import { useSelectionStore } from '../../stores/selectionStore'
 import { useAuthStore } from '../../stores/authStore'
 import EditorTools from './EditorTools.vue'
 import SceneTree from '../panels/SceneTree.vue'
-import BlockLibrary from '../panels/BlockLibrary.vue'
+import LibraryPanel from '../panels/LibraryPanel.vue'
 import PropertyPanel from '../panels/PropertyPanel.vue'
 import ValidationPanel from '../panels/ValidationPanel.vue'
 import MaterialPanel from '../panels/MaterialPanel.vue'
@@ -58,7 +58,7 @@ const selection = useSelectionStore()
 const auth = useAuthStore()
 const panels = [
   { id: 'sceneTree' as PanelType, label: '场景树', short: '场景', icon: Share },
-  { id: 'blockLibrary' as PanelType, label: '构件库', short: '构件', icon: Box },
+  { id: 'library' as PanelType, label: '构件库', short: '构件', icon: Box },
   { id: 'properties' as PanelType, label: '属性', short: '属性', icon: Setting },
   { id: 'validation' as PanelType, label: '校验', short: '校验', icon: CircleCheck },
   { id: 'assets' as PanelType, label: '材质', short: '材质', icon: Brush },

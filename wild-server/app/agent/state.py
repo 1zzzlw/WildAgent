@@ -46,7 +46,7 @@ class GenerationInput(TypedDict):
     selection: NotRequired[list[str]]  # 前端当前选中的 Blueprint 元素 ID 列表。
     recent_messages: NotRequired[list[dict]]  # 供意图分类参考的近期对话消息。
     workflow_state: NotRequired[str]  # 前端当前工作流状态，例如 idle、generating。
-    thinking_mode: NotRequired[bool]  # 图节点思考开关，默认开启；plan 条目按粒度控制。
+    thinking_mode: NotRequired[bool]  # 思考默认关闭；显式开启后生效，低粒度构件仍关闭。
     detail_level: NotRequired[DetailLevel]  # minimal/simple/standard/detailed，对应低/中/高/极高。
     procedural_materials_enabled: NotRequired[bool]  # 是否允许使用程序化材质方案。
 
@@ -65,7 +65,7 @@ class GenerationState(TypedDict, total=False):
     selection: list[str]  # 前端当前选中的 Blueprint 元素 ID 列表。
     recent_messages: list[dict]  # 供意图分类和上下文判断使用的近期对话。
     workflow_state: str  # 前端传入的工作流状态，例如 idle、generating。
-    thinking_mode: bool  # 用户选择的图节点思考开关；plan 条目单独按粒度控制。
+    thinking_mode: bool  # 用户显式选择的思考开关；低粒度构件仍关闭。
     detail_level: DetailLevel  # 用户选择的建筑设计粒度，随任务持久化。
     procedural_materials_enabled: bool  # 是否允许生成程序化材质。
 

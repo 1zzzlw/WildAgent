@@ -62,7 +62,7 @@
           </div>
           <div class="rc-stat rc-stat-wide">
             <span class="rc-stat-label">当前效果</span>
-            <span class="rc-stat-value">{{ store.stats.qualityFallback ? '已自动降档' : store.presets.quality === 'high' ? '精细 · GTAO' : store.presets.quality === 'medium' ? '均衡 · SSAO' : '流畅' }}</span>
+            <span class="rc-stat-value">{{ store.presets.quality === 'high' ? '精细 · GTAO' : store.presets.quality === 'medium' ? '均衡 · SSAO' : '流畅' }}</span>
           </div>
         </div>
       </div>

@@ -25,6 +25,7 @@ from app.api.assets import router as assets_router
 from app.api.config_api import router as config_router
 from app.api.rag_observability import router as rag_observability_router
 from app.api.designs import router as designs_router
+from app.api.item_catalog import router as item_catalog_router
 from app.api.auth import router as auth_router, enforce_write_access
 from app.services.agent_service import agent_service
 from config import config
@@ -92,6 +93,7 @@ app.include_router(assets_router, tags=["资产API"])
 app.include_router(config_router, tags=["配置管理"])
 app.include_router(rag_observability_router)
 app.include_router(designs_router)
+app.include_router(item_catalog_router)
 
 
 @app.get("/")

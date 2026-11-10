@@ -124,6 +124,20 @@ export type {
 } from './types'
 export { createWallCoordinateFrame, translateWallCoordinates, resolveOpeningInteractionSpec } from './components/attachedToWall'
 export { translateRoofAttachmentPoints } from './components/attachedToSurface'
+// 数据化构件的读取面：面板要列出「哪些构件是配方定义的 + 各自参数」时用这两个，
+// 不要在前端再抄一份参数表。
+export { getRecipe, getRecipeCapabilities, getRecipeDefaults, getRecipeTypes } from './declarative/registry'
+export { RECIPES } from './declarative/recipes'
+export { compileRecipe } from './declarative/interpreter'
+export { evaluateExpression, RecipeExpressionError } from './declarative/evaluator'
+export type {
+  ComponentRecipe,
+  RecipeElementNode,
+  RecipeParam,
+  RecipeRepeat,
+  RecipeHostKind,
+  RecipeGuard,
+} from './declarative/types'
 export type { ComponentCompilerRegistration } from './componentRegistry'
 
 function createEmptyMapping(): import('./types').ComponentCompilationMapping {

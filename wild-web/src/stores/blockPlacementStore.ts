@@ -9,7 +9,12 @@ export const useBlockPlacementStore = defineStore('blockPlacement', () => {
   const request = shallowRef<BlockPlacementRequest | null>(null)
   function begin(choice: BlockPlacementChoice) {
     if (!useAuthStore().canEdit) return
-    request.value = { ...choice, id: generateId(choice.kind === 'element' ? choice.defaults.type || 'element' : choice.type) }
+    const prefix = choice.kind === 'element'
+      ? choice.defaults.type || 'element'
+      : choice.kind === 'item'
+        ? 'item'
+        : choice.type
+    request.value = { ...choice, id: generateId(prefix) }
   }
   function cancel() { request.value = null }
   return { request, begin, cancel }

@@ -174,6 +174,10 @@ export interface EditorMetadata {
 export interface EditorGroup {
   name: string
   elements: string[]
+  /** 编辑器语义；不参与 wild-core 几何重建。 */
+  kind?: 'item'
+  /** 物品目录中的来源 id，便于整体编辑和后续替换。 */
+  sourceItemId?: string
 }
 
 export interface EditorView {

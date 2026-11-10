@@ -13,7 +13,7 @@
           @click.stop="toggleCollapsed(row.item.id)">{{ collapsed.has(row.item.id) ? '▸' : '▾' }}</button>
         <span v-else class="tree-spacer"></span>
         <span class="element-icon">{{ getIcon(row.item.type) }}</span>
-        <span class="element-name">{{ row.item.id }}</span>
+        <span class="element-name">{{ row.item.label || row.item.id }}</span>
         <span class="element-type">{{ row.item.type }}</span>
       </div>
       <div v-if="rows.length === 0" class="empty-state">
@@ -28,7 +28,8 @@ import { computed, ref, watch } from 'vue'
 import { useSceneStore } from '../../stores/sceneStore'
 import { useSelectionStore } from '../../stores/selectionStore'
 import { useUIStore } from '../../stores/uiStore'
-import { selectionAfterClick, type SelectionMode } from '../../wild/componentSelection'
+import { selectionAfterClickMany, type SelectionMode } from '../../wild/componentSelection'
+import { expandItemSelection } from '../../wild/itemGroups'
 
 const sceneStore = useSceneStore()
 const selectionStore = useSelectionStore()
@@ -38,7 +39,17 @@ const collapsed = ref(new Set<string>())
 watch(() => sceneStore.document?.id, () => { collapsed.value = new Set() })
 const rows = computed(() => {
   const index = sceneStore.relationIndex
-  const items = new Map([...index.items].filter((entry): entry is [string, {id: string; type: string}] => !!entry[1].type))
+  const itemGroups = Object.values(sceneStore.document?.blueprint.editor?.groups || {})
+    .filter(group => group.kind === 'item' && group.elements.length > 0)
+  const groupedIds = new Set(itemGroups.flatMap(group => group.elements))
+  const items = new Map([...index.items]
+    .filter((entry): entry is [string, {id: string; type: string; label?: string}] => (
+      !!entry[1].type && !groupedIds.has(entry[0])
+    )))
+  for (const group of itemGroups) {
+    const representative = group.elements.find(id => index.items.has(id))
+    if (representative) items.set(representative, { id: representative, type: 'item', label: group.name })
+  }
   const children = new Map<string, string[]>(), parents = new Map<string, string>()
   for (const id of items.keys()) {
     const host = index.references.get(id)?.find(ref => items.has(ref.targetId) && ref.targetId !== id)
@@ -47,7 +58,7 @@ const rows = computed(() => {
     if (!children.has(host.targetId)) children.set(host.targetId, [])
     children.get(host.targetId)!.push(id)
   }
-  const result: Array<{ item: {id: string; type: string}; depth: number; hasChildren: boolean }> = []
+  const result: Array<{ item: {id: string; type: string; label?: string}; depth: number; hasChildren: boolean }> = []
   const visited = new Set<string>()
   const visit = (id: string, depth: number, hidden = false) => {
     if (visited.has(id)) return
@@ -86,7 +97,8 @@ function getIcon(type: string): string {
     ramp: '╱',
     bay_window: '▤',
     cornice: '⌒',
-    chimney: '▥'
+    chimney: '▥',
+    item: '◆',
   }
   return icons[type] || '●'
 }
@@ -97,7 +109,10 @@ function handleSelect(id: string, event: MouseEvent) {
     : event.shiftKey
       ? 'add'
       : 'replace'
-  selectionStore.setSelection(selectionAfterClick(selectionStore.selectedIds, id, mode))
+  const ids = sceneStore.document
+    ? expandItemSelection(sceneStore.document.blueprint, [id])
+    : [id]
+  selectionStore.setSelection(selectionAfterClickMany(selectionStore.selectedIds, ids, mode))
   uiStore.openPanel('properties')
 }
 </script>

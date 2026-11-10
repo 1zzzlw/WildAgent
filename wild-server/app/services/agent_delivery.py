@@ -129,6 +129,14 @@ def _safe_name_slug(name: str, max_len: int = 40) -> str:
     return _re.sub(r"_+", "_", value).strip("_")[:max_len]
 
 
+def _has_entities(blueprint: dict) -> bool:
+    geometry = blueprint.get("geometry")
+    return isinstance(geometry, dict) and any(
+        isinstance(geometry.get(bucket), list) and geometry[bucket]
+        for bucket in ("elements", "components")
+    )
+
+
 def retain_generation_blueprint(state: dict, fallback: dict | None = None) -> dict | None:
     """从已有产物或分片恢复可编辑草稿，不因校验结果丢弃数据。"""
     candidates = [state.get("final_blueprint"), state.get("merged_blueprint")]
@@ -174,11 +182,9 @@ def retain_generation_blueprint(state: dict, fallback: dict | None = None) -> di
     candidates.extend([fallback, state.get("skeleton_blueprint"), state.get("current_blueprint")])
     available = [value for value in candidates if isinstance(value, dict) and value]
     for blueprint in available:
-        geometry = blueprint.get("geometry")
-        if isinstance(geometry, dict) and any(isinstance(geometry.get(key), list) and geometry[key]
-                                              for key in ("elements", "components")):
+        if _has_entities(blueprint):
             return deepcopy(blueprint)
-    return deepcopy(available[0]) if available else None
+    return None
 
 
 def prepare_blueprint_delivery(
@@ -195,6 +201,8 @@ def prepare_blueprint_delivery(
     """保存已有实体；校验失败或证据不一致均保留为错误报告。"""
     if not isinstance(blueprint, dict):
         raise GenerationRejectedError("没有可保存的蓝图对象")
+    if not _has_entities(blueprint):
+        raise GenerationRejectedError("尚未生成任何实体，不能保存为空建筑")
     meta = blueprint.get("meta")
     meta = meta if isinstance(meta, dict) else {}
     summary = summarize_validation(

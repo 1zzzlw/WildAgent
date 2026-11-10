@@ -6,6 +6,7 @@ import re
 from typing import Any
 
 from app.agent.knowledge.policy import term_is_requested
+from app.agent.generation.component.recipes import recipe_keywords
 from app.design.openings import OPENING_KINDS
 
 _FACES = ("front", "back", "left", "right")
@@ -357,6 +358,10 @@ def _default_detail_packages(
         # 柱的点名词：围廊/门廊/景观柱按点名进入配额（引擎原生元素，2026-09-29 起可派发）。
         "column": ("柱廊", "廊柱", "罗马柱", "柱子", "石柱"),
     }
+    # 配方构件的点名词来自配方本身（唯一事实源）。
+    # 新增一个数据化构件时，规划阶段就能识别用户点名，不需要改本文件。
+    for component_type, words in recipe_keywords().items():
+        explicit_keywords.setdefault(component_type, words)
     explicit = [
         component_type
         for component_type, keywords in explicit_keywords.items()

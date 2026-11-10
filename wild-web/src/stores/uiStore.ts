@@ -2,8 +2,8 @@ import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
 import { useAuthStore } from './authStore'
 
-export type PanelType = 'sceneTree' | 'blockLibrary' | 'properties' | 'validation' | 'assets' | 'look' | 'aiChat'
-export const PANEL_IDS: PanelType[] = ['sceneTree', 'blockLibrary', 'properties', 'validation', 'assets', 'look', 'aiChat']
+export type PanelType = 'sceneTree' | 'library' | 'properties' | 'validation' | 'assets' | 'look' | 'aiChat'
+export const PANEL_IDS: PanelType[] = ['sceneTree', 'library', 'properties', 'validation', 'assets', 'look', 'aiChat']
 const STORAGE_KEY = 'wild_editor_layout_v2'
 function readPreferences() {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') || {} } catch { return {} }

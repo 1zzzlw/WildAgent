@@ -170,7 +170,7 @@
             :value="level.value" :label="level.label" />
         </el-select>
       </div>
-      <div class="thinking-toggle" title="控制设计、修改等节点思考；构件任务独立按粒度控制">
+      <div class="thinking-toggle" title="默认关闭；控制设计、修改及构件任务思考，低粒度构件始终关闭">
         <span>思考</span>
         <el-switch :model-value="agentStore.thinkingMode" size="small" aria-label="图节点思考"
           :disabled="agentStore.isProcessing" @change="handleThinkingModeChange" />

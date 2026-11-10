@@ -1,0 +1,4571 @@
+{
+  "diagnostics": [],
+  "elements": [
+    {
+      "from": [
+        0,
+        0,
+        0
+      ],
+      "id": "w_front",
+      "material": "concrete",
+      "thickness": 0.24,
+      "to": [
+        8,
+        3,
+        0
+      ],
+      "type": "wall"
+    },
+    {
+      "from": [
+        0,
+        0,
+        0
+      ],
+      "id": "w_side",
+      "material": "concrete",
+      "thickness": 0.24,
+      "to": [
+        0,
+        3,
+        6
+      ],
+      "type": "wall"
+    },
+    {
+      "from": [
+        0,
+        -0.2,
+        0
+      ],
+      "id": "f_ground",
+      "material": "concrete",
+      "to": [
+        8,
+        0,
+        6
+      ],
+      "type": "floor"
+    },
+    {
+      "from": [
+        0,
+        2.8,
+        0
+      ],
+      "id": "f_upper",
+      "material": "concrete",
+      "to": [
+        8,
+        3,
+        6
+      ],
+      "type": "floor"
+    },
+    {
+      "_doorLeafDetail": {
+        "columns": 1,
+        "doubleDoor": false,
+        "hingeSide": "left",
+        "rows": 2
+      },
+      "_interaction": {
+        "closedPosition": [
+          1.675,
+          1.02,
+          0
+        ],
+        "closedRotation": [
+          0,
+          0,
+          0
+        ],
+        "initiallyOpen": false,
+        "kind": "opening",
+        "mode": "swing",
+        "openRotation": [
+          0,
+          1.570796,
+          0
+        ],
+        "pivot": [
+          1.26,
+          1.02,
+          0
+        ]
+      },
+      "_leafInset": 0.06,
+      "depth": 0.04,
+      "from": [
+        1.2,
+        0,
+        0
+      ],
+      "height": 2.1,
+      "id": "c_door__opening",
+      "material": "wood",
+      "parentWall": "w_front",
+      "style": "rectangular",
+      "type": "opening",
+      "width": 0.95
+    },
+    {
+      "dimensions": [
+        2.109,
+        0.06,
+        0.12
+      ],
+      "id": "c_door__frame_1",
+      "material": "wood",
+      "position": [
+        2.12,
+        1.05,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        1.570796
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "dimensions": [
+        0.959,
+        0.06,
+        0.12
+      ],
+      "id": "c_door__frame_2",
+      "material": "wood",
+      "position": [
+        1.675,
+        2.07,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        3.141593
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "dimensions": [
+        2.109,
+        0.06,
+        0.12
+      ],
+      "id": "c_door__frame_3",
+      "material": "wood",
+      "position": [
+        1.23,
+        1.05,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        -1.570796
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "dimensions": [
+        0.06,
+        1.4,
+        0.1
+      ],
+      "id": "c_window__frame_left",
+      "material": "metal",
+      "position": [
+        4.03,
+        1.6,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "dimensions": [
+        0.06,
+        1.4,
+        0.1
+      ],
+      "id": "c_window__frame_right",
+      "material": "metal",
+      "position": [
+        5.47,
+        1.6,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "dimensions": [
+        1.38,
+        0.06,
+        0.1
+      ],
+      "id": "c_window__frame_bottom",
+      "material": "metal",
+      "position": [
+        4.75,
+        0.93,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "dimensions": [
+        1.38,
+        0.06,
+        0.1
+      ],
+      "id": "c_window__frame_top",
+      "material": "metal",
+      "position": [
+        4.75,
+        2.27,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "_cutoutOnly": true,
+      "from": [
+        4,
+        0.9,
+        0
+      ],
+      "height": 1.4,
+      "id": "c_window__cutout",
+      "parentWall": "w_front",
+      "style": "rectangular",
+      "type": "opening",
+      "width": 1.5
+    },
+    {
+      "_interaction": {
+        "closedPosition": [
+          4.405,
+          1.6,
+          0
+        ],
+        "closedRotation": [
+          0,
+          0,
+          0
+        ],
+        "groupId": "c_window__sash_left",
+        "initiallyOpen": false,
+        "kind": "opening",
+        "mode": "swing",
+        "openRotation": [
+          0,
+          1.570796,
+          0
+        ],
+        "pivot": [
+          4.06,
+          1.6,
+          0
+        ]
+      },
+      "_skipWallCutout": true,
+      "depth": 0.012,
+      "from": [
+        4.06,
+        0.96,
+        0
+      ],
+      "height": 1.28,
+      "id": "c_window__sash_left",
+      "material": "glass",
+      "parentWall": "w_front",
+      "style": "rectangular",
+      "type": "opening",
+      "width": 0.69
+    },
+    {
+      "_interaction": {
+        "closedPosition": [
+          4.405,
+          1.6,
+          0
+        ],
+        "closedRotation": [
+          0,
+          0,
+          0
+        ],
+        "groupId": "c_window__sash_left",
+        "initiallyOpen": false,
+        "kind": "opening",
+        "mode": "swing",
+        "openRotation": [
+          0,
+          1.570796,
+          0
+        ],
+        "pivot": [
+          4.06,
+          1.6,
+          0
+        ]
+      },
+      "dimensions": [
+        0.035,
+        1.28,
+        0.07
+      ],
+      "id": "c_window__sash_left__left",
+      "material": "metal",
+      "position": [
+        4.0775,
+        1.6,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "_interaction": {
+        "closedPosition": [
+          4.405,
+          1.6,
+          0
+        ],
+        "closedRotation": [
+          0,
+          0,
+          0
+        ],
+        "groupId": "c_window__sash_left",
+        "initiallyOpen": false,
+        "kind": "opening",
+        "mode": "swing",
+        "openRotation": [
+          0,
+          1.570796,
+          0
+        ],
+        "pivot": [
+          4.06,
+          1.6,
+          0
+        ]
+      },
+      "dimensions": [
+        0.035,
+        1.28,
+        0.07
+      ],
+      "id": "c_window__sash_left__right",
+      "material": "metal",
+      "position": [
+        4.7325,
+        1.6,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "_interaction": {
+        "closedPosition": [
+          4.405,
+          1.6,
+          0
+        ],
+        "closedRotation": [
+          0,
+          0,
+          0
+        ],
+        "groupId": "c_window__sash_left",
+        "initiallyOpen": false,
+        "kind": "opening",
+        "mode": "swing",
+        "openRotation": [
+          0,
+          1.570796,
+          0
+        ],
+        "pivot": [
+          4.06,
+          1.6,
+          0
+        ]
+      },
+      "dimensions": [
+        0.62,
+        0.035,
+        0.07
+      ],
+      "id": "c_window__sash_left__bottom",
+      "material": "metal",
+      "position": [
+        4.405,
+        0.9775,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "_interaction": {
+        "closedPosition": [
+          4.405,
+          1.6,
+          0
+        ],
+        "closedRotation": [
+          0,
+          0,
+          0
+        ],
+        "groupId": "c_window__sash_left",
+        "initiallyOpen": false,
+        "kind": "opening",
+        "mode": "swing",
+        "openRotation": [
+          0,
+          1.570796,
+          0
+        ],
+        "pivot": [
+          4.06,
+          1.6,
+          0
+        ]
+      },
+      "dimensions": [
+        0.62,
+        0.035,
+        0.07
+      ],
+      "id": "c_window__sash_left__top",
+      "material": "metal",
+      "position": [
+        4.405,
+        2.2225,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "_interaction": {
+        "closedPosition": [
+          4.405,
+          1.6,
+          0
+        ],
+        "closedRotation": [
+          0,
+          0,
+          0
+        ],
+        "groupId": "c_window__sash_left",
+        "initiallyOpen": false,
+        "kind": "opening",
+        "mode": "swing",
+        "openRotation": [
+          0,
+          1.570796,
+          0
+        ],
+        "pivot": [
+          4.06,
+          1.6,
+          0
+        ]
+      },
+      "dimensions": [
+        0.02,
+        1.21,
+        0.07
+      ],
+      "id": "c_window__sash_left__vertical_0",
+      "material": "metal",
+      "position": [
+        4.405,
+        1.6,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "_interaction": {
+        "closedPosition": [
+          4.405,
+          1.6,
+          0
+        ],
+        "closedRotation": [
+          0,
+          0,
+          0
+        ],
+        "groupId": "c_window__sash_left",
+        "initiallyOpen": false,
+        "kind": "opening",
+        "mode": "swing",
+        "openRotation": [
+          0,
+          1.570796,
+          0
+        ],
+        "pivot": [
+          4.06,
+          1.6,
+          0
+        ]
+      },
+      "dimensions": [
+        0.62,
+        0.02,
+        0.07
+      ],
+      "id": "c_window__sash_left__horizontal_0",
+      "material": "metal",
+      "position": [
+        4.405,
+        1.6,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "_interaction": {
+        "closedPosition": [
+          5.095,
+          1.6,
+          0
+        ],
+        "closedRotation": [
+          0,
+          0,
+          0
+        ],
+        "groupId": "c_window__sash_right",
+        "initiallyOpen": false,
+        "kind": "opening",
+        "mode": "swing",
+        "openRotation": [
+          0,
+          -1.570796,
+          0
+        ],
+        "pivot": [
+          5.44,
+          1.6,
+          0
+        ]
+      },
+      "_skipWallCutout": true,
+      "depth": 0.012,
+      "from": [
+        4.75,
+        0.96,
+        0
+      ],
+      "height": 1.28,
+      "id": "c_window__sash_right",
+      "material": "glass",
+      "parentWall": "w_front",
+      "style": "rectangular",
+      "type": "opening",
+      "width": 0.69
+    },
+    {
+      "_interaction": {
+        "closedPosition": [
+          5.095,
+          1.6,
+          0
+        ],
+        "closedRotation": [
+          0,
+          0,
+          0
+        ],
+        "groupId": "c_window__sash_right",
+        "initiallyOpen": false,
+        "kind": "opening",
+        "mode": "swing",
+        "openRotation": [
+          0,
+          -1.570796,
+          0
+        ],
+        "pivot": [
+          5.44,
+          1.6,
+          0
+        ]
+      },
+      "dimensions": [
+        0.035,
+        1.28,
+        0.07
+      ],
+      "id": "c_window__sash_right__left",
+      "material": "metal",
+      "position": [
+        4.7675,
+        1.6,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "_interaction": {
+        "closedPosition": [
+          5.095,
+          1.6,
+          0
+        ],
+        "closedRotation": [
+          0,
+          0,
+          0
+        ],
+        "groupId": "c_window__sash_right",
+        "initiallyOpen": false,
+        "kind": "opening",
+        "mode": "swing",
+        "openRotation": [
+          0,
+          -1.570796,
+          0
+        ],
+        "pivot": [
+          5.44,
+          1.6,
+          0
+        ]
+      },
+      "dimensions": [
+        0.035,
+        1.28,
+        0.07
+      ],
+      "id": "c_window__sash_right__right",
+      "material": "metal",
+      "position": [
+        5.4225,
+        1.6,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "_interaction": {
+        "closedPosition": [
+          5.095,
+          1.6,
+          0
+        ],
+        "closedRotation": [
+          0,
+          0,
+          0
+        ],
+        "groupId": "c_window__sash_right",
+        "initiallyOpen": false,
+        "kind": "opening",
+        "mode": "swing",
+        "openRotation": [
+          0,
+          -1.570796,
+          0
+        ],
+        "pivot": [
+          5.44,
+          1.6,
+          0
+        ]
+      },
+      "dimensions": [
+        0.62,
+        0.035,
+        0.07
+      ],
+      "id": "c_window__sash_right__bottom",
+      "material": "metal",
+      "position": [
+        5.095,
+        0.9775,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "_interaction": {
+        "closedPosition": [
+          5.095,
+          1.6,
+          0
+        ],
+        "closedRotation": [
+          0,
+          0,
+          0
+        ],
+        "groupId": "c_window__sash_right",
+        "initiallyOpen": false,
+        "kind": "opening",
+        "mode": "swing",
+        "openRotation": [
+          0,
+          -1.570796,
+          0
+        ],
+        "pivot": [
+          5.44,
+          1.6,
+          0
+        ]
+      },
+      "dimensions": [
+        0.62,
+        0.035,
+        0.07
+      ],
+      "id": "c_window__sash_right__top",
+      "material": "metal",
+      "position": [
+        5.095,
+        2.2225,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "_interaction": {
+        "closedPosition": [
+          5.095,
+          1.6,
+          0
+        ],
+        "closedRotation": [
+          0,
+          0,
+          0
+        ],
+        "groupId": "c_window__sash_right",
+        "initiallyOpen": false,
+        "kind": "opening",
+        "mode": "swing",
+        "openRotation": [
+          0,
+          -1.570796,
+          0
+        ],
+        "pivot": [
+          5.44,
+          1.6,
+          0
+        ]
+      },
+      "dimensions": [
+        0.02,
+        1.21,
+        0.07
+      ],
+      "id": "c_window__sash_right__vertical_0",
+      "material": "metal",
+      "position": [
+        5.095,
+        1.6,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "_interaction": {
+        "closedPosition": [
+          5.095,
+          1.6,
+          0
+        ],
+        "closedRotation": [
+          0,
+          0,
+          0
+        ],
+        "groupId": "c_window__sash_right",
+        "initiallyOpen": false,
+        "kind": "opening",
+        "mode": "swing",
+        "openRotation": [
+          0,
+          -1.570796,
+          0
+        ],
+        "pivot": [
+          5.44,
+          1.6,
+          0
+        ]
+      },
+      "dimensions": [
+        0.62,
+        0.02,
+        0.07
+      ],
+      "id": "c_window__sash_right__horizontal_0",
+      "material": "metal",
+      "position": [
+        5.095,
+        1.6,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "height": 1.05,
+      "id": "c_railing__post_001",
+      "material": "metal",
+      "position": [
+        0.4,
+        3.525,
+        0.4
+      ],
+      "radius": 0.022,
+      "segments": 12,
+      "shape": "cylinder",
+      "type": "primitive"
+    },
+    {
+      "height": 1.05,
+      "id": "c_railing__post_002",
+      "material": "metal",
+      "position": [
+        1.3,
+        3.525,
+        0.4
+      ],
+      "radius": 0.022,
+      "segments": 12,
+      "shape": "cylinder",
+      "type": "primitive"
+    },
+    {
+      "height": 1.05,
+      "id": "c_railing__post_003",
+      "material": "metal",
+      "position": [
+        2.2,
+        3.525,
+        0.4
+      ],
+      "radius": 0.022,
+      "segments": 12,
+      "shape": "cylinder",
+      "type": "primitive"
+    },
+    {
+      "height": 1.05,
+      "id": "c_railing__post_004",
+      "material": "metal",
+      "position": [
+        3.1,
+        3.525,
+        0.4
+      ],
+      "radius": 0.022,
+      "segments": 12,
+      "shape": "cylinder",
+      "type": "primitive"
+    },
+    {
+      "height": 1.05,
+      "id": "c_railing__post_005",
+      "material": "metal",
+      "position": [
+        4,
+        3.525,
+        0.4
+      ],
+      "radius": 0.022,
+      "segments": 12,
+      "shape": "cylinder",
+      "type": "primitive"
+    },
+    {
+      "height": 1.05,
+      "id": "c_railing__post_006",
+      "material": "metal",
+      "position": [
+        4,
+        3.525,
+        1.266667
+      ],
+      "radius": 0.022,
+      "segments": 12,
+      "shape": "cylinder",
+      "type": "primitive"
+    },
+    {
+      "height": 1.05,
+      "id": "c_railing__post_007",
+      "material": "metal",
+      "position": [
+        4,
+        3.525,
+        2.133333
+      ],
+      "radius": 0.022,
+      "segments": 12,
+      "shape": "cylinder",
+      "type": "primitive"
+    },
+    {
+      "height": 1.05,
+      "id": "c_railing__post_008",
+      "material": "metal",
+      "position": [
+        4,
+        3.525,
+        3
+      ],
+      "radius": 0.022,
+      "segments": 12,
+      "shape": "cylinder",
+      "type": "primitive"
+    },
+    {
+      "crossSection": "circular",
+      "from": [
+        0.4,
+        4.05,
+        0.4
+      ],
+      "height": 0.056,
+      "id": "c_railing__rail_001_001",
+      "material": "metal",
+      "to": [
+        4,
+        4.05,
+        0.4
+      ],
+      "type": "beam",
+      "width": 0.056
+    },
+    {
+      "crossSection": "circular",
+      "from": [
+        4,
+        4.05,
+        0.4
+      ],
+      "height": 0.056,
+      "id": "c_railing__rail_001_002",
+      "material": "metal",
+      "to": [
+        4,
+        4.05,
+        3
+      ],
+      "type": "beam",
+      "width": 0.056
+    },
+    {
+      "crossSection": "circular",
+      "from": [
+        0.4,
+        3.5775,
+        0.4
+      ],
+      "height": 0.056,
+      "id": "c_railing__rail_002_001",
+      "material": "metal",
+      "to": [
+        4,
+        3.5775,
+        0.4
+      ],
+      "type": "beam",
+      "width": 0.056
+    },
+    {
+      "crossSection": "circular",
+      "from": [
+        4,
+        3.5775,
+        0.4
+      ],
+      "height": 0.056,
+      "id": "c_railing__rail_002_002",
+      "material": "metal",
+      "to": [
+        4,
+        3.5775,
+        3
+      ],
+      "type": "beam",
+      "width": 0.056
+    },
+    {
+      "dimensions": [
+        1.8,
+        0.08,
+        1
+      ],
+      "id": "c_canopy__slab",
+      "material": "concrete",
+      "position": [
+        7.1,
+        2.4,
+        -0.62
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "dimensions": [
+        0.06,
+        2.36,
+        0.06
+      ],
+      "id": "c_canopy__support_001",
+      "material": "metal",
+      "position": [
+        6.8,
+        1.18,
+        -1.09
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "dimensions": [
+        0.06,
+        2.36,
+        0.06
+      ],
+      "id": "c_canopy__support_002",
+      "material": "metal",
+      "position": [
+        7.4,
+        1.18,
+        -1.09
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "dimensions": [
+        2,
+        0.14,
+        1.2
+      ],
+      "id": "c_balcony__slab",
+      "material": "concrete",
+      "position": [
+        3.4,
+        2.93,
+        -0.72
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "height": 1.05,
+      "id": "c_balcony__railing__post_001",
+      "material": "metal",
+      "position": [
+        2.4,
+        3.525,
+        -0.12
+      ],
+      "radius": 0.035,
+      "segments": 12,
+      "shape": "cylinder",
+      "type": "primitive"
+    },
+    {
+      "height": 1.05,
+      "id": "c_balcony__railing__post_002",
+      "material": "metal",
+      "position": [
+        2.4,
+        3.525,
+        -0.72
+      ],
+      "radius": 0.035,
+      "segments": 12,
+      "shape": "cylinder",
+      "type": "primitive"
+    },
+    {
+      "height": 1.05,
+      "id": "c_balcony__railing__post_003",
+      "material": "metal",
+      "position": [
+        2.4,
+        3.525,
+        -1.32
+      ],
+      "radius": 0.035,
+      "segments": 12,
+      "shape": "cylinder",
+      "type": "primitive"
+    },
+    {
+      "height": 1.05,
+      "id": "c_balcony__railing__post_004",
+      "material": "metal",
+      "position": [
+        3.066667,
+        3.525,
+        -1.32
+      ],
+      "radius": 0.035,
+      "segments": 12,
+      "shape": "cylinder",
+      "type": "primitive"
+    },
+    {
+      "height": 1.05,
+      "id": "c_balcony__railing__post_005",
+      "material": "metal",
+      "position": [
+        3.733333,
+        3.525,
+        -1.32
+      ],
+      "radius": 0.035,
+      "segments": 12,
+      "shape": "cylinder",
+      "type": "primitive"
+    },
+    {
+      "height": 1.05,
+      "id": "c_balcony__railing__post_006",
+      "material": "metal",
+      "position": [
+        4.4,
+        3.525,
+        -1.32
+      ],
+      "radius": 0.035,
+      "segments": 12,
+      "shape": "cylinder",
+      "type": "primitive"
+    },
+    {
+      "height": 1.05,
+      "id": "c_balcony__railing__post_007",
+      "material": "metal",
+      "position": [
+        4.4,
+        3.525,
+        -0.72
+      ],
+      "radius": 0.035,
+      "segments": 12,
+      "shape": "cylinder",
+      "type": "primitive"
+    },
+    {
+      "height": 1.05,
+      "id": "c_balcony__railing__post_008",
+      "material": "metal",
+      "position": [
+        4.4,
+        3.525,
+        -0.12
+      ],
+      "radius": 0.035,
+      "segments": 12,
+      "shape": "cylinder",
+      "type": "primitive"
+    },
+    {
+      "crossSection": "circular",
+      "from": [
+        2.4,
+        3.525,
+        -0.12
+      ],
+      "height": 0.09,
+      "id": "c_balcony__railing__rail_001_001",
+      "material": "metal",
+      "to": [
+        2.4,
+        3.525,
+        -1.32
+      ],
+      "type": "beam",
+      "width": 0.09
+    },
+    {
+      "crossSection": "circular",
+      "from": [
+        2.4,
+        3.525,
+        -1.32
+      ],
+      "height": 0.09,
+      "id": "c_balcony__railing__rail_001_002",
+      "material": "metal",
+      "to": [
+        4.4,
+        3.525,
+        -1.32
+      ],
+      "type": "beam",
+      "width": 0.09
+    },
+    {
+      "crossSection": "circular",
+      "from": [
+        4.4,
+        3.525,
+        -1.32
+      ],
+      "height": 0.09,
+      "id": "c_balcony__railing__rail_001_003",
+      "material": "metal",
+      "to": [
+        4.4,
+        3.525,
+        -0.12
+      ],
+      "type": "beam",
+      "width": 0.09
+    },
+    {
+      "crossSection": "circular",
+      "from": [
+        2.4,
+        4.05,
+        -0.12
+      ],
+      "height": 0.09,
+      "id": "c_balcony__railing__rail_002_001",
+      "material": "metal",
+      "to": [
+        2.4,
+        4.05,
+        -1.32
+      ],
+      "type": "beam",
+      "width": 0.09
+    },
+    {
+      "crossSection": "circular",
+      "from": [
+        2.4,
+        4.05,
+        -1.32
+      ],
+      "height": 0.09,
+      "id": "c_balcony__railing__rail_002_002",
+      "material": "metal",
+      "to": [
+        4.4,
+        4.05,
+        -1.32
+      ],
+      "type": "beam",
+      "width": 0.09
+    },
+    {
+      "crossSection": "circular",
+      "from": [
+        4.4,
+        4.05,
+        -1.32
+      ],
+      "height": 0.09,
+      "id": "c_balcony__railing__rail_002_003",
+      "material": "metal",
+      "to": [
+        4.4,
+        4.05,
+        -0.12
+      ],
+      "type": "beam",
+      "width": 0.09
+    },
+    {
+      "closedProfile": true,
+      "id": "c_ramp__surface",
+      "material": "concrete",
+      "path": [
+        [
+          0.6,
+          0,
+          5.2
+        ],
+        [
+          3.4,
+          1,
+          5.2
+        ]
+      ],
+      "profile": [
+        [
+          -0.6,
+          -0.16
+        ],
+        [
+          0.6,
+          -0.16
+        ],
+        [
+          0.6,
+          0
+        ],
+        [
+          -0.6,
+          0
+        ]
+      ],
+      "shape": "profile_sweep",
+      "type": "primitive"
+    },
+    {
+      "closedProfile": true,
+      "id": "c_ramp__curb_left",
+      "material": "concrete",
+      "path": [
+        [
+          0.6,
+          0,
+          5.8
+        ],
+        [
+          3.4,
+          1,
+          5.8
+        ]
+      ],
+      "profile": [
+        [
+          -0.04,
+          0
+        ],
+        [
+          0.04,
+          0
+        ],
+        [
+          0.04,
+          0.1
+        ],
+        [
+          -0.04,
+          0.1
+        ]
+      ],
+      "shape": "profile_sweep",
+      "type": "primitive"
+    },
+    {
+      "height": 0.9,
+      "id": "c_ramp__railing_left__post_001",
+      "material": "metal",
+      "position": [
+        0.566366,
+        0.544174,
+        5.8
+      ],
+      "radius": 0.035,
+      "segments": 12,
+      "shape": "cylinder",
+      "type": "primitive"
+    },
+    {
+      "height": 0.9,
+      "id": "c_ramp__railing_left__post_002",
+      "material": "metal",
+      "position": [
+        1.266366,
+        0.794174,
+        5.8
+      ],
+      "radius": 0.035,
+      "segments": 12,
+      "shape": "cylinder",
+      "type": "primitive"
+    },
+    {
+      "height": 0.9,
+      "id": "c_ramp__railing_left__post_003",
+      "material": "metal",
+      "position": [
+        1.966366,
+        1.044174,
+        5.8
+      ],
+      "radius": 0.035,
+      "segments": 12,
+      "shape": "cylinder",
+      "type": "primitive"
+    },
+    {
+      "height": 0.9,
+      "id": "c_ramp__railing_left__post_004",
+      "material": "metal",
+      "position": [
+        2.666366,
+        1.294174,
+        5.8
+      ],
+      "radius": 0.035,
+      "segments": 12,
+      "shape": "cylinder",
+      "type": "primitive"
+    },
+    {
+      "height": 0.9,
+      "id": "c_ramp__railing_left__post_005",
+      "material": "metal",
+      "position": [
+        3.366366,
+        1.544174,
+        5.8
+      ],
+      "radius": 0.035,
+      "segments": 12,
+      "shape": "cylinder",
+      "type": "primitive"
+    },
+    {
+      "crossSection": "circular",
+      "from": [
+        0.566366,
+        0.589174,
+        5.8
+      ],
+      "height": 0.09,
+      "id": "c_ramp__railing_left__rail_001_001",
+      "material": "metal",
+      "to": [
+        3.366366,
+        1.589174,
+        5.8
+      ],
+      "type": "beam",
+      "width": 0.09
+    },
+    {
+      "crossSection": "circular",
+      "from": [
+        0.566366,
+        0.994174,
+        5.8
+      ],
+      "height": 0.09,
+      "id": "c_ramp__railing_left__rail_002_001",
+      "material": "metal",
+      "to": [
+        3.366366,
+        1.994174,
+        5.8
+      ],
+      "type": "beam",
+      "width": 0.09
+    },
+    {
+      "closedProfile": true,
+      "id": "c_ramp__curb_right",
+      "material": "concrete",
+      "path": [
+        [
+          0.6,
+          0,
+          4.6
+        ],
+        [
+          3.4,
+          1,
+          4.6
+        ]
+      ],
+      "profile": [
+        [
+          -0.04,
+          0
+        ],
+        [
+          0.04,
+          0
+        ],
+        [
+          0.04,
+          0.1
+        ],
+        [
+          -0.04,
+          0.1
+        ]
+      ],
+      "shape": "profile_sweep",
+      "type": "primitive"
+    },
+    {
+      "height": 0.9,
+      "id": "c_ramp__railing_right__post_001",
+      "material": "metal",
+      "position": [
+        0.566366,
+        0.544174,
+        4.6
+      ],
+      "radius": 0.035,
+      "segments": 12,
+      "shape": "cylinder",
+      "type": "primitive"
+    },
+    {
+      "height": 0.9,
+      "id": "c_ramp__railing_right__post_002",
+      "material": "metal",
+      "position": [
+        1.266366,
+        0.794174,
+        4.6
+      ],
+      "radius": 0.035,
+      "segments": 12,
+      "shape": "cylinder",
+      "type": "primitive"
+    },
+    {
+      "height": 0.9,
+      "id": "c_ramp__railing_right__post_003",
+      "material": "metal",
+      "position": [
+        1.966366,
+        1.044174,
+        4.6
+      ],
+      "radius": 0.035,
+      "segments": 12,
+      "shape": "cylinder",
+      "type": "primitive"
+    },
+    {
+      "height": 0.9,
+      "id": "c_ramp__railing_right__post_004",
+      "material": "metal",
+      "position": [
+        2.666366,
+        1.294174,
+        4.6
+      ],
+      "radius": 0.035,
+      "segments": 12,
+      "shape": "cylinder",
+      "type": "primitive"
+    },
+    {
+      "height": 0.9,
+      "id": "c_ramp__railing_right__post_005",
+      "material": "metal",
+      "position": [
+        3.366366,
+        1.544174,
+        4.6
+      ],
+      "radius": 0.035,
+      "segments": 12,
+      "shape": "cylinder",
+      "type": "primitive"
+    },
+    {
+      "crossSection": "circular",
+      "from": [
+        0.566366,
+        0.589174,
+        4.6
+      ],
+      "height": 0.09,
+      "id": "c_ramp__railing_right__rail_001_001",
+      "material": "metal",
+      "to": [
+        3.366366,
+        1.589174,
+        4.6
+      ],
+      "type": "beam",
+      "width": 0.09
+    },
+    {
+      "crossSection": "circular",
+      "from": [
+        0.566366,
+        0.994174,
+        4.6
+      ],
+      "height": 0.09,
+      "id": "c_ramp__railing_right__rail_002_001",
+      "material": "metal",
+      "to": [
+        3.366366,
+        1.994174,
+        4.6
+      ],
+      "type": "beam",
+      "width": 0.09
+    },
+    {
+      "dimensions": [
+        0.06,
+        1.3,
+        0.1
+      ],
+      "id": "c_bay__frame_left",
+      "material": "metal",
+      "position": [
+        4.63,
+        1.55,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "dimensions": [
+        0.06,
+        1.3,
+        0.1
+      ],
+      "id": "c_bay__frame_left__front",
+      "material": "metal",
+      "position": [
+        4.63,
+        1.55,
+        0.45
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "dimensions": [
+        0.06,
+        1.3,
+        0.1
+      ],
+      "id": "c_bay__frame_right",
+      "material": "metal",
+      "position": [
+        5.67,
+        1.55,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "dimensions": [
+        0.06,
+        1.3,
+        0.1
+      ],
+      "id": "c_bay__frame_right__front",
+      "material": "metal",
+      "position": [
+        5.67,
+        1.55,
+        0.45
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "dimensions": [
+        0.98,
+        0.06,
+        0.1
+      ],
+      "id": "c_bay__frame_bottom",
+      "material": "metal",
+      "position": [
+        5.15,
+        0.93,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "dimensions": [
+        0.98,
+        0.06,
+        0.1
+      ],
+      "id": "c_bay__frame_bottom__front",
+      "material": "metal",
+      "position": [
+        5.15,
+        0.93,
+        0.45
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "dimensions": [
+        0.98,
+        0.06,
+        0.1
+      ],
+      "id": "c_bay__frame_top",
+      "material": "metal",
+      "position": [
+        5.15,
+        2.17,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "dimensions": [
+        0.98,
+        0.06,
+        0.1
+      ],
+      "id": "c_bay__frame_top__front",
+      "material": "metal",
+      "position": [
+        5.15,
+        2.17,
+        0.45
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "_cutoutOnly": true,
+      "from": [
+        4.6,
+        0.9,
+        0
+      ],
+      "height": 1.3,
+      "id": "c_bay__cutout",
+      "parentWall": "w_front",
+      "style": "rectangular",
+      "type": "opening",
+      "width": 1.1
+    },
+    {
+      "_interaction": {
+        "closedPosition": [
+          4.905,
+          1.55,
+          0.425
+        ],
+        "closedRotation": [
+          0,
+          0,
+          0
+        ],
+        "groupId": "c_bay__sash_left",
+        "initiallyOpen": false,
+        "kind": "opening",
+        "mode": "slide",
+        "openOffset": [
+          0.49,
+          0,
+          0
+        ],
+        "pivot": [
+          4.66,
+          1.55,
+          0.425
+        ]
+      },
+      "dimensions": [
+        0.49,
+        1.18,
+        0.012
+      ],
+      "id": "c_bay__sash_left",
+      "material": "glass",
+      "position": [
+        4.905,
+        1.55,
+        0.425
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "_interaction": {
+        "closedPosition": [
+          4.905,
+          1.55,
+          0.425
+        ],
+        "closedRotation": [
+          0,
+          0,
+          0
+        ],
+        "groupId": "c_bay__sash_left",
+        "initiallyOpen": false,
+        "kind": "opening",
+        "mode": "slide",
+        "openOffset": [
+          0.49,
+          0,
+          0
+        ],
+        "pivot": [
+          4.66,
+          1.55,
+          0.425
+        ]
+      },
+      "dimensions": [
+        0.035,
+        1.18,
+        0.042
+      ],
+      "id": "c_bay__sash_left__left",
+      "material": "metal",
+      "position": [
+        4.6775,
+        1.55,
+        0.425
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "_interaction": {
+        "closedPosition": [
+          4.905,
+          1.55,
+          0.425
+        ],
+        "closedRotation": [
+          0,
+          0,
+          0
+        ],
+        "groupId": "c_bay__sash_left",
+        "initiallyOpen": false,
+        "kind": "opening",
+        "mode": "slide",
+        "openOffset": [
+          0.49,
+          0,
+          0
+        ],
+        "pivot": [
+          4.66,
+          1.55,
+          0.425
+        ]
+      },
+      "dimensions": [
+        0.035,
+        1.18,
+        0.042
+      ],
+      "id": "c_bay__sash_left__right",
+      "material": "metal",
+      "position": [
+        5.1325,
+        1.55,
+        0.425
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "_interaction": {
+        "closedPosition": [
+          4.905,
+          1.55,
+          0.425
+        ],
+        "closedRotation": [
+          0,
+          0,
+          0
+        ],
+        "groupId": "c_bay__sash_left",
+        "initiallyOpen": false,
+        "kind": "opening",
+        "mode": "slide",
+        "openOffset": [
+          0.49,
+          0,
+          0
+        ],
+        "pivot": [
+          4.66,
+          1.55,
+          0.425
+        ]
+      },
+      "dimensions": [
+        0.42,
+        0.035,
+        0.042
+      ],
+      "id": "c_bay__sash_left__bottom",
+      "material": "metal",
+      "position": [
+        4.905,
+        0.9775,
+        0.425
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "_interaction": {
+        "closedPosition": [
+          4.905,
+          1.55,
+          0.425
+        ],
+        "closedRotation": [
+          0,
+          0,
+          0
+        ],
+        "groupId": "c_bay__sash_left",
+        "initiallyOpen": false,
+        "kind": "opening",
+        "mode": "slide",
+        "openOffset": [
+          0.49,
+          0,
+          0
+        ],
+        "pivot": [
+          4.66,
+          1.55,
+          0.425
+        ]
+      },
+      "dimensions": [
+        0.42,
+        0.035,
+        0.042
+      ],
+      "id": "c_bay__sash_left__top",
+      "material": "metal",
+      "position": [
+        4.905,
+        2.1225,
+        0.425
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "_interaction": {
+        "closedPosition": [
+          5.395,
+          1.55,
+          0.475
+        ],
+        "closedRotation": [
+          0,
+          0,
+          0
+        ],
+        "groupId": "c_bay__sash_right",
+        "initiallyOpen": false,
+        "kind": "opening",
+        "mode": "slide",
+        "openOffset": [
+          -0.49,
+          0,
+          0
+        ],
+        "pivot": [
+          5.64,
+          1.55,
+          0.475
+        ]
+      },
+      "dimensions": [
+        0.49,
+        1.18,
+        0.012
+      ],
+      "id": "c_bay__sash_right",
+      "material": "glass",
+      "position": [
+        5.395,
+        1.55,
+        0.475
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "_interaction": {
+        "closedPosition": [
+          5.395,
+          1.55,
+          0.475
+        ],
+        "closedRotation": [
+          0,
+          0,
+          0
+        ],
+        "groupId": "c_bay__sash_right",
+        "initiallyOpen": false,
+        "kind": "opening",
+        "mode": "slide",
+        "openOffset": [
+          -0.49,
+          0,
+          0
+        ],
+        "pivot": [
+          5.64,
+          1.55,
+          0.475
+        ]
+      },
+      "dimensions": [
+        0.035,
+        1.18,
+        0.042
+      ],
+      "id": "c_bay__sash_right__left",
+      "material": "metal",
+      "position": [
+        5.1675,
+        1.55,
+        0.475
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "_interaction": {
+        "closedPosition": [
+          5.395,
+          1.55,
+          0.475
+        ],
+        "closedRotation": [
+          0,
+          0,
+          0
+        ],
+        "groupId": "c_bay__sash_right",
+        "initiallyOpen": false,
+        "kind": "opening",
+        "mode": "slide",
+        "openOffset": [
+          -0.49,
+          0,
+          0
+        ],
+        "pivot": [
+          5.64,
+          1.55,
+          0.475
+        ]
+      },
+      "dimensions": [
+        0.035,
+        1.18,
+        0.042
+      ],
+      "id": "c_bay__sash_right__right",
+      "material": "metal",
+      "position": [
+        5.6225,
+        1.55,
+        0.475
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "_interaction": {
+        "closedPosition": [
+          5.395,
+          1.55,
+          0.475
+        ],
+        "closedRotation": [
+          0,
+          0,
+          0
+        ],
+        "groupId": "c_bay__sash_right",
+        "initiallyOpen": false,
+        "kind": "opening",
+        "mode": "slide",
+        "openOffset": [
+          -0.49,
+          0,
+          0
+        ],
+        "pivot": [
+          5.64,
+          1.55,
+          0.475
+        ]
+      },
+      "dimensions": [
+        0.42,
+        0.035,
+        0.042
+      ],
+      "id": "c_bay__sash_right__bottom",
+      "material": "metal",
+      "position": [
+        5.395,
+        0.9775,
+        0.475
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "_interaction": {
+        "closedPosition": [
+          5.395,
+          1.55,
+          0.475
+        ],
+        "closedRotation": [
+          0,
+          0,
+          0
+        ],
+        "groupId": "c_bay__sash_right",
+        "initiallyOpen": false,
+        "kind": "opening",
+        "mode": "slide",
+        "openOffset": [
+          -0.49,
+          0,
+          0
+        ],
+        "pivot": [
+          5.64,
+          1.55,
+          0.475
+        ]
+      },
+      "dimensions": [
+        0.42,
+        0.035,
+        0.042
+      ],
+      "id": "c_bay__sash_right__top",
+      "material": "metal",
+      "position": [
+        5.395,
+        2.1225,
+        0.475
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "dimensions": [
+        1.1,
+        0.06,
+        0.45
+      ],
+      "id": "c_bay__projection_bottom",
+      "material": "metal",
+      "position": [
+        5.15,
+        0.93,
+        0.225
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "dimensions": [
+        1.1,
+        0.06,
+        0.45
+      ],
+      "id": "c_bay__projection_top",
+      "material": "metal",
+      "position": [
+        5.15,
+        2.17,
+        0.225
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "dimensions": [
+        0.06,
+        1.18,
+        0.45
+      ],
+      "id": "c_bay__side_left",
+      "material": "glass",
+      "position": [
+        4.63,
+        1.55,
+        0.225
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "dimensions": [
+        0.06,
+        1.18,
+        0.45
+      ],
+      "id": "c_bay__side_right",
+      "material": "glass",
+      "position": [
+        5.67,
+        1.55,
+        0.225
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "closedProfile": false,
+      "id": "c_cornice__sweep",
+      "material": "concrete",
+      "path": [
+        [
+          0,
+          3.2,
+          0
+        ],
+        [
+          8,
+          3.2,
+          0
+        ],
+        [
+          8,
+          3.2,
+          6
+        ]
+      ],
+      "profile": [
+        [
+          0,
+          0
+        ],
+        [
+          0.14,
+          0
+        ],
+        [
+          0.14,
+          -0.1
+        ],
+        [
+          0.05,
+          -0.16
+        ],
+        [
+          0,
+          -0.16
+        ]
+      ],
+      "shape": "profile_sweep",
+      "type": "primitive"
+    },
+    {
+      "dimensions": [
+        0.08,
+        1.4,
+        0.6
+      ],
+      "id": "c_chimney__wall_left",
+      "material": "concrete",
+      "position": [
+        6.34,
+        3.7,
+        4.2
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "dimensions": [
+        0.08,
+        1.4,
+        0.6
+      ],
+      "id": "c_chimney__wall_right",
+      "material": "concrete",
+      "position": [
+        6.86,
+        3.7,
+        4.2
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "dimensions": [
+        0.44,
+        1.4,
+        0.08
+      ],
+      "id": "c_chimney__wall_front",
+      "material": "concrete",
+      "position": [
+        6.6,
+        3.7,
+        4.46
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "dimensions": [
+        0.44,
+        1.4,
+        0.08
+      ],
+      "id": "c_chimney__wall_back",
+      "material": "concrete",
+      "position": [
+        6.6,
+        3.7,
+        3.94
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "dimensions": [
+        0.68,
+        0.1,
+        0.68
+      ],
+      "id": "c_chimney__cap",
+      "material": "concrete",
+      "position": [
+        6.6,
+        4.45,
+        4.2
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "_interaction": {
+        "angle": 45,
+        "color": [
+          1,
+          0.92,
+          0.78
+        ],
+        "distance": 5,
+        "highIntensity": 12,
+        "initiallyOn": false,
+        "kind": "light",
+        "lightType": "point",
+        "lowIntensity": 6
+      },
+      "id": "c_light__bulb",
+      "material": "__wild_component_bulb_glass",
+      "position": [
+        3.2,
+        2.96108,
+        3
+      ],
+      "radius": 0.05,
+      "segments": 24,
+      "shape": "sphere",
+      "type": "primitive"
+    },
+    {
+      "id": "c_light__emitter",
+      "material": "__wild_component_bulb_emitter",
+      "position": [
+        3.2,
+        2.96108,
+        3
+      ],
+      "radius": 0.0275,
+      "segments": 20,
+      "shape": "sphere",
+      "type": "primitive"
+    },
+    {
+      "height": 0.04,
+      "id": "c_light__base",
+      "material": "__wild_component_metal",
+      "position": [
+        3.2,
+        2.62,
+        3
+      ],
+      "radiusBottom": 0.1152,
+      "radiusTop": 0.099072,
+      "segments": 24,
+      "shape": "cylinder",
+      "type": "primitive"
+    },
+    {
+      "height": 0.26636,
+      "id": "c_light__stem",
+      "material": "__wild_component_metal",
+      "position": [
+        3.2,
+        2.77318,
+        3
+      ],
+      "radius": 0.018,
+      "segments": 18,
+      "shape": "cylinder",
+      "type": "primitive"
+    },
+    {
+      "height": 0.171,
+      "id": "c_light__shade",
+      "material": "__wild_component_lamp_shade",
+      "position": [
+        3.2,
+        2.9645,
+        3
+      ],
+      "radiusBottom": 0.16,
+      "radiusTop": 0.0928,
+      "segments": 28,
+      "shape": "cylinder",
+      "type": "primitive"
+    },
+    {
+      "_interaction": {
+        "floorCount": 3,
+        "floorHeight": 3,
+        "groupId": "c_elevator",
+        "initialFloor": 0,
+        "kind": "elevator",
+        "role": "cab"
+      },
+      "dimensions": [
+        1.3,
+        0.1,
+        1.5
+      ],
+      "id": "c_elevator__cab",
+      "material": "wood",
+      "position": [
+        1.2,
+        -0.05,
+        3
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "_interaction": {
+        "floorCount": 3,
+        "floorHeight": 3,
+        "groupId": "c_elevator",
+        "initialFloor": 0,
+        "kind": "elevator",
+        "role": "cab"
+      },
+      "dimensions": [
+        1.3,
+        0.08,
+        1.5
+      ],
+      "id": "c_elevator__cab_roof",
+      "material": "metal",
+      "position": [
+        1.2,
+        2.35,
+        3
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "_interaction": {
+        "floorCount": 3,
+        "floorHeight": 3,
+        "groupId": "c_elevator",
+        "initialFloor": 0,
+        "kind": "elevator",
+        "light": {
+          "angle": 60,
+          "color": [
+            1,
+            0.87,
+            0.7
+          ],
+          "distance": 3.5,
+          "highIntensity": 8,
+          "initiallyOn": true,
+          "kind": "light",
+          "lightType": "point",
+          "lowIntensity": 8,
+          "offset": [
+            0,
+            -0.05,
+            0
+          ]
+        },
+        "role": "cab"
+      },
+      "dimensions": [
+        0.35,
+        0.015,
+        0.3
+      ],
+      "id": "c_elevator__cab_light",
+      "material": "__wild_component_bulb_emitter",
+      "position": [
+        1.2,
+        2.3,
+        3
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "_interaction": {
+        "floorCount": 3,
+        "floorHeight": 3,
+        "groupId": "c_elevator",
+        "initialFloor": 0,
+        "kind": "elevator",
+        "role": "cab"
+      },
+      "dimensions": [
+        1.3,
+        2.35,
+        0.06
+      ],
+      "id": "c_elevator__cab_back",
+      "material": "metal",
+      "position": [
+        1.2,
+        1.175,
+        2.25
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "_interaction": {
+        "floorCount": 3,
+        "floorHeight": 3,
+        "groupId": "c_elevator",
+        "initialFloor": 0,
+        "kind": "elevator",
+        "role": "cab"
+      },
+      "dimensions": [
+        0.365,
+        2.35,
+        0.06
+      ],
+      "id": "c_elevator__cab_front_-1",
+      "material": "metal",
+      "position": [
+        0.7325,
+        1.175,
+        3.65
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "_interaction": {
+        "floorCount": 3,
+        "floorHeight": 3,
+        "groupId": "c_elevator",
+        "initialFloor": 0,
+        "kind": "elevator",
+        "role": "cab"
+      },
+      "dimensions": [
+        0.06,
+        2.35,
+        1.5
+      ],
+      "id": "c_elevator__cab_side_-1",
+      "material": "metal",
+      "position": [
+        0.55,
+        1.175,
+        3
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "dimensions": [
+        0.06,
+        8.35,
+        0.06
+      ],
+      "id": "c_elevator__rail_-1",
+      "material": "metal",
+      "position": [
+        0.46,
+        4.175,
+        2.17
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "_interaction": {
+        "doorOffset": [
+          -0.285,
+          0,
+          0
+        ],
+        "floorCount": 3,
+        "floorHeight": 3,
+        "groupId": "c_elevator",
+        "initialFloor": 0,
+        "kind": "elevator",
+        "role": "cabDoor"
+      },
+      "dimensions": [
+        0.279,
+        2.2,
+        0.035
+      ],
+      "id": "c_elevator__cab_door_-1",
+      "material": "metal",
+      "position": [
+        1.0575,
+        1.1,
+        3.73
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "_interaction": {
+        "floorCount": 3,
+        "floorHeight": 3,
+        "groupId": "c_elevator",
+        "initialFloor": 0,
+        "kind": "elevator",
+        "role": "cab"
+      },
+      "dimensions": [
+        0.365,
+        2.35,
+        0.06
+      ],
+      "id": "c_elevator__cab_front_1",
+      "material": "metal",
+      "position": [
+        1.6675,
+        1.175,
+        3.65
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "_interaction": {
+        "floorCount": 3,
+        "floorHeight": 3,
+        "groupId": "c_elevator",
+        "initialFloor": 0,
+        "kind": "elevator",
+        "role": "cab"
+      },
+      "dimensions": [
+        0.06,
+        2.35,
+        1.5
+      ],
+      "id": "c_elevator__cab_side_1",
+      "material": "metal",
+      "position": [
+        1.85,
+        1.175,
+        3
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "dimensions": [
+        0.06,
+        8.35,
+        0.06
+      ],
+      "id": "c_elevator__rail_1",
+      "material": "metal",
+      "position": [
+        1.94,
+        4.175,
+        2.17
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "_interaction": {
+        "doorOffset": [
+          0.285,
+          0,
+          0
+        ],
+        "floorCount": 3,
+        "floorHeight": 3,
+        "groupId": "c_elevator",
+        "initialFloor": 0,
+        "kind": "elevator",
+        "role": "cabDoor"
+      },
+      "dimensions": [
+        0.279,
+        2.2,
+        0.035
+      ],
+      "id": "c_elevator__cab_door_1",
+      "material": "metal",
+      "position": [
+        1.3425,
+        1.1,
+        3.73
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "_interaction": {
+        "floorCount": 3,
+        "floorHeight": 3,
+        "groupId": "c_elevator",
+        "initialFloor": 0,
+        "kind": "elevator",
+        "role": "cab"
+      },
+      "dimensions": [
+        0.57,
+        0.15,
+        0.06
+      ],
+      "id": "c_elevator__cab_header",
+      "material": "metal",
+      "position": [
+        1.2,
+        2.275,
+        3.65
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "_interaction": {
+        "doorOffset": [
+          -0.285,
+          0,
+          0
+        ],
+        "floor": 0,
+        "floorCount": 3,
+        "floorHeight": 3,
+        "groupId": "c_elevator",
+        "initialFloor": 0,
+        "kind": "elevator",
+        "role": "landingDoor"
+      },
+      "dimensions": [
+        0.279,
+        2.2,
+        0.035
+      ],
+      "id": "c_elevator__landing_door_0_-1",
+      "material": "metal",
+      "position": [
+        1.0575,
+        1.1,
+        3.83
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "dimensions": [
+        0.08,
+        2.28,
+        0.14
+      ],
+      "id": "c_elevator__landing_jamb_0_-1",
+      "material": "metal",
+      "position": [
+        0.875,
+        1.1,
+        3.83
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "_interaction": {
+        "doorOffset": [
+          0.285,
+          0,
+          0
+        ],
+        "floor": 0,
+        "floorCount": 3,
+        "floorHeight": 3,
+        "groupId": "c_elevator",
+        "initialFloor": 0,
+        "kind": "elevator",
+        "role": "landingDoor"
+      },
+      "dimensions": [
+        0.279,
+        2.2,
+        0.035
+      ],
+      "id": "c_elevator__landing_door_0_1",
+      "material": "metal",
+      "position": [
+        1.3425,
+        1.1,
+        3.83
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "dimensions": [
+        0.08,
+        2.28,
+        0.14
+      ],
+      "id": "c_elevator__landing_jamb_0_1",
+      "material": "metal",
+      "position": [
+        1.525,
+        1.1,
+        3.83
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "dimensions": [
+        0.73,
+        0.08,
+        0.14
+      ],
+      "id": "c_elevator__landing_header_0",
+      "material": "metal",
+      "position": [
+        1.2,
+        2.24,
+        3.83
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "dimensions": [
+        0.57,
+        0.05,
+        0.26
+      ],
+      "id": "c_elevator__landing_sill_0",
+      "material": "metal",
+      "position": [
+        1.2,
+        -0.025,
+        3.85
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "_interaction": {
+        "action": "call",
+        "floor": 0,
+        "floorCount": 3,
+        "floorHeight": 3,
+        "groupId": "c_elevator",
+        "initialFloor": 0,
+        "kind": "elevator",
+        "role": "hallButton"
+      },
+      "dimensions": [
+        0.12,
+        0.16,
+        0.035
+      ],
+      "id": "c_elevator__hall_0",
+      "label": {
+        "color": [
+          1,
+          1,
+          1
+        ],
+        "text": "1"
+      },
+      "material": "__wild_component_frame",
+      "position": [
+        2.01,
+        1.1,
+        3.97
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "_interaction": {
+        "doorOffset": [
+          -0.285,
+          0,
+          0
+        ],
+        "floor": 1,
+        "floorCount": 3,
+        "floorHeight": 3,
+        "groupId": "c_elevator",
+        "initialFloor": 0,
+        "kind": "elevator",
+        "role": "landingDoor"
+      },
+      "dimensions": [
+        0.279,
+        2.2,
+        0.035
+      ],
+      "id": "c_elevator__landing_door_1_-1",
+      "material": "metal",
+      "position": [
+        1.0575,
+        4.1,
+        3.83
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "dimensions": [
+        0.08,
+        2.28,
+        0.14
+      ],
+      "id": "c_elevator__landing_jamb_1_-1",
+      "material": "metal",
+      "position": [
+        0.875,
+        4.1,
+        3.83
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "_interaction": {
+        "doorOffset": [
+          0.285,
+          0,
+          0
+        ],
+        "floor": 1,
+        "floorCount": 3,
+        "floorHeight": 3,
+        "groupId": "c_elevator",
+        "initialFloor": 0,
+        "kind": "elevator",
+        "role": "landingDoor"
+      },
+      "dimensions": [
+        0.279,
+        2.2,
+        0.035
+      ],
+      "id": "c_elevator__landing_door_1_1",
+      "material": "metal",
+      "position": [
+        1.3425,
+        4.1,
+        3.83
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "dimensions": [
+        0.08,
+        2.28,
+        0.14
+      ],
+      "id": "c_elevator__landing_jamb_1_1",
+      "material": "metal",
+      "position": [
+        1.525,
+        4.1,
+        3.83
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "dimensions": [
+        0.73,
+        0.08,
+        0.14
+      ],
+      "id": "c_elevator__landing_header_1",
+      "material": "metal",
+      "position": [
+        1.2,
+        5.24,
+        3.83
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "dimensions": [
+        0.57,
+        0.05,
+        0.26
+      ],
+      "id": "c_elevator__landing_sill_1",
+      "material": "metal",
+      "position": [
+        1.2,
+        2.975,
+        3.85
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "_interaction": {
+        "action": "call",
+        "floor": 1,
+        "floorCount": 3,
+        "floorHeight": 3,
+        "groupId": "c_elevator",
+        "initialFloor": 0,
+        "kind": "elevator",
+        "role": "hallButton"
+      },
+      "dimensions": [
+        0.12,
+        0.16,
+        0.035
+      ],
+      "id": "c_elevator__hall_1",
+      "label": {
+        "color": [
+          1,
+          1,
+          1
+        ],
+        "text": "2"
+      },
+      "material": "__wild_component_frame",
+      "position": [
+        2.01,
+        4.1,
+        3.97
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "_interaction": {
+        "doorOffset": [
+          -0.285,
+          0,
+          0
+        ],
+        "floor": 2,
+        "floorCount": 3,
+        "floorHeight": 3,
+        "groupId": "c_elevator",
+        "initialFloor": 0,
+        "kind": "elevator",
+        "role": "landingDoor"
+      },
+      "dimensions": [
+        0.279,
+        2.2,
+        0.035
+      ],
+      "id": "c_elevator__landing_door_2_-1",
+      "material": "metal",
+      "position": [
+        1.0575,
+        7.1,
+        3.83
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "dimensions": [
+        0.08,
+        2.28,
+        0.14
+      ],
+      "id": "c_elevator__landing_jamb_2_-1",
+      "material": "metal",
+      "position": [
+        0.875,
+        7.1,
+        3.83
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "_interaction": {
+        "doorOffset": [
+          0.285,
+          0,
+          0
+        ],
+        "floor": 2,
+        "floorCount": 3,
+        "floorHeight": 3,
+        "groupId": "c_elevator",
+        "initialFloor": 0,
+        "kind": "elevator",
+        "role": "landingDoor"
+      },
+      "dimensions": [
+        0.279,
+        2.2,
+        0.035
+      ],
+      "id": "c_elevator__landing_door_2_1",
+      "material": "metal",
+      "position": [
+        1.3425,
+        7.1,
+        3.83
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "dimensions": [
+        0.08,
+        2.28,
+        0.14
+      ],
+      "id": "c_elevator__landing_jamb_2_1",
+      "material": "metal",
+      "position": [
+        1.525,
+        7.1,
+        3.83
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "dimensions": [
+        0.73,
+        0.08,
+        0.14
+      ],
+      "id": "c_elevator__landing_header_2",
+      "material": "metal",
+      "position": [
+        1.2,
+        8.24,
+        3.83
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "dimensions": [
+        0.57,
+        0.05,
+        0.26
+      ],
+      "id": "c_elevator__landing_sill_2",
+      "material": "metal",
+      "position": [
+        1.2,
+        5.975,
+        3.85
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "_interaction": {
+        "action": "call",
+        "floor": 2,
+        "floorCount": 3,
+        "floorHeight": 3,
+        "groupId": "c_elevator",
+        "initialFloor": 0,
+        "kind": "elevator",
+        "role": "hallButton"
+      },
+      "dimensions": [
+        0.12,
+        0.16,
+        0.035
+      ],
+      "id": "c_elevator__hall_2",
+      "label": {
+        "color": [
+          1,
+          1,
+          1
+        ],
+        "text": "3"
+      },
+      "material": "__wild_component_frame",
+      "position": [
+        2.01,
+        7.1,
+        3.97
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "_interaction": {
+        "action": "call",
+        "floor": 0,
+        "floorCount": 3,
+        "floorHeight": 3,
+        "groupId": "c_elevator",
+        "initialFloor": 0,
+        "kind": "elevator",
+        "role": "carButton",
+        "text": "1"
+      },
+      "dimensions": [
+        0.11,
+        0.12,
+        0.025
+      ],
+      "id": "c_elevator__car_button_0",
+      "label": {
+        "color": [
+          1,
+          1,
+          1
+        ],
+        "text": "1"
+      },
+      "material": "__wild_component_frame",
+      "position": [
+        0.92,
+        1.1,
+        2.295
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "_interaction": {
+        "action": "call",
+        "floor": 1,
+        "floorCount": 3,
+        "floorHeight": 3,
+        "groupId": "c_elevator",
+        "initialFloor": 0,
+        "kind": "elevator",
+        "role": "carButton",
+        "text": "2"
+      },
+      "dimensions": [
+        0.11,
+        0.12,
+        0.025
+      ],
+      "id": "c_elevator__car_button_1",
+      "label": {
+        "color": [
+          1,
+          1,
+          1
+        ],
+        "text": "2"
+      },
+      "material": "__wild_component_frame",
+      "position": [
+        1.06,
+        1.1,
+        2.295
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "_interaction": {
+        "action": "call",
+        "floor": 2,
+        "floorCount": 3,
+        "floorHeight": 3,
+        "groupId": "c_elevator",
+        "initialFloor": 0,
+        "kind": "elevator",
+        "role": "carButton",
+        "text": "3"
+      },
+      "dimensions": [
+        0.11,
+        0.12,
+        0.025
+      ],
+      "id": "c_elevator__car_button_2",
+      "label": {
+        "color": [
+          1,
+          1,
+          1
+        ],
+        "text": "3"
+      },
+      "material": "__wild_component_frame",
+      "position": [
+        1.2,
+        1.1,
+        2.295
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "_interaction": {
+        "action": "open",
+        "floorCount": 3,
+        "floorHeight": 3,
+        "groupId": "c_elevator",
+        "initialFloor": 0,
+        "kind": "elevator",
+        "role": "carButton",
+        "text": "◀▶"
+      },
+      "dimensions": [
+        0.11,
+        0.12,
+        0.025
+      ],
+      "id": "c_elevator__car_button_3",
+      "label": {
+        "color": [
+          1,
+          1,
+          1
+        ],
+        "text": "◀▶"
+      },
+      "material": "__wild_component_frame",
+      "position": [
+        1.34,
+        1.1,
+        2.295
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "_interaction": {
+        "action": "close",
+        "floorCount": 3,
+        "floorHeight": 3,
+        "groupId": "c_elevator",
+        "initialFloor": 0,
+        "kind": "elevator",
+        "role": "carButton",
+        "text": "▶◀"
+      },
+      "dimensions": [
+        0.11,
+        0.12,
+        0.025
+      ],
+      "id": "c_elevator__car_button_4",
+      "label": {
+        "color": [
+          1,
+          1,
+          1
+        ],
+        "text": "▶◀"
+      },
+      "material": "__wild_component_frame",
+      "position": [
+        1.48,
+        1.1,
+        2.295
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "height": 0.28,
+      "id": "c_fan__rod",
+      "material": "metal",
+      "position": [
+        5,
+        2.84,
+        3
+      ],
+      "radius": 0.018,
+      "shape": "cylinder",
+      "type": "primitive"
+    },
+    {
+      "height": 0.12,
+      "id": "c_fan__motor",
+      "material": "metal",
+      "position": [
+        5,
+        2.7,
+        3
+      ],
+      "radius": 0.1292,
+      "shape": "cylinder",
+      "type": "primitive"
+    },
+    {
+      "_interaction": {
+        "groupId": "c_fan",
+        "initiallyOn": false,
+        "kind": "rotor",
+        "pivot": [
+          5,
+          2.7,
+          3
+        ],
+        "role": "rotor",
+        "rpm": 180
+      },
+      "id": "c_fan__hub",
+      "material": "metal",
+      "position": [
+        5,
+        2.635,
+        3
+      ],
+      "radius": 0.102,
+      "scale": [
+        1,
+        0.5,
+        1
+      ],
+      "shape": "sphere",
+      "type": "primitive"
+    },
+    {
+      "_interaction": {
+        "groupId": "c_fan",
+        "initiallyOn": false,
+        "kind": "rotor",
+        "pivot": [
+          5,
+          2.7,
+          3
+        ],
+        "role": "control",
+        "rpm": 180
+      },
+      "dimensions": [
+        0.12,
+        0.17,
+        0.035
+      ],
+      "id": "c_fan__control",
+      "label": {
+        "color": [
+          1,
+          1,
+          1
+        ],
+        "text": "FAN"
+      },
+      "material": "metal",
+      "position": [
+        5,
+        1.3,
+        2.9
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "_interaction": {
+        "groupId": "c_fan",
+        "initiallyOn": false,
+        "kind": "rotor",
+        "pivot": [
+          5,
+          2.7,
+          3
+        ],
+        "role": "rotor",
+        "rpm": 180
+      },
+      "dimensions": [
+        0.578,
+        0.018,
+        0.136
+      ],
+      "id": "c_fan__blade_0",
+      "material": "wood",
+      "position": [
+        5.374,
+        2.66,
+        3
+      ],
+      "rotation": [
+        0,
+        0,
+        0.12
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "_interaction": {
+        "groupId": "c_fan",
+        "initiallyOn": false,
+        "kind": "rotor",
+        "pivot": [
+          5,
+          2.7,
+          3
+        ],
+        "role": "rotor",
+        "rpm": 180
+      },
+      "dimensions": [
+        0.578,
+        0.018,
+        0.136
+      ],
+      "id": "c_fan__blade_1",
+      "material": "wood",
+      "position": [
+        5.115572,
+        2.66,
+        2.644305
+      ],
+      "rotation": [
+        0,
+        1.256637,
+        0.12
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "_interaction": {
+        "groupId": "c_fan",
+        "initiallyOn": false,
+        "kind": "rotor",
+        "pivot": [
+          5,
+          2.7,
+          3
+        ],
+        "role": "rotor",
+        "rpm": 180
+      },
+      "dimensions": [
+        0.578,
+        0.018,
+        0.136
+      ],
+      "id": "c_fan__blade_2",
+      "material": "wood",
+      "position": [
+        4.697428,
+        2.66,
+        2.780168
+      ],
+      "rotation": [
+        0,
+        2.513274,
+        0.12
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "_interaction": {
+        "groupId": "c_fan",
+        "initiallyOn": false,
+        "kind": "rotor",
+        "pivot": [
+          5,
+          2.7,
+          3
+        ],
+        "role": "rotor",
+        "rpm": 180
+      },
+      "dimensions": [
+        0.578,
+        0.018,
+        0.136
+      ],
+      "id": "c_fan__blade_3",
+      "material": "wood",
+      "position": [
+        4.697428,
+        2.66,
+        3.219832
+      ],
+      "rotation": [
+        0,
+        3.769911,
+        0.12
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "_interaction": {
+        "groupId": "c_fan",
+        "initiallyOn": false,
+        "kind": "rotor",
+        "pivot": [
+          5,
+          2.7,
+          3
+        ],
+        "role": "rotor",
+        "rpm": 180
+      },
+      "dimensions": [
+        0.578,
+        0.018,
+        0.136
+      ],
+      "id": "c_fan__blade_4",
+      "material": "wood",
+      "position": [
+        5.115572,
+        2.66,
+        3.355695
+      ],
+      "rotation": [
+        0,
+        5.026548,
+        0.12
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "dimensions": [
+        0.06,
+        2.2,
+        0.12
+      ],
+      "id": "c_louver__frame_left",
+      "material": "metal",
+      "position": [
+        6.28,
+        1.1,
+        4
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "dimensions": [
+        0.06,
+        2.2,
+        0.12
+      ],
+      "id": "c_louver__frame_right",
+      "material": "metal",
+      "position": [
+        7.72,
+        1.1,
+        4
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "dimensions": [
+        1.38,
+        0.06,
+        0.12
+      ],
+      "id": "c_louver__rail_bottom",
+      "material": "metal",
+      "position": [
+        7,
+        0.03,
+        4
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "dimensions": [
+        1.38,
+        0.06,
+        0.12
+      ],
+      "id": "c_louver__rail_top",
+      "material": "metal",
+      "position": [
+        7,
+        2.17,
+        4
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "dimensions": [
+        1.37,
+        0.012,
+        0.1032
+      ],
+      "id": "c_louver__slat_0",
+      "material": "metal",
+      "position": [
+        7,
+        0.164,
+        4
+      ],
+      "rotation": [
+        0.698132,
+        0,
+        0
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "dimensions": [
+        1.37,
+        0.012,
+        0.1032
+      ],
+      "id": "c_louver__slat_1",
+      "material": "metal",
+      "position": [
+        7,
+        0.372,
+        4
+      ],
+      "rotation": [
+        0.698132,
+        0,
+        0
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "dimensions": [
+        1.37,
+        0.012,
+        0.1032
+      ],
+      "id": "c_louver__slat_2",
+      "material": "metal",
+      "position": [
+        7,
+        0.58,
+        4
+      ],
+      "rotation": [
+        0.698132,
+        0,
+        0
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "dimensions": [
+        1.37,
+        0.012,
+        0.1032
+      ],
+      "id": "c_louver__slat_3",
+      "material": "metal",
+      "position": [
+        7,
+        0.788,
+        4
+      ],
+      "rotation": [
+        0.698132,
+        0,
+        0
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "dimensions": [
+        1.37,
+        0.012,
+        0.1032
+      ],
+      "id": "c_louver__slat_4",
+      "material": "metal",
+      "position": [
+        7,
+        0.996,
+        4
+      ],
+      "rotation": [
+        0.698132,
+        0,
+        0
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "dimensions": [
+        1.37,
+        0.012,
+        0.1032
+      ],
+      "id": "c_louver__slat_5",
+      "material": "metal",
+      "position": [
+        7,
+        1.204,
+        4
+      ],
+      "rotation": [
+        0.698132,
+        0,
+        0
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "dimensions": [
+        1.37,
+        0.012,
+        0.1032
+      ],
+      "id": "c_louver__slat_6",
+      "material": "metal",
+      "position": [
+        7,
+        1.412,
+        4
+      ],
+      "rotation": [
+        0.698132,
+        0,
+        0
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "dimensions": [
+        1.37,
+        0.012,
+        0.1032
+      ],
+      "id": "c_louver__slat_7",
+      "material": "metal",
+      "position": [
+        7,
+        1.62,
+        4
+      ],
+      "rotation": [
+        0.698132,
+        0,
+        0
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "dimensions": [
+        1.37,
+        0.012,
+        0.1032
+      ],
+      "id": "c_louver__slat_8",
+      "material": "metal",
+      "position": [
+        7,
+        1.828,
+        4
+      ],
+      "rotation": [
+        0.698132,
+        0,
+        0
+      ],
+      "shape": "box",
+      "type": "primitive"
+    },
+    {
+      "dimensions": [
+        1.37,
+        0.012,
+        0.1032
+      ],
+      "id": "c_louver__slat_9",
+      "material": "metal",
+      "position": [
+        7,
+        2.036,
+        4
+      ],
+      "rotation": [
+        0.698132,
+        0,
+        0
+      ],
+      "shape": "box",
+      "type": "primitive"
+    }
+  ],
+  "mapping": {
+    "componentIdByGeneratedElementId": {
+      "c_balcony__railing__post_001": "c_balcony",
+      "c_balcony__railing__post_002": "c_balcony",
+      "c_balcony__railing__post_003": "c_balcony",
+      "c_balcony__railing__post_004": "c_balcony",
+      "c_balcony__railing__post_005": "c_balcony",
+      "c_balcony__railing__post_006": "c_balcony",
+      "c_balcony__railing__post_007": "c_balcony",
+      "c_balcony__railing__post_008": "c_balcony",
+      "c_balcony__railing__rail_001_001": "c_balcony",
+      "c_balcony__railing__rail_001_002": "c_balcony",
+      "c_balcony__railing__rail_001_003": "c_balcony",
+      "c_balcony__railing__rail_002_001": "c_balcony",
+      "c_balcony__railing__rail_002_002": "c_balcony",
+      "c_balcony__railing__rail_002_003": "c_balcony",
+      "c_balcony__slab": "c_balcony",
+      "c_bay__cutout": "c_bay",
+      "c_bay__frame_bottom": "c_bay",
+      "c_bay__frame_bottom__front": "c_bay",
+      "c_bay__frame_left": "c_bay",
+      "c_bay__frame_left__front": "c_bay",
+      "c_bay__frame_right": "c_bay",
+      "c_bay__frame_right__front": "c_bay",
+      "c_bay__frame_top": "c_bay",
+      "c_bay__frame_top__front": "c_bay",
+      "c_bay__projection_bottom": "c_bay",
+      "c_bay__projection_top": "c_bay",
+      "c_bay__sash_left": "c_bay",
+      "c_bay__sash_left__bottom": "c_bay",
+      "c_bay__sash_left__left": "c_bay",
+      "c_bay__sash_left__right": "c_bay",
+      "c_bay__sash_left__top": "c_bay",
+      "c_bay__sash_right": "c_bay",
+      "c_bay__sash_right__bottom": "c_bay",
+      "c_bay__sash_right__left": "c_bay",
+      "c_bay__sash_right__right": "c_bay",
+      "c_bay__sash_right__top": "c_bay",
+      "c_bay__side_left": "c_bay",
+      "c_bay__side_right": "c_bay",
+      "c_canopy__slab": "c_canopy",
+      "c_canopy__support_001": "c_canopy",
+      "c_canopy__support_002": "c_canopy",
+      "c_chimney__cap": "c_chimney",
+      "c_chimney__wall_back": "c_chimney",
+      "c_chimney__wall_front": "c_chimney",
+      "c_chimney__wall_left": "c_chimney",
+      "c_chimney__wall_right": "c_chimney",
+      "c_cornice__sweep": "c_cornice",
+      "c_door__frame_1": "c_door",
+      "c_door__frame_2": "c_door",
+      "c_door__frame_3": "c_door",
+      "c_door__opening": "c_door",
+      "c_elevator__cab": "c_elevator",
+      "c_elevator__cab_back": "c_elevator",
+      "c_elevator__cab_door_-1": "c_elevator",
+      "c_elevator__cab_door_1": "c_elevator",
+      "c_elevator__cab_front_-1": "c_elevator",
+      "c_elevator__cab_front_1": "c_elevator",
+      "c_elevator__cab_header": "c_elevator",
+      "c_elevator__cab_light": "c_elevator",
+      "c_elevator__cab_roof": "c_elevator",
+      "c_elevator__cab_side_-1": "c_elevator",
+      "c_elevator__cab_side_1": "c_elevator",
+      "c_elevator__car_button_0": "c_elevator",
+      "c_elevator__car_button_1": "c_elevator",
+      "c_elevator__car_button_2": "c_elevator",
+      "c_elevator__car_button_3": "c_elevator",
+      "c_elevator__car_button_4": "c_elevator",
+      "c_elevator__hall_0": "c_elevator",
+      "c_elevator__hall_1": "c_elevator",
+      "c_elevator__hall_2": "c_elevator",
+      "c_elevator__landing_door_0_-1": "c_elevator",
+      "c_elevator__landing_door_0_1": "c_elevator",
+      "c_elevator__landing_door_1_-1": "c_elevator",
+      "c_elevator__landing_door_1_1": "c_elevator",
+      "c_elevator__landing_door_2_-1": "c_elevator",
+      "c_elevator__landing_door_2_1": "c_elevator",
+      "c_elevator__landing_header_0": "c_elevator",
+      "c_elevator__landing_header_1": "c_elevator",
+      "c_elevator__landing_header_2": "c_elevator",
+      "c_elevator__landing_jamb_0_-1": "c_elevator",
+      "c_elevator__landing_jamb_0_1": "c_elevator",
+      "c_elevator__landing_jamb_1_-1": "c_elevator",
+      "c_elevator__landing_jamb_1_1": "c_elevator",
+      "c_elevator__landing_jamb_2_-1": "c_elevator",
+      "c_elevator__landing_jamb_2_1": "c_elevator",
+      "c_elevator__landing_sill_0": "c_elevator",
+      "c_elevator__landing_sill_1": "c_elevator",
+      "c_elevator__landing_sill_2": "c_elevator",
+      "c_elevator__rail_-1": "c_elevator",
+      "c_elevator__rail_1": "c_elevator",
+      "c_fan__blade_0": "c_fan",
+      "c_fan__blade_1": "c_fan",
+      "c_fan__blade_2": "c_fan",
+      "c_fan__blade_3": "c_fan",
+      "c_fan__blade_4": "c_fan",
+      "c_fan__control": "c_fan",
+      "c_fan__hub": "c_fan",
+      "c_fan__motor": "c_fan",
+      "c_fan__rod": "c_fan",
+      "c_light__base": "c_light",
+      "c_light__bulb": "c_light",
+      "c_light__emitter": "c_light",
+      "c_light__shade": "c_light",
+      "c_light__stem": "c_light",
+      "c_louver__frame_left": "c_louver",
+      "c_louver__frame_right": "c_louver",
+      "c_louver__rail_bottom": "c_louver",
+      "c_louver__rail_top": "c_louver",
+      "c_louver__slat_0": "c_louver",
+      "c_louver__slat_1": "c_louver",
+      "c_louver__slat_2": "c_louver",
+      "c_louver__slat_3": "c_louver",
+      "c_louver__slat_4": "c_louver",
+      "c_louver__slat_5": "c_louver",
+      "c_louver__slat_6": "c_louver",
+      "c_louver__slat_7": "c_louver",
+      "c_louver__slat_8": "c_louver",
+      "c_louver__slat_9": "c_louver",
+      "c_railing__post_001": "c_railing",
+      "c_railing__post_002": "c_railing",
+      "c_railing__post_003": "c_railing",
+      "c_railing__post_004": "c_railing",
+      "c_railing__post_005": "c_railing",
+      "c_railing__post_006": "c_railing",
+      "c_railing__post_007": "c_railing",
+      "c_railing__post_008": "c_railing",
+      "c_railing__rail_001_001": "c_railing",
+      "c_railing__rail_001_002": "c_railing",
+      "c_railing__rail_002_001": "c_railing",
+      "c_railing__rail_002_002": "c_railing",
+      "c_ramp__curb_left": "c_ramp",
+      "c_ramp__curb_right": "c_ramp",
+      "c_ramp__railing_left__post_001": "c_ramp",
+      "c_ramp__railing_left__post_002": "c_ramp",
+      "c_ramp__railing_left__post_003": "c_ramp",
+      "c_ramp__railing_left__post_004": "c_ramp",
+      "c_ramp__railing_left__post_005": "c_ramp",
+      "c_ramp__railing_left__rail_001_001": "c_ramp",
+      "c_ramp__railing_left__rail_002_001": "c_ramp",
+      "c_ramp__railing_right__post_001": "c_ramp",
+      "c_ramp__railing_right__post_002": "c_ramp",
+      "c_ramp__railing_right__post_003": "c_ramp",
+      "c_ramp__railing_right__post_004": "c_ramp",
+      "c_ramp__railing_right__post_005": "c_ramp",
+      "c_ramp__railing_right__rail_001_001": "c_ramp",
+      "c_ramp__railing_right__rail_002_001": "c_ramp",
+      "c_ramp__surface": "c_ramp",
+      "c_window__cutout": "c_window",
+      "c_window__frame_bottom": "c_window",
+      "c_window__frame_left": "c_window",
+      "c_window__frame_right": "c_window",
+      "c_window__frame_top": "c_window",
+      "c_window__sash_left": "c_window",
+      "c_window__sash_left__bottom": "c_window",
+      "c_window__sash_left__horizontal_0": "c_window",
+      "c_window__sash_left__left": "c_window",
+      "c_window__sash_left__right": "c_window",
+      "c_window__sash_left__top": "c_window",
+      "c_window__sash_left__vertical_0": "c_window",
+      "c_window__sash_right": "c_window",
+      "c_window__sash_right__bottom": "c_window",
+      "c_window__sash_right__horizontal_0": "c_window",
+      "c_window__sash_right__left": "c_window",
+      "c_window__sash_right__right": "c_window",
+      "c_window__sash_right__top": "c_window",
+      "c_window__sash_right__vertical_0": "c_window"
+    },
+    "generatedElementIdsByComponentId": {
+      "c_balcony": [
+        "c_balcony__slab",
+        "c_balcony__railing__post_001",
+        "c_balcony__railing__post_002",
+        "c_balcony__railing__post_003",
+        "c_balcony__railing__post_004",
+        "c_balcony__railing__post_005",
+        "c_balcony__railing__post_006",
+        "c_balcony__railing__post_007",
+        "c_balcony__railing__post_008",
+        "c_balcony__railing__rail_001_001",
+        "c_balcony__railing__rail_001_002",
+        "c_balcony__railing__rail_001_003",
+        "c_balcony__railing__rail_002_001",
+        "c_balcony__railing__rail_002_002",
+        "c_balcony__railing__rail_002_003"
+      ],
+      "c_bay": [
+        "c_bay__frame_left",
+        "c_bay__frame_left__front",
+        "c_bay__frame_right",
+        "c_bay__frame_right__front",
+        "c_bay__frame_bottom",
+        "c_bay__frame_bottom__front",
+        "c_bay__frame_top",
+        "c_bay__frame_top__front",
+        "c_bay__cutout",
+        "c_bay__sash_left",
+        "c_bay__sash_left__left",
+        "c_bay__sash_left__right",
+        "c_bay__sash_left__bottom",
+        "c_bay__sash_left__top",
+        "c_bay__sash_right",
+        "c_bay__sash_right__left",
+        "c_bay__sash_right__right",
+        "c_bay__sash_right__bottom",
+        "c_bay__sash_right__top",
+        "c_bay__projection_bottom",
+        "c_bay__projection_top",
+        "c_bay__side_left",
+        "c_bay__side_right"
+      ],
+      "c_canopy": [
+        "c_canopy__slab",
+        "c_canopy__support_001",
+        "c_canopy__support_002"
+      ],
+      "c_chimney": [
+        "c_chimney__wall_left",
+        "c_chimney__wall_right",
+        "c_chimney__wall_front",
+        "c_chimney__wall_back",
+        "c_chimney__cap"
+      ],
+      "c_cornice": [
+        "c_cornice__sweep"
+      ],
+      "c_door": [
+        "c_door__opening",
+        "c_door__frame_1",
+        "c_door__frame_2",
+        "c_door__frame_3"
+      ],
+      "c_elevator": [
+        "c_elevator__cab",
+        "c_elevator__cab_roof",
+        "c_elevator__cab_light",
+        "c_elevator__cab_back",
+        "c_elevator__cab_front_-1",
+        "c_elevator__cab_side_-1",
+        "c_elevator__rail_-1",
+        "c_elevator__cab_door_-1",
+        "c_elevator__cab_front_1",
+        "c_elevator__cab_side_1",
+        "c_elevator__rail_1",
+        "c_elevator__cab_door_1",
+        "c_elevator__cab_header",
+        "c_elevator__landing_door_0_-1",
+        "c_elevator__landing_jamb_0_-1",
+        "c_elevator__landing_door_0_1",
+        "c_elevator__landing_jamb_0_1",
+        "c_elevator__landing_header_0",
+        "c_elevator__landing_sill_0",
+        "c_elevator__hall_0",
+        "c_elevator__landing_door_1_-1",
+        "c_elevator__landing_jamb_1_-1",
+        "c_elevator__landing_door_1_1",
+        "c_elevator__landing_jamb_1_1",
+        "c_elevator__landing_header_1",
+        "c_elevator__landing_sill_1",
+        "c_elevator__hall_1",
+        "c_elevator__landing_door_2_-1",
+        "c_elevator__landing_jamb_2_-1",
+        "c_elevator__landing_door_2_1",
+        "c_elevator__landing_jamb_2_1",
+        "c_elevator__landing_header_2",
+        "c_elevator__landing_sill_2",
+        "c_elevator__hall_2",
+        "c_elevator__car_button_0",
+        "c_elevator__car_button_1",
+        "c_elevator__car_button_2",
+        "c_elevator__car_button_3",
+        "c_elevator__car_button_4"
+      ],
+      "c_fan": [
+        "c_fan__rod",
+        "c_fan__motor",
+        "c_fan__hub",
+        "c_fan__control",
+        "c_fan__blade_0",
+        "c_fan__blade_1",
+        "c_fan__blade_2",
+        "c_fan__blade_3",
+        "c_fan__blade_4"
+      ],
+      "c_light": [
+        "c_light__bulb",
+        "c_light__emitter",
+        "c_light__base",
+        "c_light__stem",
+        "c_light__shade"
+      ],
+      "c_louver": [
+        "c_louver__frame_left",
+        "c_louver__frame_right",
+        "c_louver__rail_bottom",
+        "c_louver__rail_top",
+        "c_louver__slat_0",
+        "c_louver__slat_1",
+        "c_louver__slat_2",
+        "c_louver__slat_3",
+        "c_louver__slat_4",
+        "c_louver__slat_5",
+        "c_louver__slat_6",
+        "c_louver__slat_7",
+        "c_louver__slat_8",
+        "c_louver__slat_9"
+      ],
+      "c_railing": [
+        "c_railing__post_001",
+        "c_railing__post_002",
+        "c_railing__post_003",
+        "c_railing__post_004",
+        "c_railing__post_005",
+        "c_railing__post_006",
+        "c_railing__post_007",
+        "c_railing__post_008",
+        "c_railing__rail_001_001",
+        "c_railing__rail_001_002",
+        "c_railing__rail_002_001",
+        "c_railing__rail_002_002"
+      ],
+      "c_ramp": [
+        "c_ramp__surface",
+        "c_ramp__curb_left",
+        "c_ramp__railing_left__post_001",
+        "c_ramp__railing_left__post_002",
+        "c_ramp__railing_left__post_003",
+        "c_ramp__railing_left__post_004",
+        "c_ramp__railing_left__post_005",
+        "c_ramp__railing_left__rail_001_001",
+        "c_ramp__railing_left__rail_002_001",
+        "c_ramp__curb_right",
+        "c_ramp__railing_right__post_001",
+        "c_ramp__railing_right__post_002",
+        "c_ramp__railing_right__post_003",
+        "c_ramp__railing_right__post_004",
+        "c_ramp__railing_right__post_005",
+        "c_ramp__railing_right__rail_001_001",
+        "c_ramp__railing_right__rail_002_001"
+      ],
+      "c_window": [
+        "c_window__frame_left",
+        "c_window__frame_right",
+        "c_window__frame_bottom",
+        "c_window__frame_top",
+        "c_window__cutout",
+        "c_window__sash_left",
+        "c_window__sash_left__left",
+        "c_window__sash_left__right",
+        "c_window__sash_left__bottom",
+        "c_window__sash_left__top",
+        "c_window__sash_left__vertical_0",
+        "c_window__sash_left__horizontal_0",
+        "c_window__sash_right",
+        "c_window__sash_right__left",
+        "c_window__sash_right__right",
+        "c_window__sash_right__bottom",
+        "c_window__sash_right__top",
+        "c_window__sash_right__vertical_0",
+        "c_window__sash_right__horizontal_0"
+      ]
+    }
+  }
+}

@@ -1,0 +1,233 @@
+{
+ "meta": {
+  "version": "1.0",
+  "type": "asset",
+  "name": "落地音箱"
+ },
+ "geometry": {
+  "elements": [
+   {
+    "type": "primitive",
+    "id": "cabinet",
+    "shape": "box",
+    "dimensions": [
+     0.23,
+     0.94,
+     0.34
+    ],
+    "position": [
+     0.0,
+     0.5,
+     -0.0055
+    ],
+    "material": "wood"
+   },
+   {
+    "type": "primitive",
+    "id": "woofer",
+    "shape": "cylinder",
+    "height": 0.02,
+    "segments": 24,
+    "position": [
+     0.0,
+     0.32,
+     0.1655
+    ],
+    "material": "metal",
+    "radius": 0.075,
+    "rotation": [
+     1.570796,
+     0.0,
+     0.0
+    ]
+   },
+   {
+    "type": "primitive",
+    "id": "tweeter",
+    "shape": "cylinder",
+    "height": 0.016,
+    "segments": 20,
+    "position": [
+     0.0,
+     0.63,
+     0.1665
+    ],
+    "material": "metal",
+    "radius": 0.032,
+    "rotation": [
+     1.570796,
+     0.0,
+     0.0
+    ]
+   },
+   {
+    "type": "primitive",
+    "id": "spike_0",
+    "shape": "cylinder",
+    "height": 0.03,
+    "segments": 8,
+    "position": [
+     -0.08,
+     0.015,
+     -0.1355
+    ],
+    "material": "metal",
+    "radius": 0.012
+   },
+   {
+    "type": "primitive",
+    "id": "spike_1",
+    "shape": "cylinder",
+    "height": 0.03,
+    "segments": 8,
+    "position": [
+     0.08,
+     0.015,
+     -0.1355
+    ],
+    "material": "metal",
+    "radius": 0.012
+   },
+   {
+    "type": "primitive",
+    "id": "spike_2",
+    "shape": "cylinder",
+    "height": 0.03,
+    "segments": 8,
+    "position": [
+     -0.08,
+     0.015,
+     0.1245
+    ],
+    "material": "metal",
+    "radius": 0.012
+   },
+   {
+    "type": "primitive",
+    "id": "spike_3",
+    "shape": "cylinder",
+    "height": 0.03,
+    "segments": 8,
+    "position": [
+     0.08,
+     0.015,
+     0.1245
+    ],
+    "material": "metal",
+    "radius": 0.012
+   }
+  ]
+ },
+ "materials": {
+  "wood": {
+   "baseColor": [
+    0.42,
+    0.26,
+    0.14
+   ],
+   "roughness": 0.62,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "lightingCondition": "D65_noon"
+  },
+  "metal": {
+   "baseColor": [
+    0.16,
+    0.17,
+    0.18
+   ],
+   "roughness": 0.32,
+   "metallic": 0.8,
+   "albedo": 1.0,
+   "lightingCondition": "D65_noon"
+  },
+  "glass": {
+   "baseColor": [
+    0.72,
+    0.88,
+    0.96
+   ],
+   "roughness": 0.08,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "materialClass": "glass",
+   "transmission": 0.92,
+   "ior": 1.5,
+   "thickness": 0.012,
+   "lightingCondition": "D65_noon"
+  },
+  "stone": {
+   "baseColor": [
+    0.62,
+    0.6,
+    0.57
+   ],
+   "roughness": 0.78,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "lightingCondition": "D65_noon"
+  },
+  "fabric": {
+   "baseColor": [
+    0.46,
+    0.44,
+    0.42
+   ],
+   "roughness": 0.92,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "lightingCondition": "D65_noon"
+  },
+  "accent": {
+   "baseColor": [
+    0.42,
+    0.2,
+    0.09
+   ],
+   "roughness": 0.5,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "lightingCondition": "D65_noon"
+  },
+  "foliage": {
+   "baseColor": [
+    0.2,
+    0.34,
+    0.16
+   ],
+   "roughness": 0.86,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "lightingCondition": "D65_noon"
+  },
+  "screen": {
+   "baseColor": [
+    0.045,
+    0.048,
+    0.055
+   ],
+   "roughness": 0.16,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "emissive": [
+    0.02,
+    0.025,
+    0.03
+   ],
+   "emissiveIntensity": 1.0,
+   "lightingCondition": "D65_noon"
+  },
+  "porcelain": {
+   "baseColor": [
+    0.9,
+    0.9,
+    0.88
+   ],
+   "roughness": 0.18,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "lightingCondition": "D65_noon"
+  }
+ },
+ "behaviors": {}
+}

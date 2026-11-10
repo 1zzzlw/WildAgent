@@ -22,8 +22,14 @@ export class BlockPlacementPreview {
   }
 
   async update(blueprint: Blueprint, draft: BlockPlacementDraft, displayRoot: THREE.Group): Promise<void> {
-    const item = draft.operation.op === 'add_element' ? draft.operation.element : draft.operation.component
-    const key = `${item.id}:${draft.hostId || ''}`
+    // 物品一次会产出多个 add_element，预览必须一起画 —— 只画第一条会让
+    // 用户以为放下去的是一个零件，落位后才突然多出十几个。
+    const elements = draft.operations
+      .map(operation => (operation.op === 'add_element' ? operation.element : null))
+      .filter((element): element is NonNullable<typeof element> => Boolean(element))
+    const component = draft.operations.find(operation => operation.op === 'add_component')
+    const head = elements[0] ?? (component?.op === 'add_component' ? component.component : undefined)
+    const key = `${head?.id ?? 'item'}:${draft.hostId || ''}:${draft.operations.length}`
     if (key !== this.key) {
       this.clear()
       this.key = key
@@ -31,13 +37,14 @@ export class BlockPlacementPreview {
       const generation = this.generation
       const host = blueprint.geometry.elements.find(element => element.id === draft.hostId)
       // 兼容未显式定位的旧屋顶；墙转角和屋面收边也依赖周边墙体。
-      const needsWalls = host?.type === 'wall' || host?.type === 'roof' || item.type === 'wall' || item.type === 'roof'
+      const needsWalls = host?.type === 'wall' || host?.type === 'roof'
+        || elements.some(element => element.type === 'wall' || element.type === 'roof')
       const context = blueprint.geometry.elements.filter(element => element.id === host?.id || (needsWalls && element.type === 'wall'))
       const source = {
         ...blueprint,
         geometry: {
-          elements: [...context, ...(draft.operation.op === 'add_element' ? [item] : [])],
-          components: draft.operation.op === 'add_component' ? [item] : [],
+          elements: [...context, ...elements],
+          components: component?.op === 'add_component' ? [component.component] : [],
         },
       }
       const compiled = compileBlueprintComponents(source as any)
@@ -45,7 +52,13 @@ export class BlockPlacementPreview {
       if (errors.length) throw new Error(errors[0]!.message)
       const entity = await reconstructEntity(compiled.blueprint)
       if (generation !== this.generation) return
-      const ids = new Set(compiled.mapping.generatedElementIdsByComponentId[item.id] || [item.id])
+      const ids = new Set<string>(elements.map(element => element.id))
+      const componentId = component?.op === 'add_component' ? component.component.id : undefined
+      if (componentId) {
+        for (const generated of compiled.mapping.generatedElementIdsByComponentId[componentId] || [componentId]) {
+          ids.add(generated)
+        }
+      }
       for (const data of entity.meshes) {
         if (!data.elementId || !ids.has(data.elementId)) continue
         const mesh = new THREE.Mesh(meshDataToGeometry(data), this.material)

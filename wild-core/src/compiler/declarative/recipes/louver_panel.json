@@ -1,0 +1,193 @@
+{
+  "type": "louver_panel",
+  "description": "百叶格栅：外框 + 沿高度等距的倾斜叶片；用于设备遮挡、隔断与遮阳",
+  "label": "百叶格栅",
+  "icon": "▤",
+  "materialFields": [
+    "material",
+    "frameMaterial"
+  ],
+  "keywords": [
+    "百叶",
+    "格栅",
+    "百叶窗",
+    "遮阳格栅",
+    "通风百叶",
+    "百叶隔断"
+  ],
+  "notes": "position 是格栅底面中心，正面朝 +Z；叶片绕 X 轴倾斜，用于设备遮挡、隔断与遮阳。",
+  "defaults": {
+    "position": [
+      0,
+      0,
+      0
+    ]
+  },
+  "host": "position",
+  "params": {
+    "width": {
+      "type": "number",
+      "default": 1.2,
+      "min": 0.2,
+      "max": 6,
+      "step": 0.01,
+      "label": "宽"
+    },
+    "height": {
+      "type": "number",
+      "default": 2.0,
+      "min": 0.2,
+      "max": 6,
+      "step": 0.01,
+      "label": "高"
+    },
+    "thickness": {
+      "type": "number",
+      "default": 0.1,
+      "min": 0.02,
+      "max": 0.6,
+      "step": 0.01,
+      "label": "厚"
+    },
+    "frameWidth": {
+      "type": "number",
+      "default": 0.05,
+      "min": 0.01,
+      "max": 0.3,
+      "step": 0.005,
+      "label": "框宽"
+    },
+    "slatCount": {
+      "type": "integer",
+      "default": 12,
+      "min": 2,
+      "max": 64,
+      "step": 1,
+      "label": "叶片数"
+    },
+    "slatAngle": {
+      "type": "number",
+      "default": 35,
+      "min": 0,
+      "max": 80,
+      "step": 1,
+      "label": "叶片倾角（度）"
+    }
+  },
+  "guards": [
+    {
+      "expr": "position",
+      "message": "position 必须是 [x, y, z]",
+      "field": "position"
+    },
+    {
+      "expr": "(width ?? 0) > 0",
+      "message": "width 必须为正数",
+      "field": "width"
+    },
+    {
+      "expr": "(height ?? 0) > 0",
+      "message": "height 必须为正数",
+      "field": "height"
+    },
+    {
+      "expr": "(thickness ?? 0) > 0",
+      "message": "thickness 必须为正数",
+      "field": "thickness"
+    },
+    {
+      "expr": "(frameWidth ?? 0.05) * 2 < min(width ?? 0, height ?? 0)",
+      "message": "frameWidth 必须小于宽高的一半",
+      "field": "frameWidth"
+    },
+    {
+      "expr": "(slatCount ?? 12) >= 2 && (slatCount ?? 12) <= 64",
+      "message": "叶片数须在 2–64 之间",
+      "field": "slatCount"
+    },
+    {
+      "expr": "floor(slatCount ?? 12) == (slatCount ?? 12)",
+      "message": "叶片数必须为整数",
+      "field": "slatCount"
+    }
+  ],
+  "elements": [
+    {
+      "id": "{id}__frame_left",
+      "type": "primitive",
+      "shape": "box",
+      "position": {
+        "$": "[pos.x - width / 2 + (frameWidth ?? 0.05) / 2, pos.y + height / 2, pos.z]"
+      },
+      "dimensions": {
+        "$": "[frameWidth ?? 0.05, height, thickness]"
+      },
+      "material": {
+        "$": "frameMaterial ?? material"
+      }
+    },
+    {
+      "id": "{id}__frame_right",
+      "type": "primitive",
+      "shape": "box",
+      "position": {
+        "$": "[pos.x + width / 2 - (frameWidth ?? 0.05) / 2, pos.y + height / 2, pos.z]"
+      },
+      "dimensions": {
+        "$": "[frameWidth ?? 0.05, height, thickness]"
+      },
+      "material": {
+        "$": "frameMaterial ?? material"
+      }
+    },
+    {
+      "id": "{id}__rail_bottom",
+      "type": "primitive",
+      "shape": "box",
+      "position": {
+        "$": "[pos.x, pos.y + (frameWidth ?? 0.05) / 2, pos.z]"
+      },
+      "dimensions": {
+        "$": "[width - (frameWidth ?? 0.05) * 2, frameWidth ?? 0.05, thickness]"
+      },
+      "material": {
+        "$": "frameMaterial ?? material"
+      }
+    },
+    {
+      "id": "{id}__rail_top",
+      "type": "primitive",
+      "shape": "box",
+      "position": {
+        "$": "[pos.x, pos.y + height - (frameWidth ?? 0.05) / 2, pos.z]"
+      },
+      "dimensions": {
+        "$": "[width - (frameWidth ?? 0.05) * 2, frameWidth ?? 0.05, thickness]"
+      },
+      "material": {
+        "$": "frameMaterial ?? material"
+      }
+    },
+    {
+      "id": "{id}__slat_{i}",
+      "type": "primitive",
+      "shape": "box",
+      "position": {
+        "$": "[pos.x, pos.y + (frameWidth ?? 0.05) + ((height - (frameWidth ?? 0.05) * 2) / (slatCount ?? 12)) * (i + 0.5), pos.z]"
+      },
+      "dimensions": {
+        "$": "[width - (frameWidth ?? 0.05) * 2 - 0.01, 0.012, thickness * 0.86]"
+      },
+      "rotation": {
+        "$": "[deg(slatAngle ?? 35), 0, 0]"
+      },
+      "material": {
+        "$": "material"
+      },
+      "repeat": {
+        "kind": "linear",
+        "count": "slatCount ?? 12"
+      }
+    }
+  ]
+}

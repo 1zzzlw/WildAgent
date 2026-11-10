@@ -1,0 +1,15 @@
+{
+  "meta": {
+    "version": "1.1",
+    "type": "building",
+    "name": "重命名后仍是同一文件"
+  },
+  "geometry": {
+    "elements": [],
+    "components": []
+  },
+  "materials": {},
+  "editor": {
+    "revision": 4
+  }
+}

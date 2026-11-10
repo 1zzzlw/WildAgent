@@ -266,6 +266,65 @@
         }
       ]
     },
+    "recipeComponent": {
+      "description": "数据化构件的通用槽位。几何装配写在 recipes/*.json 配方里，引擎侧只剩解释器与宿主求解闭集，新增构件类型不必再改这份 schema。已知的 12 种构件仍走各自严格定义，这里用 type.not.enum 把它们的 type 排除掉，保证 componentSpec 的 oneOf 依旧互斥。字段校验交给配方自己的 params + guards —— 它们比一份静态 schema 更清楚每个字段的取值范围。",
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "type",
+        "id"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "minLength": 1,
+          "not": {
+            "enum": [
+              "door",
+              "window",
+              "railing",
+              "canopy",
+              "balcony",
+              "ramp",
+              "bay_window",
+              "cornice",
+              "chimney",
+              "light",
+              "elevator",
+              "fan"
+            ]
+          }
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "slot_id": {
+          "type": "string"
+        },
+        "draggable": {
+          "type": "boolean"
+        },
+        "parentWall": {
+          "type": "string",
+          "minLength": 1
+        },
+        "parentRoof": {
+          "type": "string",
+          "minLength": 1
+        },
+        "parentFloor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "position": {
+          "$ref": "#/$defs/vec3"
+        },
+        "rotation": {
+          "$ref": "#/$defs/vec3"
+        }
+      }
+    },
     "componentSpec": {
       "oneOf": [
         {
@@ -303,6 +362,9 @@
         },
         {
           "$ref": "#/$defs/fanComponent"
+        },
+        {
+          "$ref": "#/$defs/recipeComponent"
         }
       ]
     },

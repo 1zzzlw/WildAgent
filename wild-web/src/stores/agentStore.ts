@@ -202,7 +202,7 @@ export const useAgentStore = defineStore('agent', () => {
 
   /** 模型接口实际返回的思考内容 */
   const detailLevel = ref<BuildingDetailLevel>(loadDetailLevel())
-  const thinkingMode = ref(localStorage.getItem(STORAGE_KEY_THINKING_MODE) !== 'false')
+  const thinkingMode = ref(localStorage.getItem(STORAGE_KEY_THINKING_MODE) === 'true')
   const thinkingContent = ref('')
   const thinkingStatus = ref<ThinkingStatus>('idle')
   const thinkingNotice = ref('')

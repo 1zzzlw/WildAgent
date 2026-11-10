@@ -247,6 +247,7 @@ export function createMaterialFromParams(
 export class MaterialCache {
   private heldKeys = new Set<string>()
   private pendingKeys: Set<string> | null = null
+  private updateSignatures: WeakMap<MaterialParams, string> | null = null
   readonly scopeId: string
 
   constructor(scopeId: string = `material-scope-${cryptoRandomId()}`) {
@@ -257,6 +258,7 @@ export class MaterialCache {
   beginUpdate(): void {
     if (this.pendingKeys) throw new Error(`Material scope ${this.scopeId} is already updating`)
     this.pendingKeys = new Set<string>()
+    this.updateSignatures = new WeakMap()
   }
 
   endUpdate(): void {
@@ -266,6 +268,7 @@ export class MaterialCache {
     }
     this.heldKeys = this.pendingKeys
     this.pendingKeys = null
+    this.updateSignatures = null
   }
 
   /**
@@ -279,7 +282,13 @@ export class MaterialCache {
     params: MaterialParams,
     hasVertexColors: boolean
   ): PBRMaterial {
-    const key = `${hasVertexColors ? 'vertex-color' : 'uniform-color'}:${isWaterMaterial(params, materialName) ? 'water:' : ''}${materialSignature(params)}`
+    // 同一次更新会先分桶、再建网格；避免重复序列化同一份材质及内嵌图片。
+    let signature = this.updateSignatures?.get(params)
+    if (signature === undefined) {
+      signature = materialSignature(params)
+      this.updateSignatures?.set(params, signature)
+    }
+    const key = `${hasVertexColors ? 'vertex-color' : 'uniform-color'}:${isWaterMaterial(params, materialName) ? 'water:' : ''}${signature}`
     const target = this.pendingKeys || this.heldKeys
     const alreadyHeld = this.heldKeys.has(key) || this.pendingKeys?.has(key) === true
     if (!alreadyHeld) {
@@ -301,6 +310,7 @@ export class MaterialCache {
     }
     this.heldKeys.clear()
     this.pendingKeys = null
+    this.updateSignatures = null
   }
 
   /**

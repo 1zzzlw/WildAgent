@@ -260,8 +260,70 @@
         },
         {
           "$ref": "#/$defs/primitive"
+        },
+        {
+          "$ref": "#/$defs/solid"
         }
       ]
+    },
+    "recipeComponent": {
+      "description": "数据化构件的通用槽位。几何装配写在 recipes/*.json 配方里，引擎侧只剩解释器与宿主求解闭集，新增构件类型不必再改这份 schema。已知的 12 种构件仍走各自严格定义，这里用 type.not.enum 把它们的 type 排除掉，保证 componentSpec 的 oneOf 依旧互斥。字段校验交给配方自己的 params + guards —— 它们比一份静态 schema 更清楚每个字段的取值范围。",
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "type",
+        "id"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "minLength": 1,
+          "not": {
+            "enum": [
+              "door",
+              "window",
+              "railing",
+              "canopy",
+              "balcony",
+              "ramp",
+              "bay_window",
+              "cornice",
+              "chimney",
+              "light",
+              "elevator",
+              "fan"
+            ]
+          }
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "slot_id": {
+          "type": "string"
+        },
+        "draggable": {
+          "type": "boolean"
+        },
+        "parentWall": {
+          "type": "string",
+          "minLength": 1
+        },
+        "parentRoof": {
+          "type": "string",
+          "minLength": 1
+        },
+        "parentFloor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "position": {
+          "$ref": "#/$defs/vec3"
+        },
+        "rotation": {
+          "$ref": "#/$defs/vec3"
+        }
+      }
     },
     "componentSpec": {
       "oneOf": [
@@ -300,6 +362,19 @@
         },
         {
           "$ref": "#/$defs/fanComponent"
+        },
+        {
+          "$ref": "#/$defs/recipeComponent"
+        }
+      ]
+    },
+    "openingInteractionSetting": {
+      "oneOf": [
+        {
+          "const": false
+        },
+        {
+          "$ref": "#/$defs/openingInteractionSpec"
         }
       ]
     },
@@ -434,7 +509,7 @@
           "items": { "$ref": "#/$defs/doorLeafPart" }
         },
         "interaction": {
-          "$ref": "#/$defs/openingInteractionSpec"
+          "$ref": "#/$defs/openingInteractionSetting"
         },
         "openingStyle": {
           "enum": [
@@ -455,8 +530,26 @@
         },
         "draggable": {
           "type": "boolean"
+        },
+        "leaves": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2,
+          "items": {
+            "$ref": "#/$defs/openingLeaf"
+          }
         }
-      }
+      },
+      "allOf": [
+        {
+          "not": {
+            "required": [
+              "leaves",
+              "leafParts"
+            ]
+          }
+        }
+      ]
     },
     "windowComponent": {
       "type": "object",
@@ -528,10 +621,18 @@
           "type": "string"
         },
         "interaction": {
-          "$ref": "#/$defs/openingInteractionSpec"
+          "$ref": "#/$defs/openingInteractionSetting"
         },
         "draggable": {
           "type": "boolean"
+        },
+        "leaves": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2,
+          "items": {
+            "$ref": "#/$defs/openingLeaf"
+          }
         }
       }
     },
@@ -867,6 +968,9 @@
         },
         "glassMaterial": {
           "type": "string"
+        },
+        "interaction": {
+          "$ref": "#/$defs/openingInteractionSetting"
         },
         "draggable": {
           "type": "boolean"
@@ -1245,13 +1349,31 @@
         "shape": {
           "enum": [
             "rect",
-            "circle"
+            "circle",
+            "polygon"
           ],
           "default": "rect"
         },
         "radius": {
           "type": "number",
           "exclusiveMinimum": 0
+        },
+        "polygon": {
+          "type": "array",
+          "minItems": 3,
+          "items": {
+            "$ref": "#/$defs/vec2"
+          }
+        },
+        "holes": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "minItems": 3,
+            "items": {
+              "$ref": "#/$defs/vec2"
+            }
+          }
         },
         "segments": {
           "type": "integer",
@@ -1269,6 +1391,12 @@
               "enum": [
                 "rect"
               ]
+            },
+            "polygon": {
+              "maxItems": 0
+            },
+            "holes": {
+              "maxItems": 0
             }
           }
         },
@@ -1279,6 +1407,23 @@
           "properties": {
             "shape": {
               "const": "circle"
+            },
+            "polygon": {
+              "maxItems": 0
+            },
+            "holes": {
+              "maxItems": 0
+            }
+          }
+        },
+        {
+          "required": [
+            "shape",
+            "polygon"
+          ],
+          "properties": {
+            "shape": {
+              "const": "polygon"
             }
           }
         }
@@ -1922,6 +2067,11 @@
         },
         "lightSource": {
           "$ref": "#/$defs/lightSource"
+        },
+        "caps": {
+          "type": "boolean",
+          "default": false,
+          "description": "闭合截面扫掠首尾端盖；默认不封端"
         }
       },
       "allOf": [
@@ -2123,6 +2273,20 @@
         "lightingCondition"
       ],
       "properties": {
+        "surfacePattern": {
+          "type": "string",
+          "enum": [
+            "quartz",
+            "planks",
+            "plaster",
+            "concrete",
+            "travertine",
+            "tiles",
+            "brushed",
+            "linen"
+          ],
+          "description": "米制程序表面图案，包含颜色、粗糙度和微凹凸"
+        },
         "baseColor": {
           "$ref": "#/$defs/color"
         },
@@ -2199,20 +2363,6 @@
             "type": "number",
             "exclusiveMinimum": 0
           }
-        },
-        "surfacePattern": {
-          "type": "string",
-          "enum": [
-            "quartz",
-            "planks",
-            "plaster",
-            "concrete",
-            "travertine",
-            "tiles",
-            "brushed",
-            "linen"
-          ],
-          "description": "米制程序表面图案，包含颜色、粗糙度和微凹凸"
         },
         "anisotropy": {
           "type": "number",
@@ -2614,6 +2764,11 @@
         "interactive": {
           "type": "boolean",
           "description": "该段是否承载灯光交互（右键点灯的唯一命中体）。省略时默认最后一段；多段标 true 只认第一段。"
+        },
+        "caps": {
+          "type": "boolean",
+          "default": false,
+          "description": "闭合截面扫掠首尾端盖；默认不封端"
         }
       },
       "oneOf": [
@@ -2672,6 +2827,14 @@
         }
       ]
     },
+    "vec2": {
+      "type": "array",
+      "items": {
+        "type": "number"
+      },
+      "minItems": 2,
+      "maxItems": 2
+    },
     "fanComponent": {
       "type": "object",
       "additionalProperties": false,
@@ -2729,6 +2892,948 @@
           "type": "boolean"
         }
       }
+    },
+    "openingLeafPart": {
+      "type": "object",
+      "required": [
+        "shape"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "shape": {
+          "enum": [
+            "box",
+            "sphere",
+            "cylinder",
+            "profile_sweep"
+          ]
+        },
+        "position": {
+          "$ref": "#/$defs/vec3"
+        },
+        "rotation": {
+          "$ref": "#/$defs/vec3"
+        },
+        "scale": {
+          "$ref": "#/$defs/vec3"
+        },
+        "material": {
+          "type": "string"
+        },
+        "dimensions": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          }
+        },
+        "radius": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "radiusTop": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "radiusBottom": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "segments": {
+          "type": "integer",
+          "minimum": 3,
+          "maximum": 128
+        },
+        "heightSegments": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 64
+        },
+        "profile": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": {
+              "type": "number"
+            }
+          }
+        },
+        "path": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "$ref": "#/$defs/vec3"
+          }
+        },
+        "closedProfile": {
+          "type": "boolean",
+          "default": true
+        },
+        "caps": {
+          "type": "boolean",
+          "default": false,
+          "description": "闭合截面扫掠首尾端盖；默认不封端"
+        }
+      },
+      "oneOf": [
+        {
+          "required": [
+            "dimensions"
+          ],
+          "properties": {
+            "shape": {
+              "const": "box"
+            }
+          }
+        },
+        {
+          "required": [
+            "radius"
+          ],
+          "properties": {
+            "shape": {
+              "const": "sphere"
+            }
+          }
+        },
+        {
+          "required": [
+            "height"
+          ],
+          "properties": {
+            "shape": {
+              "const": "cylinder"
+            }
+          },
+          "oneOf": [
+            {
+              "required": [
+                "radius"
+              ]
+            },
+            {
+              "required": [
+                "radiusTop",
+                "radiusBottom"
+              ]
+            }
+          ]
+        },
+        {
+          "required": [
+            "path"
+          ],
+          "properties": {
+            "shape": {
+              "const": "profile_sweep"
+            }
+          }
+        }
+      ]
+    },
+    "openingLeaf": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "parts"
+      ],
+      "properties": {
+        "parts": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1024,
+          "items": {
+            "$ref": "#/$defs/openingLeafPart"
+          }
+        }
+      }
+    },
+    "solidProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "outer"
+      ],
+      "properties": {
+        "outer": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 4096,
+          "items": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": {
+              "type": "number"
+            }
+          }
+        },
+        "holes": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "type": "array",
+            "minItems": 3,
+            "maxItems": 4096,
+            "items": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 2,
+              "items": {
+                "type": "number"
+              }
+            }
+          }
+        }
+      }
+    },
+    "solidRing": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 4096,
+      "items": {
+        "type": "array",
+        "minItems": 2,
+        "maxItems": 2,
+        "items": {
+          "type": "number"
+        }
+      }
+    },
+    "solidCone": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "id",
+        "kind",
+        "radius",
+        "height"
+      ],
+      "properties": {
+        "type": {
+          "const": "solid"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "const": "cone"
+        },
+        "position": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "type": "number"
+          }
+        },
+        "rotation": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "type": "number"
+          }
+        },
+        "scale": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          }
+        },
+        "material": {
+          "type": "string",
+          "minLength": 1
+        },
+        "radius": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "apexOffset": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "number"
+          }
+        },
+        "segments": {
+          "type": "integer",
+          "minimum": 8,
+          "maximum": 256
+        }
+      }
+    },
+    "solidPyramid": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "id",
+        "kind",
+        "base",
+        "height"
+      ],
+      "properties": {
+        "type": {
+          "const": "solid"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "const": "pyramid"
+        },
+        "position": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "type": "number"
+          }
+        },
+        "rotation": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "type": "number"
+          }
+        },
+        "scale": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          }
+        },
+        "material": {
+          "type": "string",
+          "minLength": 1
+        },
+        "base": {
+          "$ref": "#/$defs/solidRing"
+        },
+        "height": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "apexOffset": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "solidFrustum": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "id",
+        "kind",
+        "bottom",
+        "top",
+        "height"
+      ],
+      "properties": {
+        "type": {
+          "const": "solid"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "const": "frustum"
+        },
+        "position": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "type": "number"
+          }
+        },
+        "rotation": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "type": "number"
+          }
+        },
+        "scale": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          }
+        },
+        "material": {
+          "type": "string",
+          "minLength": 1
+        },
+        "bottom": {
+          "$ref": "#/$defs/solidProfile"
+        },
+        "top": {
+          "$ref": "#/$defs/solidProfile"
+        },
+        "height": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "topOffset": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "solidWedge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "id",
+        "kind",
+        "width",
+        "depth",
+        "endHeights"
+      ],
+      "properties": {
+        "type": {
+          "const": "solid"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "const": "wedge"
+        },
+        "position": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "type": "number"
+          }
+        },
+        "rotation": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "type": "number"
+          }
+        },
+        "scale": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          }
+        },
+        "material": {
+          "type": "string",
+          "minLength": 1
+        },
+        "width": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "depth": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "endHeights": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "number",
+            "minimum": 0
+          }
+        }
+      }
+    },
+    "solidExtrude": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "id",
+        "kind",
+        "profile",
+        "vector"
+      ],
+      "properties": {
+        "type": {
+          "const": "solid"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "const": "extrude"
+        },
+        "position": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "type": "number"
+          }
+        },
+        "rotation": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "type": "number"
+          }
+        },
+        "scale": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          }
+        },
+        "material": {
+          "type": "string",
+          "minLength": 1
+        },
+        "profile": {
+          "$ref": "#/$defs/solidProfile"
+        },
+        "vector": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "solidRevolve": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "id",
+        "kind",
+        "section",
+        "angle"
+      ],
+      "properties": {
+        "type": {
+          "const": "solid"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "const": "revolve"
+        },
+        "position": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "type": "number"
+          }
+        },
+        "rotation": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "type": "number"
+          }
+        },
+        "scale": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          }
+        },
+        "material": {
+          "type": "string",
+          "minLength": 1
+        },
+        "section": {
+          "$ref": "#/$defs/solidProfile"
+        },
+        "startAngle": {
+          "type": "number"
+        },
+        "angle": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 6.283185307179586
+        },
+        "segments": {
+          "type": "integer",
+          "minimum": 8,
+          "maximum": 512
+        }
+      }
+    },
+    "solidLoft": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "id",
+        "kind",
+        "sections"
+      ],
+      "properties": {
+        "type": {
+          "const": "solid"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "const": "loft"
+        },
+        "position": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "type": "number"
+          }
+        },
+        "rotation": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "type": "number"
+          }
+        },
+        "scale": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          }
+        },
+        "material": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sections": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 128,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "height",
+              "profile"
+            ],
+            "properties": {
+              "height": {
+                "type": "number"
+              },
+              "profile": {
+                "$ref": "#/$defs/solidProfile"
+              },
+              "offset": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 2,
+                "items": {
+                  "type": "number"
+                }
+              },
+              "twist": {
+                "type": "number"
+              }
+            }
+          }
+        },
+        "segmentsPerSpan": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 64
+        }
+      }
+    },
+    "solidSweep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "id",
+        "kind",
+        "path"
+      ],
+      "properties": {
+        "type": {
+          "const": "solid"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "const": "sweep"
+        },
+        "position": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "type": "number"
+          }
+        },
+        "rotation": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "type": "number"
+          }
+        },
+        "scale": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          }
+        },
+        "material": {
+          "type": "string",
+          "minLength": 1
+        },
+        "path": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 4096,
+          "items": {
+            "type": "array",
+            "minItems": 3,
+            "maxItems": 3,
+            "items": {
+              "type": "number"
+            }
+          }
+        },
+        "profile": {
+          "$ref": "#/$defs/solidProfile"
+        },
+        "sections": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 128,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "t",
+              "profile"
+            ],
+            "properties": {
+              "t": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "profile": {
+                "$ref": "#/$defs/solidProfile"
+              },
+              "twist": {
+                "type": "number"
+              }
+            }
+          }
+        },
+        "closedPath": {
+          "type": "boolean"
+        }
+      },
+      "oneOf": [
+        {
+          "required": [
+            "profile"
+          ],
+          "not": {
+            "required": [
+              "sections"
+            ]
+          }
+        },
+        {
+          "required": [
+            "sections"
+          ],
+          "not": {
+            "required": [
+              "profile"
+            ]
+          }
+        }
+      ]
+    },
+    "solidBoolean": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "id",
+        "kind",
+        "operation",
+        "operands"
+      ],
+      "properties": {
+        "type": {
+          "const": "solid"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "const": "boolean"
+        },
+        "material": {
+          "type": "string",
+          "minLength": 1
+        },
+        "operation": {
+          "enum": [
+            "union",
+            "difference",
+            "intersection"
+          ]
+        },
+        "operands": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "keepOperands": {
+          "type": "boolean"
+        },
+        "cutMaterial": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tolerance": {
+          "type": "number",
+          "minimum": 1e-09,
+          "maximum": 0.001
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "enum": [
+                  "union",
+                  "intersection"
+                ]
+              }
+            }
+          },
+          "then": {
+            "not": {
+              "required": [
+                "cutMaterial"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "solid": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/solidCone"
+        },
+        {
+          "$ref": "#/$defs/solidPyramid"
+        },
+        {
+          "$ref": "#/$defs/solidFrustum"
+        },
+        {
+          "$ref": "#/$defs/solidWedge"
+        },
+        {
+          "$ref": "#/$defs/solidExtrude"
+        },
+        {
+          "$ref": "#/$defs/solidRevolve"
+        },
+        {
+          "$ref": "#/$defs/solidLoft"
+        },
+        {
+          "$ref": "#/$defs/solidSweep"
+        },
+        {
+          "$ref": "#/$defs/solidBoolean"
+        }
+      ]
     }
   }
 }

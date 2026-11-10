@@ -39,7 +39,6 @@ export interface RenderStats {
   activeLights: number
   shadowLights: number
   waterReflection: boolean
-  qualityFallback: boolean
 }
 
 function emptyStats(): RenderStats {
@@ -56,7 +55,6 @@ function emptyStats(): RenderStats {
     activeLights: 0,
     shadowLights: 0,
     waterReflection: false,
-    qualityFallback: false,
   }
 }
 

@@ -1,0 +1,239 @@
+{
+ "meta": {
+  "version": "1.0",
+  "type": "asset",
+  "name": "画架"
+ },
+ "geometry": {
+  "elements": [
+   {
+    "type": "primitive",
+    "id": "leg_front_0",
+    "shape": "box",
+    "dimensions": [
+     0.04,
+     2.32,
+     0.04
+    ],
+    "position": [
+     -0.4,
+     1.159,
+     0.2725
+    ],
+    "material": "wood",
+    "rotation": [
+     0.06,
+     0.0,
+     0.05
+    ]
+   },
+   {
+    "type": "primitive",
+    "id": "leg_front_1",
+    "shape": "box",
+    "dimensions": [
+     0.04,
+     2.32,
+     0.04
+    ],
+    "position": [
+     0.4,
+     1.159,
+     0.2725
+    ],
+    "material": "wood",
+    "rotation": [
+     0.06,
+     0.0,
+     -0.05
+    ]
+   },
+   {
+    "type": "primitive",
+    "id": "leg_back",
+    "shape": "box",
+    "dimensions": [
+     0.04,
+     2.1344,
+     0.04
+    ],
+    "position": [
+     0.0,
+     1.0662,
+     -0.0675
+    ],
+    "material": "wood",
+    "rotation": [
+     -0.26,
+     0.0,
+     0.0
+    ]
+   },
+   {
+    "type": "primitive",
+    "id": "tray",
+    "shape": "box",
+    "dimensions": [
+     0.92,
+     0.035,
+     0.1
+    ],
+    "position": [
+     0.0,
+     1.0662,
+     0.2725
+    ],
+    "material": "wood"
+   },
+   {
+    "type": "primitive",
+    "id": "canvas",
+    "shape": "box",
+    "dimensions": [
+     0.86,
+     0.98,
+     0.02
+    ],
+    "position": [
+     0.0,
+     1.6694,
+     0.2625
+    ],
+    "material": "accent",
+    "rotation": [
+     0.06,
+     0.0,
+     0.0
+    ]
+   },
+   {
+    "type": "primitive",
+    "id": "top_clamp",
+    "shape": "box",
+    "dimensions": [
+     0.1,
+     0.05,
+     0.06
+    ],
+    "position": [
+     0.0,
+     2.1334,
+     0.2525
+    ],
+    "material": "metal"
+   }
+  ]
+ },
+ "materials": {
+  "wood": {
+   "baseColor": [
+    0.42,
+    0.26,
+    0.14
+   ],
+   "roughness": 0.62,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "lightingCondition": "D65_noon"
+  },
+  "metal": {
+   "baseColor": [
+    0.16,
+    0.17,
+    0.18
+   ],
+   "roughness": 0.32,
+   "metallic": 0.8,
+   "albedo": 1.0,
+   "lightingCondition": "D65_noon"
+  },
+  "glass": {
+   "baseColor": [
+    0.72,
+    0.88,
+    0.96
+   ],
+   "roughness": 0.08,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "materialClass": "glass",
+   "transmission": 0.92,
+   "ior": 1.5,
+   "thickness": 0.012,
+   "lightingCondition": "D65_noon"
+  },
+  "stone": {
+   "baseColor": [
+    0.62,
+    0.6,
+    0.57
+   ],
+   "roughness": 0.78,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "lightingCondition": "D65_noon"
+  },
+  "fabric": {
+   "baseColor": [
+    0.46,
+    0.44,
+    0.42
+   ],
+   "roughness": 0.92,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "lightingCondition": "D65_noon"
+  },
+  "accent": {
+   "baseColor": [
+    0.42,
+    0.2,
+    0.09
+   ],
+   "roughness": 0.5,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "lightingCondition": "D65_noon"
+  },
+  "foliage": {
+   "baseColor": [
+    0.2,
+    0.34,
+    0.16
+   ],
+   "roughness": 0.86,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "lightingCondition": "D65_noon"
+  },
+  "screen": {
+   "baseColor": [
+    0.045,
+    0.048,
+    0.055
+   ],
+   "roughness": 0.16,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "emissive": [
+    0.02,
+    0.025,
+    0.03
+   ],
+   "emissiveIntensity": 1.0,
+   "lightingCondition": "D65_noon"
+  },
+  "porcelain": {
+   "baseColor": [
+    0.9,
+    0.9,
+    0.88
+   ],
+   "roughness": 0.18,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "lightingCondition": "D65_noon"
+  }
+ },
+ "behaviors": {}
+}

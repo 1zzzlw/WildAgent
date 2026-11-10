@@ -1,0 +1,525 @@
+{
+ "meta": {
+  "version": "1.0",
+  "type": "asset",
+  "name": "棕榈树"
+ },
+ "geometry": {
+  "elements": [
+   {
+    "type": "primitive",
+    "id": "trunk_0",
+    "shape": "cylinder",
+    "height": 0.8,
+    "segments": 12,
+    "position": [
+     -0.28,
+     0.4,
+     0.0
+    ],
+    "material": "wood",
+    "radius": 0.1,
+    "rotation": [
+     0.0,
+     0.0,
+     -0.0
+    ]
+   },
+   {
+    "type": "primitive",
+    "id": "trunk_1",
+    "shape": "cylinder",
+    "height": 0.8,
+    "segments": 12,
+    "position": [
+     -0.2722,
+     1.16,
+     0.0
+    ],
+    "material": "wood",
+    "radius": 0.0967,
+    "rotation": [
+     0.0,
+     0.0,
+     -0.02
+    ]
+   },
+   {
+    "type": "primitive",
+    "id": "trunk_2",
+    "shape": "cylinder",
+    "height": 0.8,
+    "segments": 12,
+    "position": [
+     -0.2489,
+     1.92,
+     0.0
+    ],
+    "material": "wood",
+    "radius": 0.0933,
+    "rotation": [
+     0.0,
+     0.0,
+     -0.04
+    ]
+   },
+   {
+    "type": "primitive",
+    "id": "trunk_3",
+    "shape": "cylinder",
+    "height": 0.8,
+    "segments": 12,
+    "position": [
+     -0.21,
+     2.68,
+     0.0
+    ],
+    "material": "wood",
+    "radius": 0.09,
+    "rotation": [
+     0.0,
+     0.0,
+     -0.06
+    ]
+   },
+   {
+    "type": "primitive",
+    "id": "trunk_4",
+    "shape": "cylinder",
+    "height": 0.8,
+    "segments": 12,
+    "position": [
+     -0.1556,
+     3.44,
+     0.0
+    ],
+    "material": "wood",
+    "radius": 0.0867,
+    "rotation": [
+     0.0,
+     0.0,
+     -0.08
+    ]
+   },
+   {
+    "type": "primitive",
+    "id": "trunk_5",
+    "shape": "cylinder",
+    "height": 0.8,
+    "segments": 12,
+    "position": [
+     -0.0856,
+     4.2,
+     0.0
+    ],
+    "material": "wood",
+    "radius": 0.0833,
+    "rotation": [
+     0.0,
+     0.0,
+     -0.1
+    ]
+   },
+   {
+    "type": "primitive",
+    "id": "frond_0",
+    "shape": "profile_sweep",
+    "profile": [
+     [
+      -0.11,
+      -0.012
+     ],
+     [
+      0.11,
+      -0.012
+     ],
+     [
+      0.11,
+      0.012
+     ],
+     [
+      -0.11,
+      0.012
+     ]
+    ],
+    "path": [
+     [
+      0.28,
+      4.5,
+      0.0
+     ],
+     [
+      0.83,
+      4.78,
+      0.0
+     ],
+     [
+      1.33,
+      4.32,
+      0.0
+     ]
+    ],
+    "closedProfile": true,
+    "caps": true,
+    "material": "foliage",
+    "position": [
+     -0.28,
+     0.0,
+     0.0
+    ]
+   },
+   {
+    "type": "primitive",
+    "id": "frond_1",
+    "shape": "profile_sweep",
+    "profile": [
+     [
+      -0.11,
+      -0.012
+     ],
+     [
+      0.11,
+      -0.012
+     ],
+     [
+      0.11,
+      0.012
+     ],
+     [
+      -0.11,
+      0.012
+     ]
+    ],
+    "path": [
+     [
+      0.28,
+      4.5,
+      0.0
+     ],
+     [
+      0.555,
+      4.78,
+      0.4763
+     ],
+     [
+      0.805,
+      4.32,
+      0.9093
+     ]
+    ],
+    "closedProfile": true,
+    "caps": true,
+    "material": "foliage",
+    "position": [
+     -0.28,
+     0.0,
+     0.0
+    ]
+   },
+   {
+    "type": "primitive",
+    "id": "frond_2",
+    "shape": "profile_sweep",
+    "profile": [
+     [
+      -0.11,
+      -0.012
+     ],
+     [
+      0.11,
+      -0.012
+     ],
+     [
+      0.11,
+      0.012
+     ],
+     [
+      -0.11,
+      0.012
+     ]
+    ],
+    "path": [
+     [
+      0.28,
+      4.5,
+      0.0
+     ],
+     [
+      0.005,
+      4.78,
+      0.4763
+     ],
+     [
+      -0.245,
+      4.32,
+      0.9093
+     ]
+    ],
+    "closedProfile": true,
+    "caps": true,
+    "material": "foliage",
+    "position": [
+     -0.28,
+     0.0,
+     0.0
+    ]
+   },
+   {
+    "type": "primitive",
+    "id": "frond_3",
+    "shape": "profile_sweep",
+    "profile": [
+     [
+      -0.11,
+      -0.012
+     ],
+     [
+      0.11,
+      -0.012
+     ],
+     [
+      0.11,
+      0.012
+     ],
+     [
+      -0.11,
+      0.012
+     ]
+    ],
+    "path": [
+     [
+      0.28,
+      4.5,
+      0.0
+     ],
+     [
+      -0.27,
+      4.78,
+      0.0
+     ],
+     [
+      -0.77,
+      4.32,
+      0.0
+     ]
+    ],
+    "closedProfile": true,
+    "caps": true,
+    "material": "foliage",
+    "position": [
+     -0.28,
+     0.0,
+     0.0
+    ]
+   },
+   {
+    "type": "primitive",
+    "id": "frond_4",
+    "shape": "profile_sweep",
+    "profile": [
+     [
+      -0.11,
+      -0.012
+     ],
+     [
+      0.11,
+      -0.012
+     ],
+     [
+      0.11,
+      0.012
+     ],
+     [
+      -0.11,
+      0.012
+     ]
+    ],
+    "path": [
+     [
+      0.28,
+      4.5,
+      0.0
+     ],
+     [
+      0.005,
+      4.78,
+      -0.4763
+     ],
+     [
+      -0.245,
+      4.32,
+      -0.9093
+     ]
+    ],
+    "closedProfile": true,
+    "caps": true,
+    "material": "foliage",
+    "position": [
+     -0.28,
+     0.0,
+     0.0
+    ]
+   },
+   {
+    "type": "primitive",
+    "id": "frond_5",
+    "shape": "profile_sweep",
+    "profile": [
+     [
+      -0.11,
+      -0.012
+     ],
+     [
+      0.11,
+      -0.012
+     ],
+     [
+      0.11,
+      0.012
+     ],
+     [
+      -0.11,
+      0.012
+     ]
+    ],
+    "path": [
+     [
+      0.28,
+      4.5,
+      0.0
+     ],
+     [
+      0.555,
+      4.78,
+      -0.4763
+     ],
+     [
+      0.805,
+      4.32,
+      -0.9093
+     ]
+    ],
+    "closedProfile": true,
+    "caps": true,
+    "material": "foliage",
+    "position": [
+     -0.28,
+     0.0,
+     0.0
+    ]
+   }
+  ]
+ },
+ "materials": {
+  "wood": {
+   "baseColor": [
+    0.42,
+    0.26,
+    0.14
+   ],
+   "roughness": 0.62,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "lightingCondition": "D65_noon"
+  },
+  "metal": {
+   "baseColor": [
+    0.16,
+    0.17,
+    0.18
+   ],
+   "roughness": 0.32,
+   "metallic": 0.8,
+   "albedo": 1.0,
+   "lightingCondition": "D65_noon"
+  },
+  "glass": {
+   "baseColor": [
+    0.72,
+    0.88,
+    0.96
+   ],
+   "roughness": 0.08,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "materialClass": "glass",
+   "transmission": 0.92,
+   "ior": 1.5,
+   "thickness": 0.012,
+   "lightingCondition": "D65_noon"
+  },
+  "stone": {
+   "baseColor": [
+    0.62,
+    0.6,
+    0.57
+   ],
+   "roughness": 0.78,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "lightingCondition": "D65_noon"
+  },
+  "fabric": {
+   "baseColor": [
+    0.46,
+    0.44,
+    0.42
+   ],
+   "roughness": 0.92,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "lightingCondition": "D65_noon"
+  },
+  "accent": {
+   "baseColor": [
+    0.42,
+    0.2,
+    0.09
+   ],
+   "roughness": 0.5,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "lightingCondition": "D65_noon"
+  },
+  "foliage": {
+   "baseColor": [
+    0.2,
+    0.34,
+    0.16
+   ],
+   "roughness": 0.86,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "lightingCondition": "D65_noon"
+  },
+  "screen": {
+   "baseColor": [
+    0.045,
+    0.048,
+    0.055
+   ],
+   "roughness": 0.16,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "emissive": [
+    0.02,
+    0.025,
+    0.03
+   ],
+   "emissiveIntensity": 1.0,
+   "lightingCondition": "D65_noon"
+  },
+  "porcelain": {
+   "baseColor": [
+    0.9,
+    0.9,
+    0.88
+   ],
+   "roughness": 0.18,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "lightingCondition": "D65_noon"
+  }
+ },
+ "behaviors": {}
+}

@@ -8,6 +8,8 @@ wild-server/storage/scenes/
 wild-server/storage/sessions/
 wild-server/storage/designs/
 wild-server/storage/assets/
+# 用户在物品栏导入的本地 WILD；内置目录 items/ 与 manifest.json 仍纳入版本控制。
+wild-server/storage/item_catalog/imported/
 wild-server/storage/geoip/*.mmdb
 wild-server/.langgraph_api/
 wild-server/rag_bg_sync_*

@@ -1,0 +1,827 @@
+{
+ "meta": {
+  "version": "1.0",
+  "type": "asset",
+  "name": "立式钢琴"
+ },
+ "geometry": {
+  "elements": [
+   {
+    "type": "primitive",
+    "id": "case",
+    "shape": "box",
+    "dimensions": [
+     1.54,
+     0.74,
+     0.69
+    ],
+    "position": [
+     -0.2235,
+     1.07,
+     -0.1
+    ],
+    "material": "wood"
+   },
+   {
+    "type": "primitive",
+    "id": "lid",
+    "shape": "box",
+    "dimensions": [
+     1.56,
+     0.03,
+     0.71
+    ],
+    "position": [
+     -0.2235,
+     1.425,
+     -0.08
+    ],
+    "material": "wood"
+   },
+   {
+    "type": "primitive",
+    "id": "keybed",
+    "shape": "box",
+    "dimensions": [
+     1.48,
+     0.09,
+     0.26
+    ],
+    "position": [
+     -0.2235,
+     0.655,
+     0.315
+    ],
+    "material": "wood"
+   },
+   {
+    "type": "primitive",
+    "id": "keys_white",
+    "shape": "box",
+    "dimensions": [
+     1.4,
+     0.016,
+     0.15
+    ],
+    "position": [
+     -0.2235,
+     0.708,
+     0.315
+    ],
+    "material": "accent"
+   },
+   {
+    "type": "primitive",
+    "id": "key_black_0",
+    "shape": "box",
+    "dimensions": [
+     0.014,
+     0.022,
+     0.09
+    ],
+    "position": [
+     -0.8835,
+     0.724,
+     0.295
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "key_black_1",
+    "shape": "box",
+    "dimensions": [
+     0.014,
+     0.022,
+     0.09
+    ],
+    "position": [
+     -0.8435,
+     0.724,
+     0.295
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "key_black_2",
+    "shape": "box",
+    "dimensions": [
+     0.014,
+     0.022,
+     0.09
+    ],
+    "position": [
+     -0.8035,
+     0.724,
+     0.295
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "key_black_3",
+    "shape": "box",
+    "dimensions": [
+     0.014,
+     0.022,
+     0.09
+    ],
+    "position": [
+     -0.7235,
+     0.724,
+     0.295
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "key_black_4",
+    "shape": "box",
+    "dimensions": [
+     0.014,
+     0.022,
+     0.09
+    ],
+    "position": [
+     -0.6835,
+     0.724,
+     0.295
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "key_black_5",
+    "shape": "box",
+    "dimensions": [
+     0.014,
+     0.022,
+     0.09
+    ],
+    "position": [
+     -0.6035,
+     0.724,
+     0.295
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "key_black_6",
+    "shape": "box",
+    "dimensions": [
+     0.014,
+     0.022,
+     0.09
+    ],
+    "position": [
+     -0.5635,
+     0.724,
+     0.295
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "key_black_7",
+    "shape": "box",
+    "dimensions": [
+     0.014,
+     0.022,
+     0.09
+    ],
+    "position": [
+     -0.5235,
+     0.724,
+     0.295
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "key_black_8",
+    "shape": "box",
+    "dimensions": [
+     0.014,
+     0.022,
+     0.09
+    ],
+    "position": [
+     -0.4435,
+     0.724,
+     0.295
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "key_black_9",
+    "shape": "box",
+    "dimensions": [
+     0.014,
+     0.022,
+     0.09
+    ],
+    "position": [
+     -0.4035,
+     0.724,
+     0.295
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "key_black_10",
+    "shape": "box",
+    "dimensions": [
+     0.014,
+     0.022,
+     0.09
+    ],
+    "position": [
+     -0.3235,
+     0.724,
+     0.295
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "key_black_11",
+    "shape": "box",
+    "dimensions": [
+     0.014,
+     0.022,
+     0.09
+    ],
+    "position": [
+     -0.2835,
+     0.724,
+     0.295
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "key_black_12",
+    "shape": "box",
+    "dimensions": [
+     0.014,
+     0.022,
+     0.09
+    ],
+    "position": [
+     -0.2435,
+     0.724,
+     0.295
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "key_black_13",
+    "shape": "box",
+    "dimensions": [
+     0.014,
+     0.022,
+     0.09
+    ],
+    "position": [
+     -0.1635,
+     0.724,
+     0.295
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "key_black_14",
+    "shape": "box",
+    "dimensions": [
+     0.014,
+     0.022,
+     0.09
+    ],
+    "position": [
+     -0.1235,
+     0.724,
+     0.295
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "key_black_15",
+    "shape": "box",
+    "dimensions": [
+     0.014,
+     0.022,
+     0.09
+    ],
+    "position": [
+     -0.0435,
+     0.724,
+     0.295
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "key_black_16",
+    "shape": "box",
+    "dimensions": [
+     0.014,
+     0.022,
+     0.09
+    ],
+    "position": [
+     -0.0035,
+     0.724,
+     0.295
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "key_black_17",
+    "shape": "box",
+    "dimensions": [
+     0.014,
+     0.022,
+     0.09
+    ],
+    "position": [
+     0.0365,
+     0.724,
+     0.295
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "key_black_18",
+    "shape": "box",
+    "dimensions": [
+     0.014,
+     0.022,
+     0.09
+    ],
+    "position": [
+     0.1165,
+     0.724,
+     0.295
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "key_black_19",
+    "shape": "box",
+    "dimensions": [
+     0.014,
+     0.022,
+     0.09
+    ],
+    "position": [
+     0.1565,
+     0.724,
+     0.295
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "key_black_20",
+    "shape": "box",
+    "dimensions": [
+     0.014,
+     0.022,
+     0.09
+    ],
+    "position": [
+     0.2365,
+     0.724,
+     0.295
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "key_black_21",
+    "shape": "box",
+    "dimensions": [
+     0.014,
+     0.022,
+     0.09
+    ],
+    "position": [
+     0.2765,
+     0.724,
+     0.295
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "key_black_22",
+    "shape": "box",
+    "dimensions": [
+     0.014,
+     0.022,
+     0.09
+    ],
+    "position": [
+     0.3165,
+     0.724,
+     0.295
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "key_black_23",
+    "shape": "box",
+    "dimensions": [
+     0.014,
+     0.022,
+     0.09
+    ],
+    "position": [
+     0.3965,
+     0.724,
+     0.295
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "key_black_24",
+    "shape": "box",
+    "dimensions": [
+     0.014,
+     0.022,
+     0.09
+    ],
+    "position": [
+     0.4365,
+     0.724,
+     0.295
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "key_black_25",
+    "shape": "box",
+    "dimensions": [
+     0.014,
+     0.022,
+     0.09
+    ],
+    "position": [
+     0.5165,
+     0.724,
+     0.295
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "key_black_26",
+    "shape": "box",
+    "dimensions": [
+     0.014,
+     0.022,
+     0.09
+    ],
+    "position": [
+     0.5565,
+     0.724,
+     0.295
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "key_black_27",
+    "shape": "box",
+    "dimensions": [
+     0.014,
+     0.022,
+     0.09
+    ],
+    "position": [
+     0.5965,
+     0.724,
+     0.295
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "key_black_28",
+    "shape": "box",
+    "dimensions": [
+     0.014,
+     0.022,
+     0.09
+    ],
+    "position": [
+     0.6765,
+     0.724,
+     0.295
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "key_black_29",
+    "shape": "box",
+    "dimensions": [
+     0.014,
+     0.022,
+     0.09
+    ],
+    "position": [
+     0.7165,
+     0.724,
+     0.295
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "key_black_30",
+    "shape": "box",
+    "dimensions": [
+     0.014,
+     0.022,
+     0.09
+    ],
+    "position": [
+     0.7965,
+     0.724,
+     0.295
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "key_black_31",
+    "shape": "box",
+    "dimensions": [
+     0.014,
+     0.022,
+     0.09
+    ],
+    "position": [
+     0.8365,
+     0.724,
+     0.295
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "key_black_32",
+    "shape": "box",
+    "dimensions": [
+     0.014,
+     0.022,
+     0.09
+    ],
+    "position": [
+     0.8765,
+     0.724,
+     0.295
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "key_black_33",
+    "shape": "box",
+    "dimensions": [
+     0.014,
+     0.022,
+     0.09
+    ],
+    "position": [
+     0.9565,
+     0.724,
+     0.295
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "key_black_34",
+    "shape": "box",
+    "dimensions": [
+     0.014,
+     0.022,
+     0.09
+    ],
+    "position": [
+     0.9965,
+     0.724,
+     0.295
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "leg_0",
+    "shape": "box",
+    "dimensions": [
+     0.1,
+     0.61,
+     0.5934
+    ],
+    "position": [
+     -0.9335,
+     0.305,
+     -0.1
+    ],
+    "material": "wood"
+   },
+   {
+    "type": "primitive",
+    "id": "leg_1",
+    "shape": "box",
+    "dimensions": [
+     0.1,
+     0.61,
+     0.5934
+    ],
+    "position": [
+     0.4865,
+     0.305,
+     -0.1
+    ],
+    "material": "wood"
+   },
+   {
+    "type": "primitive",
+    "id": "pedal_0",
+    "shape": "box",
+    "dimensions": [
+     0.05,
+     0.02,
+     0.1
+    ],
+    "position": [
+     -0.3235,
+     0.02,
+     0.165
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "pedal_1",
+    "shape": "box",
+    "dimensions": [
+     0.05,
+     0.02,
+     0.1
+    ],
+    "position": [
+     -0.2235,
+     0.02,
+     0.165
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "pedal_2",
+    "shape": "box",
+    "dimensions": [
+     0.05,
+     0.02,
+     0.1
+    ],
+    "position": [
+     -0.1235,
+     0.02,
+     0.165
+    ],
+    "material": "metal"
+   }
+  ]
+ },
+ "materials": {
+  "wood": {
+   "baseColor": [
+    0.42,
+    0.26,
+    0.14
+   ],
+   "roughness": 0.62,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "lightingCondition": "D65_noon"
+  },
+  "metal": {
+   "baseColor": [
+    0.16,
+    0.17,
+    0.18
+   ],
+   "roughness": 0.32,
+   "metallic": 0.8,
+   "albedo": 1.0,
+   "lightingCondition": "D65_noon"
+  },
+  "glass": {
+   "baseColor": [
+    0.72,
+    0.88,
+    0.96
+   ],
+   "roughness": 0.08,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "materialClass": "glass",
+   "transmission": 0.92,
+   "ior": 1.5,
+   "thickness": 0.012,
+   "lightingCondition": "D65_noon"
+  },
+  "stone": {
+   "baseColor": [
+    0.62,
+    0.6,
+    0.57
+   ],
+   "roughness": 0.78,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "lightingCondition": "D65_noon"
+  },
+  "fabric": {
+   "baseColor": [
+    0.46,
+    0.44,
+    0.42
+   ],
+   "roughness": 0.92,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "lightingCondition": "D65_noon"
+  },
+  "accent": {
+   "baseColor": [
+    0.42,
+    0.2,
+    0.09
+   ],
+   "roughness": 0.5,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "lightingCondition": "D65_noon"
+  },
+  "foliage": {
+   "baseColor": [
+    0.2,
+    0.34,
+    0.16
+   ],
+   "roughness": 0.86,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "lightingCondition": "D65_noon"
+  },
+  "screen": {
+   "baseColor": [
+    0.045,
+    0.048,
+    0.055
+   ],
+   "roughness": 0.16,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "emissive": [
+    0.02,
+    0.025,
+    0.03
+   ],
+   "emissiveIntensity": 1.0,
+   "lightingCondition": "D65_noon"
+  },
+  "porcelain": {
+   "baseColor": [
+    0.9,
+    0.9,
+    0.88
+   ],
+   "roughness": 0.18,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "lightingCondition": "D65_noon"
+  }
+ },
+ "behaviors": {}
+}

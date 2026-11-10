@@ -42,7 +42,6 @@ import { TransformControls } from 'three/examples/jsm/controls/TransformControls
 import { Sky } from 'three/examples/jsm/objects/Sky.js'
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js'
-import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js'
 import {
   configureKtx2Rendering,
   configureMaterialRendering,
@@ -109,10 +108,11 @@ import {
 import {
   getRenderedElementIds,
   resolveSelectableId,
-  selectionAfterClick,
+  selectionAfterClickMany,
   type SelectionMode,
 } from '../../wild/componentSelection'
 import { createGeometryTranslationOperations, getGeometryTranslationIds } from '../../wild/componentDrag'
+import { expandItemSelection } from '../../wild/itemGroups'
 import { createPatch } from '../../wild/scenePatch'
 import { createBlockPlacement, type BlockPlacementDraft } from '../../wild/blockPlacement'
 import { BlockPlacementPreview } from '../../renderer/blockPlacementPreview'
@@ -173,20 +173,17 @@ let directionalLight: THREE.DirectionalLight | null = null
 let shadowGround: THREE.Mesh<THREE.PlaneGeometry, THREE.ShadowMaterial> | null = null
 let presentationGround: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial> | null = null
 let builtInEnvironment: THREE.Group | null = null
+let builtInEnvironmentSignature = ''
 let postProcessing: WorldPostProcessingRuntime | null = null
 const fixtureLighting = new FixtureLightingRuntime()
 let waterReflection: WaterReflectionRuntime | null = null
 let renderSubmitMs = 0
-let slowFrameSeconds = 0
-let qualityRestoreTimer: ReturnType<typeof setTimeout> | null = null
 let continuousFrame = false
 // 后期资源的构造/尺寸/采样数/释放由引擎运行时持有。
 let composer: EffectComposer | null = null
 let bloomPass: UnrealBloomPass | null = null
-let fxaaPass: ShaderPass | null = null
-// 合成链路 MSAA 采样数：默认 4x；帧率降级时减半——像素比已经降了，几何锯齿不该完全失守。
+// 合成链路始终保持用户所选画质，不随交互帧率降低采样数。
 const DEFAULT_MSAA_SAMPLES = 4
-const DEGRADED_MSAA_SAMPLES = 2
 const sunDirection = new THREE.Vector3()
 // 主光（定向光 + 阴影相机）实际使用的方向。与 sunDirection 的区别只在夜晚：
 // night 档 sunPhi = 108° > 90° ⇒ sunDirection.y < 0（太阳落到地平线之下），
@@ -233,7 +230,6 @@ let unsubscribeWorldRendering: (() => void) | null = null
 let unsubscribeWorldEffects: (() => void) | null = null
 let effectClock = 0
 let fpsSmoothed = 60
-let adaptiveQualityApplied = false
 let lastShadowDirtyTime = 0
 const SHADOW_DIRTY_THROTTLE_MS = 120
 // 拖动结束时补一次阴影刷新用的尾沿定时器。
@@ -547,7 +543,6 @@ function initThreeJS() {
   })
   composer = postProcessing.composer
   bloomPass = postProcessing.bloom
-  fxaaPass = postProcessing.fxaa
 
   controls = new OrbitControls(camera, renderer.domElement)
   controls.target.set(0, 1.5, 0)
@@ -739,38 +734,10 @@ function renderFrame() {
     fpsSmoothed = fpsSmoothed * 0.9 + (1 / delta) * 0.1
     fps.value = Math.round(fpsSmoothed)
   }
-  // 降级只服务于正在进行的交互，静止画面恢复用户选择的质量。
-  const interacting = characterAnimating || controlsAnimating || transformControls?.dragging
-    || (renderPanel.autoRotate && !roaming.active)
-  if (continuousFrame && delta > 0.0005) {
-    slowFrameSeconds = fpsSmoothed < 30 ? slowFrameSeconds + Math.min(delta, 1) : 0
-  }
-  if (interacting && qualityRestoreTimer !== null) {
-    clearTimeout(qualityRestoreTimer)
-    qualityRestoreTimer = null
-  }
-  if (interacting && !adaptiveQualityApplied && slowFrameSeconds > 2) {
-    adaptiveQualityApplied = true
-    const ratio = renderer?.getPixelRatio() ?? 1
-    if (ratio > 1) renderer?.setPixelRatio(Math.max(1, ratio * 0.66))
-    postProcessing?.setPixelRatio(renderer?.getPixelRatio() ?? 1)
-    postProcessing?.setAmbientOcclusion('off')
-    if (waterReflection) waterReflection.enabled = false
-    if (bloomPass) bloomPass.enabled = false
-    if (fxaaPass) fxaaPass.enabled = true
-    postProcessing?.setMsaaSamples(DEGRADED_MSAA_SAMPLES)
-    handleResize()
-  }
-  if (!interacting && adaptiveQualityApplied && qualityRestoreTimer === null) {
-    qualityRestoreTimer = setTimeout(() => {
-      qualityRestoreTimer = null
-      applyQualityPreset()
-    }, 600)
-  }
   if (needsRender && renderer && scene && camera) {
     const renderStarted = performance.now()
     renderer.info.reset()
-    if (fixtureLighting.update(camera, adaptiveQualityApplied ? 'low' : qualityLevel.value)) renderer.shadowMap.needsUpdate = true
+    if (fixtureLighting.update(camera, qualityLevel.value)) renderer.shadowMap.needsUpdate = true
     waterReflection?.update(camera)
     if (composer) composer.render()
     else renderer.render(scene, camera)
@@ -1049,10 +1016,9 @@ async function commitPlacement() {
   hasFramedScene = true
   placementPreview?.hide()
   try {
-    if (await sceneStore.applyPatch(createPatch(sceneStore.document.revision, [draft.operation], 'user', false, `添加${request.label}`))) {
-      const item = draft.operation.op === 'add_element' ? draft.operation.element : draft.operation.component
+    if (await sceneStore.applyPatch(createPatch(sceneStore.document.revision, draft.operations, 'user', false, `添加${request.label}`))) {
       placement.cancel()
-      selectionStore.select(item.id)
+      selectionStore.setSelection(draft.selectionIds)
     } else {
       ElMessage.error('构件添加失败，请重试')
     }
@@ -1122,12 +1088,15 @@ function handlePointerUp(event: PointerEvent) {
 
   const mapping = sceneStore.reconstructed?.componentMapping
   const selectableId = mapping ? resolveSelectableId(elementId, mapping) : elementId
+  const selectableIds = sceneStore.document
+    ? expandItemSelection(sceneStore.document.blueprint, [selectableId])
+    : [selectableId]
   const mode: SelectionMode = event.ctrlKey || event.metaKey
     ? 'toggle'
     : event.shiftKey
       ? 'add'
       : 'replace'
-  selectionStore.setSelection(selectionAfterClick(selectionStore.selectedIds, selectableId, mode))
+  selectionStore.setSelection(selectionAfterClickMany(selectionStore.selectedIds, selectableIds, mode))
   lastPointerSelectionId = selectableId
   // 收起侧栏或全屏时保持画布位置，避免双击第二下因视口缩放而落空。
   if (uiStore.panelOpen && !uiStore.viewportFocused) uiStore.openPanel('properties')
@@ -1445,6 +1414,7 @@ function applyEnvironmentAppearance() {
 }
 
 function clearBuiltInEnvironment() {
+  builtInEnvironmentSignature = ''
   if (!builtInEnvironment) return
   const geometries = new Set<THREE.BufferGeometry>()
   const materials = new Set<THREE.Material>()
@@ -1565,12 +1535,16 @@ function addDesertRocks(group: THREE.Group, radius: number) {
 
 function rebuildBuiltInEnvironment() {
   if (!builtInEnvironment) return
-  clearBuiltInEnvironment()
   builtInEnvironment.position.set(sceneBoundsCenter.x, environmentGroundY, sceneBoundsCenter.z)
   const presetId = environmentPresetId.value
   builtInEnvironment.visible = presetId !== 'minimal'
+  markNeedsRender()
+  // 环境几何只由预设和场景尺度决定；局部编辑和整体平移复用已有 GPU 资源。
+  const signature = `${presetId}:${lightingExtent}`
+  if (signature === builtInEnvironmentSignature) return
+  clearBuiltInEnvironment()
+  builtInEnvironmentSignature = signature
   if (presetId === 'minimal') {
-    markNeedsRender()
     return
   }
 
@@ -1588,7 +1562,6 @@ function rebuildBuiltInEnvironment() {
     addDistantHills(builtInEnvironment, radius, [0x595534, 0x6a5d35, 0x766440], 3)
     addSparseTrees(builtInEnvironment, radius, [0x8b3c20, 0xaa5524, 0xc4772d, 0x71321f], 5)
   }
-  markNeedsRender()
 }
 
 
@@ -1634,7 +1607,7 @@ function applyTimePreset(forceEnvironment = false) {
   weatherVisuals?.setEnvironment(worldEnvironment, weatherEnabled)
   applyEnvironmentAppearance()
   if (bloomPass) {
-    bloomPass.enabled = !adaptiveQualityApplied && QUALITY_PRESETS[qualityLevel.value].bloom && timeOfDay.value === 'night'
+    bloomPass.enabled = QUALITY_PRESETS[qualityLevel.value].bloom && timeOfDay.value === 'night'
   }
   if (shadowGround) {
     const timeShadowScale = timeOfDay.value === 'night' ? 0.36 : timeOfDay.value === 'sunset' ? 0.88 : 1
@@ -1796,11 +1769,6 @@ function applyViewMode() {
 
 function applyQualityPreset() {
   if (!renderer) return
-  if (qualityRestoreTimer !== null) clearTimeout(qualityRestoreTimer)
-  qualityRestoreTimer = null
-  // 手动切档会重置自适应降级标记，允许回到更高质量档。
-  adaptiveQualityApplied = false
-  slowFrameSeconds = 0
   updateWorldRenderingState({
     surfaceQuality: qualityLevel.value,
     weatherQuality: worldLookRuntime.getActiveProfile().quality?.weatherTier || qualityLevel.value,
@@ -1926,7 +1894,6 @@ function publishRenderStats() {
     activeLights: fixtureLighting.activeCount,
     shadowLights: fixtureLighting.shadowCount,
     waterReflection: waterReflection?.active ?? false,
-    qualityFallback: adaptiveQualityApplied,
   }
 }
 
@@ -2070,7 +2037,7 @@ function takeScreenshot() {
   if (!renderer || !scene || !camera) return
   // preserveDrawingBuffer=false：合成器当场再渲一帧，否则 toDataURL 读到空缓冲。
   renderer.info.reset()
-  if (fixtureLighting.update(camera, adaptiveQualityApplied ? 'low' : qualityLevel.value)) renderer.shadowMap.needsUpdate = true
+  if (fixtureLighting.update(camera, qualityLevel.value)) renderer.shadowMap.needsUpdate = true
   waterReflection?.update(camera, true)
   if (composer) composer.render()
   else renderer.render(scene, camera)
@@ -2120,8 +2087,6 @@ function cleanup() {
   renderLoopActive = false
   if (animationFrameId !== null) cancelAnimationFrame(animationFrameId)
   animationFrameId = null
-  if (qualityRestoreTimer !== null) clearTimeout(qualityRestoreTimer)
-  qualityRestoreTimer = null
   if (trailingShadowDirtyTimer !== null) {
     clearTimeout(trailingShadowDirtyTimer)
     trailingShadowDirtyTimer = null

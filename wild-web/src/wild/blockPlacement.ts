@@ -1,15 +1,28 @@
 import type { ComponentSpec, GeometryElement as CoreElement, RoofParams, WallParams, Vec3 } from 'wild-core/types'
-import type { Blueprint, GeometryElement } from '../types/blueprint'
-import type { AddElementOperation, AddComponentOperation } from '../types/scenePatch'
+import type { Blueprint, GeometryElement, MaterialDef, PBRTextureSetAsset } from '../types/blueprint'
+import type { AddElementOperation, AddComponentOperation, SceneOperation } from '../types/scenePatch'
 import { createComponentTranslationChanges } from './componentDrag'
+import { getRecipeDefaults } from 'wild-core/compiler'
 
 export type BlockPlacementChoice =
   | { kind: 'element'; label: string; defaults: Partial<GeometryElement> }
   | { kind: 'component'; label: string; type: ComponentSpec['type']; fixtureType?: 'bulb' | 'table_lamp' }
+  /** 物品库条目：一次放下多个几何元素及其材质。物品不是新的引擎类型。 */
+  | { kind: 'item'; label: string; asset: ItemPlacementAsset }
+
+export interface ItemPlacementAsset {
+  itemId: string
+  parts: GeometryElement[]
+  materials: Record<string, MaterialDef>
+  assets: Record<string, PBRTextureSetAsset>
+}
 
 export type BlockPlacementRequest = BlockPlacementChoice & { id: string }
 export interface BlockPlacementDraft {
-  operation: AddElementOperation | AddComponentOperation
+  /** 提交用：一次放置产出的全部操作（物品会有多条 add_element）。 */
+  operations: SceneOperation[]
+  /** 放置完成后应作为一个整体选中的源元素。 */
+  selectionIds: string[]
   /** 蓝图坐标下的预览平移锚点，预览与提交共用同一份参数。 */
   anchor: Vec3
   hostId?: string
@@ -22,6 +35,14 @@ export function createBlockPlacement(
   hostId?: string,
 ): BlockPlacementDraft {
   const host = blueprint.geometry.elements.find(item => item.id === hostId)
+  if (request.kind === 'item') {
+    const item = instantiateItem(request, blueprint, point)
+    return {
+      operations: item.operations,
+      selectionIds: item.elementOperations.map(operation => operation.element.id),
+      anchor: point,
+    }
+  }
   if (request.kind === 'element') {
     const element = JSON.parse(JSON.stringify({ ...request.defaults, id: request.id })) as CoreElement
     if (element.type === 'primitive' && element.label) element.label.text = blueprint.meta.name
@@ -31,7 +52,8 @@ export function createBlockPlacement(
       : [0, 0, 0]
     const delta = point.map((value, i) => value - origin[i]!) as Vec3
     const placed = { ...element, ...createComponentTranslationChanges(element, delta, [element]) }
-    return { operation: { op: 'add_element', element: placed }, anchor: point }
+    const operation: AddElementOperation = { op: 'add_element', element: placed }
+    return { operations: [operation], selectionIds: [element.id], anchor: point }
   }
   const component = createDefaultComponent(request.type, request.fixtureType, host)
   component.id = request.id
@@ -49,13 +71,171 @@ export function createBlockPlacement(
       0,
     ]
     const anchor: Vec3 = [wall.from[0] + component.from[0] * dx / length, component.from[1], wall.from[2] + component.from[0] * dz / length]
-    return { operation: { op: 'add_component', component }, anchor, hostId: wall.id }
+    const operation: AddComponentOperation = { op: 'add_component', component }
+    return { operations: [operation], selectionIds: [component.id], anchor, hostId: wall.id }
   }
   if (component.type === 'cornice') {
-    return { operation: { op: 'add_component', component }, anchor: [0, 0, 0], hostId: component.parentRoof }
+    const operation: AddComponentOperation = { op: 'add_component', component }
+    return { operations: [operation], selectionIds: [component.id], anchor: [0, 0, 0], hostId: component.parentRoof }
   }
   Object.assign(component, createComponentTranslationChanges(component, point, blueprint.geometry.elements))
-  return { operation: { op: 'add_component', component }, anchor: point }
+  const operation: AddComponentOperation = { op: 'add_component', component }
+  return { operations: [operation], selectionIds: [component.id], anchor: point }
+}
+
+function instantiateItem(
+  request: Extract<BlockPlacementRequest, { kind: 'item' }>,
+  blueprint: Blueprint,
+  point: Vec3,
+): { operations: SceneOperation[]; elementOperations: AddElementOperation[] } {
+  if (!request.asset.parts.length) throw new Error('该物品没有几何')
+
+  const idMap = new Map<string, string>()
+  request.asset.parts.forEach((part, index) => {
+    const sourceId = typeof part.id === 'string' && part.id ? part.id : `part_${index}`
+    if (idMap.has(sourceId)) throw new Error(`物品包含重复零件 id: ${sourceId}`)
+    idMap.set(sourceId, `${request.id}_${sourceId}`)
+  })
+
+  const usedMaterials = new Set<string>()
+  request.asset.parts.forEach(part => collectMaterialReferences(part as Record<string, unknown>, usedMaterials))
+  const usedAssets = new Set([...usedMaterials].flatMap(name => {
+    const textureSet = request.asset.materials[name]?.textureSet
+    return textureSet ? [textureSet] : []
+  }))
+  const materialNames = new Map<string, string>()
+  const assetNames = new Map<string, string>()
+  const assetOperations: SceneOperation[] = []
+  for (const [name, asset] of Object.entries(request.asset.assets)) {
+    if (!usedAssets.has(name)) continue
+    const baseName = `item_${safeToken(request.asset.itemId)}_${safeToken(name)}`
+    const baseCopy = { ...clone(asset), assetId: baseName }
+    const existing = blueprint.assets?.[baseName]
+    const targetName = !existing || sameJson(existing, baseCopy)
+      ? baseName
+      : `${baseName}_${safeToken(request.id)}`
+    assetNames.set(name, targetName)
+    if (!blueprint.assets?.[targetName]) {
+      assetOperations.push({
+        op: 'upsert_asset',
+        asset_id: targetName,
+        asset: { ...clone(asset), assetId: targetName },
+      })
+    }
+  }
+  const materialOperations: SceneOperation[] = []
+  for (const [name, material] of Object.entries(request.asset.materials)) {
+    if (!usedMaterials.has(name)) continue
+    const baseName = `item_${safeToken(request.asset.itemId)}_${safeToken(name)}`
+    const materialCopy = clone(material)
+    if (materialCopy.textureSet) materialCopy.textureSet = assetNames.get(materialCopy.textureSet) || materialCopy.textureSet
+    const existing = blueprint.materials?.[baseName]
+    const targetName = !existing || sameJson(existing, materialCopy)
+      ? baseName
+      : `${baseName}_${safeToken(request.id)}`
+    materialNames.set(name, targetName)
+    if (!blueprint.materials?.[targetName]) {
+      materialOperations.push({ op: 'upsert_material', name: targetName, material: materialCopy })
+    }
+  }
+
+  const elementOperations: AddElementOperation[] = request.asset.parts.map(part => {
+    const element = rewriteItemPart(clone(part), idMap, materialNames, point)
+    return { op: 'add_element', element }
+  })
+  const elementIds = elementOperations.map(operation => operation.element.id)
+  const groups = clone(blueprint.editor?.groups || {})
+  groups[request.id] = {
+    name: request.label,
+    kind: 'item',
+    sourceItemId: request.asset.itemId,
+    elements: elementIds,
+  }
+  return {
+    operations: [
+      ...assetOperations,
+      ...materialOperations,
+      ...elementOperations,
+      { op: 'set_editor_meta', changes: { groups } },
+    ],
+    elementOperations,
+  }
+}
+
+function collectMaterialReferences(value: Record<string, unknown>, output: Set<string>): void {
+  for (const [key, child] of Object.entries(value)) {
+    if ((key === 'material' || key.endsWith('Material')) && typeof child === 'string') {
+      output.add(child)
+    } else if (child && typeof child === 'object' && !Array.isArray(child)) {
+      collectMaterialReferences(child as Record<string, unknown>, output)
+    }
+  }
+}
+
+function rewriteItemPart(
+  part: GeometryElement,
+  ids: ReadonlyMap<string, string>,
+  materials: ReadonlyMap<string, string>,
+  offset: Vec3,
+): GeometryElement {
+  const sourceId = part.id
+  part.id = ids.get(sourceId) || sourceId
+  rewriteReferences(part as Record<string, unknown>, ids, materials)
+  const positioned = part as GeometryElement & { position?: Vec3; path?: Vec3[] }
+  if (isVec3(positioned.position)) {
+    positioned.position = add(positioned.position, offset)
+  } else if (Array.isArray(positioned.path) && positioned.path.every(isVec3)) {
+    positioned.path = positioned.path.map(point => add(point, offset))
+  }
+  return positioned
+}
+
+const REFERENCE_FIELDS = new Set([
+  'parentWall', 'parentFloor', 'parentRoof', 'parent', 'target',
+])
+
+function rewriteReferences(
+  value: Record<string, unknown>,
+  ids: ReadonlyMap<string, string>,
+  materials: ReadonlyMap<string, string>,
+): void {
+  for (const [key, child] of Object.entries(value)) {
+    if ((key === 'material' || key.endsWith('Material')) && typeof child === 'string') {
+      value[key] = materials.get(child) || child
+      continue
+    }
+    if (key === 'operands' && Array.isArray(child)) {
+      value[key] = child.map(id => typeof id === 'string' ? ids.get(id) || id : id)
+      continue
+    }
+    if (REFERENCE_FIELDS.has(key) && typeof child === 'string' && ids.has(child)) {
+      value[key] = ids.get(child)!
+      continue
+    }
+    if (child && typeof child === 'object' && !Array.isArray(child)) {
+      rewriteReferences(child as Record<string, unknown>, ids, materials)
+    }
+  }
+}
+
+function safeToken(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9_-]+/g, '_').replace(/^_+|_+$/g, '') || 'item'
+}
+
+function sameJson(left: unknown, right: unknown): boolean {
+  return JSON.stringify(left) === JSON.stringify(right)
+}
+
+function clone<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T
+}
+
+function isVec3(value: unknown): value is Vec3 {
+  return Array.isArray(value) && value.length === 3 && value.every(Number.isFinite)
+}
+
+function add(left: Vec3, right: Vec3): Vec3 {
+  return [left[0] + right[0], left[1] + right[1], left[2] + right[2]]
 }
 
 function createDefaultComponent(
@@ -63,6 +243,13 @@ function createDefaultComponent(
   fixtureType: 'bulb' | 'table_lamp' | undefined,
   host: GeometryElement | undefined,
 ): ComponentSpec {
+  // 配方构件：初始字段全部来自数据（params.default + defaults）。
+  // 这条分支必须**在**下面那张逐个 type 的 switch 之前 —— 它让「新增构件」
+  // 不再需要往本文件里加分支。
+  const recipeDefaults = getRecipeDefaults(type)
+  if (recipeDefaults) {
+    return { ...recipeDefaults, type, id: 'placement' } as unknown as ComponentSpec
+  }
   if (type === 'fan') return { type, id: 'placement', position: [0, 2.6, 0], controlPosition: [0.9, 1.1, 0], radius: 0.65, bladeCount: 4, drop: 0.25, rpm: 180 }
   if (type === 'elevator') return { type, id: 'placement', position: [0, 0, 0], dimensions: { width: 1.8, depth: 1.8, height: 2.5 }, floorHeight: 3.3, floorCount: 2 }
   if (type === 'light') {

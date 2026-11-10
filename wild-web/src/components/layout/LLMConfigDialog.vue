@@ -81,7 +81,7 @@
                 :disabled="mimoSelected"
               />
               <div class="config-hint">
-                <template v-if="mimoSelected">MiMo 不支持此 Token 预算；图节点由“思考”开关控制，plan 构件条目按粒度控制。</template>
+                <template v-if="mimoSelected">MiMo 不支持此 Token 预算；思考默认关闭，由“思考”开关控制，低粒度构件始终关闭。</template>
                 <template v-else>Qwen/部分 Kimi 使用 Token 预算；支持的 DeepSeek、Kimi 接口映射为推理强度。其他模型可能只支持开关或不支持控制；0 使用供应商默认值。</template>
               </div>
             </div>

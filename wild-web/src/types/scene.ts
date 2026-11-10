@@ -73,6 +73,8 @@ export interface ReconstructedEntity {
  * 字段名与 wild-core/src/primitive/types.ts 的 MeshData 保持一致
  */
 export interface MeshData {
+  /** Worker 预计算的渲染复用键，仅属于本次重建结果，不写入蓝图。 */
+  renderSignature?: string
   id?: string
   elementId?: string
   geometry: Float32Array

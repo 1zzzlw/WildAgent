@@ -16,7 +16,7 @@
  * 这是整个编辑器最核心的 Store，所有场景修改都通过这里。
  */
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, shallowRef, computed } from 'vue'
 import type { SceneDocument, ReconstructedEntity } from '../types/scene'
 import type { Blueprint } from '../types/blueprint'
 import type { ScenePatch, ValidationIssue } from '../types/scenePatch'
@@ -39,7 +39,8 @@ function compactSceneName(name: string): string {
 export const useSceneStore = defineStore('scene', () => {
   // 当前编辑的场景文档
   const document = ref<SceneDocument | null>(null)
-  const reconstructed = ref<ReconstructedEntity | null>(null)
+  // 重建结果整体替换；几何数组和材质参数不参与深层响应式编辑。
+  const reconstructed = shallowRef<ReconstructedEntity | null>(null)
   const validationIssues = ref<ValidationIssue[]>([])
   const isReconstructing = ref(false)
   let reconstructionRequest = 0

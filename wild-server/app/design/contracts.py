@@ -191,6 +191,7 @@ class ResolvedMaterialRole(ContractModel):
     materialId: str = Field(min_length=1, max_length=80)
     assetId: str | None = Field(default=None, max_length=200)
     proceduralPresetId: str | None = Field(default=None, max_length=120)
+    surfacePresetId: str | None = Field(default=None, max_length=120)
     material: dict[str, Any]
 
 

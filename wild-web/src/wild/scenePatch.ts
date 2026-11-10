@@ -21,6 +21,7 @@ import type { ScenePatch, SceneOperation, RemoveElementOperation, RemoveComponen
 import type { PhysicsData } from 'wild-core/types'
 import { deepClone } from '../utils/common'
 import { buildGeometryRelationIndex, collectGeometryDependents } from 'wild-core/relationships'
+import { expandItemSelection } from './itemGroups'
 
 export function createGeometryRemovalOperations(
   blueprint: Blueprint,
@@ -28,7 +29,7 @@ export function createGeometryRemovalOperations(
 ): Array<RemoveElementOperation | RemoveComponentOperation> {
   const elementIds = new Set(blueprint.geometry.elements.map(item => item.id))
   const componentIds = new Set(blueprint.geometry.components?.map(item => item.id))
-  return [...new Set(selectedIds)].flatMap((id): Array<RemoveElementOperation | RemoveComponentOperation> => {
+  return [...new Set(expandItemSelection(blueprint, selectedIds))].flatMap((id): Array<RemoveElementOperation | RemoveComponentOperation> => {
     if (elementIds.has(id)) return [{ op: 'remove_element', id }]
     if (componentIds.has(id)) return [{ op: 'remove_component', id }]
     return []
@@ -49,8 +50,9 @@ function removeGeometry(blueprint: Blueprint, id: string) {
   if (physics?.constraints) {
     physics.constraints = physics.constraints.filter(constraint => !idsToRemove.has(constraint.target))
   }
-  for (const group of Object.values(blueprint.editor?.groups || {})) {
+  for (const [groupId, group] of Object.entries(blueprint.editor?.groups || {})) {
     group.elements = group.elements.filter(elementId => !idsToRemove.has(elementId))
+    if (group.elements.length === 0 && blueprint.editor?.groups) delete blueprint.editor.groups[groupId]
   }
 }
 

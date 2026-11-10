@@ -1,0 +1,2724 @@
+{
+ "version": "1.0",
+ "generator": "scripts/item_catalog/build.py",
+ "count": 118,
+ "items": [
+  {
+   "id": "ac_outdoor",
+   "name": "空调外机",
+   "category": "appliance",
+   "tags": [
+    "空调",
+    "外机",
+    "ac"
+   ],
+   "footprint": [
+    1.06,
+    1.0,
+    1.084
+   ],
+   "referenceSize": [
+    1.06,
+    0.95,
+    1.06
+   ],
+   "parts": 6,
+   "file": "items/ac_outdoor.wild",
+   "sourceItem": "ac-block"
+  },
+  {
+   "id": "ac_wall",
+   "name": "壁挂空调",
+   "category": "appliance",
+   "tags": [
+    "空调",
+    "挂机",
+    "ac"
+   ],
+   "footprint": [
+    1.56,
+    0.303,
+    0.425
+   ],
+   "referenceSize": [
+    1.56,
+    0.6,
+    0.41
+   ],
+   "parts": 4,
+   "file": "items/ac_wall.wild",
+   "sourceItem": "air-conditioning"
+  },
+  {
+   "id": "alarm_keypad",
+   "name": "报警键盘",
+   "category": "appliance",
+   "tags": [
+    "报警",
+    "键盘",
+    "alarm"
+   ],
+   "footprint": [
+    0.18,
+    0.13,
+    0.034
+   ],
+   "referenceSize": [
+    0.18,
+    0.13,
+    0.03
+   ],
+   "parts": 14,
+   "file": "items/alarm_keypad.wild",
+   "sourceItem": "alarm-keypad"
+  },
+  {
+   "id": "armchair",
+   "name": "单人扶手椅",
+   "category": "furniture",
+   "tags": [
+    "扶手椅",
+    "休闲椅",
+    "客厅",
+    "armchair"
+   ],
+   "footprint": [
+    0.86,
+    0.86,
+    0.88
+   ],
+   "referenceSize": [
+    0.86,
+    0.86,
+    0.88
+   ],
+   "parts": 10,
+   "file": "items/armchair.wild",
+   "sourceItem": "livingroom-chair"
+  },
+  {
+   "id": "ball",
+   "name": "球",
+   "category": "outdoor",
+   "tags": [
+    "球",
+    "体育",
+    "ball"
+   ],
+   "footprint": [
+    0.24,
+    0.24,
+    0.24
+   ],
+   "referenceSize": [
+    0.24,
+    0.24,
+    0.24
+   ],
+   "parts": 1,
+   "file": "items/ball.wild",
+   "sourceItem": "ball"
+  },
+  {
+   "id": "barbell_bar",
+   "name": "杠铃",
+   "category": "outdoor",
+   "tags": [
+    "杠铃",
+    "健身",
+    "barbell"
+   ],
+   "footprint": [
+    1.72,
+    0.35,
+    0.35
+   ],
+   "referenceSize": [
+    1.72,
+    0.38,
+    0.38
+   ],
+   "parts": 7,
+   "file": "items/barbell_bar.wild",
+   "sourceItem": "barbell"
+  },
+  {
+   "id": "barbell_rack",
+   "name": "杠铃架",
+   "category": "outdoor",
+   "tags": [
+    "杠铃架",
+    "健身",
+    "rack"
+   ],
+   "footprint": [
+    1.22,
+    1.22,
+    1.514
+   ],
+   "referenceSize": [
+    1.34,
+    1.22,
+    1.72
+   ],
+   "parts": 9,
+   "file": "items/barbell_rack.wild",
+   "sourceItem": "barbell-stand"
+  },
+  {
+   "id": "basketball_hoop",
+   "name": "篮球架",
+   "category": "outdoor",
+   "tags": [
+    "篮球架",
+    "体育",
+    "hoop"
+   ],
+   "footprint": [
+    1.1,
+    1.8,
+    0.946
+   ],
+   "referenceSize": [
+    1.4,
+    1.78,
+    0.56
+   ],
+   "parts": 7,
+   "file": "items/basketball_hoop.wild",
+   "sourceItem": "basket-hoop"
+  },
+  {
+   "id": "bathroom_sink",
+   "name": "洗手台",
+   "category": "bathroom",
+   "tags": [
+    "洗手台",
+    "台盆",
+    "sink"
+   ],
+   "footprint": [
+    1.85,
+    1.17,
+    0.67
+   ],
+   "referenceSize": [
+    1.83,
+    0.97,
+    0.63
+   ],
+   "parts": 15,
+   "file": "items/bathroom_sink.wild",
+   "sourceItem": "bathroom-sink"
+  },
+  {
+   "id": "bathtub",
+   "name": "浴缸",
+   "category": "bathroom",
+   "tags": [
+    "浴缸",
+    "泡澡",
+    "bathtub"
+   ],
+   "footprint": [
+    2.36,
+    0.94,
+    1.13
+   ],
+   "referenceSize": [
+    2.34,
+    0.79,
+    1.11
+   ],
+   "parts": 9,
+   "file": "items/bathtub.wild",
+   "sourceItem": "bathtub"
+  },
+  {
+   "id": "bench",
+   "name": "长凳",
+   "category": "furniture",
+   "tags": [
+    "长凳",
+    "餐椅",
+    "bench"
+   ],
+   "footprint": [
+    1.8,
+    0.45,
+    0.404
+   ],
+   "referenceSize": [
+    1.8,
+    0.45,
+    0.42
+   ],
+   "parts": 8,
+   "file": "items/bench.wild",
+   "sourceItem": "bench"
+  },
+  {
+   "id": "bistro_table",
+   "name": "圆餐桌",
+   "category": "furniture",
+   "tags": [
+    "圆桌",
+    "餐桌",
+    "round"
+   ],
+   "footprint": [
+    1.1,
+    0.741,
+    1.1
+   ],
+   "referenceSize": [
+    1.1,
+    0.74,
+    1.1
+   ],
+   "parts": 3,
+   "file": "items/bistro_table.wild"
+  },
+  {
+   "id": "books_stack",
+   "name": "一摞书",
+   "category": "decor",
+   "tags": [
+    "书",
+    "陈设",
+    "books"
+   ],
+   "footprint": [
+    0.206,
+    0.179,
+    0.174
+   ],
+   "referenceSize": [
+    0.22,
+    0.22,
+    0.18
+   ],
+   "parts": 5,
+   "file": "items/books_stack.wild",
+   "sourceItem": "books"
+  },
+  {
+   "id": "bookshelf",
+   "name": "书架",
+   "category": "furniture",
+   "tags": [
+    "书架",
+    "储物",
+    "bookshelf"
+   ],
+   "footprint": [
+    0.93,
+    1.99,
+    0.33
+   ],
+   "referenceSize": [
+    0.93,
+    1.99,
+    0.33
+   ],
+   "parts": 9,
+   "file": "items/bookshelf.wild",
+   "sourceItem": "bookshelf"
+  },
+  {
+   "id": "bunk_bed",
+   "name": "上下铺",
+   "category": "furniture",
+   "tags": [
+    "床",
+    "上下铺",
+    "bunk"
+   ],
+   "footprint": [
+    1.0,
+    1.55,
+    2.0
+   ],
+   "referenceSize": [
+    1.0,
+    1.55,
+    2.0
+   ],
+   "parts": 16,
+   "file": "items/bunk_bed.wild",
+   "sourceItem": "bunkbed"
+  },
+  {
+   "id": "bush",
+   "name": "灌木丛",
+   "category": "outdoor",
+   "tags": [
+    "灌木",
+    "绿植",
+    "bush"
+   ],
+   "footprint": [
+    3.15,
+    1.04,
+    1.3
+   ],
+   "referenceSize": [
+    3.0,
+    1.04,
+    1.01
+   ],
+   "parts": 5,
+   "file": "items/bush.wild",
+   "sourceItem": "bush"
+  },
+  {
+   "id": "cactus",
+   "name": "仙人掌",
+   "category": "decor",
+   "tags": [
+    "植物",
+    "仙人掌",
+    "cactus"
+   ],
+   "footprint": [
+    0.236,
+    0.38,
+    0.2
+   ],
+   "referenceSize": [
+    0.34,
+    0.39,
+    0.27
+   ],
+   "parts": 4,
+   "file": "items/cactus.wild",
+   "sourceItem": "cactus"
+  },
+  {
+   "id": "car_hatchback",
+   "name": "两厢车",
+   "category": "outdoor",
+   "tags": [
+    "汽车",
+    "两厢",
+    "car"
+   ],
+   "footprint": [
+    1.97,
+    1.4,
+    4.15
+   ],
+   "referenceSize": [
+    4.09,
+    1.4,
+    1.89
+   ],
+   "parts": 11,
+   "file": "items/car_hatchback.wild",
+   "sourceItem": "1967-chevrolet-camaro-moa24wsf"
+  },
+  {
+   "id": "car_sedan",
+   "name": "轿车",
+   "category": "outdoor",
+   "tags": [
+    "汽车",
+    "轿车",
+    "car"
+   ],
+   "footprint": [
+    2.06,
+    1.62,
+    4.82
+   ],
+   "referenceSize": [
+    4.76,
+    1.52,
+    1.98
+   ],
+   "parts": 11,
+   "file": "items/car_sedan.wild",
+   "sourceItem": "tesla"
+  },
+  {
+   "id": "car_toy",
+   "name": "玩具车",
+   "category": "outdoor",
+   "tags": [
+    "玩具",
+    "车",
+    "toy"
+   ],
+   "footprint": [
+    0.27,
+    0.3,
+    0.56
+   ],
+   "referenceSize": [
+    0.6,
+    0.34,
+    0.31
+   ],
+   "parts": 7,
+   "file": "items/car_toy.wild",
+   "sourceItem": "car-toy"
+  },
+  {
+   "id": "ceiling_fan",
+   "name": "吊扇",
+   "category": "appliance",
+   "tags": [
+    "吊扇",
+    "风扇",
+    "fan"
+   ],
+   "footprint": [
+    1.0,
+    0.395,
+    1.052
+   ],
+   "referenceSize": [
+    1.04,
+    0.45,
+    1.04
+   ],
+   "parts": 9,
+   "file": "items/ceiling_fan.wild",
+   "sourceItem": "ceiling-fan"
+  },
+  {
+   "id": "ceiling_lamp",
+   "name": "吊灯",
+   "category": "lighting",
+   "tags": [
+    "吊灯",
+    "灯具",
+    "pendant"
+   ],
+   "footprint": [
+    0.55,
+    0.78,
+    0.55
+   ],
+   "referenceSize": [
+    0.55,
+    0.86,
+    0.55
+   ],
+   "parts": 3,
+   "file": "items/ceiling_lamp.wild",
+   "sourceItem": "ceiling-lamp"
+  },
+  {
+   "id": "ceiling_light_round",
+   "name": "吸顶灯",
+   "category": "lighting",
+   "tags": [
+    "吸顶灯",
+    "灯具",
+    "ceiling"
+   ],
+   "footprint": [
+    0.52,
+    0.09,
+    0.52
+   ],
+   "referenceSize": [
+    0.55,
+    0.12,
+    0.55
+   ],
+   "parts": 2,
+   "file": "items/ceiling_light_round.wild",
+   "sourceItem": "circular-ceiling-light"
+  },
+  {
+   "id": "closet",
+   "name": "衣柜",
+   "category": "furniture",
+   "tags": [
+    "衣柜",
+    "衣橱",
+    "closet",
+    "wardrobe"
+   ],
+   "footprint": [
+    1.95,
+    2.26,
+    0.64
+   ],
+   "referenceSize": [
+    1.95,
+    2.26,
+    0.6
+   ],
+   "parts": 6,
+   "file": "items/closet.wild",
+   "sourceItem": "closet"
+  },
+  {
+   "id": "coat_rack",
+   "name": "挂衣架",
+   "category": "furniture",
+   "tags": [
+    "衣架",
+    "挂衣",
+    "coat"
+   ],
+   "footprint": [
+    0.33,
+    1.7,
+    0.382
+   ],
+   "referenceSize": [
+    0.33,
+    1.76,
+    0.33
+   ],
+   "parts": 8,
+   "file": "items/coat_rack.wild",
+   "sourceItem": "coat-rack"
+  },
+  {
+   "id": "coffee_machine",
+   "name": "咖啡机",
+   "category": "kitchen",
+   "tags": [
+    "咖啡机",
+    "厨房",
+    "coffee"
+   ],
+   "footprint": [
+    0.16,
+    0.24,
+    0.276
+   ],
+   "referenceSize": [
+    0.16,
+    0.24,
+    0.23
+   ],
+   "parts": 3,
+   "file": "items/coffee_machine.wild",
+   "sourceItem": "coffee-machine"
+  },
+  {
+   "id": "coffee_table",
+   "name": "茶几",
+   "category": "furniture",
+   "tags": [
+    "茶几",
+    "客厅",
+    "coffee"
+   ],
+   "footprint": [
+    1.72,
+    0.3,
+    1.04
+   ],
+   "referenceSize": [
+    1.72,
+    0.3,
+    1.04
+   ],
+   "parts": 6,
+   "file": "items/coffee_table.wild",
+   "sourceItem": "coffee-table"
+  },
+  {
+   "id": "computer",
+   "name": "电脑",
+   "category": "appliance",
+   "tags": [
+    "电脑",
+    "显示器",
+    "computer"
+   ],
+   "footprint": [
+    0.56,
+    0.48,
+    0.244
+   ],
+   "referenceSize": [
+    0.68,
+    0.48,
+    0.19
+   ],
+   "parts": 5,
+   "file": "items/computer.wild",
+   "sourceItem": "computer"
+  },
+  {
+   "id": "cutting_board",
+   "name": "砧板",
+   "category": "kitchen",
+   "tags": [
+    "砧板",
+    "厨房",
+    "board"
+   ],
+   "footprint": [
+    0.27,
+    0.052,
+    0.41
+   ],
+   "referenceSize": [
+    0.27,
+    0.07,
+    0.41
+   ],
+   "parts": 2,
+   "file": "items/cutting_board.wild",
+   "sourceItem": "cutting-board"
+  },
+  {
+   "id": "dining_chair",
+   "name": "餐椅",
+   "category": "furniture",
+   "tags": [
+    "餐椅",
+    "椅子",
+    "dining",
+    "chair"
+   ],
+   "footprint": [
+    0.45,
+    0.9,
+    0.5
+   ],
+   "referenceSize": [
+    0.45,
+    0.9,
+    0.5
+   ],
+   "parts": 9,
+   "file": "items/dining_chair.wild",
+   "sourceItem": "dining-chair"
+  },
+  {
+   "id": "dining_table",
+   "name": "餐桌",
+   "category": "furniture",
+   "tags": [
+    "餐桌",
+    "桌子",
+    "dining",
+    "table"
+   ],
+   "footprint": [
+    2.0,
+    0.77,
+    0.91
+   ],
+   "referenceSize": [
+    2.0,
+    0.77,
+    0.91
+   ],
+   "parts": 9,
+   "file": "items/dining_table.wild",
+   "sourceItem": "dining-table-mo9ms5yh"
+  },
+  {
+   "id": "dishwasher",
+   "name": "洗碗机",
+   "category": "kitchen",
+   "tags": [
+    "洗碗机",
+    "厨房",
+    "dishwasher"
+   ],
+   "footprint": [
+    0.6,
+    0.86,
+    0.63
+   ],
+   "referenceSize": [
+    0.6,
+    0.86,
+    0.58
+   ],
+   "parts": 4,
+   "file": "items/dishwasher.wild",
+   "sourceItem": "dishwasher-movn72ls"
+  },
+  {
+   "id": "double_bed",
+   "name": "双人床",
+   "category": "furniture",
+   "tags": [
+    "床",
+    "双人床",
+    "bed"
+   ],
+   "footprint": [
+    1.52,
+    0.71,
+    2.056
+   ],
+   "referenceSize": [
+    1.52,
+    0.71,
+    2.0
+   ],
+   "parts": 13,
+   "file": "items/double_bed.wild",
+   "sourceItem": "double-bed"
+  },
+  {
+   "id": "dresser",
+   "name": "斗柜",
+   "category": "furniture",
+   "tags": [
+    "斗柜",
+    "抽屉柜",
+    "dresser"
+   ],
+   "footprint": [
+    1.23,
+    0.73,
+    0.646
+   ],
+   "referenceSize": [
+    1.23,
+    0.73,
+    0.61
+   ],
+   "parts": 9,
+   "file": "items/dresser.wild",
+   "sourceItem": "dresser"
+  },
+  {
+   "id": "drying_rack",
+   "name": "晾衣架",
+   "category": "bathroom",
+   "tags": [
+    "晾衣架",
+    "阳台",
+    "drying"
+   ],
+   "footprint": [
+    1.67,
+    1.05,
+    0.37
+   ],
+   "referenceSize": [
+    1.79,
+    1.05,
+    0.58
+   ],
+   "parts": 14,
+   "file": "items/drying_rack.wild",
+   "sourceItem": "drying-rack"
+  },
+  {
+   "id": "easel",
+   "name": "画架",
+   "category": "decor",
+   "tags": [
+    "画架",
+    "美术",
+    "easel"
+   ],
+   "footprint": [
+    0.956,
+    2.318,
+    0.723
+   ],
+   "referenceSize": [
+    0.99,
+    2.32,
+    0.55
+   ],
+   "parts": 6,
+   "file": "items/easel.wild",
+   "sourceItem": "easel"
+  },
+  {
+   "id": "electric_panel",
+   "name": "配电箱",
+   "category": "appliance",
+   "tags": [
+    "配电箱",
+    "电气",
+    "panel"
+   ],
+   "footprint": [
+    0.4,
+    0.98,
+    0.138
+   ],
+   "referenceSize": [
+    0.4,
+    0.98,
+    0.11
+   ],
+   "parts": 8,
+   "file": "items/electric_panel.wild",
+   "sourceItem": "electric-panel"
+  },
+  {
+   "id": "ev_charger",
+   "name": "充电桩",
+   "category": "appliance",
+   "tags": [
+    "充电桩",
+    "电动车",
+    "ev"
+   ],
+   "footprint": [
+    0.29,
+    0.65,
+    0.315
+   ],
+   "referenceSize": [
+    0.29,
+    0.65,
+    0.17
+   ],
+   "parts": 4,
+   "file": "items/ev_charger.wild",
+   "sourceItem": "ev-wall-charger"
+  },
+  {
+   "id": "exit_sign",
+   "name": "安全出口标志",
+   "category": "appliance",
+   "tags": [
+    "指示牌",
+    "消防",
+    "exit"
+   ],
+   "footprint": [
+    0.54,
+    0.27,
+    0.1
+   ],
+   "referenceSize": [
+    0.54,
+    0.27,
+    0.1
+   ],
+   "parts": 3,
+   "file": "items/exit_sign.wild",
+   "sourceItem": "exit-sign"
+  },
+  {
+   "id": "fir_tree",
+   "name": "杉树",
+   "category": "outdoor",
+   "tags": [
+    "杉树",
+    "针叶",
+    "fir"
+   ],
+   "footprint": [
+    2.9,
+    2.655,
+    2.9
+   ],
+   "referenceSize": [
+    0.9,
+    3.0,
+    0.9
+   ],
+   "parts": 4,
+   "file": "items/fir_tree.wild",
+   "sourceItem": "fir-tree"
+  },
+  {
+   "id": "fire_extinguisher",
+   "name": "灭火器",
+   "category": "appliance",
+   "tags": [
+    "灭火器",
+    "消防",
+    "extinguisher"
+   ],
+   "footprint": [
+    0.167,
+    0.475,
+    0.15
+   ],
+   "referenceSize": [
+    0.16,
+    0.5,
+    0.16
+   ],
+   "parts": 4,
+   "file": "items/fire_extinguisher.wild"
+  },
+  {
+   "id": "fireplace",
+   "name": "壁炉",
+   "category": "furniture",
+   "tags": [
+    "壁炉",
+    "取暖",
+    "fireplace"
+   ],
+   "footprint": [
+    1.06,
+    0.833,
+    0.24
+   ],
+   "referenceSize": [
+    1.0,
+    0.83,
+    0.18
+   ],
+   "parts": 5,
+   "file": "items/fireplace.wild",
+   "sourceItem": "fireplace-movn1fnn"
+  },
+  {
+   "id": "floor_lamp",
+   "name": "落地灯",
+   "category": "lighting",
+   "tags": [
+    "落地灯",
+    "灯具",
+    "lamp"
+   ],
+   "footprint": [
+    0.37,
+    1.7,
+    0.37
+   ],
+   "referenceSize": [
+    0.3,
+    1.7,
+    0.3
+   ],
+   "parts": 3,
+   "file": "items/floor_lamp.wild",
+   "sourceItem": "floor-lamp"
+  },
+  {
+   "id": "freezer",
+   "name": "冰柜",
+   "category": "appliance",
+   "tags": [
+    "冰柜",
+    "冷冻",
+    "freezer"
+   ],
+   "footprint": [
+    0.62,
+    0.84,
+    0.62
+   ],
+   "referenceSize": [
+    0.6,
+    0.85,
+    0.6
+   ],
+   "parts": 3,
+   "file": "items/freezer.wild",
+   "sourceItem": "freezer"
+  },
+  {
+   "id": "fridge",
+   "name": "冰箱",
+   "category": "appliance",
+   "tags": [
+    "冰箱",
+    "冷藏",
+    "fridge"
+   ],
+   "footprint": [
+    0.7,
+    1.9,
+    0.766
+   ],
+   "referenceSize": [
+    0.7,
+    1.92,
+    0.72
+   ],
+   "parts": 5,
+   "file": "items/fridge.wild",
+   "sourceItem": "fridge"
+  },
+  {
+   "id": "fruit_bowl",
+   "name": "果盘",
+   "category": "kitchen",
+   "tags": [
+    "水果",
+    "果盘",
+    "fruit"
+   ],
+   "footprint": [
+    0.38,
+    0.192,
+    0.38
+   ],
+   "referenceSize": [
+    0.39,
+    0.27,
+    0.39
+   ],
+   "parts": 5,
+   "file": "items/fruit_bowl.wild",
+   "sourceItem": "fruits"
+  },
+  {
+   "id": "frying_pan",
+   "name": "平底锅",
+   "category": "kitchen",
+   "tags": [
+    "锅",
+    "厨具",
+    "pan"
+   ],
+   "footprint": [
+    0.36,
+    0.047,
+    0.61
+   ],
+   "referenceSize": [
+    0.36,
+    0.09,
+    0.64
+   ],
+   "parts": 3,
+   "file": "items/frying_pan.wild",
+   "sourceItem": "frying-pan"
+  },
+  {
+   "id": "guitar",
+   "name": "吉他",
+   "category": "decor",
+   "tags": [
+    "吉他",
+    "乐器",
+    "guitar"
+   ],
+   "footprint": [
+    0.4,
+    0.973,
+    0.4
+   ],
+   "referenceSize": [
+    0.4,
+    1.18,
+    0.1
+   ],
+   "parts": 6,
+   "file": "items/guitar.wild",
+   "sourceItem": "guitar"
+  },
+  {
+   "id": "hydrant",
+   "name": "消防栓",
+   "category": "outdoor",
+   "tags": [
+    "消防栓",
+    "室外",
+    "hydrant"
+   ],
+   "footprint": [
+    0.38,
+    0.79,
+    0.3
+   ],
+   "referenceSize": [
+    0.64,
+    0.88,
+    0.64
+   ],
+   "parts": 6,
+   "file": "items/hydrant.wild",
+   "sourceItem": "hydrant"
+  },
+  {
+   "id": "iron",
+   "name": "电熨斗",
+   "category": "appliance",
+   "tags": [
+    "熨斗",
+    "家务",
+    "iron"
+   ],
+   "footprint": [
+    0.11,
+    0.13,
+    0.26
+   ],
+   "referenceSize": [
+    0.36,
+    0.24,
+    0.21
+   ],
+   "parts": 3,
+   "file": "items/iron.wild",
+   "sourceItem": "iron"
+  },
+  {
+   "id": "ironing_board",
+   "name": "烫衣板",
+   "category": "furniture",
+   "tags": [
+    "烫衣板",
+    "家务",
+    "ironing"
+   ],
+   "footprint": [
+    1.26,
+    0.929,
+    0.4
+   ],
+   "referenceSize": [
+    1.31,
+    0.96,
+    0.48
+   ],
+   "parts": 5,
+   "file": "items/ironing_board.wild",
+   "sourceItem": "ironing-board"
+  },
+  {
+   "id": "kallax_shelf",
+   "name": "格子柜 2×4",
+   "category": "furniture",
+   "tags": [
+    "格子柜",
+    "收纳",
+    "kallax"
+   ],
+   "footprint": [
+    1.09,
+    2.06,
+    0.55
+   ],
+   "referenceSize": [
+    1.09,
+    2.06,
+    0.55
+   ],
+   "parts": 8,
+   "file": "items/kallax_shelf.wild",
+   "sourceItem": "ikea-kallax-1x4-moa2y49n"
+  },
+  {
+   "id": "kettle",
+   "name": "电水壶",
+   "category": "kitchen",
+   "tags": [
+    "水壶",
+    "厨房",
+    "kettle"
+   ],
+   "footprint": [
+    0.246,
+    0.22,
+    0.18
+   ],
+   "referenceSize": [
+    0.24,
+    0.25,
+    0.18
+   ],
+   "parts": 4,
+   "file": "items/kettle.wild",
+   "sourceItem": "kettle"
+  },
+  {
+   "id": "kitchen_bar",
+   "name": "木吧台",
+   "category": "kitchen",
+   "tags": [
+    "吧台",
+    "厨房",
+    "bar"
+   ],
+   "footprint": [
+    2.5,
+    1.06,
+    0.96
+   ],
+   "referenceSize": [
+    2.5,
+    1.06,
+    0.96
+   ],
+   "parts": 9,
+   "file": "items/kitchen_bar.wild",
+   "sourceItem": "wooden-kitchen-bar-moa2hhh4"
+  },
+  {
+   "id": "kitchen_cabinet",
+   "name": "厨房橱柜",
+   "category": "kitchen",
+   "tags": [
+    "橱柜",
+    "厨房",
+    "cabinet"
+   ],
+   "footprint": [
+    1.67,
+    1.09,
+    0.81
+   ],
+   "referenceSize": [
+    1.65,
+    1.09,
+    0.77
+   ],
+   "parts": 8,
+   "file": "items/kitchen_cabinet.wild",
+   "sourceItem": "kitchen-cabinet"
+  },
+  {
+   "id": "kitchen_counter",
+   "name": "橱柜台面",
+   "category": "kitchen",
+   "tags": [
+    "橱柜",
+    "台面",
+    "counter"
+   ],
+   "footprint": [
+    1.98,
+    0.73,
+    0.67
+   ],
+   "referenceSize": [
+    1.96,
+    0.73,
+    0.63
+   ],
+   "parts": 10,
+   "file": "items/kitchen_counter.wild",
+   "sourceItem": "kitchen-counter"
+  },
+  {
+   "id": "kitchen_set",
+   "name": "整体厨房",
+   "category": "kitchen",
+   "tags": [
+    "厨房",
+    "橱柜",
+    "kitchen"
+   ],
+   "footprint": [
+    2.4,
+    1.93,
+    0.88
+   ],
+   "referenceSize": [
+    2.38,
+    1.03,
+    0.84
+   ],
+   "parts": 22,
+   "file": "items/kitchen_set.wild",
+   "sourceItem": "kitchen"
+  },
+  {
+   "id": "kitchen_shelf",
+   "name": "厨房置物架",
+   "category": "kitchen",
+   "tags": [
+    "置物架",
+    "厨房",
+    "shelf"
+   ],
+   "footprint": [
+    2.21,
+    0.89,
+    0.52
+   ],
+   "referenceSize": [
+    2.21,
+    0.89,
+    0.52
+   ],
+   "parts": 9,
+   "file": "items/kitchen_shelf.wild",
+   "sourceItem": "kitchen-shelf"
+  },
+  {
+   "id": "laptop",
+   "name": "笔记本电脑",
+   "category": "appliance",
+   "tags": [
+    "笔记本",
+    "电脑",
+    "laptop"
+   ],
+   "footprint": [
+    0.34,
+    0.217,
+    0.312
+   ],
+   "referenceSize": [
+    0.34,
+    0.02,
+    0.24
+   ],
+   "parts": 3,
+   "file": "items/laptop.wild"
+  },
+  {
+   "id": "laundry_bag",
+   "name": "脏衣篮",
+   "category": "bathroom",
+   "tags": [
+    "脏衣篮",
+    "收纳",
+    "laundry"
+   ],
+   "footprint": [
+    0.46,
+    0.751,
+    0.46
+   ],
+   "referenceSize": [
+    0.46,
+    0.78,
+    0.48
+   ],
+   "parts": 3,
+   "file": "items/laundry_bag.wild",
+   "sourceItem": "laundry-bag"
+  },
+  {
+   "id": "long_dining_table",
+   "name": "大餐桌",
+   "category": "furniture",
+   "tags": [
+    "餐桌",
+    "长桌",
+    "dining",
+    "table"
+   ],
+   "footprint": [
+    2.16,
+    0.7,
+    0.95
+   ],
+   "referenceSize": [
+    2.16,
+    0.7,
+    0.95
+   ],
+   "parts": 9,
+   "file": "items/long_dining_table.wild",
+   "sourceItem": "dining-table"
+  },
+  {
+   "id": "lounge_chair",
+   "name": "休闲躺椅",
+   "category": "furniture",
+   "tags": [
+    "躺椅",
+    "休闲椅",
+    "lounge"
+   ],
+   "footprint": [
+    0.72,
+    0.767,
+    0.833
+   ],
+   "referenceSize": [
+    0.78,
+    0.78,
+    0.86
+   ],
+   "parts": 8,
+   "file": "items/lounge_chair.wild",
+   "sourceItem": "lounge-chair"
+  },
+  {
+   "id": "microwave",
+   "name": "微波炉",
+   "category": "appliance",
+   "tags": [
+    "微波炉",
+    "厨房",
+    "microwave"
+   ],
+   "footprint": [
+    0.52,
+    0.27,
+    0.441
+   ],
+   "referenceSize": [
+    0.52,
+    0.27,
+    0.41
+   ],
+   "parts": 6,
+   "file": "items/microwave.wild",
+   "sourceItem": "microwave"
+  },
+  {
+   "id": "mirror_rect",
+   "name": "方镜",
+   "category": "decor",
+   "tags": [
+    "镜子",
+    "方形",
+    "mirror"
+   ],
+   "footprint": [
+    0.6,
+    0.8,
+    0.046
+   ],
+   "referenceSize": [
+    0.6,
+    0.8,
+    0.05
+   ],
+   "parts": 2,
+   "file": "items/mirror_rect.wild",
+   "sourceItem": "rectangular-mirror"
+  },
+  {
+   "id": "mirror_round",
+   "name": "圆镜",
+   "category": "decor",
+   "tags": [
+    "镜子",
+    "圆形",
+    "mirror"
+   ],
+   "footprint": [
+    0.57,
+    0.036,
+    0.572
+   ],
+   "referenceSize": [
+    0.57,
+    0.57,
+    0.05
+   ],
+   "parts": 2,
+   "file": "items/mirror_round.wild",
+   "sourceItem": "round-mirror"
+  },
+  {
+   "id": "office_chair",
+   "name": "办公椅",
+   "category": "furniture",
+   "tags": [
+    "办公椅",
+    "转椅",
+    "office",
+    "chair"
+   ],
+   "footprint": [
+    0.604,
+    1.042,
+    0.626
+   ],
+   "referenceSize": [
+    0.62,
+    1.08,
+    0.62
+   ],
+   "parts": 15,
+   "file": "items/office_chair.wild",
+   "sourceItem": "office-chair"
+  },
+  {
+   "id": "office_table",
+   "name": "办公桌",
+   "category": "furniture",
+   "tags": [
+    "办公桌",
+    "书桌",
+    "desk"
+   ],
+   "footprint": [
+    1.51,
+    0.76,
+    0.624
+   ],
+   "referenceSize": [
+    1.51,
+    0.76,
+    0.62
+   ],
+   "parts": 9,
+   "file": "items/office_table.wild",
+   "sourceItem": "office-table"
+  },
+  {
+   "id": "oven",
+   "name": "烤箱",
+   "category": "kitchen",
+   "tags": [
+    "烤箱",
+    "厨房",
+    "oven"
+   ],
+   "footprint": [
+    0.6,
+    0.6,
+    0.595
+   ],
+   "referenceSize": [
+    0.6,
+    0.6,
+    0.56
+   ],
+   "parts": 6,
+   "file": "items/oven.wild"
+  },
+  {
+   "id": "palm_tree",
+   "name": "棕榈树",
+   "category": "outdoor",
+   "tags": [
+    "棕榈",
+    "热带",
+    "palm"
+   ],
+   "footprint": [
+    2.1,
+    4.78,
+    1.818
+   ],
+   "referenceSize": [
+    0.6,
+    4.5,
+    0.6
+   ],
+   "parts": 12,
+   "file": "items/palm_tree.wild",
+   "sourceItem": "palm"
+  },
+  {
+   "id": "paper_roll_holder",
+   "name": "卷纸架",
+   "category": "bathroom",
+   "tags": [
+    "卷纸",
+    "卫浴",
+    "paper"
+   ],
+   "footprint": [
+    0.166,
+    0.155,
+    0.2
+   ],
+   "referenceSize": [
+    0.26,
+    0.27,
+    0.24
+   ],
+   "parts": 3,
+   "file": "items/paper_roll_holder.wild",
+   "sourceItem": "toilet-paper"
+  },
+  {
+   "id": "parking_spot",
+   "name": "停车位",
+   "category": "outdoor",
+   "tags": [
+    "停车位",
+    "标线",
+    "parking"
+   ],
+   "footprint": [
+    4.95,
+    0.11,
+    2.28
+   ],
+   "referenceSize": [
+    4.95,
+    0.12,
+    2.28
+   ],
+   "parts": 4,
+   "file": "items/parking_spot.wild",
+   "sourceItem": "parking-spot"
+  },
+  {
+   "id": "patio_umbrella",
+   "name": "遮阳伞",
+   "category": "outdoor",
+   "tags": [
+    "遮阳伞",
+    "户外",
+    "umbrella"
+   ],
+   "footprint": [
+    2.4,
+    2.37,
+    2.4
+   ],
+   "referenceSize": [
+    2.4,
+    2.4,
+    2.4
+   ],
+   "parts": 12,
+   "file": "items/patio_umbrella.wild",
+   "sourceItem": "patio-umbrella"
+  },
+  {
+   "id": "piano",
+   "name": "立式钢琴",
+   "category": "decor",
+   "tags": [
+    "钢琴",
+    "乐器",
+    "piano"
+   ],
+   "footprint": [
+    2.008,
+    1.44,
+    0.89
+   ],
+   "referenceSize": [
+    1.54,
+    1.44,
+    0.69
+   ],
+   "parts": 44,
+   "file": "items/piano.wild",
+   "sourceItem": "piano"
+  },
+  {
+   "id": "picture_frame",
+   "name": "装饰画",
+   "category": "decor",
+   "tags": [
+    "画",
+    "挂画",
+    "picture"
+   ],
+   "footprint": [
+    1.47,
+    0.82,
+    0.056
+   ],
+   "referenceSize": [
+    1.47,
+    0.82,
+    0.06
+   ],
+   "parts": 2,
+   "file": "items/picture_frame.wild",
+   "sourceItem": "picture"
+  },
+  {
+   "id": "pillar",
+   "name": "装饰柱",
+   "category": "outdoor",
+   "tags": [
+    "柱",
+    "门廊",
+    "pillar"
+   ],
+   "footprint": [
+    0.34,
+    1.26,
+    0.3
+   ],
+   "referenceSize": [
+    0.34,
+    1.26,
+    0.3
+   ],
+   "parts": 3,
+   "file": "items/pillar.wild",
+   "sourceItem": "pillar"
+  },
+  {
+   "id": "plant_large",
+   "name": "大型绿植",
+   "category": "decor",
+   "tags": [
+    "植物",
+    "绿植",
+    "plant"
+   ],
+   "footprint": [
+    0.88,
+    1.72,
+    0.72
+   ],
+   "referenceSize": [
+    0.69,
+    1.63,
+    0.83
+   ],
+   "parts": 8,
+   "file": "items/plant_large.wild",
+   "sourceItem": "indoor-plant"
+  },
+  {
+   "id": "plant_small",
+   "name": "小盆栽",
+   "category": "decor",
+   "tags": [
+    "植物",
+    "盆栽",
+    "plant"
+   ],
+   "footprint": [
+    0.289,
+    0.52,
+    0.304
+   ],
+   "referenceSize": [
+    0.4,
+    0.67,
+    0.38
+   ],
+   "parts": 6,
+   "file": "items/plant_small.wild",
+   "sourceItem": "small-indoor-plant"
+  },
+  {
+   "id": "playhouse",
+   "name": "儿童玩具屋",
+   "category": "outdoor",
+   "tags": [
+    "玩具屋",
+    "儿童",
+    "playhouse"
+   ],
+   "footprint": [
+    0.756,
+    0.532,
+    0.636
+   ],
+   "referenceSize": [
+    0.72,
+    0.47,
+    0.6
+   ],
+   "parts": 4,
+   "file": "items/playhouse.wild",
+   "sourceItem": "outdoor-playhouse"
+  },
+  {
+   "id": "pool_table",
+   "name": "台球桌",
+   "category": "furniture",
+   "tags": [
+    "台球桌",
+    "娱乐",
+    "pool"
+   ],
+   "footprint": [
+    2.136,
+    0.895,
+    3.504
+   ],
+   "referenceSize": [
+    2.11,
+    0.98,
+    3.5
+   ],
+   "parts": 15,
+   "file": "items/pool_table.wild",
+   "sourceItem": "pool-table"
+  },
+  {
+   "id": "power_outlet",
+   "name": "插座",
+   "category": "appliance",
+   "tags": [
+    "插座",
+    "电气",
+    "outlet"
+   ],
+   "footprint": [
+    0.09,
+    0.09,
+    0.018
+   ],
+   "referenceSize": [
+    0.09,
+    0.09,
+    0.03
+   ],
+   "parts": 5,
+   "file": "items/power_outlet.wild",
+   "sourceItem": "power-outlet-moa09g0o"
+  },
+  {
+   "id": "range_hood",
+   "name": "抽油烟机",
+   "category": "kitchen",
+   "tags": [
+    "油烟机",
+    "厨房",
+    "hood"
+   ],
+   "footprint": [
+    1.21,
+    0.625,
+    0.51
+   ],
+   "referenceSize": [
+    1.21,
+    0.62,
+    0.51
+   ],
+   "parts": 4,
+   "file": "items/range_hood.wild",
+   "sourceItem": "hood"
+  },
+  {
+   "id": "recessed_light",
+   "name": "筒灯",
+   "category": "lighting",
+   "tags": [
+    "筒灯",
+    "射灯",
+    "recessed"
+   ],
+   "footprint": [
+    0.23,
+    0.027,
+    0.23
+   ],
+   "referenceSize": [
+    0.23,
+    0.06,
+    0.23
+   ],
+   "parts": 2,
+   "file": "items/recessed_light.wild",
+   "sourceItem": "recessed-light"
+  },
+  {
+   "id": "rug_rect",
+   "name": "长方形地毯",
+   "category": "decor",
+   "tags": [
+    "地毯",
+    "rug"
+   ],
+   "footprint": [
+    2.78,
+    0.034,
+    1.81
+   ],
+   "referenceSize": [
+    2.78,
+    0.04,
+    1.81
+   ],
+   "parts": 3,
+   "file": "items/rug_rect.wild",
+   "sourceItem": "rectangular-carpet"
+  },
+  {
+   "id": "rug_round",
+   "name": "圆形地毯",
+   "category": "decor",
+   "tags": [
+    "地毯",
+    "圆形",
+    "rug"
+   ],
+   "footprint": [
+    1.99,
+    0.032,
+    1.99
+   ],
+   "referenceSize": [
+    1.99,
+    0.04,
+    1.99
+   ],
+   "parts": 3,
+   "file": "items/rug_round.wild",
+   "sourceItem": "round-carpet"
+  },
+  {
+   "id": "scooter",
+   "name": "电动滑板车",
+   "category": "outdoor",
+   "tags": [
+    "滑板车",
+    "代步",
+    "scooter"
+   ],
+   "footprint": [
+    0.46,
+    1.055,
+    0.96
+   ],
+   "referenceSize": [
+    0.85,
+    1.1,
+    0.45
+   ],
+   "parts": 5,
+   "file": "items/scooter.wild",
+   "sourceItem": "scooter"
+  },
+  {
+   "id": "sewing_machine",
+   "name": "缝纫机",
+   "category": "appliance",
+   "tags": [
+    "缝纫机",
+    "家务",
+    "sewing"
+   ],
+   "footprint": [
+    0.83,
+    0.68,
+    0.32
+   ],
+   "referenceSize": [
+    0.83,
+    0.68,
+    0.32
+   ],
+   "parts": 7,
+   "file": "items/sewing_machine.wild",
+   "sourceItem": "sewing-machine"
+  },
+  {
+   "id": "shower_angle",
+   "name": "转角淋浴间",
+   "category": "bathroom",
+   "tags": [
+    "淋浴",
+    "转角",
+    "shower"
+   ],
+   "footprint": [
+    0.83,
+    1.81,
+    0.83
+   ],
+   "referenceSize": [
+    0.83,
+    1.81,
+    0.83
+   ],
+   "parts": 5,
+   "file": "items/shower_angle.wild",
+   "sourceItem": "shower-angle"
+  },
+  {
+   "id": "shower_rug",
+   "name": "浴室地垫",
+   "category": "bathroom",
+   "tags": [
+    "地垫",
+    "浴室",
+    "rug"
+   ],
+   "footprint": [
+    0.77,
+    0.024,
+    0.48
+   ],
+   "referenceSize": [
+    0.77,
+    0.03,
+    0.48
+   ],
+   "parts": 1,
+   "file": "items/shower_rug.wild",
+   "sourceItem": "shower-rug"
+  },
+  {
+   "id": "shower_square",
+   "name": "方形淋浴间",
+   "category": "bathroom",
+   "tags": [
+    "淋浴",
+    "淋浴房",
+    "shower"
+   ],
+   "footprint": [
+    0.86,
+    1.8,
+    0.81
+   ],
+   "referenceSize": [
+    0.81,
+    1.8,
+    0.81
+   ],
+   "parts": 6,
+   "file": "items/shower_square.wild",
+   "sourceItem": "shower-square"
+  },
+  {
+   "id": "side_table",
+   "name": "边几",
+   "category": "furniture",
+   "tags": [
+    "边几",
+    "小桌",
+    "side"
+   ],
+   "footprint": [
+    0.45,
+    0.48,
+    0.466
+   ],
+   "referenceSize": [
+    0.45,
+    0.48,
+    0.46
+   ],
+   "parts": 6,
+   "file": "items/side_table.wild",
+   "sourceItem": "bedside-table"
+  },
+  {
+   "id": "single_bed",
+   "name": "单人床",
+   "category": "furniture",
+   "tags": [
+    "床",
+    "单人床",
+    "bed"
+   ],
+   "footprint": [
+    1.08,
+    0.61,
+    2.195
+   ],
+   "referenceSize": [
+    1.08,
+    0.6,
+    2.14
+   ],
+   "parts": 12,
+   "file": "items/single_bed.wild",
+   "sourceItem": "single-bed"
+  },
+  {
+   "id": "skateboard",
+   "name": "滑板",
+   "category": "outdoor",
+   "tags": [
+    "滑板",
+    "运动",
+    "skate"
+   ],
+   "footprint": [
+    0.8,
+    0.094,
+    0.2
+   ],
+   "referenceSize": [
+    0.86,
+    0.11,
+    0.2
+   ],
+   "parts": 10,
+   "file": "items/skateboard.wild",
+   "sourceItem": "skate"
+  },
+  {
+   "id": "smoke_detector",
+   "name": "烟雾报警器",
+   "category": "appliance",
+   "tags": [
+    "烟感",
+    "消防",
+    "smoke"
+   ],
+   "footprint": [
+    0.16,
+    0.051,
+    0.16
+   ],
+   "referenceSize": [
+    0.16,
+    0.05,
+    0.16
+   ],
+   "parts": 3,
+   "file": "items/smoke_detector.wild",
+   "sourceItem": "smoke-detector"
+  },
+  {
+   "id": "sofa_three",
+   "name": "三人沙发",
+   "category": "furniture",
+   "tags": [
+    "沙发",
+    "客厅",
+    "布艺",
+    "坐具",
+    "sofa"
+   ],
+   "footprint": [
+    2.1,
+    0.82,
+    0.92
+   ],
+   "referenceSize": [
+    2.1,
+    0.82,
+    0.92
+   ],
+   "parts": 14,
+   "file": "items/sofa_three.wild",
+   "sourceItem": "couch-medium"
+  },
+  {
+   "id": "sofa_two",
+   "name": "双人沙发",
+   "category": "furniture",
+   "tags": [
+    "沙发",
+    "客厅",
+    "布艺",
+    "坐具",
+    "sofa"
+   ],
+   "footprint": [
+    1.62,
+    0.8,
+    0.88
+   ],
+   "referenceSize": [
+    1.62,
+    0.8,
+    0.88
+   ],
+   "parts": 12,
+   "file": "items/sofa_two.wild",
+   "sourceItem": "couch-small"
+  },
+  {
+   "id": "speaker_bookshelf",
+   "name": "书架音箱",
+   "category": "appliance",
+   "tags": [
+    "音箱",
+    "桌面",
+    "speaker"
+   ],
+   "footprint": [
+    0.18,
+    0.26,
+    0.21
+   ],
+   "referenceSize": [
+    0.18,
+    0.26,
+    0.2
+   ],
+   "parts": 3,
+   "file": "items/speaker_bookshelf.wild"
+  },
+  {
+   "id": "sprinkler",
+   "name": "喷淋头",
+   "category": "appliance",
+   "tags": [
+    "喷淋",
+    "消防",
+    "sprinkler"
+   ],
+   "footprint": [
+    0.09,
+    0.077,
+    0.09
+   ],
+   "referenceSize": [
+    0.09,
+    0.1,
+    0.09
+   ],
+   "parts": 3,
+   "file": "items/sprinkler.wild",
+   "sourceItem": "sprinkler"
+  },
+  {
+   "id": "standing_desk",
+   "name": "升降办公桌",
+   "category": "furniture",
+   "tags": [
+    "升降桌",
+    "办公桌",
+    "standing"
+   ],
+   "footprint": [
+    1.41,
+    0.849,
+    0.68
+   ],
+   "referenceSize": [
+    1.41,
+    0.85,
+    0.68
+   ],
+   "parts": 6,
+   "file": "items/standing_desk.wild",
+   "sourceItem": "standing-desk-mo8wgz95"
+  },
+  {
+   "id": "stereo_speaker",
+   "name": "落地音箱",
+   "category": "appliance",
+   "tags": [
+    "音箱",
+    "音响",
+    "speaker"
+   ],
+   "footprint": [
+    0.23,
+    0.97,
+    0.352
+   ],
+   "referenceSize": [
+    0.23,
+    1.0,
+    0.34
+   ],
+   "parts": 7,
+   "file": "items/stereo_speaker.wild",
+   "sourceItem": "stereo-speaker"
+  },
+  {
+   "id": "stool_bar",
+   "name": "吧凳",
+   "category": "furniture",
+   "tags": [
+    "吧凳",
+    "凳子",
+    "stool"
+   ],
+   "footprint": [
+    0.38,
+    0.78,
+    0.38
+   ],
+   "referenceSize": [
+    0.38,
+    1.0,
+    0.38
+   ],
+   "parts": 6,
+   "file": "items/stool_bar.wild",
+   "sourceItem": "stool"
+  },
+  {
+   "id": "stove",
+   "name": "灶台",
+   "category": "kitchen",
+   "tags": [
+    "灶台",
+    "烤箱",
+    "stove"
+   ],
+   "footprint": [
+    0.92,
+    0.802,
+    0.81
+   ],
+   "referenceSize": [
+    0.92,
+    0.85,
+    0.76
+   ],
+   "parts": 13,
+   "file": "items/stove.wild",
+   "sourceItem": "stove"
+  },
+  {
+   "id": "sunbed",
+   "name": "户外躺床",
+   "category": "outdoor",
+   "tags": [
+    "躺床",
+    "泳池",
+    "sunbed"
+   ],
+   "footprint": [
+    0.78,
+    0.827,
+    1.18
+   ],
+   "referenceSize": [
+    0.86,
+    1.13,
+    1.01
+   ],
+   "parts": 7,
+   "file": "items/sunbed.wild",
+   "sourceItem": "sunbed"
+  },
+  {
+   "id": "table_lamp",
+   "name": "台灯",
+   "category": "lighting",
+   "tags": [
+    "台灯",
+    "灯具",
+    "lamp"
+   ],
+   "footprint": [
+    0.29,
+    0.71,
+    0.29
+   ],
+   "referenceSize": [
+    0.29,
+    0.74,
+    0.29
+   ],
+   "parts": 3,
+   "file": "items/table_lamp.wild",
+   "sourceItem": "table-lamp"
+  },
+  {
+   "id": "television",
+   "name": "电视",
+   "category": "appliance",
+   "tags": [
+    "电视",
+    "屏幕",
+    "tv"
+   ],
+   "footprint": [
+    1.62,
+    1.143,
+    0.26
+   ],
+   "referenceSize": [
+    1.62,
+    1.07,
+    0.38
+   ],
+   "parts": 4,
+   "file": "items/television.wild",
+   "sourceItem": "television"
+  },
+  {
+   "id": "thermostat",
+   "name": "温控面板",
+   "category": "appliance",
+   "tags": [
+    "温控",
+    "面板",
+    "thermostat"
+   ],
+   "footprint": [
+    0.1,
+    0.1,
+    0.024
+   ],
+   "referenceSize": [
+    0.1,
+    0.1,
+    0.02
+   ],
+   "parts": 2,
+   "file": "items/thermostat.wild",
+   "sourceItem": "thermostat"
+  },
+  {
+   "id": "toaster",
+   "name": "烤面包机",
+   "category": "kitchen",
+   "tags": [
+    "烤面包机",
+    "厨房",
+    "toaster"
+   ],
+   "footprint": [
+    0.294,
+    0.196,
+    0.17
+   ],
+   "referenceSize": [
+    0.28,
+    0.23,
+    0.17
+   ],
+   "parts": 4,
+   "file": "items/toaster.wild",
+   "sourceItem": "toaster"
+  },
+  {
+   "id": "toilet",
+   "name": "马桶",
+   "category": "bathroom",
+   "tags": [
+    "马桶",
+    "坐便器",
+    "toilet"
+   ],
+   "footprint": [
+    0.4,
+    0.742,
+    0.65
+   ],
+   "referenceSize": [
+    0.42,
+    0.82,
+    0.72
+   ],
+   "parts": 6,
+   "file": "items/toilet.wild",
+   "sourceItem": "toilet"
+  },
+  {
+   "id": "toy_block",
+   "name": "玩具",
+   "category": "decor",
+   "tags": [
+    "玩具",
+    "儿童",
+    "toy"
+   ],
+   "footprint": [
+    0.27,
+    0.4,
+    0.25
+   ],
+   "referenceSize": [
+    0.29,
+    0.49,
+    0.34
+   ],
+   "parts": 5,
+   "file": "items/toy_block.wild",
+   "sourceItem": "toy"
+  },
+  {
+   "id": "trash_bin",
+   "name": "垃圾桶",
+   "category": "decor",
+   "tags": [
+    "垃圾桶",
+    "收纳",
+    "bin"
+   ],
+   "footprint": [
+    0.38,
+    0.55,
+    0.41
+   ],
+   "referenceSize": [
+    0.35,
+    0.59,
+    0.42
+   ],
+   "parts": 3,
+   "file": "items/trash_bin.wild",
+   "sourceItem": "trash-bin"
+  },
+  {
+   "id": "treadmill",
+   "name": "跑步机",
+   "category": "appliance",
+   "tags": [
+    "跑步机",
+    "健身",
+    "treadmill"
+   ],
+   "footprint": [
+    0.9,
+    1.414,
+    2.1
+   ],
+   "referenceSize": [
+    0.9,
+    1.45,
+    2.1
+   ],
+   "parts": 9,
+   "file": "items/treadmill.wild",
+   "sourceItem": "threadmill"
+  },
+  {
+   "id": "tree_broadleaf",
+   "name": "阔叶树",
+   "category": "outdoor",
+   "tags": [
+    "树",
+    "乔木",
+    "tree"
+   ],
+   "footprint": [
+    2.57,
+    5.35,
+    2.12
+   ],
+   "referenceSize": [
+    0.8,
+    5.0,
+    0.85
+   ],
+   "parts": 7,
+   "file": "items/tree_broadleaf.wild",
+   "sourceItem": "tree"
+  },
+  {
+   "id": "tripod_floor_lamp",
+   "name": "三脚落地灯",
+   "category": "lighting",
+   "tags": [
+    "落地灯",
+    "三脚",
+    "lamp"
+   ],
+   "footprint": [
+    0.555,
+    1.41,
+    0.52
+   ],
+   "referenceSize": [
+    0.7,
+    1.86,
+    0.69
+   ],
+   "parts": 4,
+   "file": "items/tripod_floor_lamp.wild",
+   "sourceItem": "floor-lamp"
+  },
+  {
+   "id": "tv_stand",
+   "name": "电视柜",
+   "category": "furniture",
+   "tags": [
+    "电视柜",
+    "视听柜",
+    "tv"
+   ],
+   "footprint": [
+    1.86,
+    0.35,
+    0.32
+   ],
+   "referenceSize": [
+    1.86,
+    0.35,
+    0.32
+   ],
+   "parts": 7,
+   "file": "items/tv_stand.wild",
+   "sourceItem": "tv-stand"
+  },
+  {
+   "id": "utensil_holder",
+   "name": "刀架",
+   "category": "kitchen",
+   "tags": [
+    "厨具",
+    "刀架",
+    "utensil"
+   ],
+   "footprint": [
+    0.18,
+    0.45,
+    0.18
+   ],
+   "referenceSize": [
+    0.23,
+    0.49,
+    0.21
+   ],
+   "parts": 6,
+   "file": "items/utensil_holder.wild",
+   "sourceItem": "kitchen-utensils"
+  },
+  {
+   "id": "wall_shelf",
+   "name": "壁挂隔板",
+   "category": "furniture",
+   "tags": [
+    "隔板",
+    "置物",
+    "shelf"
+   ],
+   "footprint": [
+    0.74,
+    0.167,
+    0.32
+   ],
+   "referenceSize": [
+    0.74,
+    0.04,
+    0.32
+   ],
+   "parts": 5,
+   "file": "items/wall_shelf.wild",
+   "sourceItem": "shelf"
+  },
+  {
+   "id": "wall_tv",
+   "name": "壁挂电视",
+   "category": "appliance",
+   "tags": [
+    "电视",
+    "壁挂",
+    "tv"
+   ],
+   "footprint": [
+    1.24,
+    0.72,
+    0.046
+   ],
+   "referenceSize": [
+    1.24,
+    0.72,
+    0.06
+   ],
+   "parts": 2,
+   "file": "items/wall_tv.wild"
+  },
+  {
+   "id": "washing_machine",
+   "name": "洗衣机",
+   "category": "bathroom",
+   "tags": [
+    "洗衣机",
+    "家电",
+    "washing"
+   ],
+   "footprint": [
+    0.6,
+    0.86,
+    0.556
+   ],
+   "referenceSize": [
+    0.6,
+    0.86,
+    0.53
+   ],
+   "parts": 7,
+   "file": "items/washing_machine.wild",
+   "sourceItem": "washing-machine"
+  },
+  {
+   "id": "wine_bottles",
+   "name": "酒瓶架",
+   "category": "kitchen",
+   "tags": [
+    "酒瓶",
+    "厨房",
+    "wine"
+   ],
+   "footprint": [
+    0.324,
+    0.325,
+    0.084
+   ],
+   "referenceSize": [
+    0.38,
+    0.35,
+    0.17
+   ],
+   "parts": 9,
+   "file": "items/wine_bottles.wild",
+   "sourceItem": "wine-bottle"
+  }
+ ]
+}

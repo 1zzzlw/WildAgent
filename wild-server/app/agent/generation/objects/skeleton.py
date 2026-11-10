@@ -18,37 +18,7 @@ from __future__ import annotations
 
 from typing import Any
 
-#: 物件场景的默认材质调色板。键就是 `material` 字段的合法取值。
-#: 参数是**缺省值**，材质节点跑完会被受控材质方案覆盖（见 OBJECT_ROLE_SPECS）。
-OBJECT_MATERIALS: dict[str, dict[str, Any]] = {
-    "wood": {
-        "baseColor": [0.42, 0.26, 0.14], "roughness": 0.62,
-        "metallic": 0.0, "albedo": 1.0, "lightingCondition": "D65_noon",
-    },
-    "metal": {
-        "baseColor": [0.16, 0.17, 0.18], "roughness": 0.32,
-        "metallic": 0.8, "albedo": 1.0, "lightingCondition": "D65_noon",
-    },
-    "glass": {
-        "baseColor": [0.72, 0.88, 0.96], "roughness": 0.08,
-        "metallic": 0.0, "albedo": 1.0,
-        "materialClass": "glass", "transmission": 0.92,
-        "ior": 1.5, "thickness": 0.012,
-        "lightingCondition": "D65_noon",
-    },
-    "stone": {
-        "baseColor": [0.62, 0.60, 0.57], "roughness": 0.78,
-        "metallic": 0.0, "albedo": 1.0, "lightingCondition": "D65_noon",
-    },
-    "fabric": {
-        "baseColor": [0.46, 0.44, 0.42], "roughness": 0.92,
-        "metallic": 0.0, "albedo": 1.0, "lightingCondition": "D65_noon",
-    },
-    "accent": {
-        "baseColor": [0.42, 0.20, 0.09], "roughness": 0.50,
-        "metallic": 0.0, "albedo": 1.0, "lightingCondition": "D65_noon",
-    },
-}
+from app.shared.object_materials import OBJECT_MATERIALS
 
 
 #: 物件规格里进入提示词的字段。刻意只留这些：`rationale` 是方案层自述、

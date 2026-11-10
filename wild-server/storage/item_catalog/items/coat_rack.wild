@@ -1,0 +1,502 @@
+{
+ "meta": {
+  "version": "1.0",
+  "type": "asset",
+  "name": "挂衣架"
+ },
+ "geometry": {
+  "elements": [
+   {
+    "type": "primitive",
+    "id": "pole",
+    "shape": "cylinder",
+    "height": 1.7,
+    "segments": 12,
+    "position": [
+     -0.055,
+     0.85,
+     0.0
+    ],
+    "material": "metal",
+    "radius": 0.022
+   },
+   {
+    "type": "primitive",
+    "id": "foot_0",
+    "shape": "profile_sweep",
+    "profile": [
+     [
+      -0.016,
+      -0.016
+     ],
+     [
+      0.016,
+      -0.016
+     ],
+     [
+      0.016,
+      0.016
+     ],
+     [
+      -0.016,
+      0.016
+     ]
+    ],
+    "path": [
+     [
+      0.0,
+      0.06,
+      0.0
+     ],
+     [
+      0.22,
+      0.02,
+      0.0
+     ]
+    ],
+    "closedProfile": true,
+    "caps": true,
+    "material": "metal",
+    "position": [
+     -0.055,
+     0.0,
+     0.0
+    ]
+   },
+   {
+    "type": "primitive",
+    "id": "foot_1",
+    "shape": "profile_sweep",
+    "profile": [
+     [
+      -0.016,
+      -0.016
+     ],
+     [
+      0.016,
+      -0.016
+     ],
+     [
+      0.016,
+      0.016
+     ],
+     [
+      -0.016,
+      0.016
+     ]
+    ],
+    "path": [
+     [
+      0.0,
+      0.06,
+      0.0
+     ],
+     [
+      -0.11,
+      0.02,
+      0.1905
+     ]
+    ],
+    "closedProfile": true,
+    "caps": true,
+    "material": "metal",
+    "position": [
+     -0.055,
+     0.0,
+     0.0
+    ]
+   },
+   {
+    "type": "primitive",
+    "id": "foot_2",
+    "shape": "profile_sweep",
+    "profile": [
+     [
+      -0.016,
+      -0.016
+     ],
+     [
+      0.016,
+      -0.016
+     ],
+     [
+      0.016,
+      0.016
+     ],
+     [
+      -0.016,
+      0.016
+     ]
+    ],
+    "path": [
+     [
+      0.0,
+      0.06,
+      0.0
+     ],
+     [
+      -0.11,
+      0.02,
+      -0.1905
+     ]
+    ],
+    "closedProfile": true,
+    "caps": true,
+    "material": "metal",
+    "position": [
+     -0.055,
+     0.0,
+     0.0
+    ]
+   },
+   {
+    "type": "primitive",
+    "id": "hook_0",
+    "shape": "profile_sweep",
+    "profile": [
+     [
+      0.012,
+      0.0
+     ],
+     [
+      0.0085,
+      0.0085
+     ],
+     [
+      0.0,
+      0.012
+     ],
+     [
+      -0.0085,
+      0.0085
+     ],
+     [
+      -0.012,
+      0.0
+     ],
+     [
+      -0.0085,
+      -0.0085
+     ],
+     [
+      -0.0,
+      -0.012
+     ],
+     [
+      0.0085,
+      -0.0085
+     ]
+    ],
+    "path": [
+     [
+      0.0,
+      1.5,
+      0.0
+     ],
+     [
+      0.0707,
+      1.62,
+      0.0707
+     ]
+    ],
+    "closedProfile": true,
+    "caps": true,
+    "material": "metal",
+    "position": [
+     -0.055,
+     0.0,
+     0.0
+    ]
+   },
+   {
+    "type": "primitive",
+    "id": "hook_1",
+    "shape": "profile_sweep",
+    "profile": [
+     [
+      0.012,
+      0.0
+     ],
+     [
+      0.0085,
+      0.0085
+     ],
+     [
+      0.0,
+      0.012
+     ],
+     [
+      -0.0085,
+      0.0085
+     ],
+     [
+      -0.012,
+      0.0
+     ],
+     [
+      -0.0085,
+      -0.0085
+     ],
+     [
+      -0.0,
+      -0.012
+     ],
+     [
+      0.0085,
+      -0.0085
+     ]
+    ],
+    "path": [
+     [
+      0.0,
+      1.5,
+      0.0
+     ],
+     [
+      -0.0707,
+      1.62,
+      0.0707
+     ]
+    ],
+    "closedProfile": true,
+    "caps": true,
+    "material": "metal",
+    "position": [
+     -0.055,
+     0.0,
+     0.0
+    ]
+   },
+   {
+    "type": "primitive",
+    "id": "hook_2",
+    "shape": "profile_sweep",
+    "profile": [
+     [
+      0.012,
+      0.0
+     ],
+     [
+      0.0085,
+      0.0085
+     ],
+     [
+      0.0,
+      0.012
+     ],
+     [
+      -0.0085,
+      0.0085
+     ],
+     [
+      -0.012,
+      0.0
+     ],
+     [
+      -0.0085,
+      -0.0085
+     ],
+     [
+      -0.0,
+      -0.012
+     ],
+     [
+      0.0085,
+      -0.0085
+     ]
+    ],
+    "path": [
+     [
+      0.0,
+      1.5,
+      0.0
+     ],
+     [
+      -0.0707,
+      1.62,
+      -0.0707
+     ]
+    ],
+    "closedProfile": true,
+    "caps": true,
+    "material": "metal",
+    "position": [
+     -0.055,
+     0.0,
+     0.0
+    ]
+   },
+   {
+    "type": "primitive",
+    "id": "hook_3",
+    "shape": "profile_sweep",
+    "profile": [
+     [
+      0.012,
+      0.0
+     ],
+     [
+      0.0085,
+      0.0085
+     ],
+     [
+      0.0,
+      0.012
+     ],
+     [
+      -0.0085,
+      0.0085
+     ],
+     [
+      -0.012,
+      0.0
+     ],
+     [
+      -0.0085,
+      -0.0085
+     ],
+     [
+      -0.0,
+      -0.012
+     ],
+     [
+      0.0085,
+      -0.0085
+     ]
+    ],
+    "path": [
+     [
+      0.0,
+      1.5,
+      0.0
+     ],
+     [
+      0.0707,
+      1.62,
+      -0.0707
+     ]
+    ],
+    "closedProfile": true,
+    "caps": true,
+    "material": "metal",
+    "position": [
+     -0.055,
+     0.0,
+     0.0
+    ]
+   }
+  ]
+ },
+ "materials": {
+  "wood": {
+   "baseColor": [
+    0.42,
+    0.26,
+    0.14
+   ],
+   "roughness": 0.62,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "lightingCondition": "D65_noon"
+  },
+  "metal": {
+   "baseColor": [
+    0.16,
+    0.17,
+    0.18
+   ],
+   "roughness": 0.32,
+   "metallic": 0.8,
+   "albedo": 1.0,
+   "lightingCondition": "D65_noon"
+  },
+  "glass": {
+   "baseColor": [
+    0.72,
+    0.88,
+    0.96
+   ],
+   "roughness": 0.08,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "materialClass": "glass",
+   "transmission": 0.92,
+   "ior": 1.5,
+   "thickness": 0.012,
+   "lightingCondition": "D65_noon"
+  },
+  "stone": {
+   "baseColor": [
+    0.62,
+    0.6,
+    0.57
+   ],
+   "roughness": 0.78,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "lightingCondition": "D65_noon"
+  },
+  "fabric": {
+   "baseColor": [
+    0.46,
+    0.44,
+    0.42
+   ],
+   "roughness": 0.92,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "lightingCondition": "D65_noon"
+  },
+  "accent": {
+   "baseColor": [
+    0.42,
+    0.2,
+    0.09
+   ],
+   "roughness": 0.5,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "lightingCondition": "D65_noon"
+  },
+  "foliage": {
+   "baseColor": [
+    0.2,
+    0.34,
+    0.16
+   ],
+   "roughness": 0.86,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "lightingCondition": "D65_noon"
+  },
+  "screen": {
+   "baseColor": [
+    0.045,
+    0.048,
+    0.055
+   ],
+   "roughness": 0.16,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "emissive": [
+    0.02,
+    0.025,
+    0.03
+   ],
+   "emissiveIntensity": 1.0,
+   "lightingCondition": "D65_noon"
+  },
+  "porcelain": {
+   "baseColor": [
+    0.9,
+    0.9,
+    0.88
+   ],
+   "roughness": 0.18,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "lightingCondition": "D65_noon"
+  }
+ },
+ "behaviors": {}
+}

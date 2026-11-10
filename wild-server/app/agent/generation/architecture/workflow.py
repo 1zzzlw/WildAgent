@@ -424,7 +424,7 @@ async def architecture_planner(state: GenerationState) -> dict:
         raw, diag = await draft_design(
             base_prompt=prompt,
             user_request=message + ("\n本轮修改意见：" + feedback if feedback else ""),
-            thinking_mode=state.get("thinking_mode") is not False,
+            thinking_mode=state.get("thinking_mode") is True,
             on_reasoning_delta=callback,
             current_plan=previous_plan if feedback else None,
             validate=validate,

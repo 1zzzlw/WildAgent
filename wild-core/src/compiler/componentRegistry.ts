@@ -6,12 +6,12 @@ import { compileWindow } from './components/window'
 import { compileBalcony } from './components/balcony'
 import { compileBayWindow } from './components/bayWindow'
 import { compileCanopy } from './components/canopy'
-import { compileChimney } from './components/chimney'
 import { compileCornice } from './components/cornice'
 import { compileRamp } from './components/ramp'
 import { compileLight } from './components/light'
 import { compileElevator } from './components/elevator'
-import { compileFan } from './components/fan'
+import { registerRecipeCompilers } from './declarative/registry'
+import { RECIPES } from './declarative/recipes'
 
 export interface ComponentCompilerRegistration {
   type: ComponentSpec['type']
@@ -110,12 +110,6 @@ function registerBuiltins(): void {
     compile: (component, context) => compileCornice(component as Extract<ComponentSpec, { type: 'cornice' }>, context),
   })
   registerComponentCompiler({
-    type: 'chimney',
-    editing: { translation: 'position', host: 'parentRoof', parameters: ['width', 'depth', 'height', 'wallThickness', 'capHeight'] },
-    description: '将烟囱编译为薄壁筒体和顶部压顶',
-    compile: (component, context) => compileChimney(component as Extract<ComponentSpec, { type: 'chimney' }>, context),
-  })
-  registerComponentCompiler({
     type: 'light',
     editing: { translation: 'lightBody', parameters: ['height', 'shadeRadius', 'lowIntensity', 'highIntensity', 'distance'] },
     description: '将交互灯具编译为灯泡、灯座和运行时光源行为',
@@ -128,12 +122,9 @@ function registerBuiltins(): void {
     description: '带层门联锁、逐层呼梯、轿内选层和开关门按钮的电梯，入口朝 +Z',
     compile: (component, context) => compileElevator(component as Extract<ComponentSpec, { type: 'elevator' }>, context),
   })
-  registerComponentCompiler({
-    type: 'fan',
-    editing: { translation: 'position', parameters: ['radius', 'bladeCount', 'drop', 'rpm'] },
-    description: '吊扇与独立墙面开关，关闭、低速、高速循环',
-    compile: component => compileFan(component as Extract<ComponentSpec, { type: 'fan' }>),
-  })
+  // 数据化构件：几何装配全在 JSON 配方里，引擎侧只剩解释器 + 宿主求解闭集。
+  // 新增这类构件不需要改本文件 —— 见 declarative/recipes/index.ts 的说明。
+  registerRecipeCompilers(RECIPES)
 }
 
 registerBuiltins()

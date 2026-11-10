@@ -147,10 +147,6 @@ _COMPONENT_RULES: dict[str, str] = {
         "- profile 必填（截面点数组）\n"
         "- 编译后产出: primitive.profile_sweep（飞檐轮廓）"
     ),
-    "chimney": (
-        "- position、width、depth、height 必填\n"
-        "- 编译后产出: primitive.box×4（薄壁筒体）+ primitive.box（压顶），不对屋顶做布尔穿透"
-    ),
     "elevator": (
         "- position、dimensions{width,depth,height}、floorHeight、floorCount 必填；"
         "initialFloor 可选（默认 0）\n"
@@ -381,15 +377,6 @@ COMPONENT_REGISTRY: dict[str, ComponentConfig] = {
         extra_rules=_COMPONENT_RULES["elevator"],
         priority=4,
     ),
-    "fan": ComponentConfig(
-        component_type="fan", label="吊扇", entity_type="fan", is_list=True,
-        rag_extra_queries=["吊扇 开关 动态家具"],
-        required_fields=["type", "id", "position", "controlPosition"],
-        optional_fields=["radius", "bladeCount", "drop", "rpm", "initiallyOn", "material", "frameMaterial"],
-        skip_keywords=["不要风扇", "不要吊扇"], need_keywords=["风扇", "吊扇"],
-        extra_rules="position 为电机中心；controlPosition 为可达墙面开关。上方 drop 是吊杆长度，叶片3–8片，rpm≤600。点击开关循环关闭/低速/高速，运行状态不保存。",
-        priority=4,
-    ),
     # ── P4: 特殊场景 ──
     "ramp": ComponentConfig(
         component_type="ramp",
@@ -427,18 +414,6 @@ COMPONENT_REGISTRY: dict[str, ComponentConfig] = {
         skip_keywords=["不要檐口", "没有檐口", "不需要檐口"],
         need_keywords=["檐口", "飞檐", "挑檐"],
         extra_rules=_COMPONENT_RULES["cornice"],
-        priority=5,
-    ),
-    "chimney": ComponentConfig(
-        component_type="chimney",
-        label="烟囱",
-        entity_type="chimney",
-        rag_extra_queries=["chimney flue"],
-        is_list=True,
-        required_fields=["type", "id", "position", "width", "depth", "height"],
-        skip_keywords=["不要烟囱", "没有烟囱", "不需要烟囱"],
-        need_keywords=["烟囱", "壁炉", "排烟"],
-        extra_rules=_COMPONENT_RULES["chimney"],
         priority=5,
     ),
     # ── P6: 独立物件（无宿主，可单独成一个场景）──
@@ -530,6 +505,28 @@ COMPONENT_REGISTRY: dict[str, ComponentConfig] = {
 def get_implemented_components() -> list[ComponentConfig]:
     """获取所有已实现的组件配置"""
     return [c for c in COMPONENT_REGISTRY.values() if c.implemented]
+
+
+def _merge_recipe_configs() -> None:
+    """把 ``wild-core`` 的构件配方登记进注册表。
+
+    配方是数据化构件的**唯一事实源**（几何、字段、关键词、提示词规则都从那份
+    JSON 生成），所以这里直接覆盖同名条目 —— 本文件里不该再有 ``fan`` / ``chimney``
+    这类已经有配方的类型。
+
+    部署环境裁掉 ``wild-core`` 时静默跳过：启动不能因为读不到配方目录而失败，
+    但 `scripts/ci/test_component_recipes.py` 会当场变红，缺口不会被无声放过。
+    """
+
+    try:
+        from app.agent.generation.component.recipes import recipe_component_configs
+    except Exception:  # pragma: no cover - 缺目录/缺依赖都不该阻断启动
+        return
+    for config in recipe_component_configs():
+        COMPONENT_REGISTRY[config.component_type] = config
+
+
+_merge_recipe_configs()
 
 
 def generic_component_config(component_type: str, label: str = "") -> ComponentConfig:

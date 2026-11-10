@@ -245,10 +245,10 @@
             <div class="interaction-hint">右键灯泡循环切换：关闭 → 弱光 → 强光 → 关闭。</div>
           </div>
 
-          <div v-if="selectedComponent.type === 'fan' || selectedComponent.type === 'elevator'" class="property-section">
-            <div class="section-title">{{ selectedComponent.type === 'fan' ? '吊扇参数' : '电梯参数' }}</div>
-            <div v-for="key in selectedComponent.type === 'fan' ? ['position', 'controlPosition'] : ['position']" :key="key" class="property-row vector-property">
-              <label>{{ key === 'controlPosition' ? '开关位置' : '设备位置' }}</label>
+          <div v-if="hasMechanismSection" class="property-section">
+            <div class="section-title">{{ mechanismTitle }}</div>
+            <div v-for="key in mechanismVectorFields" :key="key" class="property-row vector-property">
+              <label>{{ vectorFieldLabel(key) }}</label>
               <div class="vector-inputs"><div v-for="(axis, index) in axes" :key="axis" class="axis-input">
                 <span class="axis-label">{{ axis }}</span>
                 <el-input-number :model-value="componentVectorValue(key, index)" :controls="false" :step="0.1"
@@ -260,8 +260,8 @@
               <el-input-number :model-value="mechanismNumberValue(field.key, field.defaultValue)" :min="field.min" :max="field.max" :step="field.step"
                 @change="(value: number | undefined) => handleMechanismNumberChange(field.key, value)" />
             </div>
-            <div v-if="selectedComponent.type === 'fan'" class="property-row">
-              <label>初始运行</label><el-switch :model-value="selectedComponent.initiallyOn ?? false"
+            <div v-if="hasInitiallyOn" class="property-row">
+              <label>初始运行</label><el-switch :model-value="componentValue('initiallyOn') === true"
                 @change="(value: boolean) => handleComponentChange('initiallyOn', value)" />
             </div>
             <div v-for="field in mechanismMaterialFields" :key="field.key" class="property-row">
@@ -270,9 +270,7 @@
                 <el-option v-for="name in componentMaterialNames(field.key)" :key="name" :label="materialDisplayName(name)" :value="name" />
               </el-select>
             </div>
-            <div class="interaction-hint">{{ selectedComponent.type === 'fan'
-              ? '点击开关循环：关闭 → 低速 → 高速。位置是电机中心，吊杆向上连接天花；开关位置可单独调整。'
-              : '点击层门旁按钮呼梯，轿内数字选层，箭头开关门。入口朝 +Z；请为井道围墙和上层楼板留出通道。位置 Y 是初始停靠层地板高度。' }}</div>
+            <div class="interaction-hint">{{ mechanismHint }}</div>
           </div>
 
           <div v-if="selectedComponent.type === 'canopy'" class="property-section">
@@ -658,7 +656,7 @@
 </template>
 
 <script setup lang="ts">
-import { getComponentCompiler, resolveOpeningInteractionSpec } from 'wild-core/compiler'
+import { getComponentCompiler, getRecipe, resolveOpeningInteractionSpec } from 'wild-core/compiler'
 import { getGeometryReferences } from 'wild-core/relationships'
 import { acceptsComponentMaterial } from '../../wild/materialCompatibility'
 import { SURFACE_MATERIAL_PRESETS } from '../../wild/surfaceMaterialPresets'
@@ -752,21 +750,69 @@ const selectedComponent = computed(() => {
   return sceneStore.document.blueprint.geometry.components?.find(component => component.id === id) || null
 })
 
-const mechanismNumberFields = computed(() => selectedComponent.value?.type === 'fan' ? [
-  { key: 'radius', label: '扇叶半径', min: 0.1, max: undefined, step: 0.05, defaultValue: 0.65 },
-  { key: 'bladeCount', label: '扇叶数量', min: 3, max: 8, step: 1, defaultValue: 4 },
-  { key: 'drop', label: '吊杆长度', min: 0.01, max: undefined, step: 0.05, defaultValue: 0.25 },
-  { key: 'rpm', label: '高速转速', min: 1, max: 600, step: 10, defaultValue: 180 },
-] : [
-  { key: 'width', label: '轿厢宽度', min: 1.2, max: undefined, step: 0.1, defaultValue: 1.8 },
-  { key: 'depth', label: '轿厢深度', min: 1.2, max: undefined, step: 0.1, defaultValue: 1.8 },
-  { key: 'height', label: '轿厢高度', min: 2.1, max: undefined, step: 0.1, defaultValue: 2.5 },
-  { key: 'floorHeight', label: '楼层间距', min: 2.3, max: undefined, step: 0.1, defaultValue: 3.3 },
-  { key: 'floorCount', label: '楼层数量', min: 1, max: undefined, step: 1, defaultValue: 2 },
-  { key: 'initialFloor', label: '初始层序（0起）', min: 0, max: (selectedComponent.value?.type === 'elevator' ? selectedComponent.value.floorCount : 1) - 1, step: 1, defaultValue: 0 },
-])
-const mechanismMaterialFields = computed(() => selectedComponent.value?.type === 'fan'
-  ? [{ key: 'material', label: '扇叶材质' }, { key: 'frameMaterial', label: '机身材质' }]
+/**
+ * 配方构件（数据定义）的参数直接从配方读，不再在面板里抄第二份。
+ * 未迁移的电梯仍走手写表 —— 那张表带 `dimensions.*` 的特殊映射。
+ */
+const selectedRecipe = computed(() => {
+  const type = selectedComponent.value ? String(selectedComponent.value.type) : ''
+  return type ? getRecipe(type) : undefined
+})
+
+const hasMechanismSection = computed(() => Boolean(selectedRecipe.value?.params) || selectedComponent.value?.type === 'elevator')
+const mechanismTitle = computed(() => selectedRecipe.value?.label ? `${selectedRecipe.value.label}参数` : '电梯参数')
+const mechanismHint = computed(() => selectedRecipe.value
+  ? selectedRecipe.value.description
+  : '点击层门旁按钮呼梯，轿内数字选层，箭头开关门。入口朝 +Z；请为井道围墙和上层楼板留出通道。位置 Y 是初始停靠层地板高度。')
+/** 可拖动的向量字段：配方 `defaults` 里凡是数组的就是（position / controlPosition）。 */
+const mechanismVectorFields = computed(() => {
+  if (selectedRecipe.value) {
+    return Object.entries(selectedRecipe.value.defaults ?? {})
+      .filter(([, value]) => Array.isArray(value))
+      .map(([key]) => key)
+  }
+  return selectedComponent.value?.type === 'elevator' ? ['position'] : []
+})
+const vectorFieldLabel = (key: string) => (key === 'controlPosition' ? '开关位置' : '设备位置')
+/** 「初始运行」开关是否出现，也由配方 `defaults` 决定 —— 不再写 `type === 'fan'`。 */
+const hasInitiallyOn = computed(() => Boolean(
+  selectedRecipe.value && 'initiallyOn' in (selectedRecipe.value.defaults ?? {}),
+))
+
+const MATERIAL_FIELD_LABELS: Record<string, string> = {
+  material: '主体材质',
+  frameMaterial: '框架材质',
+  capMaterial: '压顶材质',
+  doorMaterial: '门板材质',
+  floorMaterial: '地板材质',
+}
+
+const mechanismNumberFields = computed(() => {
+  const recipe = selectedRecipe.value
+  if (recipe?.params) {
+    return Object.entries(recipe.params)
+      .filter(([, param]) => param.type === 'number' || param.type === 'integer')
+      .map(([key, param]) => ({
+        key,
+        label: param.label || key,
+        min: param.min,
+        max: param.max,
+        step: param.step,
+        defaultValue: typeof param.default === 'number' ? param.default : 0,
+        integer: param.type === 'integer',
+      }))
+  }
+  return [
+    { key: 'width', label: '轿厢宽度', min: 1.2, max: undefined, step: 0.1, defaultValue: 1.8, integer: false },
+    { key: 'depth', label: '轿厢深度', min: 1.2, max: undefined, step: 0.1, defaultValue: 1.8, integer: false },
+    { key: 'height', label: '轿厢高度', min: 2.1, max: undefined, step: 0.1, defaultValue: 2.5, integer: false },
+    { key: 'floorHeight', label: '楼层间距', min: 2.3, max: undefined, step: 0.1, defaultValue: 3.3, integer: false },
+    { key: 'floorCount', label: '楼层数量', min: 1, max: undefined, step: 1, defaultValue: 2, integer: true },
+    { key: 'initialFloor', label: '初始层序（0起）', min: 0, max: (selectedComponent.value?.type === 'elevator' ? selectedComponent.value.floorCount : 1) - 1, step: 1, defaultValue: 0, integer: true },
+  ]
+})
+const mechanismMaterialFields = computed(() => selectedRecipe.value
+  ? (selectedRecipe.value.materialFields ?? []).map(key => ({ key, label: MATERIAL_FIELD_LABELS[key] || key }))
   : [{ key: 'material', label: '轿厢内饰' }, { key: 'frameMaterial', label: '框架材质' }, { key: 'doorMaterial', label: '门板材质' }, { key: 'floorMaterial', label: '地板材质' }])
 function mechanismNumberValue(key: string, fallback: number): number {
   const c = selectedComponent.value
@@ -778,7 +824,11 @@ function handleMechanismNumberChange(key: string, value: number | undefined) {
   const c = selectedComponent.value
   if (c?.type === 'elevator' && ['width', 'depth', 'height'].includes(key)) {
     void applyComponentChanges({ dimensions: { ...c.dimensions, [key]: value } }, '修改轿厢尺寸')
-  } else if (['bladeCount', 'floorCount', 'initialFloor'].includes(key)) handleComponentIntegerChange(key, value)
+    return
+  }
+  // 整数性由配方参数类型决定（`integer`），不靠一张按字段名的白名单。
+  const isInteger = mechanismNumberFields.value.find(field => field.key === key)?.integer === true
+  if (isInteger) handleComponentIntegerChange(key, value)
   else handleComponentNumberChange(key, value)
 }
 

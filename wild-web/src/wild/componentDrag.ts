@@ -10,6 +10,7 @@ import { getComponentCompiler, translateWallCoordinates, translateRoofAttachment
 import { buildGeometryRelationIndex, collectGeometryDependents, getGeometryReferences } from 'wild-core/relationships'
 import type { Blueprint } from '../types/blueprint'
 import type { SceneOperation } from '../types/scenePatch'
+import { expandItemSelection, selectedItemGroup } from './itemGroups'
 
 /** 将视口中的世界坐标位移转换为组件蓝图字段更新。 */
 export function createComponentTranslationChanges(
@@ -76,12 +77,15 @@ export function createGeometryTranslationOperations(
   const componentIds = new Set(components.map(item => item.id))
   const items = new Map<string, ComponentSpec | GeometryElement>([...elements, ...components].map(item => [item.id, item]))
   const affected = getGeometryTranslationIds(blueprint, selectedIds)
+  const itemPartIds = new Set(selectedItemGroup(blueprint, expandItemSelection(blueprint, selectedIds))?.[1].elements || [])
   return [...affected].filter(id => items.has(id)).flatMap(id => {
     const item = items.get(id)!
     if (item.type === 'solid' && item.kind === 'boolean') return []
     const inherited = getGeometryReferences(item).find(ref => affected.has(ref.targetId))
     if (inherited?.coordinates === 'surface' || inherited?.field === 'parentFloor') return []
-    const changes = inherited?.coordinates === 'wall' && 'from' in item
+    const changes = itemPartIds.has(id)
+      ? createItemPartTranslationChanges(item as GeometryElement, delta)
+      : inherited?.coordinates === 'wall' && 'from' in item
       ? { from: [item.from[0], item.from[1] + delta[1], item.from[2]] }
       : createComponentTranslationChanges(item, inherited?.field === 'parentRoof' ? [0, 0, 0] : delta, elements)
     return [{ op: componentIds.has(id) ? 'update_component' as const : 'update_element' as const, id, changes }]
@@ -91,7 +95,7 @@ export function createGeometryTranslationOperations(
 /** Preview and commit share the same transitive affected set, even for unchanged local fields. */
 export function getGeometryTranslationIds(blueprint: Blueprint, selectedIds: readonly string[]): Set<string> {
   const index = buildGeometryRelationIndex(blueprint.geometry)
-  const movable = selectedIds.filter(id => {
+  const movable = expandItemSelection(blueprint, selectedIds).filter(id => {
     const item = index.items.get(id)
     return item && (item as { draggable?: boolean }).draggable !== false
   })
@@ -118,6 +122,8 @@ export function createGeometryRotationOperations(
   blueprint: Blueprint,
   selectedIds: readonly string[],
 ): SceneOperation[] {
+  const itemGroup = selectedItemGroup(blueprint, expandItemSelection(blueprint, selectedIds))
+  if (itemGroup) return createItemRotationOperations(blueprint, itemGroup[1].elements)
   if (selectedIds.length !== 1) return []
   const id = selectedIds[0]
   const component = blueprint.geometry.components?.find(item => item.id === id)
@@ -166,6 +172,54 @@ export function createGeometryRotationOperations(
     return []
   }
   return [{ op: component ? 'update_component' : 'update_element', id, changes }]
+}
+
+function createItemPartTranslationChanges(element: GeometryElement, delta: Vec3): Record<string, unknown> {
+  const item = element as GeometryElement & { position?: Vec3; path?: Vec3[] }
+  if (isVec3(item.position)) return { position: add(item.position, delta) }
+  if (Array.isArray(item.path) && item.path.every(isVec3)) {
+    return { path: item.path.map(point => add(point, delta)) }
+  }
+  // 非布尔 solid 的 position 可省略，语义等价于原点。
+  if (item.type === 'solid') return { position: delta }
+  return {}
+}
+
+function createItemRotationOperations(blueprint: Blueprint, ids: readonly string[]): SceneOperation[] {
+  const selected = new Set(ids)
+  const parts = (blueprint.geometry.elements as unknown as GeometryElement[])
+    .filter(element => selected.has(element.id))
+  const points = parts.flatMap(itemPoints)
+  if (!points.length) return []
+  const center: Vec3 = [
+    (Math.min(...points.map(point => point[0])) + Math.max(...points.map(point => point[0]))) / 2,
+    0,
+    (Math.min(...points.map(point => point[2])) + Math.max(...points.map(point => point[2]))) / 2,
+  ]
+  return parts.flatMap((part): SceneOperation[] => {
+    if (part.type === 'solid' && part.kind === 'boolean') return []
+    const item = part as GeometryElement & { position?: Vec3; rotation?: Vec3; path?: Vec3[] }
+    if (Array.isArray(item.path) && item.path.every(isVec3) && !isVec3(item.position)) {
+      return [{ op: 'update_element', id: item.id, changes: { path: item.path.map(point => rotateQuarter(point, center)) } }]
+    }
+    const position = isVec3(item.position) ? item.position : [0, 0, 0] as Vec3
+    const rotation = isVec3(item.rotation) ? item.rotation : [0, 0, 0] as Vec3
+    return [{
+      op: 'update_element',
+      id: item.id,
+      changes: {
+        position: rotateQuarter(position, center),
+        rotation: [rotation[0], rotation[1] + Math.PI / 2, rotation[2]],
+      },
+    }]
+  })
+}
+
+function itemPoints(element: GeometryElement): Vec3[] {
+  const item = element as GeometryElement & { position?: Vec3; path?: Vec3[] }
+  if (isVec3(item.position)) return [item.position]
+  if (Array.isArray(item.path) && item.path.every(isVec3)) return item.path
+  return element.type === 'solid' && element.kind !== 'boolean' ? [[0, 0, 0]] : []
 }
 
 function rotateQuarter(point: Vec3, center: Vec3): Vec3 {

@@ -32,3 +32,18 @@ export function selectionAfterClick(
   }
   return selectedIds.includes(id) ? selectedIds : [...selectedIds, id]
 }
+
+/** 与 selectionAfterClick 相同，但一个点击目标可代表一整组物品零件。 */
+export function selectionAfterClickMany(
+  selectedIds: string[],
+  ids: readonly string[],
+  mode: SelectionMode,
+): string[] {
+  const targets = [...new Set(ids)]
+  if (mode === 'replace') return targets
+  const targetSet = new Set(targets)
+  if (mode === 'toggle' && targets.every(id => selectedIds.includes(id))) {
+    return selectedIds.filter(id => !targetSet.has(id))
+  }
+  return [...new Set([...selectedIds, ...targets])]
+}

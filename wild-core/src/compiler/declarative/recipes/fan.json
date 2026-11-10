@@ -1,0 +1,253 @@
+{
+  "type": "fan",
+  "description": "吊扇：吊杆 + 电机 + 轮毂 + 叶片 + 独立墙面开关；关闭 / 低速 / 高速循环",
+  "label": "吊扇",
+  "icon": "✣",
+  "materialFields": [
+    "material",
+    "frameMaterial"
+  ],
+  "keywords": [
+    "风扇",
+    "吊扇",
+    "排风扇"
+  ],
+  "required": [
+    "controlPosition"
+  ],
+  "notes": "position 是电机中心，吊杆向上连接天花；controlPosition 是可达墙面开关，可单独调整。点击开关循环：关闭 → 低速 → 高速，运行状态不写回蓝图。",
+  "defaults": {
+    "position": [
+      0,
+      2.6,
+      0
+    ],
+    "controlPosition": [
+      0.9,
+      1.1,
+      0
+    ],
+    "initiallyOn": false
+  },
+  "host": "position",
+  "params": {
+    "radius": {
+      "type": "number",
+      "default": 0.65,
+      "min": 0.2,
+      "max": 2,
+      "step": 0.01,
+      "label": "扇叶半径"
+    },
+    "bladeCount": {
+      "type": "integer",
+      "default": 4,
+      "min": 3,
+      "max": 8,
+      "step": 1,
+      "label": "叶片数"
+    },
+    "drop": {
+      "type": "number",
+      "default": 0.25,
+      "min": 0.05,
+      "max": 1.5,
+      "step": 0.01,
+      "label": "吊杆长度"
+    },
+    "rpm": {
+      "type": "number",
+      "default": 180,
+      "min": 1,
+      "max": 600,
+      "step": 10,
+      "label": "转速"
+    }
+  },
+  "guards": [
+    {
+      "expr": "position",
+      "message": "position 必须是 [x, y, z]",
+      "field": "position"
+    },
+    {
+      "expr": "controlPosition",
+      "message": "controlPosition 必须是 [x, y, z]",
+      "field": "controlPosition"
+    },
+    {
+      "expr": "(radius ?? 0.65) > 0",
+      "message": "radius 必须为正数",
+      "field": "radius"
+    },
+    {
+      "expr": "(drop ?? 0.25) > 0",
+      "message": "drop 必须为正数",
+      "field": "drop"
+    },
+    {
+      "expr": "(rpm ?? 180) > 0",
+      "message": "rpm 必须为正数",
+      "field": "rpm"
+    },
+    {
+      "expr": "(rpm ?? 180) <= 600",
+      "message": "rpm 不超过 600",
+      "field": "rpm"
+    },
+    {
+      "expr": "(bladeCount ?? 4) >= 3 && (bladeCount ?? 4) <= 8",
+      "message": "风扇叶片数须为 3–8",
+      "field": "bladeCount"
+    },
+    {
+      "expr": "floor(bladeCount ?? 4) == (bladeCount ?? 4)",
+      "message": "风扇叶片数必须为整数",
+      "field": "bladeCount"
+    }
+  ],
+  "elements": [
+    {
+      "id": "{id}__rod",
+      "type": "primitive",
+      "shape": "cylinder",
+      "position": {
+        "$": "[pos.x, pos.y + (drop ?? 0.25) / 2, pos.z]"
+      },
+      "radius": 0.018,
+      "height": {
+        "$": "drop ?? 0.25"
+      },
+      "material": {
+        "$": "frameMaterial"
+      }
+    },
+    {
+      "id": "{id}__motor",
+      "type": "primitive",
+      "shape": "cylinder",
+      "position": {
+        "$": "position"
+      },
+      "radius": {
+        "$": "(radius ?? 0.65) * 0.19"
+      },
+      "height": 0.12,
+      "material": {
+        "$": "frameMaterial"
+      }
+    },
+    {
+      "id": "{id}__hub",
+      "type": "primitive",
+      "shape": "sphere",
+      "position": {
+        "$": "[pos.x, pos.y - 0.065, pos.z]"
+      },
+      "radius": {
+        "$": "(radius ?? 0.65) * 0.15"
+      },
+      "scale": [
+        1,
+        0.5,
+        1
+      ],
+      "material": {
+        "$": "frameMaterial"
+      },
+      "behavior": {
+        "kind": "rotor",
+        "groupId": {
+          "$": "id"
+        },
+        "role": "rotor",
+        "pivot": {
+          "$": "position"
+        },
+        "rpm": {
+          "$": "rpm ?? 180"
+        },
+        "initiallyOn": {
+          "$": "initiallyOn ?? false"
+        }
+      }
+    },
+    {
+      "id": "{id}__control",
+      "type": "primitive",
+      "shape": "box",
+      "position": {
+        "$": "controlPosition"
+      },
+      "dimensions": [
+        0.12,
+        0.17,
+        0.035
+      ],
+      "material": {
+        "$": "frameMaterial"
+      },
+      "label": {
+        "text": "FAN",
+        "color": [
+          1,
+          1,
+          1
+        ]
+      },
+      "behavior": {
+        "kind": "rotor",
+        "groupId": {
+          "$": "id"
+        },
+        "role": "control",
+        "pivot": {
+          "$": "position"
+        },
+        "rpm": {
+          "$": "rpm ?? 180"
+        },
+        "initiallyOn": {
+          "$": "initiallyOn ?? false"
+        }
+      }
+    },
+    {
+      "id": "{id}__blade_{i}",
+      "type": "primitive",
+      "shape": "box",
+      "position": {
+        "$": "[pos.x + cos(angle) * (radius ?? 0.65) * 0.55, pos.y - 0.04, pos.z - sin(angle) * (radius ?? 0.65) * 0.55]"
+      },
+      "dimensions": {
+        "$": "[(radius ?? 0.65) * 0.85, 0.018, (radius ?? 0.65) * 0.2]"
+      },
+      "rotation": {
+        "$": "[0, angle, 0.12]"
+      },
+      "material": {
+        "$": "material"
+      },
+      "repeat": {
+        "kind": "polar",
+        "count": "bladeCount ?? 4"
+      },
+      "behavior": {
+        "kind": "rotor",
+        "groupId": {
+          "$": "id"
+        },
+        "role": "rotor",
+        "pivot": {
+          "$": "position"
+        },
+        "rpm": {
+          "$": "rpm ?? 180"
+        },
+        "initiallyOn": {
+          "$": "initiallyOn ?? false"
+        }
+      }
+    }
+  ]
+}

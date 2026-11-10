@@ -724,7 +724,7 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
         "selection": selection,
         "recent_messages": data.get("recent_messages", []),
         "workflow_state": str(data.get("workflow_state") or "idle"),
-        "thinking_mode": data.get("thinking_mode") is not False,
+        "thinking_mode": data.get("thinking_mode") is True,
         "detail_level": detail_level,
         "procedural_materials_enabled": data.get("procedural_materials_enabled") is True,
         "max_retries": 3,

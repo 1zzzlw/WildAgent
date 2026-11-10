@@ -1,0 +1,270 @@
+{
+ "meta": {
+  "version": "1.0",
+  "type": "asset",
+  "name": "杠铃架"
+ },
+ "geometry": {
+  "elements": [
+   {
+    "type": "primitive",
+    "id": "post_0",
+    "shape": "box",
+    "dimensions": [
+     0.08,
+     1.22,
+     0.08
+    ],
+    "position": [
+     -0.57,
+     0.61,
+     0.0
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "base_f_0",
+    "shape": "box",
+    "dimensions": [
+     0.08,
+     0.06,
+     0.7568
+    ],
+    "position": [
+     -0.57,
+     0.03,
+     0.3784
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "base_b_0",
+    "shape": "box",
+    "dimensions": [
+     0.08,
+     0.06,
+     0.7568
+    ],
+    "position": [
+     -0.57,
+     0.03,
+     -0.3784
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "hook_0",
+    "shape": "box",
+    "dimensions": [
+     0.14,
+     0.05,
+     0.05
+    ],
+    "position": [
+     -0.48,
+     1.12,
+     0.0
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "post_1",
+    "shape": "box",
+    "dimensions": [
+     0.08,
+     1.22,
+     0.08
+    ],
+    "position": [
+     0.57,
+     0.61,
+     0.0
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "base_f_1",
+    "shape": "box",
+    "dimensions": [
+     0.08,
+     0.06,
+     0.7568
+    ],
+    "position": [
+     0.57,
+     0.03,
+     0.3784
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "base_b_1",
+    "shape": "box",
+    "dimensions": [
+     0.08,
+     0.06,
+     0.7568
+    ],
+    "position": [
+     0.57,
+     0.03,
+     -0.3784
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "hook_1",
+    "shape": "box",
+    "dimensions": [
+     0.14,
+     0.05,
+     0.05
+    ],
+    "position": [
+     0.48,
+     1.12,
+     0.0
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "crossbar",
+    "shape": "cylinder",
+    "height": 1.14,
+    "segments": 12,
+    "position": [
+     0.0,
+     0.3,
+     -0.516
+    ],
+    "material": "metal",
+    "radius": 0.03,
+    "rotation": [
+     0.0,
+     0.0,
+     1.570796
+    ]
+   }
+  ]
+ },
+ "materials": {
+  "wood": {
+   "baseColor": [
+    0.42,
+    0.26,
+    0.14
+   ],
+   "roughness": 0.62,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "lightingCondition": "D65_noon"
+  },
+  "metal": {
+   "baseColor": [
+    0.16,
+    0.17,
+    0.18
+   ],
+   "roughness": 0.32,
+   "metallic": 0.8,
+   "albedo": 1.0,
+   "lightingCondition": "D65_noon"
+  },
+  "glass": {
+   "baseColor": [
+    0.72,
+    0.88,
+    0.96
+   ],
+   "roughness": 0.08,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "materialClass": "glass",
+   "transmission": 0.92,
+   "ior": 1.5,
+   "thickness": 0.012,
+   "lightingCondition": "D65_noon"
+  },
+  "stone": {
+   "baseColor": [
+    0.62,
+    0.6,
+    0.57
+   ],
+   "roughness": 0.78,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "lightingCondition": "D65_noon"
+  },
+  "fabric": {
+   "baseColor": [
+    0.46,
+    0.44,
+    0.42
+   ],
+   "roughness": 0.92,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "lightingCondition": "D65_noon"
+  },
+  "accent": {
+   "baseColor": [
+    0.42,
+    0.2,
+    0.09
+   ],
+   "roughness": 0.5,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "lightingCondition": "D65_noon"
+  },
+  "foliage": {
+   "baseColor": [
+    0.2,
+    0.34,
+    0.16
+   ],
+   "roughness": 0.86,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "lightingCondition": "D65_noon"
+  },
+  "screen": {
+   "baseColor": [
+    0.045,
+    0.048,
+    0.055
+   ],
+   "roughness": 0.16,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "emissive": [
+    0.02,
+    0.025,
+    0.03
+   ],
+   "emissiveIntensity": 1.0,
+   "lightingCondition": "D65_noon"
+  },
+  "porcelain": {
+   "baseColor": [
+    0.9,
+    0.9,
+    0.88
+   ],
+   "roughness": 0.18,
+   "metallic": 0.0,
+   "albedo": 1.0,
+   "lightingCondition": "D65_noon"
+  }
+ },
+ "behaviors": {}
+}

@@ -1,0 +1,639 @@
+{
+  "schema_version": "resolved-design/1.0",
+  "design_id": "design_surface_contract_regression",
+  "design_revision": 1,
+  "design_hash": "sha256:8b91fa5102d6b4c802f6c4d3b4a82f7208aaa0b7472641669f14456a70ebd0ac",
+  "resolver_version": "drawing-projection/1",
+  "component_markers": [
+    {
+      "id": "building_body",
+      "type": "building_body",
+      "host": "",
+      "depends_on": [],
+      "design": {
+        "kind": "architecture",
+        "concept": "",
+        "massing": {
+          "shape": "rectangle",
+          "width": 8.0,
+          "depth": 6.0,
+          "floors": 1,
+          "modeled_floors": 1,
+          "representation_mode": "full",
+          "floor_height": 3.0,
+          "symmetry": false,
+          "tiers": null
+        },
+        "complexity": {
+          "level": "standard",
+          "min_volumes": 1,
+          "min_detail_packages": 0,
+          "target_structural_elements": 10,
+          "grid_bays": [
+            2,
+            2
+          ],
+          "reason": ""
+        },
+        "volumes": [
+          {
+            "id": "main",
+            "role": "primary",
+            "x": 0.0,
+            "z": 0.0,
+            "width": 8.0,
+            "depth": 6.0,
+            "start_floor": 1,
+            "end_floor": 1
+          }
+        ],
+        "structural_grid": {
+          "system": "wall",
+          "x_bays": 1,
+          "z_bays": 1
+        },
+        "envelope": {
+          "system": "unspecified",
+          "curtain_wall": null
+        },
+        "facades": {
+          "front": {
+            "bays": 1,
+            "entrance_bay": null,
+            "ground_pattern": [
+              "window"
+            ],
+            "upper_pattern": [
+              "window"
+            ]
+          },
+          "back": {
+            "bays": 1,
+            "entrance_bay": null,
+            "ground_pattern": [
+              "window"
+            ],
+            "upper_pattern": [
+              "window"
+            ]
+          },
+          "left": {
+            "bays": 1,
+            "entrance_bay": null,
+            "ground_pattern": [
+              "window"
+            ],
+            "upper_pattern": [
+              "window"
+            ]
+          },
+          "right": {
+            "bays": 1,
+            "entrance_bay": null,
+            "ground_pattern": [
+              "window"
+            ],
+            "upper_pattern": [
+              "window"
+            ]
+          }
+        },
+        "circulation": {
+          "vertical_strategy": "stair"
+        },
+        "materials": {
+          "keywords": [
+            "耐久中性主材搭配少量深色框架与自然色点缀"
+          ],
+          "resolved_plan": {
+            "concept": "耐久中性主材搭配少量深色框架与自然色点缀",
+            "palette": [],
+            "roles": [
+              {
+                "role": "facade_primary",
+                "materialId": "wall_finish",
+                "assetId": null,
+                "proceduralPresetId": null,
+                "surfacePresetId": "plaster_lime",
+                "material": {
+                  "baseColor": [
+                    0.82,
+                    0.8,
+                    0.73
+                  ],
+                  "roughness": 0.87,
+                  "metallic": 0,
+                  "albedo": 1.0,
+                  "lightingCondition": "D65_noon",
+                  "surfaceFamily": "mineral",
+                  "surfacePattern": "plaster"
+                }
+              },
+              {
+                "role": "structure",
+                "materialId": "concrete",
+                "assetId": null,
+                "proceduralPresetId": null,
+                "surfacePresetId": "concrete_fair",
+                "material": {
+                  "baseColor": [
+                    0.55,
+                    0.56,
+                    0.54
+                  ],
+                  "roughness": 0.79,
+                  "metallic": 0,
+                  "albedo": 1.0,
+                  "lightingCondition": "D65_noon",
+                  "surfaceFamily": "mineral",
+                  "surfacePattern": "concrete"
+                }
+              },
+              {
+                "role": "floor",
+                "materialId": "floor_finish",
+                "assetId": null,
+                "proceduralPresetId": null,
+                "surfacePresetId": "tiles_limestone",
+                "material": {
+                  "baseColor": [
+                    0.76,
+                    0.72,
+                    0.63
+                  ],
+                  "roughness": 0.37,
+                  "metallic": 0,
+                  "albedo": 1.0,
+                  "lightingCondition": "D65_noon",
+                  "surfaceFamily": "mineral",
+                  "surfacePattern": "tiles",
+                  "materialClass": "clearcoat",
+                  "clearcoat": 0.1,
+                  "clearcoatRoughness": 0.3
+                }
+              },
+              {
+                "role": "frame",
+                "materialId": "metal",
+                "assetId": null,
+                "proceduralPresetId": null,
+                "surfacePresetId": "metal_brushed",
+                "material": {
+                  "baseColor": [
+                    0.4,
+                    0.43,
+                    0.46
+                  ],
+                  "roughness": 0.32,
+                  "metallic": 0.85,
+                  "albedo": 1.0,
+                  "lightingCondition": "D65_noon",
+                  "surfaceFamily": "metal",
+                  "surfacePattern": "brushed",
+                  "anisotropy": 0.65,
+                  "anisotropyRotation": 0
+                }
+              },
+              {
+                "role": "door",
+                "materialId": "wood",
+                "assetId": null,
+                "proceduralPresetId": null,
+                "surfacePresetId": "planks_walnut",
+                "material": {
+                  "baseColor": [
+                    0.29,
+                    0.16,
+                    0.085
+                  ],
+                  "roughness": 0.5,
+                  "metallic": 0,
+                  "albedo": 1.0,
+                  "lightingCondition": "D65_noon",
+                  "surfaceFamily": "wood",
+                  "surfacePattern": "planks",
+                  "materialClass": "clearcoat",
+                  "clearcoat": 0.1,
+                  "clearcoatRoughness": 0.35
+                }
+              },
+              {
+                "role": "glass",
+                "materialId": "glass",
+                "assetId": null,
+                "proceduralPresetId": null,
+                "surfacePresetId": "glass_clear",
+                "material": {
+                  "baseColor": [
+                    0.92,
+                    0.97,
+                    1.0
+                  ],
+                  "roughness": 0.055,
+                  "metallic": 0,
+                  "albedo": 1.0,
+                  "lightingCondition": "D65_noon",
+                  "surfaceFamily": "glass",
+                  "materialClass": "glass",
+                  "transmission": 0.94,
+                  "ior": 1.5,
+                  "thickness": 0.012,
+                  "attenuationColor": [
+                    0.88,
+                    0.96,
+                    1
+                  ],
+                  "attenuationDistance": 6
+                }
+              },
+              {
+                "role": "roof",
+                "materialId": "roof",
+                "assetId": null,
+                "proceduralPresetId": null,
+                "surfacePresetId": "concrete_fair",
+                "material": {
+                  "baseColor": [
+                    0.55,
+                    0.56,
+                    0.54
+                  ],
+                  "roughness": 0.79,
+                  "metallic": 0,
+                  "albedo": 1.0,
+                  "lightingCondition": "D65_noon",
+                  "surfaceFamily": "mineral",
+                  "surfacePattern": "concrete"
+                }
+              },
+              {
+                "role": "ground",
+                "materialId": "ground",
+                "assetId": null,
+                "proceduralPresetId": null,
+                "surfacePresetId": "tiles_limestone",
+                "material": {
+                  "baseColor": [
+                    0.76,
+                    0.72,
+                    0.63
+                  ],
+                  "roughness": 0.37,
+                  "metallic": 0,
+                  "albedo": 1.0,
+                  "lightingCondition": "D65_noon",
+                  "surfaceFamily": "mineral",
+                  "surfacePattern": "tiles",
+                  "materialClass": "clearcoat",
+                  "clearcoat": 0.1,
+                  "clearcoatRoughness": 0.3
+                }
+              },
+              {
+                "role": "accent",
+                "materialId": "accent",
+                "assetId": null,
+                "proceduralPresetId": null,
+                "surfacePresetId": null,
+                "material": {
+                  "baseColor": [
+                    0.42,
+                    0.2,
+                    0.09
+                  ],
+                  "roughness": 0.5,
+                  "metallic": 0.0,
+                  "albedo": 1.0,
+                  "lightingCondition": "D65_noon"
+                }
+              }
+            ],
+            "resolvedAssets": {},
+            "rejectedAssetIds": [],
+            "rejectedProceduralPresetIds": [],
+            "curtainWall": false
+          },
+          "regions": []
+        },
+        "detail_packages": [],
+        "balcony_access_count": 0,
+        "balcony_width": null,
+        "unsupported_component_types": [],
+        "design_rationale": [],
+        "design_intent": null,
+        "delegated_components": [],
+        "body_components": [],
+        "opening_layout": [
+          {
+            "id": "window_main_front_L1_1",
+            "type": "window",
+            "host": "wall_main_front_L1",
+            "entity": {
+              "parentWall": "wall_main_front_L1",
+              "centerAlong": 4.0,
+              "bottomY": 1.0
+            },
+            "size": {}
+          },
+          {
+            "id": "window_main_back_L1_1",
+            "type": "window",
+            "host": "wall_main_back_L1",
+            "entity": {
+              "parentWall": "wall_main_back_L1",
+              "centerAlong": 4.0,
+              "bottomY": 1.0
+            },
+            "size": {}
+          },
+          {
+            "id": "window_main_left_L1_1",
+            "type": "window",
+            "host": "wall_main_left_L1",
+            "entity": {
+              "parentWall": "wall_main_left_L1",
+              "centerAlong": 3.0,
+              "bottomY": 1.0
+            },
+            "size": {}
+          },
+          {
+            "id": "window_main_right_L1_1",
+            "type": "window",
+            "host": "wall_main_right_L1",
+            "entity": {
+              "parentWall": "wall_main_right_L1",
+              "centerAlong": 3.0,
+              "bottomY": 1.0
+            },
+            "size": {}
+          }
+        ]
+      },
+      "entity": {}
+    },
+    {
+      "id": "window_main_front_L1_1",
+      "type": "window",
+      "host": "wall_main_front_L1",
+      "depends_on": [
+        "building_body"
+      ],
+      "design_path": "/decisions/facades/front",
+      "design": {
+        "type": "window",
+        "host": "wall_main_front_L1",
+        "floor": 1,
+        "bay": 1,
+        "bays": 1,
+        "semantic_floor": 1,
+        "form": "",
+        "facade": {
+          "bays": 1,
+          "entrance_bay": null,
+          "ground_pattern": [
+            "window"
+          ],
+          "upper_pattern": [
+            "window"
+          ]
+        }
+      },
+      "entity": {
+        "parentWall": "wall_main_front_L1",
+        "centerAlong": 4.0,
+        "bottomY": 1.0
+      },
+      "diagram_host": {
+        "id": "wall_main_front_L1",
+        "type": "wall",
+        "from": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "to": [
+          8.0,
+          3.0,
+          0.0
+        ],
+        "facing": "front",
+        "design_path": "/decisions/volumes/0"
+      }
+    },
+    {
+      "id": "window_main_back_L1_1",
+      "type": "window",
+      "host": "wall_main_back_L1",
+      "depends_on": [
+        "building_body"
+      ],
+      "design_path": "/decisions/facades/back",
+      "design": {
+        "type": "window",
+        "host": "wall_main_back_L1",
+        "floor": 1,
+        "bay": 1,
+        "bays": 1,
+        "semantic_floor": 1,
+        "form": "",
+        "facade": {
+          "bays": 1,
+          "entrance_bay": null,
+          "ground_pattern": [
+            "window"
+          ],
+          "upper_pattern": [
+            "window"
+          ]
+        }
+      },
+      "entity": {
+        "parentWall": "wall_main_back_L1",
+        "centerAlong": 4.0,
+        "bottomY": 1.0
+      },
+      "diagram_host": {
+        "id": "wall_main_back_L1",
+        "type": "wall",
+        "from": [
+          8.0,
+          0.0,
+          6.0
+        ],
+        "to": [
+          0.0,
+          3.0,
+          6.0
+        ],
+        "facing": "back",
+        "design_path": "/decisions/volumes/0"
+      }
+    },
+    {
+      "id": "window_main_left_L1_1",
+      "type": "window",
+      "host": "wall_main_left_L1",
+      "depends_on": [
+        "building_body"
+      ],
+      "design_path": "/decisions/facades/left",
+      "design": {
+        "type": "window",
+        "host": "wall_main_left_L1",
+        "floor": 1,
+        "bay": 1,
+        "bays": 1,
+        "semantic_floor": 1,
+        "form": "",
+        "facade": {
+          "bays": 1,
+          "entrance_bay": null,
+          "ground_pattern": [
+            "window"
+          ],
+          "upper_pattern": [
+            "window"
+          ]
+        }
+      },
+      "entity": {
+        "parentWall": "wall_main_left_L1",
+        "centerAlong": 3.0,
+        "bottomY": 1.0
+      },
+      "diagram_host": {
+        "id": "wall_main_left_L1",
+        "type": "wall",
+        "from": [
+          0.0,
+          0.0,
+          6.0
+        ],
+        "to": [
+          0.0,
+          3.0,
+          0.0
+        ],
+        "facing": "left",
+        "design_path": "/decisions/volumes/0"
+      }
+    },
+    {
+      "id": "window_main_right_L1_1",
+      "type": "window",
+      "host": "wall_main_right_L1",
+      "depends_on": [
+        "building_body"
+      ],
+      "design_path": "/decisions/facades/right",
+      "design": {
+        "type": "window",
+        "host": "wall_main_right_L1",
+        "floor": 1,
+        "bay": 1,
+        "bays": 1,
+        "semantic_floor": 1,
+        "form": "",
+        "facade": {
+          "bays": 1,
+          "entrance_bay": null,
+          "ground_pattern": [
+            "window"
+          ],
+          "upper_pattern": [
+            "window"
+          ]
+        }
+      },
+      "entity": {
+        "parentWall": "wall_main_right_L1",
+        "centerAlong": 3.0,
+        "bottomY": 1.0
+      },
+      "diagram_host": {
+        "id": "wall_main_right_L1",
+        "type": "wall",
+        "from": [
+          8.0,
+          0.0,
+          0.0
+        ],
+        "to": [
+          8.0,
+          3.0,
+          6.0
+        ],
+        "facing": "right",
+        "design_path": "/decisions/volumes/0"
+      }
+    },
+    {
+      "id": "roof_main",
+      "type": "roof",
+      "host": "main",
+      "depends_on": [
+        "building_body"
+      ],
+      "design_path": "/decisions/roof",
+      "design": {
+        "type": "flat",
+        "ridge_axis": "x",
+        "overhang": 0.0,
+        "volumes": [],
+        "volume": {
+          "id": "main",
+          "role": "primary",
+          "x": 0.0,
+          "z": 0.0,
+          "width": 8.0,
+          "depth": 6.0,
+          "start_floor": 1,
+          "end_floor": 1
+        }
+      },
+      "entity": {
+        "position": [
+          4.0,
+          3.0,
+          3.0
+        ]
+      }
+    }
+  ],
+  "design_gaps": [],
+  "compile_blockers": [],
+  "bounds": {
+    "width": 8.0,
+    "depth": 6.0,
+    "height": 3.0
+  },
+  "levels": [
+    {
+      "index": 1,
+      "base_y": 0.0,
+      "top_y": 3.0
+    }
+  ],
+  "volumes": [
+    {
+      "id": "main",
+      "role": "primary",
+      "x": 0.0,
+      "z": 0.0,
+      "width": 8.0,
+      "depth": 6.0,
+      "start_floor": 1,
+      "end_floor": 1
+    }
+  ],
+  "facade_slots": [],
+  "component_quantities": {
+    "building_body": 1,
+    "window": 4,
+    "roof": 1
+  },
+  "warnings": [
+    "图纸为设计示意；构件形态由 plan 尝试实现，未定位标记列于图纸清单。"
+  ]
+}

@@ -64,6 +64,7 @@ export interface ResolvedMaterialPlan {
     materialId: string
     assetId: string | null
     proceduralPresetId: string | null
+    surfacePresetId: string | null
     material: Record<string, unknown>
   }>
   resolvedAssets: Record<string, Record<string, unknown>>

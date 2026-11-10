@@ -1,6 +1,5 @@
 import type { Blueprint } from '../types/blueprint'
 import type { ReconstructedEntity } from '../types/scene'
-import { deepClone } from '../utils/common'
 import { reconstructWildEntity } from './wildCoreAdapter'
 
 interface PendingRequest {
@@ -21,14 +20,14 @@ export async function reconstructScene(
   }
   // Pinia/Vue 会把 Blueprint 及其嵌套对象转换为 Proxy；Proxy 不能通过
   // Worker.postMessage 的结构化克隆。WILD 本身是 JSON 格式，因此在 Worker
-  // 边界生成一次纯 JSON 快照，既解除响应式包装，也冻结本次重建的输入。
-  const workerBlueprint = deepClone(blueprint)
+  // 边界生成 JSON 快照；解析留在 Worker，避免主线程解析后再结构化克隆整棵对象树。
+  const blueprintJson = JSON.stringify(blueprint)
   const activeWorker = getWorker()
   const requestId = nextRequestId++
   return new Promise<ReconstructedEntity>((resolve, reject) => {
     pending.set(requestId, { resolve, reject })
     try {
-      activeWorker.postMessage({ requestId, blueprint: workerBlueprint })
+      activeWorker.postMessage({ requestId, blueprintJson })
     } catch (error) {
       // postMessage 是同步抛错；及时清理请求，避免 pending 永久残留。
       pending.delete(requestId)

@@ -1,0 +1,353 @@
+{
+  "schema_version": "design/1.0",
+  "design_id": "design_surface_contract_regression",
+  "session_id": "surface_contract_regression",
+  "revision": 1,
+  "status": "draft",
+  "created_at": "2026-11-10T08:10:49.276771Z",
+  "updated_at": "2026-11-10T08:10:49.278765Z",
+  "approved_at": null,
+  "requirements": {
+    "source_request": "生成一层建筑",
+    "building_type": "building",
+    "profile": "building",
+    "style_intent": []
+  },
+  "decisions": {
+    "kind": "architecture",
+    "concept": "",
+    "massing": {
+      "shape": "rectangle",
+      "width": 8.0,
+      "depth": 6.0,
+      "floors": 1,
+      "modeled_floors": 1,
+      "representation_mode": "full",
+      "floor_height": 3.0,
+      "symmetry": false,
+      "tiers": null
+    },
+    "complexity": {
+      "level": "standard",
+      "min_volumes": 1,
+      "min_detail_packages": 0,
+      "target_structural_elements": 10,
+      "grid_bays": [
+        2,
+        2
+      ],
+      "reason": ""
+    },
+    "volumes": [
+      {
+        "id": "main",
+        "role": "primary",
+        "x": 0.0,
+        "z": 0.0,
+        "width": 8.0,
+        "depth": 6.0,
+        "start_floor": 1,
+        "end_floor": 1
+      }
+    ],
+    "structural_grid": {
+      "system": "wall",
+      "x_bays": 1,
+      "z_bays": 1
+    },
+    "envelope": {
+      "system": "unspecified",
+      "curtain_wall": null
+    },
+    "facades": {
+      "front": {
+        "bays": 1,
+        "entrance_bay": null,
+        "ground_pattern": [
+          "window"
+        ],
+        "upper_pattern": [
+          "window"
+        ]
+      },
+      "back": {
+        "bays": 1,
+        "entrance_bay": null,
+        "ground_pattern": [
+          "window"
+        ],
+        "upper_pattern": [
+          "window"
+        ]
+      },
+      "left": {
+        "bays": 1,
+        "entrance_bay": null,
+        "ground_pattern": [
+          "window"
+        ],
+        "upper_pattern": [
+          "window"
+        ]
+      },
+      "right": {
+        "bays": 1,
+        "entrance_bay": null,
+        "ground_pattern": [
+          "window"
+        ],
+        "upper_pattern": [
+          "window"
+        ]
+      }
+    },
+    "roof": {
+      "type": "flat",
+      "ridge_axis": "x",
+      "overhang": 0.0,
+      "volumes": []
+    },
+    "circulation": {
+      "vertical_strategy": "stair"
+    },
+    "materials": {
+      "keywords": [
+        "耐久中性主材搭配少量深色框架与自然色点缀"
+      ],
+      "resolved_plan": {
+        "concept": "耐久中性主材搭配少量深色框架与自然色点缀",
+        "palette": [],
+        "roles": [
+          {
+            "role": "facade_primary",
+            "materialId": "wall_finish",
+            "assetId": null,
+            "proceduralPresetId": null,
+            "surfacePresetId": "plaster_lime",
+            "material": {
+              "baseColor": [
+                0.82,
+                0.8,
+                0.73
+              ],
+              "roughness": 0.87,
+              "metallic": 0,
+              "albedo": 1.0,
+              "lightingCondition": "D65_noon",
+              "surfaceFamily": "mineral",
+              "surfacePattern": "plaster"
+            }
+          },
+          {
+            "role": "structure",
+            "materialId": "concrete",
+            "assetId": null,
+            "proceduralPresetId": null,
+            "surfacePresetId": "concrete_fair",
+            "material": {
+              "baseColor": [
+                0.55,
+                0.56,
+                0.54
+              ],
+              "roughness": 0.79,
+              "metallic": 0,
+              "albedo": 1.0,
+              "lightingCondition": "D65_noon",
+              "surfaceFamily": "mineral",
+              "surfacePattern": "concrete"
+            }
+          },
+          {
+            "role": "floor",
+            "materialId": "floor_finish",
+            "assetId": null,
+            "proceduralPresetId": null,
+            "surfacePresetId": "tiles_limestone",
+            "material": {
+              "baseColor": [
+                0.76,
+                0.72,
+                0.63
+              ],
+              "roughness": 0.37,
+              "metallic": 0,
+              "albedo": 1.0,
+              "lightingCondition": "D65_noon",
+              "surfaceFamily": "mineral",
+              "surfacePattern": "tiles",
+              "materialClass": "clearcoat",
+              "clearcoat": 0.1,
+              "clearcoatRoughness": 0.3
+            }
+          },
+          {
+            "role": "frame",
+            "materialId": "metal",
+            "assetId": null,
+            "proceduralPresetId": null,
+            "surfacePresetId": "metal_brushed",
+            "material": {
+              "baseColor": [
+                0.4,
+                0.43,
+                0.46
+              ],
+              "roughness": 0.32,
+              "metallic": 0.85,
+              "albedo": 1.0,
+              "lightingCondition": "D65_noon",
+              "surfaceFamily": "metal",
+              "surfacePattern": "brushed",
+              "anisotropy": 0.65,
+              "anisotropyRotation": 0
+            }
+          },
+          {
+            "role": "door",
+            "materialId": "wood",
+            "assetId": null,
+            "proceduralPresetId": null,
+            "surfacePresetId": "planks_walnut",
+            "material": {
+              "baseColor": [
+                0.29,
+                0.16,
+                0.085
+              ],
+              "roughness": 0.5,
+              "metallic": 0,
+              "albedo": 1.0,
+              "lightingCondition": "D65_noon",
+              "surfaceFamily": "wood",
+              "surfacePattern": "planks",
+              "materialClass": "clearcoat",
+              "clearcoat": 0.1,
+              "clearcoatRoughness": 0.35
+            }
+          },
+          {
+            "role": "glass",
+            "materialId": "glass",
+            "assetId": null,
+            "proceduralPresetId": null,
+            "surfacePresetId": "glass_clear",
+            "material": {
+              "baseColor": [
+                0.92,
+                0.97,
+                1.0
+              ],
+              "roughness": 0.055,
+              "metallic": 0,
+              "albedo": 1.0,
+              "lightingCondition": "D65_noon",
+              "surfaceFamily": "glass",
+              "materialClass": "glass",
+              "transmission": 0.94,
+              "ior": 1.5,
+              "thickness": 0.012,
+              "attenuationColor": [
+                0.88,
+                0.96,
+                1
+              ],
+              "attenuationDistance": 6
+            }
+          },
+          {
+            "role": "roof",
+            "materialId": "roof",
+            "assetId": null,
+            "proceduralPresetId": null,
+            "surfacePresetId": "concrete_fair",
+            "material": {
+              "baseColor": [
+                0.55,
+                0.56,
+                0.54
+              ],
+              "roughness": 0.79,
+              "metallic": 0,
+              "albedo": 1.0,
+              "lightingCondition": "D65_noon",
+              "surfaceFamily": "mineral",
+              "surfacePattern": "concrete"
+            }
+          },
+          {
+            "role": "ground",
+            "materialId": "ground",
+            "assetId": null,
+            "proceduralPresetId": null,
+            "surfacePresetId": "tiles_limestone",
+            "material": {
+              "baseColor": [
+                0.76,
+                0.72,
+                0.63
+              ],
+              "roughness": 0.37,
+              "metallic": 0,
+              "albedo": 1.0,
+              "lightingCondition": "D65_noon",
+              "surfaceFamily": "mineral",
+              "surfacePattern": "tiles",
+              "materialClass": "clearcoat",
+              "clearcoat": 0.1,
+              "clearcoatRoughness": 0.3
+            }
+          },
+          {
+            "role": "accent",
+            "materialId": "accent",
+            "assetId": null,
+            "proceduralPresetId": null,
+            "surfacePresetId": null,
+            "material": {
+              "baseColor": [
+                0.42,
+                0.2,
+                0.09
+              ],
+              "roughness": 0.5,
+              "metallic": 0.0,
+              "albedo": 1.0,
+              "lightingCondition": "D65_noon"
+            }
+          }
+        ],
+        "resolvedAssets": {},
+        "rejectedAssetIds": [],
+        "rejectedProceduralPresetIds": [],
+        "curtainWall": false
+      },
+      "regions": []
+    },
+    "detail_packages": [],
+    "component_quota": {},
+    "components": [],
+    "balcony_access_count": 0,
+    "balcony_width": null,
+    "required_components": [],
+    "unsupported_component_types": [],
+    "design_rationale": [],
+    "design_intent": null
+  },
+  "constraints": [
+    {
+      "id": "request.source",
+      "kind": "user_hard",
+      "target": "/requirements/source_request",
+      "expression": "设计必须保持用户原始需求中明确提出的条件",
+      "source": "user_request",
+      "expected": null,
+      "check": "manual",
+      "adoption": "adopted",
+      "source_quote": "",
+      "supersedes": null
+    }
+  ],
+  "locks": [],
+  "rule_trace": []
+}

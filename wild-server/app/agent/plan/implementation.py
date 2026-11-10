@@ -858,7 +858,7 @@ async def run_marker_generate(state, item):
             messages = [{"role": "system", "content": prompt},
                         {"role": "user", "content": json.dumps(context, ensure_ascii=False)}]
             level = state.get("design_document", {}).get("decisions", {}).get("complexity", {}).get("level", "simple")
-            thinking = state.get("thinking_mode") is not False and stage == "generate" and level != "minimal"
+            thinking = state.get("thinking_mode") is True and stage == "generate" and level != "minimal"
             from app.rag.trace import llm_trace_scope
             from app.agent.plan.expand import _batch_load
             chunk_ids = next((t.get("injected_chunk_ids", []) for t in reversed(trace)
