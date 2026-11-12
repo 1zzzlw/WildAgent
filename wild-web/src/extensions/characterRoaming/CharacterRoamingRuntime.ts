@@ -45,6 +45,7 @@ export class CharacterRoamingRuntime {
   private readonly orientation = new THREE.Euler(0, 0, 0, 'YXZ')
   private yaw = 0
   private pitch = -0.15
+  private cameraStepOffset = 0
   private grounded = true
   private jumpQueued = false
   private flying = false
@@ -253,6 +254,7 @@ export class CharacterRoamingRuntime {
     this.world.syncMoving()
     const steps = Math.max(1, Math.ceil(elapsed / (1 / 120)))
     for (let i = 0; i < steps; i++) this.move(elapsed / steps)
+    this.cameraStepOffset = THREE.MathUtils.damp(this.cameraStepOffset, 0, 14, elapsed)
     this.syncAvatar(elapsed)
     this.updateCamera()
     this.targetClock += elapsed
@@ -292,11 +294,16 @@ export class CharacterRoamingRuntime {
     const contact = this.world.resolve(this.body, this.velocity)
     this.grounded = contact.grounded
     if (this.grounded && this.velocity.y < 0) this.velocity.y = 0
-    const blocked = Math.hypot(this.body.start.x - before.start.x - movement.x, this.body.start.z - before.start.z - movement.z) > 0.005
+    const blocked = Math.hypot(this.body.start.x - before.start.x - movement.x, this.body.start.z - before.start.z - movement.z) > 1e-4
     if (wasGrounded && !jumping && (contact.wall || blocked) && movement.x ** 2 + movement.z ** 2 > 1e-8) {
       this.tryStep(before, movement, delta)
     }
-    if (wasGrounded && !jumping && this.velocity.y <= 0) this.snapToFloor()
+    if (wasGrounded && !jumping) {
+      this.snapToFloor()
+      // 缓冲台阶高度变化；碰撞体仍立即落脚，镜头始终留在胶囊高度内。
+      this.cameraStepOffset = THREE.MathUtils.clamp(this.cameraStepOffset + before.start.y - this.body.start.y,
+        -STEP_HEIGHT, HEIGHT - EYE_HEIGHT - 0.04)
+    }
   }
 
   private tryStep(before: Capsule, movement: THREE.Vector3, delta: number): void {
@@ -310,36 +317,50 @@ export class CharacterRoamingRuntime {
     candidate.translate(new THREE.Vector3(movement.x, 0, movement.z))
     this.world.resolve(candidate, emptyVelocity)
     if (Math.hypot(candidate.start.x - expected.x, candidate.start.z - expected.z) > 0.005) return
-    // 用整个胶囊向下找落脚。中心射线会漏掉尚位于脚前方的踏步边缘。
+    // 落脚只调整高度，避免踏步边缘的斜法线把胶囊向后推、反复削掉步速。
     const forward = new THREE.Vector3(movement.x, 0, movement.z).normalize()
+    const probe = expected.clone().addScaledVector(forward, RADIUS)
+    probe.y = before.start.y + STEP_HEIGHT
+    const floor = this.world.floorHeight(probe, STEP_HEIGHT + RADIUS + 0.06)
+    if (floor === null || floor > before.start.y - RADIUS + STEP_HEIGHT) return
     const blockedProgress = this.body.start.clone().sub(before.start).dot(forward)
-    let remaining = STEP_HEIGHT + 0.06
+    if (!this.findLanding(candidate, STEP_HEIGHT + 0.06)) return
+    const progress = candidate.start.clone().sub(before.start).dot(forward)
+    if (candidate.start.y < before.start.y - 0.03 || progress <= blockedProgress + 1e-4) return
+    this.body.copy(candidate)
+    this.velocity.x = delta > 0 ? movement.x / delta : 0
+    this.velocity.z = delta > 0 ? movement.z / delta : 0
+    this.velocity.y = 0
+    this.grounded = true
+  }
+
+  private findLanding(candidate: Capsule, drop: number): boolean {
+    const clear = () => candidate.start.y - RADIUS >= this.world.groundY && this.world.canOccupy(candidate)
+    if (!clear()) return false
+    let remaining = drop
     while (remaining > 0) {
       const down = Math.min(0.025, remaining)
       remaining -= down
+      let high = candidate.start.y
       candidate.translate(new THREE.Vector3(0, -down, 0))
-      const contact = this.world.resolve(candidate, emptyVelocity)
-      if (!contact.grounded) continue
-      const progress = candidate.start.clone().sub(before.start).dot(forward)
-      if (candidate.start.y < before.start.y - 0.03 || progress <= blockedProgress + 1e-4) return
-      this.body.copy(candidate)
-      this.velocity.x = delta > 0 ? movement.x / delta : 0
-      this.velocity.z = delta > 0 ? movement.z / delta : 0
-      this.velocity.y = 0
-      this.grounded = true
-      return
+      if (clear()) continue
+      let low = candidate.start.y
+      // 固定水平位置收敛到接触高度，兼顾踏步边缘与薄地板。
+      for (let i = 0; i < 8; i++) {
+        const middle = (low + high) / 2
+        candidate.translate(new THREE.Vector3(0, middle - candidate.start.y, 0))
+        if (clear()) high = middle
+        else low = middle
+      }
+      candidate.translate(new THREE.Vector3(0, high + 0.00001 - candidate.start.y, 0))
+      return true
     }
+    return false
   }
 
   private snapToFloor(): void {
-    const probe = this.body.start.clone(); probe.y += 0.08 - RADIUS
-    const floor = this.world.floorHeight(probe, STEP_HEIGHT + 0.08)
-    if (floor === null) return
     const candidate = this.body.clone()
-    candidate.translate(new THREE.Vector3(0, floor + RADIUS + 0.002 - candidate.start.y, 0))
-    const landing = candidate.start.clone()
-    this.world.resolve(candidate, new THREE.Vector3())
-    if (candidate.start.distanceTo(landing) > 0.015) return
+    if (!this.findLanding(candidate, STEP_HEIGHT)) return
     this.body.copy(candidate)
     this.velocity.y = 0
     this.grounded = true
@@ -352,7 +373,7 @@ export class CharacterRoamingRuntime {
 
   private updateCamera(): void {
     const camera = this.options.camera
-    this.eye.copy(this.body.start).y += EYE_HEIGHT - RADIUS
+    this.eye.copy(this.body.start).y += EYE_HEIGHT - RADIUS + this.cameraStepOffset
     this.orientation.set(this.pitch, this.yaw, 0)
     camera.quaternion.setFromEuler(this.orientation)
     this.direction.set(0, 0, -1).applyQuaternion(camera.quaternion)
