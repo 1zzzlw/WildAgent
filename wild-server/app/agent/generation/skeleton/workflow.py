@@ -32,7 +32,6 @@ from app.llm.client import create_llm
 from app.llm.invocation import (
     invoke_llm,
     merge_token_usage,
-    stream_llm,
 )
 from app.agent.runtime import get_reasoning_callback
 from app.spec.loader import SpecQuery
@@ -53,7 +52,6 @@ async def skeleton_generator(state: GenerationState) -> dict:
     """把已批准方案确定性编译为骨架，并输出后续计划所需设计清单。"""
     t0 = _time.time()
     user_message = state["user_message"]
-    thinking_mode = state.get("thinking_mode", False)
     on_reasoning_delta = get_reasoning_callback()
     architecture_plan = state.get("architecture_plan")
     material_plan = state.get("material_plan")
@@ -65,7 +63,7 @@ async def skeleton_generator(state: GenerationState) -> dict:
     object_scene = is_object_plan(architecture_plan)
     role_specs = material_role_specs(architecture_plan)
 
-    logger.info(f"[skeleton] 开始生成骨架，用户消息: {user_message[:100]}, 思考模式: {thinking_mode}")
+    logger.info(f"[skeleton] 开始生成骨架，用户消息: {user_message[:100]}")
 
     if deterministic_primary and on_reasoning_delta is not None:
         await on_reasoning_delta(
@@ -138,23 +136,14 @@ async def skeleton_generator(state: GenerationState) -> dict:
         )
     deterministic_fallback_reason = None
     complexity_diag = None
-    use_streaming = thinking_mode and on_reasoning_delta is not None
-
     if not deterministic_primary:
-        llm = create_llm(enable_thinking=thinking_mode, streaming=use_streaming)
+        llm = create_llm(enable_thinking=False, streaming=False)
         messages = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_message},
         ]
         try:
-            if use_streaming:
-                llm_result = await stream_llm(
-                    llm,
-                    messages,
-                    on_reasoning_delta=lambda delta: on_reasoning_delta("skeleton", delta),
-                )
-            else:
-                llm_result = await invoke_llm(llm, messages)
+            llm_result = await invoke_llm(llm, messages)
             reply_text = llm_result.content
             reasoning = llm_result.reasoning
             token_usage = llm_result.token_usage

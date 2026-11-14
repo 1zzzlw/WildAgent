@@ -260,6 +260,11 @@
               <el-input-number :model-value="mechanismNumberValue(field.key, field.defaultValue)" :min="field.min" :max="field.max" :step="field.step"
                 @change="(value: number | undefined) => handleMechanismNumberChange(field.key, value)" />
             </div>
+            <div v-for="field in mechanismStringFields" :key="`${selectedComponent.id}:${field.key}`" class="property-row">
+              <label>{{ field.label }}</label>
+              <el-input v-model="mechanismStringDrafts[field.key]" :aria-label="field.label"
+                @change="(value: string) => commitMechanismString(field.key, value)" />
+            </div>
             <div v-if="hasInitiallyOn" class="property-row">
               <label>初始运行</label><el-switch :model-value="componentValue('initiallyOn') === true"
                 @change="(value: boolean) => handleComponentChange('initiallyOn', value)" />
@@ -660,7 +665,7 @@ import { getComponentCompiler, getRecipe, resolveOpeningInteractionSpec } from '
 import { getGeometryReferences } from 'wild-core/relationships'
 import { acceptsComponentMaterial } from '../../wild/materialCompatibility'
 import { SURFACE_MATERIAL_PRESETS } from '../../wild/surfaceMaterialPresets'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useSceneStore } from '../../stores/sceneStore'
 import { useSelectionStore } from '../../stores/selectionStore'
@@ -811,6 +816,21 @@ const mechanismNumberFields = computed(() => {
     { key: 'initialFloor', label: '初始层序（0起）', min: 0, max: (selectedComponent.value?.type === 'elevator' ? selectedComponent.value.floorCount : 1) - 1, step: 1, defaultValue: 0, integer: true },
   ]
 })
+const mechanismStringFields = computed(() => Object.entries(selectedRecipe.value?.params || {})
+  .filter(([, param]) => param.type === 'string')
+  .map(([key, param]) => ({ key, label: param.label || key,
+    defaultValue: typeof param.default === 'string' ? param.default : '' })))
+const mechanismStringDrafts = ref<Record<string, string>>({})
+watch([selectedComponent, mechanismStringFields], ([component, fields]) => {
+  const values = component as unknown as Record<string, unknown> | null
+  mechanismStringDrafts.value = Object.fromEntries(fields.map(field => [field.key,
+    typeof values?.[field.key] === 'string' ? values[field.key] as string : field.defaultValue]))
+}, { immediate: true, deep: true })
+function commitMechanismString(key: string, value: string) {
+  if (value === componentValue(key)) return
+  // 字符串草稿在提交后才重建；空字符串也是合法参数值。
+  void applyComponentChanges({ [key]: value }, `修改${selectedComponent.value?.id}.${key}`)
+}
 const mechanismMaterialFields = computed(() => selectedRecipe.value
   ? (selectedRecipe.value.materialFields ?? []).map(key => ({ key, label: MATERIAL_FIELD_LABELS[key] || key }))
   : [{ key: 'material', label: '轿厢内饰' }, { key: 'frameMaterial', label: '框架材质' }, { key: 'doorMaterial', label: '门板材质' }, { key: 'floorMaterial', label: '地板材质' }])

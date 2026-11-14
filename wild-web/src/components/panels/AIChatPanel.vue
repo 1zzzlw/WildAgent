@@ -123,8 +123,6 @@
           v-show="shouldShowExecution(agentStore.getTurnForMessage(message)!)"
           :id="turnDomId(agentStore.getTurnForMessage(message)!)"
           :turn="agentStore.getTurnForMessage(message)!"
-          @confirm-design="handleConfirmDesign"
-          @revise-design="handleReviseDesign"
         />
       </template>
 
@@ -170,9 +168,9 @@
             :value="level.value" :label="level.label" />
         </el-select>
       </div>
-      <div class="thinking-toggle" title="默认关闭；控制设计、修改及构件任务思考，低粒度构件始终关闭">
-        <span>思考</span>
-        <el-switch :model-value="agentStore.thinkingMode" size="small" aria-label="图节点思考"
+      <div class="thinking-toggle" title="默认关闭；只控制建筑图纸和物件方案设计，规划、构件实现与修复均关闭思考">
+        <span>设计思考</span>
+        <el-switch :model-value="agentStore.thinkingMode" size="small" aria-label="设计节点思考"
           :disabled="agentStore.isProcessing" @change="handleThinkingModeChange" />
       </div>
       <div class="shader-toggle"
@@ -370,17 +368,7 @@ const activeTurn = computed(() =>
 const hasRunningTurn = computed(() => Boolean(activeTurn.value))
 const canStop = computed(() => Boolean(activeTurn.value && !activeTurn.value.stop_requested)
   && agentStore.connectionStatus === 'connected')
-const pendingDesignReview = computed(() =>
-  [...agentStore.currentTurns]
-    .reverse()
-    .find(turn => turn.status === 'waiting_review' && turn.design_review_status === 'pending')
-)
-// 新链只有一个人工输入点（图纸审核）；运行中的计划不审核、也不接受插话，
-// 所以处理中不再允许发送第二条消息。
-const inputPlaceholder = computed(() => {
-  if (pendingDesignReview.value) return '输入对建筑设计的修改意见，或直接点击“批准此设计”…'
-  return '输入您的建筑需求...'
-})
+const inputPlaceholder = '输入您的建筑需求...'
 
 let scrollFrame: number | null = null
 let hasRestoredFromServer = false
@@ -440,7 +428,6 @@ const sendButtonTitle = computed(() => {
   if (agentStore.connectionStatus !== 'connected') return '未连接到 Agent 服务'
   if (activeTurn.value?.stop_requested) return '正在停止并保存已有记录…'
   if (activeTurn.value) return '停止当前任务并保存已有记录'
-  if (pendingDesignReview.value) return '发送建筑设计修改意见 (Ctrl+Enter)'
   return '发送 (Ctrl+Enter)'
 })
 
@@ -454,16 +441,6 @@ function handleSend() {
 
 function handleStop() {
   if (canStop.value) agentBridge.stopCurrentGeneration()
-}
-
-function handleConfirmDesign(requestId: string) {
-  resumeAutoScroll()
-  agentBridge.submitDesignReview(requestId, 'confirm')
-}
-
-function handleReviseDesign(requestId: string, feedback: string) {
-  resumeAutoScroll()
-  agentBridge.submitDesignReview(requestId, 'revise', feedback)
 }
 
 function handleReconnect() {

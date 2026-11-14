@@ -86,22 +86,29 @@ def normalize_intent_decision(
     if payload is None:
         raise IntentOutputError("未返回合法 JSON 对象")
     intent = str(payload.get("intent") or "").strip().lower()
+
     if intent not in {"generate", "edit", "chat"}:
         raise IntentOutputError(
             f"intent 必须是 generate、edit 或 chat，实际为 {payload.get('intent')!r}"
         )
+
     if intent != "chat" and is_explanatory_question(message):
         raise IntentOutputError("用户正在询问方法、原理或原因，分类结果却要求变更场景")
+
     if intent == "edit" and not has_current_scene:
         raise IntentOutputError("分类结果要求修改场景，但当前没有可编辑场景")
 
     raw_kind = str(payload.get("target_kind") or "").strip().lower()
+
     if intent == "generate" and raw_kind not in {"architecture", "object"}:
         raise IntentOutputError(
             "生成目标 target_kind 必须是 architecture 或 object，"
             f"实际为 {payload.get('target_kind')!r}"
         )
+
+    # case()：将 raw_kind 标注为 TargetKind 属性，python 运行时不会检查类型，不会因为类型报错
     target_kind = cast(TargetKind, raw_kind) if intent == "generate" else "architecture"
+
     for field in ("target", "reason"):
         value = payload.get(field)
         if not isinstance(value, str) or not value.strip():

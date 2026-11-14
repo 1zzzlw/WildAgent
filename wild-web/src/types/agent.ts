@@ -56,7 +56,6 @@ export interface AgentProtocolEnvelope {
 export type AgentMessage =
   | UserMessageRequest
   | ResumeGenerationRequest
-  | DesignReviewRequest
   | GenerationResumedResponse
   | GenerationStoppedResponse
   | AgentStepResponse
@@ -64,7 +63,7 @@ export type AgentMessage =
   | ThinkingStatusResponse
   | PlanReadyResponse
   | PlanItemUpdatedResponse
-  | DesignReviewRequiredResponse
+  | DesignReadyResponse
   | PatchProposalResponse
   | AgentReplyResponse
   | BlueprintGeneratedResponse
@@ -85,7 +84,7 @@ export interface UserMessageRequest extends AgentProtocolEnvelope {
   scene_summary?: SceneSummary
   selection: string[]
   blueprint?: Record<string, unknown>  // 当前场景的完整 Blueprint（增量修改时需要）
-  thinking_mode?: boolean // 默认关闭；显式开启后生效，低粒度构件仍关闭
+  thinking_mode?: boolean // 默认关闭；只控制建筑图纸和物件方案设计
   detail_level?: BuildingDetailLevel
   procedural_materials_enabled?: boolean // 是否允许 AI 自动生成程序化 Shader 材质
   /** 最近对话仅供意图消歧；不包含系统消息，每条由前端截断。 */
@@ -106,15 +105,6 @@ export interface StopGenerationRequest extends AgentProtocolEnvelope {
   type: 'stop_generation'
   request_id: string
   session_id: string
-}
-
-export interface DesignReviewRequest extends AgentProtocolEnvelope {
-  type: 'design_review'
-  request_id: string
-  session_id: string
-  action: 'confirm' | 'revise'
-  base_revision: number
-  feedback?: string
 }
 
 export type PlanItemStatus =
@@ -203,8 +193,8 @@ export interface PlanItemUpdatedResponse extends AgentProtocolEnvelope {
   item: PlanItemUpdate
 }
 
-export interface DesignReviewRequiredResponse extends AgentProtocolEnvelope {
-  type: 'design_review_required'
+export interface DesignReadyResponse extends AgentProtocolEnvelope {
+  type: 'design_ready'
   request_id: string
   session_id: string
   document: DesignDocument
@@ -368,7 +358,6 @@ export interface AgentTurn {
   design_document?: DesignDocument
   resolved_design?: ResolvedDesign
   design_preview_url?: string
-  design_review_status?: 'pending' | 'submitting' | 'approved'
   steps: AgentTurnStep[]
   validation_steps: Array<{
     label: string

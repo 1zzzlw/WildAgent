@@ -23,6 +23,7 @@ import { recordTextureLoad } from './textureLoadMonitor'
 import { applyRegisteredSurfaceMaterial } from './materialFeatures'
 import { applyAnimatedDiffuseMaterial } from './materialFeatures/animatedDiffuseMaterial'
 import { worldMaterialRuntime } from './worldMaterialRuntime'
+import { configureElementBehaviorRendering } from './elementBehaviorRuntime'
 import { applyWaterSurfaceMaterial, isWaterMaterial } from './waterSurfaceMaterial'
 
 let textureAnisotropy = 4
@@ -45,6 +46,7 @@ export function configureMaterialRendering(
 ): void {
   textureAnisotropy = Math.max(1, Math.min(16, Math.floor(maxAnisotropy || 1)))
   requestMaterialRender = invalidate
+  configureElementBehaviorRendering(invalidate)
 }
 
 export function configureKtx2Rendering(

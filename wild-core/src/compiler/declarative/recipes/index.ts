@@ -2,6 +2,7 @@ import type { ComponentRecipe } from '../types'
 import fan from './fan.json'
 import chimney from './chimney.json'
 import louverPanel from './louver_panel.json'
+import videoScreen from './video_screen.json'
 
 /**
  * 数据化构件的清单。
@@ -17,4 +18,5 @@ export const RECIPES: readonly ComponentRecipe[] = [
   fan as ComponentRecipe,
   chimney as ComponentRecipe,
   louverPanel as ComponentRecipe,
+  videoScreen as ComponentRecipe,
 ]

@@ -363,14 +363,6 @@ export class AgentBridge {
       return null
     }
 
-    // 唯一的人工审核点是图纸（design_review）：等待审核时的新消息按"修订意见"处理。
-    const pendingReview = [...agentStore.currentTurns]
-      .reverse()
-      .find(turn => turn.status === 'waiting_review')
-    if (pendingReview && pendingReview.design_review_status === 'pending') {
-      return this.submitDesignReview(pendingReview.request_id, 'revise', message)
-    }
-
     if (!sceneStore.document) {
       agentStore.addSystemMessage('无场景文档')
       return null
@@ -439,59 +431,6 @@ export class AgentBridge {
     this.ws.send(JSON.stringify(request))
     void this.syncConversationState(turn.session_id)
     return true
-  }
-
-  /** 批准具体建筑设计，或用自然语言意见生成下一版 DesignDocument。 */
-  submitDesignReview(
-    requestId: string,
-    action: 'confirm' | 'revise',
-    feedback = '',
-  ): string | null {
-    if (!useAuthStore().canEdit) return null
-    const agentStore = useAgentStore()
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      agentStore.addSystemMessage('未连接到 Agent 服务')
-      return null
-    }
-    const turn = agentStore.currentTurns.find(item => item.request_id === requestId)
-    if (
-      !turn
-      || turn.status !== 'waiting_review'
-      || turn.design_review_status !== 'pending'
-      || !turn.design_document
-    ) {
-      agentStore.addSystemMessage('当前没有可提交的设计方案')
-      return null
-    }
-    this.requestContexts.set(requestId, {
-      sessionId: turn.session_id,
-      turnId: requestId,
-      durable: true,
-    })
-    agentStore.markDesignReviewSubmitted(
-      turn.session_id,
-      requestId,
-      action,
-      feedback,
-    )
-    this.ws.send(JSON.stringify({
-      protocol_version: AGENT_PROTOCOL_VERSION,
-      type: 'design_review',
-      request_id: requestId,
-      session_id: turn.session_id,
-      action,
-      base_revision: turn.design_document.revision,
-      feedback: action === 'revise' ? feedback : undefined,
-    }))
-    agentStore.setProcessing(
-      true,
-      action === 'confirm' ? '设计已批准，开始生成 Blueprint…' : '正在根据意见调整设计方案…',
-    )
-    void this.syncTurnsToServer(
-      turn.session_id,
-      agentStore.getTurnsForSession(turn.session_id),
-    )
-    return requestId
   }
 
   /** 从 WebSocket URL 提取 HTTP Base URL */
@@ -626,8 +565,8 @@ export class AgentBridge {
         agentStore.applyPlanItemUpdate(message.session_id, message.request_id, message.item)
         break
 
-      case 'design_review_required':
-        agentStore.setDesignReviewRequired(
+      case 'design_ready':
+        agentStore.setDesignReady(
           message.session_id,
           message.request_id,
           message.document,
@@ -636,9 +575,6 @@ export class AgentBridge {
             ? message.preview_url
             : `${this.httpBaseUrl}${message.preview_url}`,
         )
-        if (message.session_id === agentStore.currentSessionId) {
-          agentStore.setProcessing(false)
-        }
         void this.syncTurnsToServer(
           message.session_id,
           agentStore.getTurnsForSession(message.session_id),
@@ -722,17 +658,6 @@ export class AgentBridge {
         if (message.code === 'generation_stop_rejected') {
           agentStore.setTurnStopRequested(sessionId, message.request_id, false)
           agentStore.addSystemMessageForTurn(sessionId, message.request_id, `停止未成功：${message.error}`)
-          void this.syncConversationState(sessionId)
-          break
-        }
-        if (message.code === 'design_review_rejected') {
-          agentStore.restoreDesignReviewAfterError(sessionId, message.request_id)
-          agentStore.addSystemMessageForTurn(
-            sessionId,
-            message.request_id,
-            `建筑设计提交失败：${message.error}。按钮已恢复。`,
-          )
-          if (sessionId === agentStore.currentSessionId) agentStore.setProcessing(false)
           void this.syncConversationState(sessionId)
           break
         }

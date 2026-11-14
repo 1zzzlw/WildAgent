@@ -5,7 +5,7 @@
     generate + target_kind=object  → 本模块（只做物件清单，无体量/立面/屋顶）
     generate + target_kind=architecture → architecture/workflow.py
 
-两条链在 `design_review` 之后合流：材质、骨架、计划、执行、校验都是同一套。
+两条链在材质规划后自动继续：计划、执行和校验复用同一套入口。
 合流点之所以成立，是因为物件方案也落成 `DesignDocument`——只是 `decisions`
 解析成 `ObjectDecisions`（带标签联合的另一支）。
 
@@ -61,19 +61,13 @@ async def object_planner(state: GenerationState) -> dict:
 
     started = _time.time()
     user_message = str(state.get("user_message") or "")
-    revision_feedback = str(state.get("design_feedback") or "").strip()
-    design_request = (
-        f"{user_message}\n本轮修订意见：{revision_feedback}"
-        if revision_feedback else user_message
-    )
     on_reasoning_delta = get_reasoning_callback()
 
     if on_reasoning_delta:
         await on_reasoning_delta(
             "object_design",
             "\n### 物件方案\n"
-            + ("根据修改意见调整物件清单、尺寸与摆位...\n" if revision_feedback
-               else "正在确定物件种类、尺寸与摆位...\n"),
+            + "正在确定物件种类、尺寸与摆位...\n",
         )
 
     spec_text = _furniture_spec(agent_service.spec_loader)
@@ -83,7 +77,6 @@ async def object_planner(state: GenerationState) -> dict:
         subtype_catalog=subtype_catalog(),
         material_ids=material_ids,
         current_plan=state.get("architecture_plan"),
-        revision_feedback=revision_feedback,
     )
 
     raw_plan = None
@@ -94,12 +87,12 @@ async def object_planner(state: GenerationState) -> dict:
     llm_chars = 0
     try:
         llm_started = _time.time()
-        llm = create_llm(enable_thinking=bool(state.get("thinking_mode")), streaming=False)
+        llm = create_llm(enable_thinking=state.get("thinking_mode") is True, streaming=False)
         llm_result = await invoke_llm(
             llm,
             [
                 {"role": "system", "content": prompt},
-                {"role": "user", "content": design_request},
+                {"role": "user", "content": user_message},
             ],
         )
         llm_ms = int((_time.time() - llm_started) * 1000)
@@ -113,7 +106,7 @@ async def object_planner(state: GenerationState) -> dict:
 
             raw_plan, recovery_diag = await recover_single_json(
                 prompt,
-                design_request,
+                user_message,
                 reply_text,
                 object_hint="包含 objects 数组的物件方案 JSON 对象",
                 extra_instruction=(
@@ -149,7 +142,7 @@ async def object_planner(state: GenerationState) -> dict:
             "object_design",
             f"\n### 物件方案\n- 清单：{summary}\n"
             + "\n".join(f"- {item}" for item in plan.get("design_rationale", []))
-            + "\n- 物件方案已确定；下一节点将解析受控材质并生成可审核的设计文档与图纸。\n",
+            + "\n- 物件方案已确定；下一节点解析受控材质并自动继续生成。\n",
         )
 
     document = build_design_document(
@@ -171,8 +164,6 @@ async def object_planner(state: GenerationState) -> dict:
         "architecture_plan": plan,
         "design_document": document.model_dump(mode="json"),
         "resolved_design": resolved_design,
-        "design_review_status": "pending",
-        "design_feedback": "",
         # 物件方案每轮都可能换物件，材质必须跟着重算：复用上一版会给出
         # 一张桌子配"米色外墙漆"这种错位材质。
         "design_material_refresh": True,
@@ -187,7 +178,7 @@ async def object_planner(state: GenerationState) -> dict:
             "token_usage": token_usage,
             "recovery": recovery_diag,
             "error": error,
-            "thinking_enabled": bool(state.get("thinking_mode")),
+            "thinking_enabled": state.get("thinking_mode") is True,
             "total_ms": total_ms,
         },
     }

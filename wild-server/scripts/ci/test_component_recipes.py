@@ -40,6 +40,14 @@ def test_recipe_dir_is_not_empty() -> None:
     assert RECIPE_FILES, f"配方目录是空的: {RECIPE_DIR}"
 
 
+@pytest.mark.parametrize("kind,label", [("string", "字符串"), ("vec3", "三维向量"), ("integer", "整数"), ("number", "数值")])
+def test_parameter_description_preserves_declared_type(kind, label):
+    from app.agent.generation.component.recipes import recipe_rules
+
+    text = recipe_rules({"params": {"value": {"type": kind, "label": "参数"}}})
+    assert f"value，{label}" in text
+
+
 def test_every_recipe_is_imported_by_frontend_index() -> None:
     """新增 JSON 必须同时进 `index.ts` —— 否则前端面板与属性面板都看不到它。"""
 

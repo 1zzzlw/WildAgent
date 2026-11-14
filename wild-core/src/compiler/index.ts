@@ -139,6 +139,8 @@ export type {
   RecipeGuard,
 } from './declarative/types'
 export type { ComponentCompilerRegistration } from './componentRegistry'
+export { registerExtensionBehaviorCapability, getExtensionBehaviorCapabilities, validateElementBehavior } from './behaviorCapabilities'
+export type { ExtensionBehaviorCapability } from './behaviorCapabilities'
 
 function createEmptyMapping(): import('./types').ComponentCompilationMapping {
   return {

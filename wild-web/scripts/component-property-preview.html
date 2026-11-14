@@ -1,0 +1,27 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>配方属性编辑回归</title>
+<style>body{margin:20px;background:#edf0f2}#app{width:410px;height:1000px}</style><div id="app"></div>
+<script type="module">
+import { createApp, h } from 'vue'
+import { createPinia, setActivePinia } from 'pinia'
+import ElementPlus from 'element-plus'
+import 'element-plus/dist/index.css'
+import PropertyPanel from '/src/components/panels/PropertyPanel.vue'
+import { useSceneStore } from '/src/stores/sceneStore.ts'
+import { useSelectionStore } from '/src/stores/selectionStore.ts'
+import { useHistoryStore } from '/src/stores/historyStore.ts'
+import { useAuthStore } from '/src/stores/authStore.ts'
+const pinia=createPinia();setActivePinia(pinia)
+// 独立 UI 回归使用本地编辑者夹具，不连接认证服务或真实会话。
+useAuthStore().user={username:'property-test',role:'editor'}
+const scene=useSceneStore(), selection=useSelectionStore(), history=useHistoryStore()
+await scene.loadBlueprint({meta:{version:'1.1',type:'asset',name:'字符串参数'},geometry:{elements:[],components:[
+  {id:'screen_a',type:'video_screen',position:[0,0,0],src:''},
+  {id:'screen_b',type:'video_screen',position:[2,0,0],src:'/second.webm'},
+]},materials:{}})
+selection.select('screen_a')
+createApp({render:()=>h(PropertyPanel)}).use(pinia).use(ElementPlus).mount('#app')
+window.propertyTest={scene,selection,history,source:()=>scene.document.blueprint.geometry.components.find(c=>c.id===selection.selectedIds[0]).src,
+  async undo(){const entry=history.undo();if(entry)await scene.restoreBlueprint(entry.before)},
+  async redo(){const entry=history.redo();if(entry)await scene.restoreBlueprint(entry.after)}}
+window.ready=true
+</script></html>

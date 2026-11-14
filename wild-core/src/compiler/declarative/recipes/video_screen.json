@@ -1,0 +1,32 @@
+{
+  "type": "video_screen",
+  "label": "视频屏幕",
+  "icon": "▣",
+  "description": "电视、显示器或广告屏：填写视频资源地址，右键播放或暂停",
+  "host": "position",
+  "keywords": ["视频屏幕", "播放视频", "广告屏", "电视"],
+  "materialFields": ["frameMaterial"],
+  "notes": "position 是屏幕底部中心，正面朝 +Z。src 使用浏览器可访问的 HTTP(S) URL、项目相对资源路径或 blob URL；本地磁盘文件须经资源接口提供。默认静音循环，右键播放/暂停。运行状态不写回 WILD。",
+  "defaults": {"position": [0, 0, 0], "frameMaterial": "__wild_component_frame"},
+  "params": {
+    "width": {"type": "number", "default": 1.6, "min": 0.1, "max": 30, "step": 0.01, "label": "屏幕宽度"},
+    "height": {"type": "number", "default": 0.9, "min": 0.1, "max": 20, "step": 0.01, "label": "屏幕高度"},
+    "depth": {"type": "number", "default": 0.06, "min": 0.01, "max": 1, "step": 0.01, "label": "机身厚度"},
+    "src": {"type": "string", "default": "", "label": "视频资源地址"}
+  },
+  "elements": [
+    {
+      "id": "{id}__frame", "type": "primitive", "shape": "box",
+      "position": [{"$": "pos.x"}, {"$": "pos.y+height/2"}, {"$": "pos.z"}],
+      "dimensions": [{"$": "width+0.04"}, {"$": "height+0.04"}, {"$": "depth"}],
+      "material": {"$": "frameMaterial"}
+    },
+    {
+      "id": "{id}__screen", "type": "primitive", "shape": "box",
+      "position": [{"$": "pos.x"}, {"$": "pos.y+height/2"}, {"$": "pos.z+depth/2+0.0025"}],
+      "dimensions": [{"$": "width"}, {"$": "height"}, 0.005],
+      "material": {"$": "frameMaterial"},
+      "behavior": {"kind": "extension", "capability": "video", "config": {"src": {"$": "src"}, "loop": true, "muted": true, "autoplay": false}}
+    }
+  ]
+}

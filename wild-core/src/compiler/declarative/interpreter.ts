@@ -1,5 +1,6 @@
 import type { GeometryElement } from '../../../types'
 import { ComponentCompileError } from '../types'
+import { validateElementBehavior } from '../behaviorCapabilities'
 import { evaluateExpression, type ExpressionScope } from './evaluator'
 import type {
   ComponentRecipe,
@@ -11,7 +12,6 @@ import type {
 
 /** 模板里由解释器消费、不进入 element 的键。 */
 const RESERVED_KEYS = new Set(['repeat', 'behavior'])
-const ALLOWED_BEHAVIOR_KINDS = new Set(['opening', 'light', 'elevator', 'rotor'])
 
 function isExpression(value: unknown): value is { $: string } {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
@@ -116,12 +116,7 @@ function buildElement(
   if (node.behavior) {
     const behavior = resolveValue(node.behavior, scope);
     if (behavior !== undefined) {
-      const kind = behavior && typeof behavior === 'object'
-        ? (behavior as { kind?: unknown }).kind
-        : undefined
-      if (typeof kind !== 'string' || !ALLOWED_BEHAVIOR_KINDS.has(kind)) {
-        throw new ComponentCompileError(`配方行为 kind 不受支持: ${String(kind)}`)
-      }
+      validateElementBehavior(behavior)
       element._interaction = behavior;
     }
   }

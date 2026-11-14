@@ -20,7 +20,7 @@ from app.contracts.agent_events import versioned_event
 JobRunner = Callable[[Any, dict, bool], Awaitable[None]]
 
 _SERVER_ROOT = Path(__file__).resolve().parents[2]
-GENERATION_PIPELINE_VERSION = "design-document-v1"
+GENERATION_PIPELINE_VERSION = "design-document-auto-v1"
 _PIPELINE_UPGRADE_ERROR = "生成流程已升级，旧任务无法继续恢复，请重新发起生成请求"
 DEFAULT_CHECKPOINT_PATH = (
     _SERVER_ROOT / "storage" / "sessions" / "langgraph_checkpoints.sqlite3"
@@ -30,7 +30,7 @@ _PERSISTED_EVENT_TYPES = {
     "thinking_status",
     "plan_ready",
     "plan_item_updated",
-    "design_review_required",
+    "design_ready",
     "patch_proposal",
     "blueprint_generated",
     "agent_reply",
@@ -53,10 +53,6 @@ class GenerationJob:
     status: str
     last_event_seq: int = 0
     error: str | None = None
-
-
-class GenerationPaused(Exception):
-    """LangGraph 已持久化暂停点，等待用户输入；不是失败。"""
 
 
 class DurableEventSink:
@@ -253,87 +249,6 @@ class GenerationJobService:
             self._spawn(job, resume=True)
         return job
 
-    async def _resume_review_job(self, resumed: GenerationJob) -> None:
-        """等待旧的暂停任务退出后，再以数据库中的最新审核载荷恢复。"""
-
-        active = self._active_tasks.get(resumed.request_id)
-        if active is not None and not active.done():
-            await asyncio.gather(active, return_exceptions=True)
-
-        latest = await self.get_job(resumed.request_id)
-        if latest is not None and latest.status == "running":
-            self._spawn(latest, resume=True)
-
-    async def submit_design_review(
-        self,
-        subscriber: Any,
-        *,
-        request_id: str,
-        session_id: str,
-        action: str,
-        feedback: str = "",
-        base_revision: int | None = None,
-    ) -> GenerationJob:
-        """批准具体建筑设计，或携带自然语言意见重新生成设计方案。"""
-
-        await self.initialize()
-        job = await self.get_job(request_id)
-        if job is None or job.session_id != session_id:
-            raise ValueError("找不到对应的建筑设计审核任务")
-        await self._require_current_pipeline(job)
-        if job.status != "waiting_review":
-            raise ValueError("当前任务不在建筑设计审核阶段")
-        if str(job.payload.get("_waiting_review_type") or "") != "design_document":
-            raise ValueError("当前等待的不是建筑设计审核")
-        action = str(action).lower()
-        feedback = str(feedback).strip()
-        if action not in {"confirm", "revise"}:
-            raise ValueError("建筑设计审核 action 只能是 confirm 或 revise")
-        if action == "revise" and not feedback:
-            raise ValueError("要求修改设计时必须填写具体意见")
-
-        from app.design.repository import design_repository
-
-        document = design_repository.get(session_id)
-        if document is None:
-            raise ValueError("建筑设计文档不存在")
-        if base_revision is not None and document.revision != int(base_revision):
-            raise ValueError(
-                f"设计版本冲突：当前 r{document.revision}，审核请求基于 r{base_revision}"
-            )
-        review: dict[str, Any] = {
-            "action": action,
-            "feedback": feedback,
-            "document": document.model_dump(mode="json"),
-        }
-        payload = dict(job.payload)
-        payload["_design_review"] = review
-        await self._update_payload_and_status(request_id, payload, "running")
-        resumed = GenerationJob(
-            request_id=request_id,
-            session_id=session_id,
-            payload=payload,
-            status="running",
-            last_event_seq=job.last_event_seq,
-        )
-        await self.attach(request_id, subscriber)
-        await self._resume_review_job(resumed)
-        return resumed
-
-    async def mark_waiting_for_review(
-        self,
-        request_id: str,
-        review_type: str,
-    ) -> None:
-        """在向客户端暴露审核按钮前落库，消除快速点击产生的竞态。"""
-
-        job = await self.get_job(request_id)
-        if job is None:
-            raise ValueError("找不到待审核任务")
-        payload = dict(job.payload)
-        payload["_waiting_review_type"] = review_type
-        await self._update_payload_and_status(request_id, payload, "waiting_review")
-
     async def attach(self, request_id: str, subscriber: Any) -> None:
         self._subscribers.setdefault(request_id, {})[id(subscriber)] = subscriber
 
@@ -526,19 +441,6 @@ class GenerationJobService:
                 else f"[{job.request_id}] 任务随服务关闭暂停，保留 {current_status} 状态"
             )
             raise
-        except GenerationPaused:
-            current = await self.get_job(job.request_id)
-            pause_already_persisted = (
-                current is not None and current.status in {"waiting_review", "stopped"}
-            )
-            review_already_submitted = (
-                current is not None
-                and current.status == "running"
-                and isinstance(current.payload.get("_design_review"), dict)
-            )
-            if not pause_already_persisted and not review_already_submitted:
-                await self._mark_status(job.request_id, "waiting_review", None)
-            logger.info(f"[{job.request_id}] 生成流程已暂停，等待用户审核")
         except Exception as exc:
             logger.exception(f"[{job.request_id}] 持久化生成任务失败: {exc}")
             await self.publish_event(job.request_id, versioned_event({
@@ -682,21 +584,6 @@ class GenerationJobService:
                    SET status = ?, error = ?, updated_at = ?
                    WHERE request_id = ? AND status != 'stopped'""",
                 (status, error, time.time(), request_id),
-            )
-            await db.commit()
-
-    async def _update_payload_and_status(
-        self,
-        request_id: str,
-        payload: dict,
-        status: str,
-    ) -> None:
-        async with aiosqlite.connect(self.database_path) as db:
-            await db.execute(
-                """UPDATE generation_jobs
-                   SET payload_json = ?, status = ?, error = NULL, updated_at = ?
-                   WHERE request_id = ? AND status != 'stopped'""",
-                (json.dumps(payload, ensure_ascii=False), status, time.time(), request_id),
             )
             await db.commit()
 

@@ -42,7 +42,7 @@ async def patch_node(state: GenerationState) -> dict:
             state.get("user_message", ""),
             current_blueprint,
             selection=state.get("selection", []),
-            thinking_mode=state.get("thinking_mode", False),
+            thinking_mode=False,
             on_reasoning_delta=emit_reasoning if on_reasoning_delta else None,
         )
     except Exception as exc:

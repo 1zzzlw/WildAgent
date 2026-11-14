@@ -29,7 +29,7 @@ Agent WebSocket API
   thinking_status:     { "type": "thinking_status", "request_id": "...", "status": "thinking|completed|unsupported|error" }
   plan_ready:          { "type": "plan_ready", "request_id": "...", "plan": {...} }
   plan_item_updated:   { "type": "plan_item_updated", "request_id": "...", "item": {...} }
-  design_review_required: { "type": "design_review_required", "request_id": "...", "document": {...}, "preview_url": "..." }
+  design_ready: { "type": "design_ready", "request_id": "...", "document": {...}, "preview_url": "..." }
   blueprint_generated: { "type": "blueprint_generated", "request_id": "...", "session_id": "...", "filename": "YYYY-MM-DD/session_xxx_name.wild", "file_url": "/api/scenes/..." }
   agent_reply:         { "type": "agent_reply", "request_id": "...", "content": "..." }
   error:               { "type": "error", "request_id": "...", "error": "..." }
@@ -84,7 +84,7 @@ from app.services.agent_delivery import (
     final_validation_results,
     retain_generation_blueprint,
 )
-from app.services.generation_job_service import GenerationPaused, generation_job_service
+from app.services.generation_job_service import generation_job_service
 from app.extensions.presence import presence_service
 from app.utils.ws_heartbeat import WebSocketHeartbeat
 from app.api.auth import can_edit
@@ -511,35 +511,6 @@ async def agent_websocket(ws: WebSocket):
                     after_seq=int(data.get("last_event_seq") or 0),
                 )
 
-            elif msg_type == "design_review":
-                feedback = str(data.get("feedback") or "")
-                if config.rag.security.pii_redaction_enabled:
-                    feedback, _ = redact_pii(feedback)
-                try:
-                    resumed_job = await generation_job_service.submit_design_review(
-                        ws,
-                        request_id=str(data.get("request_id") or ""),
-                        session_id=str(data.get("session_id") or ""),
-                        action=str(data.get("action") or ""),
-                        feedback=feedback,
-                        base_revision=data.get("base_revision"),
-                    )
-                    await _send_event(ws, {
-                        "type": "generation_resumed",
-                        "request_id": resumed_job.request_id,
-                        "session_id": resumed_job.session_id,
-                        "status": resumed_job.status,
-                        "last_event_seq": resumed_job.last_event_seq,
-                    })
-                except ValueError as exc:
-                    await _send_event(ws, {
-                        "type": "error",
-                        "request_id": data.get("request_id"),
-                        "session_id": data.get("session_id"),
-                        "code": "design_review_rejected",
-                        "error": str(exc),
-                    })
-
             else:
                 await _send_event(ws, {
                     "type": "error",
@@ -614,7 +585,6 @@ _NODE_LABELS = {
     "architecture": "建筑图纸",
     "object_design": "物件方案",
     "material_plan": "材质方案",
-    "design_review": "建筑设计审核",
     "skeleton": "主体装配",
     "compile": "最终编译",
     "plan": "执行计划",
@@ -631,11 +601,11 @@ def _node_label(name: str) -> str:
 
 
 #: 会向 ws 推送 step 事件的节点全集 = 图节点全集 + 可选的 callback。图上加节点而这里不认，事件会在
-#: astream 过滤处被静默吞掉——前端管线就会"跳节点"（compile/design_review
+#: astream 过滤处被静默吞掉——前端管线就会"跳节点"（如 compile
 #: 上线时踩过：只改了生成链，忘了这张消费侧的表）。
 _OUR_NODES = {
     "classifier", "chat", "patch", "architecture", "object_design",
-    "material_plan", "design_review",
+    "material_plan",
     "skeleton", "compile",
     # plan 驱动链的循环三节点：条目级进度在它们的输出里，不在节点名里
     "plan", "execute", "replanner",
@@ -651,7 +621,6 @@ _NODE_START_DETAILS = {
     "architecture": "生成唯一结构化建筑方案并校验设计契约",
     "object_design": "生成物件清单并校验设计契约",
     "material_plan": "解析材质角色并匹配受控 PBR 资产",
-    "design_review": "等待用户审阅建筑设计文档与 SVG 方案图",
     "skeleton": "把批准方案展开为主体骨架和组件槽位（物件链）",
     "compile": "装配已落实的图纸标记，检查版本与完整性",
     "plan": "从已批准设计展开构件任务与依赖",
@@ -672,8 +641,8 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
     selection = data.get("selection", [])
     session_id = data.get("session_id", request_id)
     detail_level = resolve_complexity_profile(data.get("detail_level") or "minimal")["level"]
-    # 思考事件始终收集，plan 条目可独立于图节点开关开启思考。
-    thinking_mode = True
+    # 开关只控制设计思考及其状态提示，普通执行摘要仍始终推送。
+    thinking_mode = data.get("thinking_mode") is True
 
     logger.info(f"[{request_id}] [langgraph] 收到: {message[:80]}...")
 
@@ -735,7 +704,7 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
     }
 
     if thinking_mode:
-        await send_thinking_status("thinking", "正在收集节点思考内容")
+        await send_thinking_status("thinking", "设计阶段将使用思考模式")
 
     # ── 流式执行（astream_events: 可获取节点 start/end 事件）──
     from app.agent.graph import get_graph, plan_recursion_limit
@@ -748,7 +717,7 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
     component_configs = {
         config.component_type: config for config in get_implemented_components()
     }
-    # 首次运行在图纸审核处暂停；审核恢复时改用实际标记数量估算图步骤。
+    # 首次按构件类型估算图步骤；checkpoint 恢复时使用实际标记数量。
     recursion_limit = plan_recursion_limit(
         len(component_configs) * 3,
         initial_state["max_retries"],
@@ -779,8 +748,6 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
         graph = get_graph(enable_callback=True, checkpointer=generation_job_service.checkpointer)
         graph_input = initial_state
         if resume:
-            from langgraph.types import Command
-
             snapshot = await graph.aget_state(graph_config)
             if snapshot.values:
                 observed_state.update(snapshot.values)
@@ -793,12 +760,7 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
                     "suggested_components", []
                 )
                 if snapshot.next:
-                    graph_input = (
-                        Command(resume=data.get("_design_review"))
-                        if "design_review" in snapshot.next
-                        and isinstance(data.get("_design_review"), dict)
-                        else None
-                    )
+                    graph_input = None
                     logger.info(
                         f"[{request_id}] 从 checkpoint 恢复，待执行节点: "
                         f"{', '.join(snapshot.next)}"
@@ -1016,13 +978,6 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
                         "objects": objects,
                     })
 
-                elif node_name == "design_review":
-                    approved = node_output.get("design_review_status") == "approved"
-                    await send_step(
-                        "reviewing", node_name, "done", label,
-                        "建筑设计已批准" if approved else "已收到建筑设计修改意见",
-                    )
-
                 elif node_name == "material_plan":
                     material_diag = node_output.get("material_diag", {})
                     await send_step(
@@ -1035,6 +990,13 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
                         await send_debug("node", {
                             "node": node_name, "label": label, "stage": "done",
                             **material_diag,
+                        })
+                    document = node_output.get("design_document")
+                    if document:
+                        await _send_event(ws, {
+                            "type": "design_ready", "request_id": request_id, "session_id": session_id,
+                            "document": document, "resolved": node_output.get("resolved_design") or {},
+                            "preview_url": f"/api/designs/{session_id}/preview.svg?revision={document['revision']}",
                         })
 
                 elif node_name == "skeleton":
@@ -1260,7 +1222,7 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
         finally:
             reset_reasoning_callback(reasoning_token)
 
-    # interrupt 是正常的人工审核暂停点。此处必须先返回等待状态，不能继续保存或加载三维。
+    # 图结束后读取完整 checkpoint，继续交付已有产物。
     snapshot = None
     if graph is not None:
         try:
@@ -1268,31 +1230,6 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
         except Exception as exc:
             logger.error(f"[{request_id}] checkpoint 读取失败，使用已收到的节点结果: {exc}")
             execution_error = execution_error or str(exc)
-    if snapshot is not None and "design_review" in snapshot.next:
-        values = snapshot.values or {}
-        document = values.get("design_document") or {}
-        resolved = values.get("resolved_design") or {}
-        await send_step(
-            "reviewing",
-            "design_review",
-            "done",
-            "建筑设计审核",
-            "请审阅 SVG、体量和立面；批准后才生成几何与组件",
-        )
-        await generation_job_service.mark_waiting_for_review(
-            request_id,
-            "design_document",
-        )
-        await _send_event(ws, {
-            "type": "design_review_required",
-            "request_id": request_id,
-            "session_id": session_id,
-            "document": document,
-            "resolved": resolved,
-            "preview_url": f"/api/designs/{session_id}/preview.svg?revision={document.get('revision', 1)}",
-        })
-        raise GenerationPaused()
-
     if snapshot is not None and not snapshot.next and snapshot.values:
         # 完成时以完整 checkpoint 为准，节点局部输出不一定包含所有业务产物。
         final_state = dict(snapshot.values)

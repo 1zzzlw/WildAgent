@@ -8,7 +8,7 @@ from app.agent.validation.diagnostics import (
 from app.agent.validation.design_constraints import (
     design_quota_shortfalls, validate_design_brief_constraints,
 )
-from app.agent.validation.issues import validation_issues_from_results
+from app.agent.validation.issues import validation_issues_from_results, wild_schema_issues
 
 
 def evaluate_candidate(blueprint: dict, *, design_document=None, design_brief=None,
@@ -22,16 +22,16 @@ def evaluate_candidate(blueprint: dict, *, design_document=None, design_brief=No
     if target != blueprint:
         raise RuntimeError("只读校验器修改了候选，拒绝为原产物签发证据")
 
-    def append(name, messages, *, warning=False, marker=None, entity_ids=()):
+    def append(name, messages, *, warning=False, marker=None, entity_ids=(), issues=None):
         if messages:
             result = PipelineStepResult(
                 step="design", name=name,
                 output="\n".join(f"{'⚠️' if warning else '❌'} [design] {m}" for m in messages),
                 has_error=not warning, has_warning=warning,
-                issues=[{"code": name, "marker_id": marker["id"], "design_path": marker["design_path"],
+                issues=issues or ([{"code": name, "marker_id": marker["id"], "design_path": marker["design_path"],
                          "entity_ids": list(entity_ids), "message": message,
                          "expected": marker["design"].get("size") or marker.get("floor_connections"),
-                         "actual": {"entity_ids": list(entity_ids)}} for message in messages] if marker else None,
+                         "actual": {"entity_ids": list(entity_ids)}} for message in messages] if marker else None),
             )
             prior = next((r for r in results if r.step == "design" and r.name == name), None)
             if prior is None:
@@ -50,11 +50,10 @@ def evaluate_candidate(blueprint: dict, *, design_document=None, design_brief=No
         json.dumps(blueprint, allow_nan=False)
     except (ValueError, TypeError) as exc:
         append("validate_wild_json", [str(exc)])
-    import jsonschema
     from app.agent.generation.capability import load_engine_schema
     schema = load_engine_schema()
-    append("validate_wild_schema", ["WILD Schema 不可用"] if schema is None else
-           [f"/{'/'.join(map(str, e.path))}: {e.message}" for e in jsonschema.Draft202012Validator(schema).iter_errors(blueprint)])
+    schema_issues = wild_schema_issues(blueprint, schema)
+    append("validate_wild_schema", [issue["message"] for issue in schema_issues], issues=schema_issues)
 
     design_errors = validate_design_brief_constraints(blueprint, design_brief, design_document=design_document)
     append("validate_design_brief", design_errors)

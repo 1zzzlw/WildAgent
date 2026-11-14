@@ -92,6 +92,7 @@ import { applyWorldRenderQuality, configureWorldRenderer, resolveWorldIlluminati
 import { FixtureLightingRuntime } from '../../renderer/fixtureLightingRuntime'
 import { resolveBuildingApproach, type BuildingApproach } from '../../renderer/buildingApproach'
 import { isMechanismControl, tickMechanisms } from '../../renderer/mechanismRuntime'
+import { tickElementBehaviors } from '../../renderer/elementBehaviorRuntime'
 import { WaterReflectionRuntime } from '../../renderer/waterReflectionRuntime'
 import {
   CAMERA_PRESETS,
@@ -704,6 +705,7 @@ function renderFrame() {
   const assemblyRuntime = worldRuntime?.getInstance('editor:active-blueprint')?.assembly
   const entranceAnimating = assemblyRuntime?.tick(delta) ?? false
   const mechanismAnimating = !entranceAnimating && tickMechanisms(sceneGroup, delta)
+  const behaviorAnimating = !entranceAnimating && tickElementBehaviors(sceneGroup, delta)
   const characterAnimating = characterRoaming?.tick(delta) ?? false
   const controlsAnimating = !roaming.active && (controls?.update() ?? false)
   if (characterAnimating || mechanismAnimating || entranceAnimating) {
@@ -726,7 +728,7 @@ function renderFrame() {
     needsRender = true
   }
   const weatherAnimating = weatherVisuals?.tick(delta) ?? false
-  if (weatherAnimating || controlsAnimating) needsRender = true
+  if (weatherAnimating || controlsAnimating || behaviorAnimating) needsRender = true
   // 自动旋转：相机每帧都在动，保持渲染循环不进入休眠。
   if (renderPanel.autoRotate && !roaming.active) needsRender = true
   // 按需渲染休眠后的第一帧包含较长空闲时间，不能拿它计算实时 FPS。
@@ -745,7 +747,7 @@ function renderFrame() {
     needsRender = false
     publishRenderStats()
   }
-  continuousFrame = entranceAnimating || mechanismAnimating || characterAnimating || controlsAnimating || weatherAnimating || effectsAnimating || needsRender
+  continuousFrame = entranceAnimating || mechanismAnimating || behaviorAnimating || characterAnimating || controlsAnimating || weatherAnimating || effectsAnimating || needsRender
   if (continuousFrame) {
     scheduleRenderFrame()
   }

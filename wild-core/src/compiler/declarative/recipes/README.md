@@ -55,19 +55,39 @@
 
 单构件副本上限 512，超了直接报错（防止一份坏配方把浏览器打死）。
 
-## 边界（这不是缺陷，是物理边界）
+## 通用能力与扩展
 
 - **宿主角是闭集**。`wall`（沿墙距离/标高/法向偏移 → 世界坐标）、`roof`（屋面高度求解）
   需要读相邻元素，只能由引擎实现。要一种新的宿主语义，仍然得动引擎。
-- **行为种类是闭集**。`behavior.kind` 只能是 `rotor` / `elevator` / `light` / `opening` / `none`，
-  它们复用 `mechanismRuntime` 已有运行时。要一种新的机构运动（比如液压、卷扬），仍然得动运行时。
+- **行为按能力注册**。已有 `rotor` / `elevator` / `light` / `opening` 保持兼容；新增能力使用
+  `{"kind":"extension","capability":"能力名","config":{...}}`。Core 的
+  `registerExtensionBehaviorCapability()` 声明并校验数据，前端的
+  `registerElementBehaviorRuntime()` 接入创建、交互、逐帧更新和释放。定义须随 Core 公共入口加载，
+  使主线程、Worker 和离线编译一致；运行状态与 DOM/GPU 资源只保留在前端实例中。
 - **不跑任意代码**。表达式只解释白名单语法树，`primitive/registry.ts` 的
   「蓝图不能携带或执行 JavaScript」同样适用于这里。加一行 `eval` 就等于把数据格式
   变成代码执行入口。
 
-准确的承诺：新构件落在 **「4 种宿主 × 5 种行为」** 的张成空间内 → 零改引擎；
-出了这个空间 → 要动引擎，但改动点是「加一个宿主求解器」或「加一个行为运行时」，
-而不是今天这种 9 处散弹式修改。
+新增组件优先只增加配方与清单；新增通用能力时才扩充求解或运行时，并通过同一入口被其他组件复用。
+
+### 视频表面
+
+`video_screen.json` 是可复用于电视、显示器和广告屏的配方。源数据示例：
+
+```json
+{"type":"video_screen","id":"display_01","position":[0,1,0],"width":1.6,"height":0.9,"src":"/videos/demo.webm"}
+```
+
+示例视频地址需替换为实际可访问的资源。空地址显示待配置屏幕；属性面板按配方参数显示地址输入。
+屏幕正面朝 +Z，`position` 为底部中心；右键播放/暂停，默认静音循环。任意配方的平面屏幕零件都可复用：
+
+```json
+"behavior": {"kind":"extension","capability":"video","config":{"src":{"$":"src"},"loop":true,"muted":true,"autoplay":false}}
+```
+
+支持 HTTP(S)、相对资源路径及 blob URL；外部资源须允许浏览器访问。本地磁盘路径须先经资源接口提供。
+视频帧复用视口的按需渲染；不支持视频帧回调时使用视口逐帧更新，移除或更换源时释放播放器、纹理及回调。
+能力配置中可声明 `autoplay`、`loop` 和 `muted` 布尔值；浏览器拒绝播放时保留可再次交互的屏幕及失败状态。
 
 ## 验证
 

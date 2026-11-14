@@ -22,7 +22,7 @@
       <div v-if="turn.interruption_reason" class="interruption-notice">
         {{ turn.interruption_reason }}
       </div>
-      <section v-if="turn.design_document" class="design-review" :class="{ active: isDesignReview }">
+      <section v-if="turn.design_document" class="design-review">
         <div class="execution-plan-header">
           <strong>{{ architectureDecisions ? '建筑设计' : '物件方案' }} r{{ turn.design_document.revision }}</strong>
           <span>{{ designStatusLabel(turn.design_document.status) }}</span>
@@ -117,30 +117,6 @@
             >{{ item.subtype || item.kind }} × {{ item.count }}</span>
           </div>
         </details>
-        <div v-if="isDesignReview" class="review-actions">
-          <button
-            type="button"
-            class="confirm-design-btn"
-            :disabled="Boolean(turn.resolved_design?.compile_blockers?.length)"
-            @click="$emit('confirm-design', turn.request_id)"
-          >批准此设计并生成 Blueprint</button>
-          <span>{{ turn.resolved_design?.compile_blockers?.length ? '当前草稿有编译阻断，请先提出修改意见' : 'Blueprint 将绑定设计 revision 和 hash' }}</span>
-        </div>
-        <div v-if="isDesignReview" class="review-revision">
-          <textarea
-            v-model="designFeedback"
-            rows="3"
-            :placeholder="architectureDecisions
-              ? '例如：塔楼向后退 2 米；主立面改为非对称；保留层数并减少窗格密度。'
-              : '例如：桌子改宽到 1.8 米；四把椅子面向桌面；木色改深一点。'"
-          ></textarea>
-          <button
-            type="button"
-            class="revise-design-btn"
-            :disabled="!designFeedback.trim()"
-            @click="submitDesignRevision"
-          >根据意见生成下一版设计</button>
-        </div>
       </section>
       <details
         v-for="step in turn.steps.filter(step => !step.node.startsWith('plan:'))"
@@ -312,12 +288,7 @@ import type { AgentTurn, PlanItem } from '../../types/agent'
 import { BUILDING_DETAIL_LEVELS } from '../../types/agent'
 
 const props = defineProps<{ turn: AgentTurn }>()
-const emit = defineEmits<{
-  (event: 'confirm-design', requestId: string): void
-  (event: 'revise-design', requestId: string, feedback: string): void
-}>()
 const clock = ref(Date.now())
-const designFeedback = ref('')
 const selectedDesignFloor = ref(1)
 const drawingOpen = ref(false)
 const drawingZoom = ref(1)
@@ -337,16 +308,10 @@ const durationMs = computed(() => {
 const summaryTitle = computed(() => {
   if (props.turn.status === 'running') return '正在处理'
   if (props.turn.status === 'stopped') return '已停止'
-  if (isDesignReview.value) return '等待批准建筑设计'
   if (props.turn.status === 'waiting_review') return '等待用户确认'
   if (props.turn.status === 'error') return '处理未完成'
   return '处理完成'
 })
-
-const isDesignReview = computed(() =>
-  props.turn.status === 'waiting_review'
-  && props.turn.design_review_status === 'pending',
-)
 
 const summaryMeta = computed(() => {
   const completed = props.turn.steps.filter(step => step.status === 'done').length
@@ -402,13 +367,6 @@ const objectCount = computed(() =>
 )
 
 watch(
-  () => [props.turn.request_id, props.turn.design_document?.revision] as const,
-  () => {
-    designFeedback.value = ''
-  },
-)
-
-watch(
   () => props.turn.plan,
   (plan) => {
     if (
@@ -423,15 +381,8 @@ watch(
   { immediate: true },
 )
 
-function submitDesignRevision() {
-  const feedback = designFeedback.value.trim()
-  if (!feedback) return
-  emit('revise-design', props.turn.request_id, feedback)
-  designFeedback.value = ''
-}
-
 function designStatusLabel(status: string): string {
-  return ({ draft: '草案', approved: '已批准', compiled: '已编译' } as Record<string, string>)[status] || status
+  return ({ draft: '草案', approved: '已确定', compiled: '已编译' } as Record<string, string>)[status] || status
 }
 
 const planCounts = computed(() => {
@@ -698,7 +649,6 @@ onUnmounted(() => {
   background: var(--studio-hover);
 }
 
-.design-review.active { border-color: var(--studio-orange); }
 .design-concept { color: var(--studio-text); font-size: 11px; line-height: 1.5; }
 .design-facts { display: flex; flex-wrap: wrap; gap: 5px; }
 .design-facts span,
@@ -794,73 +744,6 @@ onUnmounted(() => {
   background: rgba(166, 78, 60, 0.08);
   border-radius: 6px;
   font-size: 11px;
-}
-
-.review-actions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 7px 0;
-}
-
-.confirm-design-btn,
-.revise-design-btn {
-  border: 1px solid var(--studio-accent-border);
-  border-radius: 5px;
-  padding: 4px 9px;
-  color: var(--studio-muted);
-  background: var(--studio-hover);
-  cursor: pointer;
-}
-
-.review-actions {
-  justify-content: space-between;
-  color: var(--studio-muted);
-  font-size: 10.5px;
-}
-
-.confirm-design-btn {
-  color: var(--studio-text);
-  border-color: var(--studio-accent-border);
-  background: var(--studio-hover);
-}
-
-.review-revision {
-  display: grid;
-  gap: 6px;
-  margin-top: 9px;
-  padding-top: 9px;
-  border-top: 1px solid var(--studio-border);
-}
-
-.review-revision textarea {
-  width: 100%;
-  box-sizing: border-box;
-  resize: vertical;
-  min-height: 58px;
-  padding: 7px 9px;
-  color: var(--studio-text);
-  border: 1px solid var(--studio-accent-border);
-  border-radius: 5px;
-  outline: none;
-  background: var(--studio-input);
-  font: inherit;
-  line-height: 1.45;
-}
-
-.review-revision textarea:focus {
-  border-color: var(--studio-accent-border);
-}
-
-.revise-design-btn {
-  justify-self: start;
-  color: var(--studio-text);
-}
-
-.confirm-design-btn:disabled,
-.revise-design-btn:disabled {
-  opacity: .38;
-  cursor: not-allowed;
 }
 
 .execution-step {

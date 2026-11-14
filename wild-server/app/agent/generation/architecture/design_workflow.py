@@ -13,7 +13,7 @@ from .design_blocks import ordered_blocks
 
 
 async def refine_construction(draft, *, user_request, diagram_hosts, validate, call_accounting=None):
-    """审核前一次构造深化；只补 form.construction，失败保留原设计并报告。"""
+    """设计校验后一次构造深化；只补 form.construction，失败保留原设计并报告。"""
     from app.design.construction_systems import construction_spec, SYSTEM_PROTOCOL
     targets = [c for c in draft.get("components", []) if c.get("type") in {"door", "window", "cornice"}
                and construction_spec(c) is None and all((c.get("size") or {}).get(k) for k in ("width", "height"))]

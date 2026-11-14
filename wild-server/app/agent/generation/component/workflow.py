@@ -23,10 +23,10 @@ from app.agent.prompts import (
     build_component_user_message,
 )
 from app.llm.client import create_llm
-from app.llm.invocation import invoke_llm, stream_llm
+from app.llm.invocation import invoke_llm
 from app.llm.errors import classify_model_error
 from app.agent.plan.tool_loop import run_tool_loop
-from app.agent.runtime import get_item_tools, get_reasoning_callback
+from app.agent.runtime import get_item_tools
 from .registry import ComponentConfig, component_rules_source
 from app.spec.loader import SpecQuery
 from app.agent.knowledge.policy import plan_knowledge_query
@@ -206,12 +206,8 @@ def create_component_generator(config: ComponentConfig):
         )
         prompt_chars = len(system_prompt)
 
-        # ── 3. LLM 调用（流式）──
-        thinking_mode = state.get("thinking_mode", False)
-        on_reasoning_delta = get_reasoning_callback()
-        use_streaming = thinking_mode and on_reasoning_delta is not None
-
-        llm = create_llm(enable_thinking=thinking_mode, streaming=use_streaming)
+        # ── 3. LLM 调用：所有粒度的构件实现均关闭思考 ──
+        llm = create_llm(enable_thinking=False, streaming=False)
 
         messages = [
             {"role": "system", "content": system_prompt},
@@ -240,7 +236,7 @@ def create_component_generator(config: ComponentConfig):
                     system_prompt=system_prompt,
                     user_message=build_component_user_message(config, design_brief),
                     tool_specs=list(item_tools),
-                    thinking_mode=thinking_mode,
+                    thinking_mode=False,
                 )
                 reply_text = tool_run.text
                 tool_trace = tool_run.trace
@@ -248,16 +244,7 @@ def create_component_generator(config: ComponentConfig):
                 reasoning = ""
             else:
                 async with _LLM_SEMAPHORE:
-                    if use_streaming:
-                        llm_result = await stream_llm(
-                            llm,
-                            messages,
-                            on_reasoning_delta=lambda delta: on_reasoning_delta(
-                                f"{config.component_type}_gen", delta
-                            ),
-                        )
-                    else:
-                        llm_result = await invoke_llm(llm, messages)
+                    llm_result = await invoke_llm(llm, messages)
                     reply_text = llm_result.content
                     reasoning = llm_result.reasoning
                     token_usage = llm_result.token_usage

@@ -28,6 +28,11 @@
 
 ## 计划与验收边界
 
+建筑主链为 `architecture → material_plan → plan → execute / replanner → compile → final_validate`。
+图纸与材质在 `material_plan` 中通过现有设计契约校验、保存并确定生成版本，然后自动继续。
+`design_ready` 事件只负责展示设计文档与图纸，不暂停生成，也不接受批准或修改意见的恢复消息。
+物件方案从 `object_design` 开始，在材质确定后经过 `skeleton` 进入同一计划与执行链。
+
 固定节点顺序只由 `graph.py` 决定。计划层不复制节点流程，也不负责选择下一个节点：
 
 ```text

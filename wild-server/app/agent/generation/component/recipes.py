@@ -57,7 +57,7 @@ def _describe_param(key: str, spec: dict[str, Any]) -> str:
         bounds.append(f"≥{_format_number(spec['min'])}")
     if "max" in spec:
         bounds.append(f"≤{_format_number(spec['max'])}")
-    kind = "整数" if spec.get("type") == "integer" else "数值"
+    kind = {"integer": "整数", "number": "数值", "string": "字符串", "vec3": "三维向量"}.get(spec.get("type"), "值")
     default = _format_number(spec.get("default"))
     parts = [f"{label}（{key}，{kind}"]
     if bounds:

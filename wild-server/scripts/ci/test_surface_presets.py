@@ -154,6 +154,7 @@ def test_material_node_saves_surface_plan_and_reaches_implementation_plan(tmp_pa
         assert calls == [True]
         saved = store.get(document.session_id)
         assert output["design_document"] == saved.model_dump(mode="json")
+        assert saved.status == "approved" and saved.approved_at
         assert saved.decisions.materials.resolved_plan.roles[0].surfacePresetId == "plaster_lime"
         planned = await plan_node({**state, **output})
         assert planned["plan_diag"]["marker_count"] > 0

@@ -4,6 +4,43 @@ from copy import deepcopy
 from app.agent.state import GenerationState
 
 
+def _repair_scope_errors(original, candidate, feedback):
+    """补丁只能改变失败实体及其资源；新增实体必须归属已定位的图纸标记。"""
+    def entities(blueprint):
+        return {e["id"]: e for bucket in ("elements", "components")
+                for e in blueprint.get("geometry", {}).get(bucket, [])}
+
+    before, after = entities(original), entities(candidate)
+    allowed = set(feedback["entity_ids"])
+    errors = []
+    removed = before.keys() - after.keys()
+    outside = {i for i in before.keys() & after.keys() if before[i] != after[i] and i not in allowed}
+    if removed:
+        errors.append("修复删除了已有实体：" + ", ".join(sorted(removed)))
+    if outside:
+        errors.append("修复修改了失败范围之外的实体：" + ", ".join(sorted(outside)))
+    added = after.keys() - before.keys()
+    for entity_id in added:
+        if not any(entity_id == marker_id or entity_id.startswith(marker_id + "_") for marker_id in feedback["marker_ids"]):
+            errors.append(f"新增实体 {entity_id} 无法归属失败图纸标记")
+
+    from app.services.agent_service import _MATERIAL_REFERENCE_FIELDS
+    def references(blueprint, selected):
+        materials = {e[key] for e in selected for key in _MATERIAL_REFERENCE_FIELDS if isinstance(e.get(key), str)}
+        assets = {value["textureSet"] for name, value in blueprint.get("materials", {}).items()
+                  if name in materials and isinstance(value.get("textureSet"), str)}
+        return {"materials": materials, "assets": assets}
+
+    protected = references(original, [entity for i, entity in before.items() if i not in allowed])
+    target = references(candidate, [entity for i, entity in after.items() if i in allowed or i in added])
+    for bucket in ("materials", "assets"):
+        old, new = original.get(bucket, {}), candidate.get(bucket, {})
+        for name in old.keys() | new.keys():
+            if old.get(name) != new.get(name) and (name in protected[bucket] or name not in target[bucket]):
+                errors.append(f"修复修改了失败范围之外的 {bucket}/{name}")
+    return errors
+
+
 def _assemble_with_relations(document, state):
     from app.design.markers import assemble_marker_results, implementation_records
     from app.agent.generation.spatial.stair_openings import cut_stair_openings
@@ -98,31 +135,42 @@ async def compile_node(state: GenerationState) -> dict:
         isinstance(geometry.get(bucket), list) and geometry[bucket] for bucket in ("elements", "components"))
     incomplete = bool(report["missing_markers"]) or any(
         r.get("status") != "implemented" for r in (brief.get("implementation") or {}).get("records", {}).values())
+    from app.agent.validation.issues import repair_feedback
+    feedback = repair_feedback((evaluation or {}).get("issues", []), blueprint or {},
+        markers=(state.get("resolved_design") or {}).get("component_markers", []),
+        records=(brief.get("implementation") or {}).get("records"),
+        design_hash=(evaluation or {}).get("snapshot", {}).get("design_hash", ""), source="compile")
+    report["repair_feedback"] = feedback
     if errors and incomplete and not state.get("terminal_model_error") and not previous_repair.get("attempted"):
         report["repair"] = {"attempted": False, "accepted": False, "stop_reason": "implementation_incomplete",
                             "error": "图纸尚有未实现标记，已保留通过片段与失败稿；集中修复不代替未执行的构件任务。"}
     if (errors and has_entities and not incomplete and not state.get("terminal_model_error")
             and not previous_repair.get("attempted")):
+        if feedback["requires_design_revision"] or not feedback["entity_ids"]:
+            report["repair"] = {"attempted": False, "accepted": False,
+                "stop_reason": "design_revision_required" if feedback["requires_design_revision"] else "unlocalized_issues",
+                "error": "需要修订设计或补齐错误归属，保留当前蓝图及失败证据。"}
+    if (errors and has_entities and not incomplete and not state.get("terminal_model_error")
+            and not previous_repair.get("attempted") and feedback["entity_ids"] and not feedback["requires_design_revision"]):
         from app.agent.prompts import build_patch_system_prompt
         from app.agent.runtime import get_reasoning_callback
         from app.llm.client import create_llm
-        from app.llm.invocation import invoke_llm, stream_llm
+        from app.llm.invocation import invoke_llm
         from app.services.agent_service import (
             _extract_patch_artifact, _validate_scene_patch_operations, _apply_patch_to_blueprint,
         )
         from app.agent.validation.issues import compare_issue_sets
 
         repair = {"attempted": True, "accepted": False, "original_blueprint": deepcopy(blueprint),
-                  "original_errors": list(errors), "model_calls": 0}
+                  "original_errors": list(errors), "model_calls": 0, "feedback": feedback}
         report["repair"] = repair
         try:
             from config import config
             callback = get_reasoning_callback()
             if callback:
                 await callback("compile:progress", "编译发现错误，正在集中修复一次；已有蓝图会保留。\n")
-            thinking = state.get("thinking_mode", True)
             llm = create_llm(model_cfg=config.chat.model_copy(update={"max_retries": 0}),
-                             enable_thinking=thinking, streaming=bool(thinking and callback))
+                             enable_thinking=False, streaming=False)
             from app.agent.generation.capability import load_engine_schema
             from app.agent.plan.implementation import _output_protocol
             schema = load_engine_schema()
@@ -136,8 +184,10 @@ async def compile_node(state: GenerationState) -> dict:
                 {"role": "user", "content": (
                     "修复本次编译错误，只返回 ScenePatch。仅修改错误相关片段，保留已有实体 ID 和正确几何；"
                     "不能通过删除实体、改变建筑形制或忽略图纸尺寸消除错误。缺失构件仅按本次图纸补充。"
+                    "repair_feedback.entity_ids 是允许修改的实体范围；其余实体及其共享材质、资产只读。"
+                    "新增实体使用 repair_feedback.marker_ids 中对应标记ID作为前缀，纳入该标记复验。"
                     "数值先计算，返回完整 JSON。只有这一次修复机会，不重新生成整栋建筑。\n"
-                    + json.dumps({"errors": errors, "blueprint": blueprint,
+                    + json.dumps({"errors": errors, "repair_feedback": feedback, "blueprint": blueprint,
                                   "design_document": state.get("design_document"),
                                   "failed_implementations": {marker: row
                                       for diag in (state.get("component_diagnostics") or {}).values()
@@ -148,11 +198,7 @@ async def compile_node(state: GenerationState) -> dict:
             ]
             repair["model_calls"] = 1
             new_model_calls = 1
-            if thinking and callback:
-                response = await stream_llm(llm, messages,
-                    on_reasoning_delta=lambda delta: callback("compile", delta))
-            else:
-                response = await invoke_llm(llm, messages, max_retries=0)
+            response = await invoke_llm(llm, messages, max_retries=0)
             patch, source = _extract_patch_artifact(response.content, response.reasoning)
             repair.update(patch=patch, structured_source=source)
             if patch is None:
@@ -161,25 +207,33 @@ async def compile_node(state: GenerationState) -> dict:
             if operation_errors:
                 raise ValueError("；".join(operation_errors))
             candidate = _apply_patch_to_blueprint(blueprint, patch)
+            scope_errors = _repair_scope_errors(blueprint, candidate, feedback)
+            if scope_errors:
+                raise ValueError("；".join(scope_errors))
             original_entities = {e["id"]: e for bucket in ("elements", "components")
                                  for e in geometry.get(bucket, [])}
             actual = {e["id"]: e for bucket in ("elements", "components")
                       for e in candidate["geometry"].get(bucket, [])}
-            if not original_entities.keys() <= actual.keys():
-                raise ValueError("修复删除了已有实体；保留修复前蓝图")
             candidate_brief = deepcopy(brief)
             # 修改后的实体重新接受完整几何与设计关系校验，不能沿用旧指纹冒充通过。
-            for record in (candidate_brief.get("implementation") or {}).get("records", {}).values():
+            new_owners = {}
+            for entity_id in actual.keys() - original_entities.keys():
+                new_owners[entity_id] = max((i for i in feedback["marker_ids"]
+                    if entity_id == i or entity_id.startswith(i + "_")), key=len)
+            for marker_id, record in (candidate_brief.get("implementation") or {}).get("records", {}).items():
                 ids = record.get("entity_ids") or []
                 if record.get("status") == "implemented" and ids and all(i in actual for i in ids):
-                    if any(actual[i] != original_entities.get(i) for i in ids):
+                    added = [i for i, owner in new_owners.items() if owner == marker_id]
+                    if added or any(actual[i] != original_entities.get(i) for i in ids):
                         record.setdefault("assembly_changes", []).append({"rule": "compiler.llm_repair",
                             "source_entity_fingerprint": record.get("entity_fingerprint"),
                             "source_entity_ids": list(ids), "operations": deepcopy(patch["operations"])})
-                        record["entity_fingerprint"] = blueprint_fingerprint([actual[i] for i in ids])
+                        record["entity_ids"] = [*ids, *added]
+                        record["entity_fingerprint"] = blueprint_fingerprint([actual[i] for i in record["entity_ids"]])
             after = evaluate_candidate(candidate, design_document=state.get("design_document"),
                                        design_brief=candidate_brief, source="compile_repair")
             repair["remaining_errors"] = [str(getattr(e, "output", e)) for e in after["errors"]]
+            repair["remaining_issues"] = after["issues"]
             progress = compare_issue_sets(evaluation["issues"], after["issues"]) if evaluation else {"accepted": False}
             before_satisfied = set(((evaluation or {}).get("fulfillment") or {}).get("satisfied_ids") or [])
             after_satisfied = set((after.get("fulfillment") or {}).get("satisfied_ids") or [])

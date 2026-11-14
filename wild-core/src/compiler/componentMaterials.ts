@@ -1,4 +1,5 @@
 import type { ComponentSpec, MaterialDef } from '../../types'
+import { getRecipe, getRecipeDefaults } from './declarative/registry'
 
 export const COMPONENT_MATERIAL = {
   frame: '__wild_component_frame',
@@ -96,6 +97,15 @@ export function applyComponentMaterialDefaults(
         fallback(component, 'material', COMPONENT_MATERIAL.wood)
         fallback(component, 'frameMaterial', COMPONENT_MATERIAL.frame)
         break
+    }
+    const recipe = getRecipe(component.type)
+    if (recipe) {
+      const defaults = getRecipeDefaults(component.type) || {}
+      const fields = component as unknown as Record<string, unknown>
+      for (const field of recipe.materialFields || []) {
+        const id = fields[field] ?? defaults[field]
+        if (typeof id === 'string' && BUILTIN_MATERIALS[id]) required.add(id)
+      }
     }
   }
 

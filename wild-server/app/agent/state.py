@@ -8,28 +8,14 @@ from typing import Annotated, Any, Literal, NotRequired, TypedDict
 
 
 def merge_state_mapping(left: dict | None, right: dict | None) -> dict:
-    """合并分片映射的**局部更新**。
-
-    ``execute`` 可以并发返回互不依赖的构件类型，``repair/state_updates.py`` 也会按
-    构件类型回写**部分**键；没有 reducer 时，任一局部更新都会覆盖其它类型的分片。
-    """
+    """合并分片映射的局部更新。"""
     merged = dict(left or {})
     merged.update(right or {})
     return merged
 
 
-#: 本轮**要不要现在产出**：generate（生成新产物）/ edit（改既有场景）/ chat（只问答）。
-#: 与 :data:`TargetKind` 正交，两者共同决定图的第一个分叉。
 IntentName = Literal["generate", "edit", "chat"]
 
-#: 本轮**要产出什么**，与 intent 正交。
-#:
-#: - ``architecture``：建筑/构筑物/场地，走体量→立面→屋顶的完整方案链；
-#: - ``object``：单个物件（家具、器物、陈设），没有体量，直接按构件生成。
-#:
-#: 为什么不合成第四个 intent：``intent`` 回答"要不要现在产出"，``target_kind``
-#: 回答"产出什么"。塞进同一个枚举会让每个分支都要再分叉一次——"改一下这个桌子"
-#: 是 edit + object，"生成一个别墅"是 generate + architecture。
 TargetKind = Literal["architecture", "object"]
 
 DetailLevel = Literal["minimal", "simple", "standard", "detailed"]
@@ -42,12 +28,16 @@ class GenerationInput(TypedDict):
     request_id: NotRequired[str]  # 本次生成任务 ID，用于日志、事件和 checkpoint 定位。
     session_id: NotRequired[str]  # 会话 ID，用于关联设计文档和多轮交互。
     building_type: NotRequired[str]  # 入口预识别的建筑类型，例如 villa、office。
-    current_blueprint: NotRequired[dict | None]  # 编辑模式下已有的 .wild Blueprint；新建时为空。
+    current_blueprint: NotRequired[
+        dict | None
+    ]  # 编辑模式下已有的 .wild Blueprint；新建时为空。
     selection: NotRequired[list[str]]  # 前端当前选中的 Blueprint 元素 ID 列表。
     recent_messages: NotRequired[list[dict]]  # 供意图分类参考的近期对话消息。
     workflow_state: NotRequired[str]  # 前端当前工作流状态，例如 idle、generating。
-    thinking_mode: NotRequired[bool]  # 思考默认关闭；显式开启后生效，低粒度构件仍关闭。
-    detail_level: NotRequired[DetailLevel]  # minimal/simple/standard/detailed，对应低/中/高/极高。
+    thinking_mode: NotRequired[bool]  # 默认关闭，只控制建筑/物件设计节点。
+    detail_level: NotRequired[
+        DetailLevel
+    ]  # minimal/simple/standard/detailed，对应低/中/高/极高。
     procedural_materials_enabled: NotRequired[bool]  # 是否允许使用程序化材质方案。
 
 
@@ -65,7 +55,7 @@ class GenerationState(TypedDict, total=False):
     selection: list[str]  # 前端当前选中的 Blueprint 元素 ID 列表。
     recent_messages: list[dict]  # 供意图分类和上下文判断使用的近期对话。
     workflow_state: str  # 前端传入的工作流状态，例如 idle、generating。
-    thinking_mode: bool  # 用户显式选择的思考开关；低粒度构件仍关闭。
+    thinking_mode: bool  # 设计节点思考开关，规划、实现与修复不继承。
     detail_level: DetailLevel  # 用户选择的建筑设计粒度，随任务持久化。
     procedural_materials_enabled: bool  # 是否允许生成程序化材质。
 
@@ -87,18 +77,16 @@ class GenerationState(TypedDict, total=False):
     # ── Layer -0.5: 建筑方案（生成分支）──
     architecture_plan: dict  # DesignDocument 的只读兼容投影；设计修改回到文档。
     architecture_diag: dict  # 总体方案来源、RAG 和模型调用诊断（前端方案摘要消费）。
-    design_document: dict  # 可人工审核、带 revision 的结构化建筑设计文档。
+    design_document: dict  # 带 revision 的结构化设计文档，材质确定后自动固定本次生成版本。
     drawing_hosts: list[dict]  # 图纸中的宿主几何示意，供主体实现保持引用。
     resolved_design: dict  # 将 DesignDocument 默认值和引用解析后的可执行视图。
-    design_review_status: str  # 建筑设计审核状态，例如 pending、approved、revise。
-    design_feedback: str  # 用户对当前建筑设计提出的修改意见。
     design_material_refresh: bool  # 本轮修订后是否需要重新生成材质方案。
     material_plan: dict  # 材质角色、颜色和资产引用组成的受控材质方案。
     material_diag: dict  # 材质检索、解析、校验和回退诊断（前端资产摘要消费）。
 
     # ── Layer -1: 知识问答输出 ──
-    chat_reply: str       # 知识问答的文本回复
-    chat_diag: dict       # 知识问答的诊断数据
+    chat_reply: str  # 知识问答的文本回复
+    chat_diag: dict  # 知识问答的诊断数据
 
     # ── Layer -1: 增量修改输出 ──
     scene_patch: dict  # 编辑模式生成并校验后的 ScenePatch 操作集合。
@@ -111,35 +99,53 @@ class GenerationState(TypedDict, total=False):
     wall_bounding_box: dict  # 主体墙体的空间包围盒，供组件放置和校验参考。
     spatial_invariants: dict  # 从主体提取的楼层、边界、宿主等空间不变量。
     suggested_components: list[str]  # 骨架节点建议的组件列表
-    design_brief: dict  # 骨架输出的设计清单（facade_plan + component_quota + rag_reference）
+    design_brief: (
+        dict  # 骨架输出的设计清单（facade_plan + component_quota + rag_reference）
+    )
     skeleton_diag: dict  # 主体骨架模型调用、解析、恢复和校验诊断。
     compile_report: dict  # 装配计数、编译错误与一次局部修复的原稿、操作和复检记录。
 
     # ── Layer 1: 组件分片 ──
-    component_fragments: Annotated[dict[str, Any], merge_state_mapping]  # 各构件类型的源分片映射。
-    component_diagnostics: Annotated[dict[str, dict], merge_state_mapping]  # 生成与校验的诊断映射。
+    component_fragments: Annotated[
+        dict[str, Any], merge_state_mapping
+    ]  # 各构件类型的源分片映射。
+    component_diagnostics: Annotated[
+        dict[str, dict], merge_state_mapping
+    ]  # 生成与校验的诊断映射。
 
     # ── Layer 2: 合并与校验 ──
     merged_blueprint: dict  # 主体骨架与所有组件分片合并后的 Blueprint。
-    merge_diag: dict  # 合并诊断：批次合并只有并入计数，收尾合并才带校验→修复循环与蓝图指纹
+    merge_diag: (
+        dict  # 合并诊断：批次合并只有并入计数，收尾合并才带校验→修复循环与蓝图指纹
+    )
     validation_results: list[dict]  # 各校验器返回的原始结果列表。
     validation_issues: list[dict]  # 汇总后的结构化错误与警告列表。
     validation_error_count: int  # 当前阻断级校验错误数量。
     validation_warning_count: int  # 当前非阻断级校验警告数量。
-    validation_cache_reused: bool  # final_validate 是否复用了 callback 已完成的校验快照。
-    validation_snapshot: dict  # ValidationSnapshot 的 dict 形式，供 callback→final_validate 复用
-    design_fulfillment: dict | None  # P4 设计履约报告：已支持要求在最终 Blueprint 上的兑现情况（不参与保存门禁）
+    validation_cache_reused: (
+        bool  # final_validate 是否复用了 callback 已完成的校验快照。
+    )
+    validation_snapshot: (
+        dict  # ValidationSnapshot 的 dict 形式，供 callback→final_validate 复用
+    )
+    design_fulfillment: (
+        dict | None
+    )  # P4 设计履约报告：已支持要求在最终 Blueprint 上的兑现情况（不参与保存门禁）
     failed_components: list[dict]  # 校验失败且可能进入定向修复的组件信息。
     passed_component_ids: list[str]  # 已通过校验、修复时应尽量保持不变的组件 ID。
     retry_count: int  # 已执行的修复轮次，仅用于审计/展示
     max_retries: int  # 每个失败目标允许的最大修复次数
-    component_retry_counts: dict[str, int]  # per-component 重试计数 {component_id: count}
+    component_retry_counts: dict[
+        str, int
+    ]  # per-component 重试计数 {component_id: count}
 
     # ── 回调上下文 ──
     repair_audit: dict  # 修复前后错误变化、接受或拒绝原因等审计记录。
     terminal_model_error: dict  # 模型服务故障；停止模型调用，仍编译保存已有结果。
 
     # ── 最终输出 ──
-    final_blueprint: dict  # 最终保留的可编辑 .wild；是否通过校验由 validation_snapshot 单独记录。
+    final_blueprint: (
+        dict  # 最终保留的可编辑 .wild；是否通过校验由 validation_snapshot 单独记录。
+    )
     error: str | None  # 当前任务的终止错误；正常完成时为空。
     status: str  # "complete" | "partial" | "failed"

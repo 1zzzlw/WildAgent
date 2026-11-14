@@ -211,7 +211,6 @@ async def architecture_planner(state: GenerationState) -> dict:
 
     started = _time.time()
     message = state["user_message"]
-    feedback = str(state.get("design_feedback") or "").strip()
     previous = state.get("design_document")
     # 解析上轮设计图纸，或从 state 里取 architecture_plan 作为上轮设计方案。
     if isinstance(previous, dict):
@@ -250,15 +249,15 @@ async def architecture_planner(state: GenerationState) -> dict:
             detail_query,
             process_query,
             SpecQuery(
-                f"{message} {feedback} 建筑设计表达 体量围护 开敞 门窗宿主 平面布局",
+                f"{message} 建筑设计表达 体量围护 开敞 门窗宿主 平面布局",
                 {"entity_name": "architecture_design_expression"},
             ),
             SpecQuery(
-                f"{message} {feedback} 室内房间 内墙 内门 通行路径 独立柱位 平面图纸",
+                f"{message} 室内房间 内墙 内门 通行路径 独立柱位 平面图纸",
                 {"entity_name": "architecture_design_expression"},
             ),
             SpecQuery(
-                f"{message} {profile_id} {feedback} 建筑形制 形态表达 空间组织 构件组合",
+                f"{message} {profile_id} 建筑形制 形态表达 空间组织 构件组合",
                 {"doc_type": "component", "topic": "composition"},
             ),
         ],
@@ -280,7 +279,6 @@ async def architecture_planner(state: GenerationState) -> dict:
         profile_id,
         complexity,
         current_plan=previous_plan,
-        revision_feedback=feedback,
         style_preference=state.get("style_preference"),
     )
     accepted = {}
@@ -371,7 +369,6 @@ async def architecture_planner(state: GenerationState) -> dict:
                 building_type=profile_id,
                 style_intent=list(state.get("style_preference") or []),
                 previous=previous,
-                revision_feedback=feedback,
             )
         except DesignContractError as exc:
             raise ValueError("；".join([*material_errors, str(exc)])) from exc
@@ -405,8 +402,6 @@ async def architecture_planner(state: GenerationState) -> dict:
         rules = await asyncio.to_thread(
             agent_service.spec_loader.load_many,
             [
-                detail_query,
-                process_query,
                 SpecQuery(
                     "建筑图纸字段与关系修订 " + issue,
                     {"entity_name": "architecture_design_expression"},
@@ -423,10 +418,9 @@ async def architecture_planner(state: GenerationState) -> dict:
     try:
         raw, diag = await draft_design(
             base_prompt=prompt,
-            user_request=message + ("\n本轮修改意见：" + feedback if feedback else ""),
+            user_request=message,
             thinking_mode=state.get("thinking_mode") is True,
             on_reasoning_delta=callback,
-            current_plan=previous_plan if feedback else None,
             validate=validate,
             load_repair_rules=load_repair_rules,
             call_accounting=accounting,
@@ -484,11 +478,9 @@ async def architecture_planner(state: GenerationState) -> dict:
         "architecture_plan": architecture_plan_from_document(document),
         "design_document": document.model_dump(mode="json"),
         "resolved_design": accepted["resolved"].model_dump(mode="json"),
-        "design_review_status": "pending",
-        "design_feedback": "",
         "design_material_refresh": not previous
         or prior_strategy != strategy
-        or bool(material_mentions(feedback)),
+        or bool(material_mentions(message)),
         "architecture_diag": diag,
         "component_fragments": {
             k: [] for k in (state.get("component_fragments") or {})

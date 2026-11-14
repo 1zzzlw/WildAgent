@@ -144,7 +144,14 @@ export interface RotorElementBehavior {
   initiallyOn: boolean;
 }
 
-export type InteractiveElementBehavior = OpeningElementBehavior | LightElementBehavior | ElevatorElementBehavior | RotorElementBehavior;
+/** 通用行为扩展槽；能力由编译器注册并校验，运行时通过同名处理器执行。 */
+export interface ExtensionElementBehavior {
+  kind: 'extension';
+  capability: string;
+  config: Record<string, unknown>;
+}
+
+export type InteractiveElementBehavior = OpeningElementBehavior | LightElementBehavior | ElevatorElementBehavior | RotorElementBehavior | ExtensionElementBehavior;
 
 /**
  * 电梯组件：井道内的可动轿厢。

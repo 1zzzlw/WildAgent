@@ -4,6 +4,7 @@ import { RobotAvatar } from './RobotAvatar'
 import { RoamingCollisionWorld } from './RoamingCollisionWorld'
 import type { BuildingApproach } from '../../renderer/buildingApproach'
 import type { CharacterView } from './store'
+import { elementBehaviorLabel } from '../../renderer/elementBehaviorRuntime'
 
 interface RoamingOptions {
   scene: THREE.Scene
@@ -263,7 +264,7 @@ export class CharacterRoamingRuntime {
       const target = this.interactionTarget()
       const kind = target?.userData.interaction?.kind
       const b = target?.userData.interaction
-      this.setTargetLabel(kind === 'opening' ? '右键 · 开关门窗' : kind === 'light' ? '右键 · 切换灯光' : kind === 'elevator' && b.role.endsWith('Button') ? '右键 · 电梯按钮' : kind === 'rotor' && b.role === 'control' ? '右键 · 风扇调速' : '')
+      this.setTargetLabel(kind === 'opening' ? '右键 · 开关门窗' : kind === 'light' ? '右键 · 切换灯光' : kind === 'elevator' && b.role.endsWith('Button') ? '右键 · 电梯按钮' : kind === 'rotor' && b.role === 'control' ? '右键 · 风扇调速' : target ? elementBehaviorLabel(target) : '')
     }
     return true
   }

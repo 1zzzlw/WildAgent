@@ -406,7 +406,7 @@ export const useAgentStore = defineStore('agent', () => {
     const existing = turn.steps.find(item => item.node === step.node)
     if (existing) {
       Object.assign(existing, step)
-      // 同一个节点会被重跑（design_review 选 revise 会回到 architecture）。重跑是全新一次，
+      // 同一个节点可能在执行循环中重跑。重跑是全新一次，
       // 思考缓冲必须清空 —— 否则新一次的 CoT 会接在上一次后面，用户看到的是"同一个节点反复
       // 自我推翻"，像卡进了循环。
       if (step.stage === 'generating' && step.status === 'running') {
@@ -529,7 +529,7 @@ export const useAgentStore = defineStore('agent', () => {
     persistTurns(sessionId)
   }
 
-  function setDesignReviewRequired(
+  function setDesignReady(
     sessionId: string,
     requestId: string,
     document: NonNullable<AgentTurn['design_document']>,
@@ -538,42 +538,9 @@ export const useAgentStore = defineStore('agent', () => {
   ) {
     const turn = findTurn(sessionId, requestId)
     if (!turn) return
-    turn.status = 'waiting_review'
     turn.design_document = document
     turn.resolved_design = resolved
     turn.design_preview_url = previewUrl
-    turn.design_review_status = 'pending'
-    persistTurns(sessionId)
-  }
-
-  function markDesignReviewSubmitted(
-    sessionId: string,
-    requestId: string,
-    action: 'confirm' | 'revise',
-    feedback = '',
-  ) {
-    const turn = findTurn(sessionId, requestId)
-    if (!turn) return
-    turn.status = 'running'
-    turn.design_review_status = action === 'confirm' ? 'approved' : 'submitting'
-    if (action === 'revise') {
-      addMessageToSession(sessionId, {
-        id: `msg_${requestId}_design_revision_${Date.now()}`,
-        role: 'user',
-        content: feedback,
-        timestamp: Date.now(),
-        request_id: requestId,
-        turn_id: requestId,
-      })
-    }
-    persistTurns(sessionId)
-  }
-
-  function restoreDesignReviewAfterError(sessionId: string, requestId: string) {
-    const turn = findTurn(sessionId, requestId)
-    if (!turn) return
-    turn.status = 'waiting_review'
-    turn.design_review_status = 'pending'
     persistTurns(sessionId)
   }
 
@@ -1007,7 +974,6 @@ export const useAgentStore = defineStore('agent', () => {
     object_design: '物件方案',
     material_plan: '材质方案',
     design_convergence: '设计收敛',
-    design_review: '建筑设计审核',
     skeleton: '主体装配',
     compile: '最终编译',
     planning_research: '计划研究',
@@ -1092,9 +1058,7 @@ export const useAgentStore = defineStore('agent', () => {
     setTurnDiagnostic,
     setTurnPlan,
     applyPlanItemUpdate,
-    setDesignReviewRequired,
-    markDesignReviewSubmitted,
-    restoreDesignReviewAfterError,
+    setDesignReady,
     setTurnMetrics,
     setTurnThinkingStatus,
     setTurnStopRequested,

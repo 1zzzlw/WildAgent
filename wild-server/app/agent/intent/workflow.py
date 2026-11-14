@@ -25,7 +25,7 @@ async def classifier_node(state: dict) -> dict:
     )["level"]
     result = {
         "detail_level": detail_level,
-        "thinking_mode": state.get("thinking_mode") is not False,
+        "thinking_mode": state.get("thinking_mode") is True,
         "style_preference": [],
         "intent": decision.intent,
         "intent_target": decision.target,

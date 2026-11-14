@@ -13,7 +13,7 @@ from app.agent.validation.candidate import evaluate_candidate
 from app.agent.state import GenerationState
 from app.agent.prompts import build_callback_prompt
 from app.llm.client import create_llm
-from app.llm.invocation import invoke_llm, stream_llm
+from app.llm.invocation import invoke_llm
 from app.llm.errors import classify_model_error
 from app.agent.runtime import get_reasoning_callback
 from app.agent.repair.tools import execute_repair_actions, extract_repair_actions
@@ -83,7 +83,6 @@ async def callback_node(state: GenerationState) -> dict:
     skeleton_blueprint = state.get("skeleton_blueprint", {})
     passed_ids = state.get("passed_component_ids", [])
     retry_count = state.get("retry_count", 0)
-    thinking_mode = state.get("thinking_mode", False)
     on_reasoning_delta = get_reasoning_callback()
 
     # ── 1. 精准 RAG + 工具数据（按失败组件类型检索）──
@@ -148,9 +147,7 @@ async def callback_node(state: GenerationState) -> dict:
         passed_component_ids=passed_ids,
     )
 
-    # ── 4. LLM 修正（支持流式思考）──
-    use_streaming = thinking_mode and on_reasoning_delta is not None
-
+    # ── 4. LLM 修正：不继承设计节点的思考开关 ──
     messages = [
         {"role": "system", "content": system_prompt},
         {
@@ -166,15 +163,8 @@ async def callback_node(state: GenerationState) -> dict:
     reasoning = ""
     
     try:
-        llm = create_llm(enable_thinking=thinking_mode, streaming=use_streaming)
-        if use_streaming:
-            llm_result = await stream_llm(
-                llm,
-                messages,
-                on_reasoning_delta=lambda delta: on_reasoning_delta("callback", delta),
-            )
-        else:
-            llm_result = await invoke_llm(llm, messages)
+        llm = create_llm(enable_thinking=False, streaming=False)
+        llm_result = await invoke_llm(llm, messages)
         reply_text = llm_result.content
         reasoning = llm_result.reasoning
         logger.info(

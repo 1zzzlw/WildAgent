@@ -1,4 +1,4 @@
-"""建筑：图纸 → 材质解析 → 审核 → 标记任务 → 最终编译；物件沿用骨架链。"""
+"""建筑：图纸 → 材质解析与版本确定 → 标记任务 → 最终编译；物件沿用骨架链。"""
 from langgraph.graph import END, StateGraph
 from loguru import logger
 
@@ -7,7 +7,6 @@ from app.agent.nodes.callback_node import callback_node
 from app.agent.nodes.chat_node import chat_node
 from app.agent.nodes.classifier_node import classifier_node
 from app.agent.nodes.compile_node import compile_node
-from app.agent.nodes.design_review_node import design_review, route_design_review
 from app.agent.nodes.execute_node import execute_node
 from app.agent.nodes.material_plan_node import material_planner
 from app.agent.nodes.object_design_node import object_planner
@@ -71,12 +70,15 @@ def _after_architecture(state: GenerationState) -> str:
 
 
 def _after_object_design(state: GenerationState) -> str:
-    # 物件方案与建筑方案之后是同一条链：材质 → 人工审核 → 骨架 → 计划 → 执行。
+    # 两种方案都在材质确定后自动进入各自的实现入口。
     return "__end__" if _terminal(state) else "material_plan"
 
 
 def _after_material_plan(state: GenerationState) -> str:
-    return "__end__" if _terminal(state) else "design_review"
+    if _terminal(state):
+        return "__end__"
+    kind = (state.get("design_document") or {}).get("decisions", {}).get("kind")
+    return "plan" if kind == "architecture" else "skeleton"
 
 
 def _after_skeleton(state: GenerationState) -> str:
@@ -91,10 +93,6 @@ def _execution_end(state: GenerationState) -> str:
 def _after_plan(state: GenerationState) -> str:
     if _terminal(state):
         return _execution_end(state)
-    if state.get("design_review_status") == "pending":
-        return "design_review"
-    if state.get("design_review_status") == "revise":
-        return "architecture"
     plan = _plan_of(state)
     if plan is None:
         logger.warning("[graph] plan 缺失，跳过执行循环")
@@ -173,11 +171,10 @@ def build_generation_graph(enable_callback: bool = False, *, checkpointer=None):
     graph.add_node("chat", chat_node)
     graph.add_node("patch", patch_node)
 
-    # 建筑与物件分别形成设计，再共享材质解析和审核。
+    # 建筑与物件分别形成设计，再共享材质解析和设计版本确定。
     graph.add_node("architecture", architecture_planner)
     graph.add_node("object_design", object_planner)
     graph.add_node("material_plan", material_planner)
-    graph.add_node("design_review", design_review)
     graph.add_node("skeleton", skeleton_generator)
     # 建筑构件任务完成后统一装配；物件继续使用现有合并链。
     graph.add_node("compile", compile_node)
@@ -217,31 +214,18 @@ def build_generation_graph(enable_callback: bool = False, *, checkpointer=None):
     graph.add_conditional_edges("object_design", _after_object_design,
                                 {"material_plan": "material_plan", "__end__": END})
     graph.add_conditional_edges("material_plan", _after_material_plan,
-                                {"design_review": "design_review", "__end__": END})
-    graph.add_conditional_edges(
-        "design_review",
-        route_design_review,
-        {
-            "architecture": "architecture",
-            "object_design": "object_design",
-            "skeleton": "skeleton",
-            "plan": "plan",
-            "__end__": END,
-        },
-    )
+                                {"skeleton": "skeleton", "plan": "plan", "__end__": END})
     graph.add_conditional_edges("skeleton", _after_skeleton,
                                 {"plan": "plan", "__end__": END})
-    # 版本失效回到审核；装配完成后使用同一候选做最终校验。
+    # 装配完成后使用同一候选做最终校验。
     graph.add_edge("compile", "final_validate")
 
     graph.add_conditional_edges("plan", _after_plan,
-                                {"execute": "execute", "final_validate": "final_validate", "compile": "compile",
-                                 "design_review": "design_review", "architecture": "architecture", "__end__": END})
+                                {"execute": "execute", "final_validate": "final_validate", "compile": "compile", "__end__": END})
     graph.add_conditional_edges("execute", _after_execute,
                                 {"replanner": "replanner", "compile": "compile", "final_validate": "final_validate"})
     graph.add_conditional_edges("replanner", _after_replanner,
-                                {"execute": "execute", "final_validate": "final_validate", "compile": "compile",
-                                 "design_review": "design_review", "architecture": "architecture", "__end__": END})
+                                {"execute": "execute", "final_validate": "final_validate", "compile": "compile", "__end__": END})
 
     if enable_callback:
         graph.add_conditional_edges("final_validate", _final_validate_dispatch,
@@ -252,7 +236,7 @@ def build_generation_graph(enable_callback: bool = False, *, checkpointer=None):
     compiled = graph.compile(checkpointer=checkpointer)
     logger.info(
         "LangGraph 图编译完成: classifier → (architecture | object_design) → material_plan → "
-        "design_review → (skeleton | plan) → "
+        "(skeleton | plan) → "
         "(execute ⇄ replanner) → 建筑最终compile / 物件合并 → final_validate"
     )
     return compiled

@@ -21,6 +21,7 @@ import { meshDataToGeometry } from './meshDataToGeometry'
 import { meshSignature } from './meshSignature'
 import { createTextLabel } from './textLabel'
 import { interactMechanism, isMechanismControl, syncMechanisms } from './mechanismRuntime'
+import { disposeElementBehavior, interactElementBehavior, syncElementBehaviorRuntimes } from './elementBehaviorRuntime'
 
 const MAX_VERTICES = 50000
 const renderKeys = new WeakMap<THREE.Object3D, string>()
@@ -187,6 +188,7 @@ export function toggleRuntimeInteraction(
     return toggleLightInteraction(object, requestRender)
   }
   if (isMechanismControl(object)) return interactMechanism(object, requestRender)
+  if (interactElementBehavior(object)) { requestRender(); return true }
   return false
 }
 
@@ -472,6 +474,7 @@ export function clearSceneObjectResources(root: THREE.Object3D): void {
   const geometries = new Set<THREE.BufferGeometry>()
   const materials = new Set<THREE.Material>()
   root.traverse(object => {
+    disposeElementBehavior(object)
     if (!(object instanceof THREE.Mesh) && !(object instanceof THREE.InstancedMesh)) return
     geometries.add(object.geometry)
     if (object instanceof THREE.InstancedMesh) object.dispose()
@@ -506,6 +509,7 @@ export function createSceneGroupFromEntity(
   try {
     populateSceneGroup(group, entity, cache)
     syncMechanisms(group)
+    syncElementBehaviorRuntimes(group)
   } finally {
     cache.endUpdate()
   }
@@ -538,6 +542,7 @@ export function updateSceneGroup(
   try {
     populateSceneGroup(group, entity, materialCache)
     syncMechanisms(group)
+    syncElementBehaviorRuntimes(group)
   } finally {
     materialCache.endUpdate()
   }

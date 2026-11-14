@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import re
+from copy import deepcopy
 from typing import Iterable
 
 
@@ -40,6 +41,8 @@ _ISSUE_CLASSIFICATION = {
     "validate_model_quality": ("model_instruction", "prompt"),
     "validate_collision": ("coverage_geometry", "deterministic_fix"),
     "validate_design_brief": ("model_instruction", "prompt"),
+    "validate_wild_schema": ("schema_contract", "prompt"),
+    "implementation": ("model_instruction", "prompt"),
     "design_stair_connection": ("level_continuity", "prompt"),
     "design_component_geometry": ("model_instruction", "prompt"),
     "design_construction_conflict": ("host_relation", "design_revision"),
@@ -94,6 +97,27 @@ def _entity_index(blueprint: dict) -> dict[str, dict]:
         for entity in entities
         if isinstance(entity, dict) and entity.get("id")
     }
+
+
+def wild_schema_issues(blueprint: dict, schema: dict | None) -> list[dict]:
+    """局部实现和最终候选复用同一 Schema 错误证据，保留 JSON 路径和当前值。"""
+    import jsonschema
+
+    if schema is None:
+        return [{"message": "WILD Schema 不可用", "entity_ids": []}]
+    issues = []
+    for error in jsonschema.Draft202012Validator(schema).iter_errors(blueprint):
+        path = list(error.absolute_path)
+        entity_id = None
+        if len(path) >= 3 and path[0] == "geometry" and path[1] in {"elements", "components"}:
+            entity = blueprint["geometry"][path[1]][path[2]]
+            entity_id = entity.get("id") if isinstance(entity, dict) else None
+        pointer = "/" + "/".join(str(part).replace("~", "~0").replace("/", "~1") for part in path)
+        issues.append({"message": f"{pointer}: {error.message}"[:800], "field_path": pointer,
+                       "entity_id": entity_id, "entity_ids": [entity_id] if entity_id else [],
+                       "expected": {"validator": error.validator, "value": error.validator_value},
+                       "actual": deepcopy(error.instance)})
+    return issues
 
 
 def validation_issues_from_results(
@@ -192,6 +216,45 @@ def group_issues_by_entity(issues: Iterable[dict]) -> dict[str, list[dict]]:
     return grouped
 
 
+def repair_feedback(issues: Iterable[dict], blueprint: dict, *, markers=(), records=None,
+                    design_hash: str = "", source: str = "") -> dict:
+    """将原始校验问题绑定到当前产物、图纸归属和实际参数；未知归属保留为空。"""
+    from app.agent.validation.diagnostics import blueprint_fingerprint
+
+    entities = _entity_index(blueprint)
+    markers = {marker["id"]: marker for marker in markers}
+    records = records or {}
+    owners = {entity_id: marker_id for marker_id, record in records.items()
+              for entity_id in record.get("entity_ids", [])}
+    feedback, targets, marker_ids = [], set(), set()
+    for original in issues:
+        issue = deepcopy(original)
+        ids = set(issue.get("entity_ids") or []) | set(issue.get("related_entity_ids") or [])
+        if issue.get("entity_id"):
+            ids.add(issue["entity_id"])
+        owned = {owners[i] for i in ids if i in owners}
+        if issue.get("marker_id"):
+            owned.add(issue["marker_id"])
+        if not ids:
+            ids.update(i for marker_id in owned for i in records.get(marker_id, {}).get("entity_ids", []))
+        if "expected" not in issue or issue["expected"] is None:
+            issue["expected"] = {i: {key: deepcopy(value) for key, value in markers[i].get("design", {}).items()
+                                    if key in {"size", "placement", "floor_connections", "form", "massing", "volume"}}
+                                 for i in sorted(owned) if i in markers}
+        if ("actual" not in issue or issue["actual"] is None
+                or isinstance(issue["actual"], dict) and set(issue["actual"]) == {"entity_ids"}):
+            issue["actual"] = {"entities": [deepcopy(entities[i]) for i in sorted(ids) if i in entities]}
+        issue["entity_ids"], issue["marker_ids"] = sorted(ids), sorted(owned)
+        issue.setdefault("recommended_repair_level", classify_validation_issue(issue.get("validator", ""))[1])
+        feedback.append(issue)
+        targets.update(ids)
+        marker_ids.update(owned)
+    return {"source": source, "design_hash": design_hash,
+            "blueprint_fingerprint": blueprint_fingerprint(blueprint), "issues": feedback,
+            "entity_ids": sorted(targets), "marker_ids": sorted(marker_ids),
+            "requires_design_revision": any(i["recommended_repair_level"] == "design_revision" for i in feedback)}
+
+
 def repeated_failed_candidate(record: dict, *, context_fingerprint: str | None = None) -> bool:
     """有两份连续、同依赖的失败证据才允许提前结束，实现舍弃不能自报无进展。"""
     if record.get("stop_reason") != "repeated_failed_candidate":
@@ -217,7 +280,10 @@ def _issue_fingerprint(issue: dict) -> tuple[str, str | None, str]:
     只有错误消息本身减少才算改善。
     """
     code = str(issue.get("code", "UNKNOWN"))
-    entity_id = issue.get("entity_id")
+    entity_ids = set(issue.get("entity_ids") or []) | set(issue.get("related_entity_ids") or [])
+    if issue.get("entity_id"):
+        entity_ids.add(issue["entity_id"])
+    entity_id = ",".join(sorted(entity_ids)) or issue.get("marker_id") or issue.get("design_path")
     message = str(issue.get("message", "") or "")
     digest = hashlib.sha1(message.encode("utf-8", errors="replace")).hexdigest()[:12]
     return code, entity_id, digest
@@ -237,8 +303,8 @@ def compare_issue_sets(before: list[dict], after: list[dict]) -> dict:
         key=lambda item: (item[0], item[1] or ""),
     )
     return {
-        "accepted": len(after) < len(before) and not introduced,
-        "before_count": len(before),
-        "after_count": len(after),
+        "accepted": len(after_fingerprints) < len(before_fingerprints) and not introduced,
+        "before_count": len(before_fingerprints),
+        "after_count": len(after_fingerprints),
         "introduced_issues": introduced,
     }

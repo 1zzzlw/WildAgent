@@ -4,19 +4,46 @@
       <button class="theme-button" type="button" :aria-label="theme.isDark ? '切换为亮色主题' : '切换为暗色主题'" @click="theme.toggle()">{{ theme.isDark ? '亮色 ☀' : '暗色 ☾' }}</button>
       <div class="wordmark">WILD <span>建筑蓝图工作台</span></div>
       <div class="building-mark" aria-hidden="true"><i></i><i></i><i></i></div>
-      <h1 id="login-title">走进你的建筑世界</h1>
-      <p class="intro">登录后编辑与保存蓝图，也可以先以游客身份看看。</p>
-      <form @submit.prevent="signIn(false)">
+      <h1 id="login-title">{{ registering ? '创建你的 WILD 账号' : '走进你的建筑世界' }}</h1>
+      <p class="intro">{{ registering ? '从一个想法开始，描绘属于你的建筑世界。' : '登录后编辑与保存蓝图，也可以先以游客身份看看。' }}</p>
+      <form v-if="registering" class="register-form" @submit.prevent="previewRegistration" @input="registrationNotice = ''">
+        <label for="register-username">用户名</label>
+        <input ref="registerUsernameInput" id="register-username" v-model.trim="registration.username" name="username" autocomplete="username" placeholder="怎么称呼你" pattern=".*\S.*" title="用户名不能只包含空格" :disabled="checking" required />
+        <label for="register-email">邮箱</label>
+        <input ref="registerEmailInput" id="register-email" v-model.trim="registration.email" name="email" type="email" autocomplete="email" placeholder="请输入邮箱地址" :disabled="checking" required />
+        <label for="register-code">邮箱验证码</label>
+        <div class="verification-field">
+          <input id="register-code" v-model.trim="registration.code" name="verification-code" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="6 位数字验证码" pattern="[0-9]{6}" maxlength="6" title="请输入 6 位数字验证码" :disabled="checking" required />
+          <button class="code-button" type="button" :disabled="checking" @click="previewVerificationCode">获取验证码</button>
+        </div>
+        <label for="register-password">密码</label>
+        <div class="password-field">
+          <input id="register-password" v-model="registration.password" name="password" :type="showPassword ? 'text' : 'password'" autocomplete="new-password" placeholder="设置你的登录密码" :disabled="checking" required />
+          <button class="password-toggle" type="button" :aria-label="showPassword ? '隐藏密码' : '显示密码'" :aria-pressed="showPassword" aria-controls="register-password register-confirm-password" :disabled="checking" @click="showPassword = !showPassword">{{ showPassword ? '隐藏' : '显示' }}</button>
+        </div>
+        <label for="register-confirm-password">确认密码</label>
+        <input ref="confirmPasswordInput" id="register-confirm-password" v-model="registration.confirmPassword" name="confirm-password" :type="showPassword ? 'text' : 'password'" autocomplete="new-password" placeholder="请再次输入密码" :aria-invalid="confirmTouched && passwordMismatch ? true : undefined" :aria-describedby="confirmTouched && passwordMismatch ? 'confirm-password-error' : undefined" :disabled="checking" required @blur="confirmTouched = true" />
+        <p v-if="confirmTouched && passwordMismatch" id="confirm-password-error" class="field-error" role="alert">两次输入的密码不一致</p>
+        <p v-if="registrationNotice" class="registration-notice" role="status">{{ registrationNotice }}</p>
+        <button class="primary-button" type="submit" :disabled="checking">注册</button>
+      </form>
+      <form v-else @submit.prevent="signIn(false)">
         <label for="login-username">账号</label>
-        <input id="login-username" v-model="username" name="username" autocomplete="username" placeholder="请输入账号" :disabled="busy || checking" required />
+        <input ref="loginUsernameInput" id="login-username" v-model="username" name="username" autocomplete="username" placeholder="请输入账号" :disabled="busy || checking" required />
         <label for="login-password">密码</label>
         <input id="login-password" v-model="password" name="password" type="password" autocomplete="current-password" placeholder="请输入密码" :disabled="busy || checking" required />
         <p v-if="error" class="login-error" role="alert">{{ error }}</p>
         <button class="primary-button" type="submit" :disabled="busy || checking">{{ checking ? '正在恢复登录…' : busy ? '正在登录…' : '密码登录' }}</button>
       </form>
-      <div class="divider"><span>或</span></div>
-      <button class="guest-button" type="button" :disabled="busy || checking" @click="signIn(true)">游客登录 <span>↗</span></button>
-      <p class="guest-note">游客可浏览建筑、体验交互并导出 GLB；编辑、保存和其他导出需密码登录。</p>
+      <p class="account-switch">
+        {{ registering ? '已有账号？' : '还没有账号？' }}
+        <button type="button" :disabled="busy || checking" @click="switchMode">{{ registering ? '返回登录' : '立即注册' }}</button>
+      </p>
+      <template v-if="!registering">
+        <div class="divider"><span>或</span></div>
+        <button class="guest-button" type="button" :disabled="busy || checking" @click="signIn(true)">游客登录 <span>↗</span></button>
+        <p class="guest-note">游客可浏览建筑、体验交互并导出 GLB；编辑、保存和其他导出需密码登录。</p>
+      </template>
       <RouterLink class="business-link" to="/business-plan">了解 WILD · 商业介绍 ↗</RouterLink>
       <div class="login-presence"><OnlinePresence /></div>
     </section>
@@ -24,7 +51,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, nextTick, reactive, ref, watchEffect } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useAuthStore } from '../../stores/authStore'
 import { useThemeStore } from '../../stores/themeStore'
@@ -37,6 +64,46 @@ const username = ref('')
 const password = ref('')
 const busy = ref(false)
 const error = ref('')
+const registering = ref(false)
+const registration = reactive({ username: '', email: '', code: '', password: '', confirmPassword: '' })
+const registrationNotice = ref('')
+const showPassword = ref(false)
+const registerUsernameInput = ref<HTMLInputElement>()
+const loginUsernameInput = ref<HTMLInputElement>()
+const registerEmailInput = ref<HTMLInputElement>()
+const confirmPasswordInput = ref<HTMLInputElement>()
+const confirmTouched = ref(false)
+const passwordMismatch = computed(() => !!registration.confirmPassword && registration.password !== registration.confirmPassword)
+
+watchEffect(() => {
+  confirmPasswordInput.value?.setCustomValidity(passwordMismatch.value ? '两次输入的密码不一致' : '')
+})
+
+async function switchMode() {
+  registering.value = !registering.value
+  password.value = ''
+  registration.password = ''
+  registration.confirmPassword = ''
+  registration.code = ''
+  error.value = ''
+  registrationNotice.value = ''
+  showPassword.value = false
+  confirmTouched.value = false
+  await nextTick()
+  const input = registering.value ? registerUsernameInput.value : loginUsernameInput.value
+  input?.focus()
+}
+
+function previewVerificationCode() {
+  if (!registerEmailInput.value?.reportValidity()) return
+  registrationNotice.value = '验证码服务暂未开放，敬请期待。'
+}
+
+function previewRegistration() {
+  // 仅展示注册表单；待接入注册服务后再提交，不复用登录接口或保存密码。
+  registrationNotice.value = '注册暂未开放，敬请期待。'
+}
+
 async function signIn(guest: boolean) {
   if (busy.value) return
   busy.value = true
@@ -59,5 +126,8 @@ async function signIn(guest: boolean) {
 .building-mark{height:65px;margin:24px 0 18px;display:flex;align-items:end;gap:7px}.building-mark i{display:block;width:34px;height:43px;border:1px solid var(--studio-accent-border);background:repeating-linear-gradient(0deg,transparent 0 9px,var(--studio-border) 9px 10px),var(--studio-hover);transform:skewY(-12deg)}.building-mark i:nth-child(2){height:65px;width:48px}.building-mark i:nth-child(3){height:30px;width:48px}
 h1{font-size:25px;font-weight:600;letter-spacing:-.5px}.intro{margin:10px 0 24px;color:var(--studio-muted);font-size:12px;line-height:1.9}form{display:flex;flex-direction:column;gap:8px}label{font-size:12px;margin-top:5px}input{width:100%;height:42px;border:1px solid var(--studio-border);border-radius:7px;padding:0 12px;background:var(--studio-input);color:var(--studio-text);font:inherit;font-size:13px}input:focus{outline:2px solid var(--studio-accent-border);outline-offset:1px}
 .primary-button,.guest-button{width:100%;height:43px;border-radius:7px;font-size:13px;cursor:pointer}.primary-button{margin-top:12px;background:var(--studio-accent);border:1px solid var(--studio-accent);color:var(--studio-surface)}.guest-button{display:flex;align-items:center;justify-content:space-between;padding:0 14px;border:1px solid var(--studio-border);background:var(--studio-hover);color:var(--studio-text)}button:disabled{opacity:.55;cursor:wait}.login-error{color:var(--studio-danger);font-size:12px;line-height:1.6;margin-top:6px}.divider{display:flex;align-items:center;gap:12px;margin:18px 0;color:var(--studio-muted);font-size:11px}.divider:before,.divider:after{content:'';height:1px;flex:1;background:var(--studio-border)}.guest-note{margin-top:11px;color:var(--studio-muted);font-size:11px;line-height:1.9}.business-link{display:inline-block;margin-top:23px;color:var(--studio-accent);font-size:11px;text-underline-offset:5px}
-@media(max-width:480px){.login-page{padding:20px 16px}.login-card{padding:28px 24px}.building-mark{margin-top:20px}h1{font-size:23px}}
+.password-field{position:relative}.password-field input{padding-right:62px}.password-toggle{position:absolute;top:0;right:0;height:100%;min-width:56px;padding:0 12px;border:0;border-radius:0 7px 7px 0;background:transparent;color:var(--studio-accent);font-size:12px;cursor:pointer}.password-toggle:hover{background:var(--studio-hover)}
+.verification-field{display:flex;gap:8px}.verification-field input{flex:1;min-width:0}.code-button{flex-shrink:0;min-height:42px;padding:0 12px;border:1px solid var(--studio-accent-border);border-radius:7px;background:var(--studio-hover);color:var(--studio-accent);font-size:12px;cursor:pointer}.code-button:hover{border-color:var(--studio-accent)}.field-error{color:var(--studio-danger);font-size:12px;line-height:1.6}input[aria-invalid="true"]{border-color:var(--studio-danger)}
+.account-switch{display:flex;justify-content:center;align-items:center;gap:5px;margin-top:16px;color:var(--studio-muted);font-size:12px}.account-switch button{min-height:32px;padding:4px 5px;border:0;border-radius:4px;background:transparent;color:var(--studio-accent);font-size:12px;cursor:pointer}.account-switch button:hover{text-decoration:underline;text-underline-offset:4px}.registration-notice{padding:10px 12px;margin-top:6px;border:1px solid var(--studio-accent-border);border-radius:7px;background:var(--studio-hover);color:var(--studio-text);font-size:12px;line-height:1.7}
+@media(max-width:480px){.login-page{padding:20px 16px}.login-card{padding:28px 24px}.building-mark{margin-top:20px}h1{font-size:23px}.register-form input{height:44px;font-size:16px}.register-form .primary-button{height:44px}.account-switch button{min-height:44px}}
 </style>

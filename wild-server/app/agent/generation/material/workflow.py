@@ -152,11 +152,13 @@ async def material_planner(state: GenerationState) -> dict:
     resolved_design = state.get("resolved_design")
     if isinstance(design_document, dict):
         from app.design.repository import design_repository
-        from app.design.resolver import attach_material_plan
+        from app.design.resolver import attach_material_plan, architecture_plan_from_document
 
         updated_document = attach_material_plan(design_document, plan)
-        updated_document, resolved_design = design_repository.save(updated_document)
+        updated_document, _ = design_repository.save(updated_document)
+        updated_document, resolved_design = design_repository.approve(updated_document.session_id, updated_document.revision)
         design_document = updated_document.model_dump(mode="json")
+        architecture_plan = architecture_plan_from_document(updated_document)
     if callback:
         selected = [
             item for item in plan["roles"] if item.get("assetId")
@@ -177,6 +179,7 @@ async def material_planner(state: GenerationState) -> dict:
         "design_document": design_document,
         # 更新后的可执行视图
         "resolved_design": resolved_design,
+        "architecture_plan": architecture_plan,
         # 诊断账本
         "material_diag": {
             "catalog_count": len(catalog),

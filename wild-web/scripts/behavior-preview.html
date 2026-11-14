@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<title>通用视频行为验证</title>
+<style>body{margin:20px;background:#17212b;color:#eef4f8;font:16px sans-serif}button{padding:9px 16px;margin:0 8px 14px 0}canvas{display:block;max-width:100%}#status{margin:12px 0}</style>
+<button id="prepare">准备测试视频</button><button id="play">播放 / 暂停</button><button id="replace">更换视频</button><button id="dispose">清理场景</button>
+<div id="status">等待准备</div><div id="viewport"></div>
+<script type="module">
+import * as THREE from 'three'
+import { reconstructWildEntity } from '/src/renderer/wildCoreAdapter.ts'
+import { createSceneGroupFromEntity, updateSceneGroup, clearSceneObjectResources, toggleRuntimeInteraction } from '/src/renderer/renderEntity.ts'
+import { configureMaterialRendering, MaterialCache } from '/src/renderer/materialAdapter.ts'
+const scene = new THREE.Scene()
+scene.background = new THREE.Color('#17212b')
+const camera = new THREE.PerspectiveCamera(40, 800/500, .01, 100)
+camera.position.set(0, .45, 2.6)
+camera.lookAt(0, .45, 0)
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true })
+renderer.setSize(800, 500)
+document.querySelector('#viewport').append(renderer.domElement)
+scene.add(new THREE.AmbientLight(0xffffff, 2))
+const cache = new MaterialCache(), urls = []
+let root = null, queued = false, draws = 0, sequence = 0
+const status = text => { document.querySelector('#status').textContent = text }
+function invalidate() {
+  if (queued) return
+  queued = true
+  requestAnimationFrame(() => { queued = false; renderer.render(scene, camera); draws++ })
+}
+configureMaterialRendering(4, invalidate)
+async function clip() {
+  const canvas = document.createElement('canvas')
+  canvas.width = 320; canvas.height = 180
+  const context = canvas.getContext('2d'), stream = canvas.captureStream(15), chunks = []
+  const recorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp8' })
+  recorder.ondataavailable = event => { if (event.data.size) chunks.push(event.data) }
+  const stopped = new Promise(resolve => { recorder.onstop = resolve })
+  const began = performance.now(), variant = sequence++
+  let frame
+  function paint() {
+    context.fillStyle = variant % 2 ? '#1e81e8' : '#e85a34'
+    context.fillRect(0, 0, canvas.width, canvas.height)
+    context.fillStyle = '#ffffff'
+    context.font = 'bold 30px sans-serif'
+    context.fillText('WILD VIDEO', 38, 80)
+    context.fillStyle = '#70e6be'
+    context.fillRect(((performance.now()-began)/6)%280, 115, 40, 35)
+    frame = requestAnimationFrame(paint)
+  }
+  paint(); recorder.start()
+  await new Promise(resolve => setTimeout(resolve, 1400))
+  recorder.stop(); await stopped
+  cancelAnimationFrame(frame)
+  stream.getTracks().forEach(track => track.stop())
+  const url = URL.createObjectURL(new Blob(chunks, { type: recorder.mimeType }))
+  urls.push(url)
+  return url
+}
+async function prepare() {
+  status('正在生成本地测试视频…')
+  const src = await clip()
+  const entity = await reconstructWildEntity({ meta: { version: '1.1', type: 'asset', name: 'video' },
+    geometry: { elements: [], components: [{ type: 'video_screen', id: 'display', position: [0,0,0], src }] }, materials: {} })
+  if (entity.diagnostics.some(item => item.level === 'error')) throw new Error(JSON.stringify(entity.diagnostics))
+  if (root) {
+    window.previousVideo = root.getObjectByName('display__screen').material.map.image
+    updateSceneGroup(root, entity, cache)
+  } else { root = createSceneGroupFromEntity(entity, cache); scene.add(root) }
+  status('视频已准备，点击播放')
+  invalidate()
+}
+document.querySelector('#prepare').onclick = () => prepare().catch(error => { status(error.message); throw error })
+document.querySelector('#replace').onclick = () => prepare().catch(error => { status(error.message); throw error })
+document.querySelector('#play').onclick = () => {
+  const screen = root?.getObjectByName('display__screen')
+  if (screen) { toggleRuntimeInteraction(screen, invalidate); status(screen.material.map.image.paused ? '已暂停' : '播放中') }
+}
+document.querySelector('#dispose').onclick = () => {
+  if (root) { clearSceneObjectResources(root); scene.remove(root); root = null }
+  cache.clear(); urls.forEach(url => URL.revokeObjectURL(url)); urls.length = 0
+  status('场景已清理'); invalidate()
+}
+window.report = () => {
+  const screen = root?.getObjectByName('display__screen'), video = screen?.material.map?.image
+  return { meshes: root?.children.length || 0, draws, textures: renderer.info.memory.textures,
+    paused: video?.paused, time: video?.currentTime, readyState: video?.readyState,
+    decodedFrames: video?.getVideoPlaybackQuality().totalVideoFrames, state: screen?.userData.mediaState,
+    previousReleased: window.previousVideo ? window.previousVideo.paused && !window.previousVideo.getAttribute('src') : null }
+}
+window.whitePixels = () => {
+  const gl = renderer.getContext(), pixels = new Uint8Array(800*500*4)
+  gl.readPixels(0, 0, 800, 500, gl.RGBA, gl.UNSIGNED_BYTE, pixels)
+  let count = 0
+  for (let i = 0; i < pixels.length; i += 4) if (pixels[i] > 238 && pixels[i+1] > 238 && pixels[i+2] > 238) count++
+  return count
+}
+invalidate()
+window.ready = true
+</script>
+</html>

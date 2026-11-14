@@ -162,10 +162,7 @@ async def plan_node(state: dict[str, Any]) -> dict[str, Any]:
         resolved = project_drawing(document)
         reviewed = state.get("resolved_design") or {}
         if reviewed.get("resolver_version") != RESOLVER_VERSION or reviewed.get("design_hash") != resolved.design_hash:
-            return {"resolved_design": resolved.model_dump(mode="json"), "design_review_status": "pending",
-                    "component_fragments": {k: [] for k in (state.get("component_fragments") or {})},
-                    "component_diagnostics": {k: {} for k in (state.get("component_diagnostics") or {})},
-                    "merged_blueprint": {}, "final_blueprint": {}, "validation_snapshot": {}}
+            return {"status": "failed", "error": "任务设计版本与已确定图纸不一致，请重新生成，已有片段仍保留。"}
         design_state = {**state, "resolved_design": resolved.model_dump(mode="json")}
         plan = expand_plan(design_state)
         material_plan = document.decisions.materials.resolved_plan

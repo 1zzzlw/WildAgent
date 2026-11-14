@@ -140,10 +140,34 @@ class RoofDecision(ContractModel):
 
     model_config = ConfigDict(extra="allow", validate_assignment=True, allow_inf_nan=False)
     type: str
-    ridge_axis: Literal["x", "z"] = "x"
+    ridge_axis: Literal["x", "z"] = Field(default="x", description=(
+        "仅双坡（gable）屋顶需要选择屋脊方向；其他已知屋型可省略，由程序保留兼容默认值。"
+    ))
     overhang: float = Field(default=0, ge=0, le=2)
     #: 按设计体量引用分配屋面形态，plan 负责实现。
     volumes: list[RoofVolumeOverride] = Field(default_factory=list)
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_unused_axis(cls, value):
+        if not isinstance(value, dict) or "ridge_axis" not in value:
+            return value
+        if value["ridge_axis"] is not None and value["ridge_axis"] != "none":
+            return value
+        # 不猜测双坡、混合双坡或自定义屋型的方向；仅规范化已知无此自由度的屋型。
+        kinds = [value.get("type")]
+        if isinstance(value.get("volumes"), list):
+            for item in value["volumes"]:
+                if isinstance(item, RoofVolumeOverride):
+                    kinds.append(item.type or value.get("type"))
+                elif isinstance(item, dict):
+                    kinds.append(item.get("type") or value.get("type"))
+                else:
+                    return value
+        without_axis = {"flat", "hip", "dome", "chinese_curved", "chinese_pagoda", "none", "open"}
+        if all(isinstance(kind, str) and kind in without_axis for kind in kinds):
+            return {**value, "ridge_axis": cls.model_fields["ridge_axis"].default}
+        return value
 
 
 class CurtainWallDecision(ContractModel):

@@ -1,0 +1,283 @@
+{
+  "parameters": {
+    "width": 12,
+    "depth": 10,
+    "floor_height": 3.6,
+    "overhang": 0.4,
+    "bay_x": "=width/4",
+    "bay_z": "=depth/3",
+    "stair_width": 1.2,
+    "stair_run": 4.2,
+    "door_width": 1.5,
+    "door_height": 2.4,
+    "glass_door_width": 6,
+    "glass_door_height": 2.7
+  },
+  "concept": "现代两层矩形别墅，平屋顶出檐，白色体量搭配深灰金属窗框，后方大面积落地玻璃面向花园方向",
+  "design_intent": {
+    "goals": ["提供两层独立居住空间", "后方通透玻璃面向花园", "简洁现代立面表达"],
+    "assumptions": ["场地平坦，后方为主要景观面", "低粒度不做精细室内分区", "结构为框架体系"],
+    "selected_systems": ["平屋顶带出檐", "矩形单体体量", "大面积落地玻璃推拉门", "室内直跑楼梯"],
+    "spatial_strategy": "一层公共起居区朝后大面积敞开，二层私密卧室均匀开窗；入口设于前立面中部",
+    "composition": "单一矩形体量通过前后立面开窗尺度对比和出檐水平线条表达层次",
+    "material_strategy": "白色涂料外墙，深灰色铝合金窗框与门框，透明玻璃，深灰色平屋面板"
+  },
+  "massing": {
+    "shape": "rectangular",
+    "width": "=width",
+    "depth": "=depth",
+    "floors": 2,
+    "modeled_floors": 2,
+    "floor_height": "=floor_height"
+  },
+  "volumes": [
+    {
+      "id": "main",
+      "x": 0,
+      "z": 0,
+      "width": "=width",
+      "depth": "=depth",
+      "start_floor": 1,
+      "end_floor": 2,
+      "facades": {}
+    }
+  ],
+  "structural_grid": {
+    "system": "frame",
+    "x_bays": 4,
+    "z_bays": 3
+  },
+  "circulation": {
+    "vertical_strategy": "interior_stair",
+    "description": "室内直跑楼梯连接一层至二层，位于东南区域，梯宽1.2m、梯跑投影4.2m"
+  },
+  "facades": {
+    "front": {
+      "bays": 4,
+      "ground_pattern": ["window", "door", "window", "window"],
+      "upper_pattern": ["window", "window", "window", "window"]
+    },
+    "back": {
+      "bays": 4,
+      "ground_pattern": ["window", "window", "window", "window"],
+      "upper_pattern": ["window", "window", "window", "window"]
+    },
+    "left": {
+      "bays": 3,
+      "ground_pattern": ["window", "window", "window"],
+      "upper_pattern": ["window", "window", "window"]
+    },
+    "right": {
+      "bays": 3,
+      "ground_pattern": ["window", "window", "window"],
+      "upper_pattern": ["window", "window", "window"]
+    }
+  },
+  "roof": {
+    "type": "flat",
+    "ridge_axis": "none",
+    "overhang": "=overhang",
+    "volumes": [
+      {
+        "volume": "main",
+        "type": "flat",
+        "overhang": "=overhang"
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "entrance_door",
+      "type": "door",
+      "host": "main",
+      "size": {
+        "width": "=door_width",
+        "height": "=door_height",
+        "depth": 0.1
+      },
+      "form": {
+        "material_role": "door",
+        "color": "深灰色"
+      },
+      "description": "前立面入口门，深灰色金属门框，居中设于第二开间",
+      "placement": {
+        "face": "front",
+        "floor": 1,
+        "offset": "=bay_x + (bay_x - door_width)/2",
+        "sill_height": 0
+      }
+    },
+    {
+      "id": "back_glass_door",
+      "type": "glass_sliding_door",
+      "host": "main",
+      "size": {
+        "width": "=glass_door_width",
+        "height": "=glass_door_height",
+        "depth": 0.12
+      },
+      "form": {
+        "material_role": "glass",
+        "frame_color": "深灰色"
+      },
+      "description": "后立面大面积玻璃推拉门，通透面向花园，深灰铝合金框",
+      "placement": {
+        "face": "back",
+        "floor": 1,
+        "offset": 3,
+        "sill_height": 0
+      }
+    },
+    {
+      "id": "stair_01",
+      "type": "stair",
+      "size": {
+        "width": "=stair_width",
+        "height": "=floor_height",
+        "depth": "=stair_run"
+      },
+      "form": {
+        "material_role": "structure",
+        "type": "straight_run",
+        "material": "混凝土或钢结构"
+      },
+      "description": "直跑楼梯，从一层地面升至二层楼面",
+      "placement": {
+        "position": ["=width - stair_width/2 - 1.5", 0, "=depth - stair_run/2 - 0.5"]
+      },
+      "floor_connections": [
+        {
+          "from_floor": 1,
+          "to_floor": 2
+        }
+      ]
+    },
+    {
+      "id": "downlight_01",
+      "type": "downlight",
+      "host": "main",
+      "size": {
+        "width": 0.12,
+        "height": 0.05,
+        "depth": 0.12
+      },
+      "description": "一层客厅区域筒灯",
+      "placement": {
+        "position": [3, "=floor_height - 0.05", 4]
+      }
+    },
+    {
+      "id": "downlight_02",
+      "type": "downlight",
+      "host": "main",
+      "size": {
+        "width": 0.12,
+        "height": 0.05,
+        "depth": 0.12
+      },
+      "description": "一层餐厨区域筒灯",
+      "placement": {
+        "position": [8, "=floor_height - 0.05", 7]
+      }
+    },
+    {
+      "id": "downlight_03",
+      "type": "downlight",
+      "host": "main",
+      "size": {
+        "width": 0.12,
+        "height": 0.05,
+        "depth": 0.12
+      },
+      "description": "二层主卧筒灯",
+      "placement": {
+        "position": [8, "=floor_height * 2 - 0.05", 6]
+      }
+    },
+    {
+      "id": "downlight_04",
+      "type": "downlight",
+      "host": "main",
+      "size": {
+        "width": 0.12,
+        "height": 0.05,
+        "depth": 0.12
+      },
+      "description": "二层次卧筒灯",
+      "placement": {
+        "position": [3, "=floor_height * 2 - 0.05", 6]
+      }
+    },
+    {
+      "id": "entry_canopy",
+      "type": "canopy",
+      "host": "main",
+      "size": {
+        "width": 3,
+        "height": 0.15,
+        "depth": 1.5
+      },
+      "form": {
+        "material_role": "accent",
+        "material": "深灰色金属板"
+      },
+      "description": "入口上方悬挑雨棚，深灰色钢板，与窗框材质呼应",
+      "placement": {
+        "face": "front",
+        "floor": 1,
+        "offset": "=bay_x - 0.75",
+        "sill_height": "=door_height + 0.3",
+        "normal_offset": -0.75
+      }
+    }
+  ],
+  "floor_layouts": [
+    {
+      "floor": 1,
+      "level": 0,
+      "rooms": [
+        {
+          "id": "living",
+          "name": "客厅",
+          "bounds": {"x": 0, "z": 3, "width": 7, "depth": 7}
+        },
+        {
+          "id": "dining_kitchen",
+          "name": "餐厨",
+          "bounds": {"x": 7, "z": 3, "width": 5, "depth": 7}
+        },
+        {
+          "id": "entrance_hall",
+          "name": "门厅",
+          "bounds": {"x": 3, "z": 0, "width": 4, "depth": 3}
+        }
+      ],
+      "walls": []
+    },
+    {
+      "floor": 2,
+      "level": "=floor_height",
+      "rooms": [
+        {
+          "id": "bedroom_master",
+          "name": "主卧",
+          "bounds": {"x": 6, "z": 3, "width": 6, "depth": 7}
+        },
+        {
+          "id": "bedroom_secondary",
+          "name": "次卧",
+          "bounds": {"x": 0, "z": 3, "width": 6, "depth": 7}
+        },
+        {
+          "id": "corridor",
+          "name": "走廊",
+          "bounds": {"x": 0, "z": 0, "width": 12, "depth": 3}
+        }
+      ],
+      "walls": []
+    }
+  ],
+  "envelope": {
+    "system": "exterior_insulation_finish"
+  }
+}

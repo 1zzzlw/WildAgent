@@ -4,13 +4,12 @@ import type { GeometryElement } from '../../../types'
  * 构件配方：一份**数据**描述一个构件怎么从零件拼出来。
  *
  * 设计边界（与 `primitive/registry.ts` 的「蓝图不能携带 JS」一致）：
- * 配方只解释白名单表达式，不能调用任意代码。宿主求解（墙/楼板/屋面/路径）
- * 与行为运行时（rotor / elevator / light / opening）仍是引擎侧的闭集，
- * 配方只能**引用**它们，不能扩展它们。
+ * 配方只解释白名单表达式，不能调用任意代码。宿主求解由 Core 维护；
+ * 已有 rotor / elevator / light / opening 行为继续兼容，新能力通过
+ * extension + 已注册能力名接入，并由统一运行时管理。
  *
- * 因此准确的承诺是：新构件只要落在「宿主种类 × 行为种类」的张成空间内就零改引擎；
- * 需要一种新的宿主语义或一种新的机构类型时，仍然要动引擎 —— 那是物理边界，
- * 不是设计缺陷。
+ * 新组件优先组合已有能力；只有新增能力本身才需要增加求解器或行为处理器，
+ * 不按组件名称增加渲染分支。
  */
 
 /** 表达式叶子：`{ $: 'width / 2' }`。任何不是这种形状的值都按字面量处理。 */
@@ -88,7 +87,7 @@ export interface RecipeElementNode {
   type: 'primitive' | 'solid' | 'opening'
   /** 保留键：复制规则。 */
   repeat?: RecipeRepeat
-  /** 保留键：写入 `_interaction`（行为绑定，闭集 kind）。 */
+  /** 保留键：写入 `_interaction`；extension 能力必须先在 Core 注册。 */
   behavior?: RecipeValue
   [field: string]: RecipeValue | RecipeRepeat | undefined
 }
