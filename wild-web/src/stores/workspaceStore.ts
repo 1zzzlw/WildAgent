@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import { h, ref } from 'vue'
+import { ElMessage, ElMessageBox, ElOption, ElSelect } from 'element-plus'
 import { agentBridge } from '../agent/agentBridge'
 import { useAgentStore } from './agentStore'
 import { useSceneStore } from './sceneStore'
@@ -72,17 +72,57 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     try {
       const blueprint = JSON.parse(await file.text()) as Blueprint
       // 检查文件结构，确保包含 meta 和 geometry
-      if (!blueprint || !blueprint.meta || !blueprint.geometry) throw new Error('文件缺少 meta 或 geometry')
-      if (!await newScene()) return false
+      if (!blueprint || !blueprint.meta || typeof blueprint.meta !== 'object' || Array.isArray(blueprint.meta)
+        || !blueprint.geometry || typeof blueprint.geometry !== 'object' || Array.isArray(blueprint.geometry)) {
+        throw new Error('文件缺少 meta 或 geometry 对象')
+      }
       const scene = useSceneStore()
-      const sessionId = useAgentStore().currentSessionId
+      if (scene.document?.dirty && !await saveScene()) return false
+      const candidates = await agentBridge.findBlueprintImportCandidates(file.name, blueprint)
+      let target: typeof candidates[number] | undefined = candidates[0]
+      if (candidates.length > 1) {
+        const selected = ref(target!.filename || '')
+        try {
+          await ElMessageBox({
+            title: '存在多份匹配蓝图，请选择要替换的记录',
+            message: () => h(ElSelect, {
+              modelValue: selected.value,
+              'onUpdate:modelValue': (value: unknown) => { selected.value = String(value) },
+              style: { width: '100%' },
+            }, () => candidates.map(item => h(ElOption, { key: item.filename, label: item.filename, value: item.filename }))),
+            showCancelButton: true,
+            confirmButtonText: '替换所选蓝图',
+            cancelButtonText: '取消导入',
+          })
+        } catch { return false }
+        target = candidates.find(item => item.filename === selected.value)
+        if (!target) return false
+      }
+      const agent = useAgentStore()
+      const sessionId = target?.session_id || agent.createSession(blueprint.meta.name)
+      // 先绑定原会话和文件路径，保存及后续编辑都覆盖同一条数据库记录。
+      agent.switchToSession(sessionId)
+      if (target) {
+        const session = agent.sessions.find(item => item.session_id === sessionId)!
+        Object.assign(session, target)
+      }
+      useHistoryStore().clear()
+      useSelectionStore().clearSelection()
       // 渲染蓝图文件
       const loading = scene.loadBlueprint(blueprint, file.name)
       const imported = scene.document
       if (imported) imported.dirty = true
       await loading
-      if (scene.document !== imported || useAgentStore().currentSessionId !== sessionId) return false
-      return await saveScene()
+      if (scene.document !== imported || agent.currentSessionId !== sessionId) return false
+      const saved = await saveScene()
+      if (target) {
+        const [messages, turns] = await Promise.all([
+          agentBridge.fetchSessionMessages(sessionId), agentBridge.fetchSessionTurns(sessionId),
+        ])
+        if (messages) agent.mergeMessagesForSession(sessionId, messages)
+        if (turns) agent.mergeTurnsForSession(sessionId, turns)
+      }
+      return saved
     } catch (error) {
       ElMessage.error(`导入失败：${error instanceof Error ? error.message : String(error)}`)
       return false

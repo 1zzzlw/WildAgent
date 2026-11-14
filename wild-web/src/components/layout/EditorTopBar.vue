@@ -64,6 +64,7 @@ import { useRenderPanelStore } from '../../stores/renderPanelStore'
 import OnlinePresence from '../../extensions/presence/OnlinePresence.vue'
 import { useThemeStore } from '../../stores/themeStore'
 import { useAuthStore } from '../../stores/authStore'
+import { useAgentStore } from '../../stores/agentStore'
 const auth = useAuthStore()
 const theme = useThemeStore()
 const scene = useSceneStore()
@@ -84,7 +85,9 @@ function exportFile() {
   const url = URL.createObjectURL(new Blob([scene.exportWild()], { type: 'application/json' }))
   const link = document.createElement('a')
   link.href = url
-  link.download = (scene.document?.name || 'scene') + '.wild'
+  const agent = useAgentStore()
+  const savedFilename = agent.sessions.find(item => item.session_id === agent.currentSessionId)?.filename
+  link.download = savedFilename?.split('/').pop() || (scene.document?.name || 'scene') + '.wild'
   link.click()
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }

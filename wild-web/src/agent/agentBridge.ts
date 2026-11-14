@@ -48,8 +48,26 @@ import { usePresenceStore } from '../extensions/presence/store'
 import { PRESENCE_VISITOR_NAME_CHANGED_EVENT } from '../extensions/presence/types'
 import { generateSceneSummary } from '../wild/sceneSummary'
 import { AGENT_PROTOCOL_VERSION, createUserMessageRequest } from './protocol'
-import type { AgentMessage, AgentReplyResponse, AgentTurn, BlueprintGeneratedResponse, ChatMessage, StopGenerationRequest } from '../types/agent'
+import type { AgentMessage, AgentReplyResponse, AgentTurn, BlueprintGeneratedResponse, ChatMessage, SessionInfo, StopGenerationRequest } from '../types/agent'
 import type { Blueprint } from '../types/blueprint'
+
+type BlueprintImportTarget = SessionInfo & { filename: string }
+
+/** 与历史导入去重一致：版本号不改变蓝图内容，其他编辑器数据仍参与比较。 */
+function comparableBlueprint(blueprint: Record<string, unknown>): string {
+  const content = { ...blueprint }
+  if (content.editor && typeof content.editor === 'object' && !Array.isArray(content.editor)) {
+    const { revision: _revision, ...editor } = content.editor as Record<string, unknown>
+    if (Object.keys(editor).length) content.editor = editor
+    else delete content.editor
+  }
+  return JSON.stringify(content, (_key, value) => {
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      return Object.fromEntries(Object.keys(value).sort().map(key => [key, value[key]]))
+    }
+    return value
+  })
+}
 
 /** 重连配置 */
 const RECONNECT_CONFIG = {
@@ -887,6 +905,34 @@ export class AgentBridge {
     } finally {
       if (targetSessionId === agentStore.currentSessionId) agentStore.setProcessing(false)
     }
+  }
+
+  /** 导入时先匹配原文件、原会话，最后兼容旧导出的蓝图名称。 */
+  async findBlueprintImportCandidates(filename: string, blueprint: Blueprint): Promise<BlueprintImportTarget[]> {
+    const response = await fetch(`${this.httpBaseUrl}/api/scenes`, { cache: 'no-store' })
+    if (!response.ok) throw new Error('无法查询已有蓝图，请检查连接后重试')
+    const scenes = await response.json() as BlueprintImportTarget[]
+    let matches = scenes.filter(item => item.filename?.split('/').pop() === filename)
+    const sourceSessionId = filename.match(/^(session_[^_]+)(?:_|\.)/)?.[1]
+    if (!matches.length && sourceSessionId) {
+      matches = scenes.filter(item => item.session_id === sourceSessionId)
+    }
+    if (!matches.length && blueprint.meta.name) {
+      const named = scenes.filter(item => item.name === blueprint.meta.name)
+      if (sourceSessionId && named.length) {
+        // 旧磁盘的相同蓝图可能使用不同会话编号；仅同名不足以认定它们相同。
+        const content = comparableBlueprint(blueprint as unknown as Record<string, unknown>)
+        const compared = await Promise.all(named.map(async item => {
+          const path = item.filename.split('/').map(encodeURIComponent).join('/')
+          const existing = await fetch(`${this.httpBaseUrl}/api/scenes/${path}`, { cache: 'no-store' })
+          if (!existing.ok) throw new Error('无法核对已有蓝图，请检查连接后重试')
+          return comparableBlueprint(await existing.json()) === content ? item : null
+        }))
+        matches = compared.filter((item): item is BlueprintImportTarget => item !== null)
+      } else matches = named
+    }
+    if (matches.some(item => !item.session_id)) throw new Error('已有蓝图缺少关联会话，请先修复该记录')
+    return matches.map(item => ({ ...item, status: 'saved' as const }))
   }
 
   /** 同步当前 Blueprint 到后端（PUT 覆盖写入，日期子目录格式） */

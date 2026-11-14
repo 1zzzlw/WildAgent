@@ -10,7 +10,8 @@ from app.infrastructure.schema import blueprints
 from .conversations import ensure_session, now_ms, visible_to
 from .errors import AccessDenied
 
-SUMMARY_COLUMNS = [blueprints.c[key] for key in ("filename", "name", "elements_count", "components_count", "updated_at")]
+SUMMARY_COLUMNS = [blueprints.c[key] for key in (
+    "filename", "session_id", "name", "elements_count", "components_count", "created_at", "updated_at")]
 
 
 def validate_filename(filename: str) -> str:
@@ -40,7 +41,7 @@ class BlueprintRepository:
 
     @staticmethod
     def summary(row: dict) -> dict:
-        return {key: row[key] for key in ("filename", "name", "elements_count", "components_count", "updated_at")}
+        return {column.key: row[column.key] for column in SUMMARY_COLUMNS}
 
     def for_session(self, session_id: str) -> dict | None:
         with database.engine.connect() as conn:
@@ -52,7 +53,7 @@ class BlueprintRepository:
         if not session_ids:
             return {}
         with database.engine.connect() as conn:
-            rows = conn.execute(select(blueprints.c.session_id, *SUMMARY_COLUMNS)
+            rows = conn.execute(select(*SUMMARY_COLUMNS)
                 .where(blueprints.c.session_id.in_(session_ids)).order_by(blueprints.c.updated_at.desc())).mappings()
             result = {}
             for row in rows:
