@@ -264,6 +264,7 @@
         <div class="chapter-heading"><span class="chapter-num">11</span><div><div class="eyebrow">Team, capital & collaboration</div><h2>下一笔投入，要换来可验证的商业进展</h2></div></div>
         <div class="two-col"><article class="panel"><h3>团队现状与补位</h3><p>项目目前以独立开发为主，已经贯通蓝图语言、参数化引擎与网页工作台。后续需要根据产品和商业验证情况补充研发、设计及用户运营能力。</p><p>建议早期补齐两类能力：一类聚焦引擎、编辑体验与可靠交付；另一类聚焦创作者访谈、内容演示、渠道与试点转化。采用何种全职、兼职或合作方式，取决于现金与业务验证。</p></article><article class="funding"><h3>资金与融资口径</h3><p>拟围绕未来 6–12 个月的任务稳定性、付费试点、续费和外部接入里程碑配置资金。具体金额应由现金预算、团队安排与回款假设倒推。</p><p>融资金额与方式将结合团队计划、研发投入和现金预算确定。</p><span class="label">预算优先级：产品可靠性 → 真实试点 → 可复制收入</span></article></div>
         <div class="three-col gap-top"><article class="panel"><h3>寻找设计伙伴</h3><p>有实际建筑或三维场景任务，愿意提供过程反馈并按清晰范围试点的创作者、小型团队。</p></article><article class="panel"><h3>寻找应用合作方</h3><p>网页互动、数字展陈或场景平台团队，共同完成一个真正上线使用的接入案例。</p></article><article class="panel"><h3>寻找早期资金与资源</h3><p>认可可编辑资产方向，能提供研发周期、创作者渠道和商业化支持的早期合作伙伴。</p></article></div>
+        <div class="note" id="contact"><strong>联系方式：</strong>如需了解项目或洽谈合作，请发送邮件至 <a href="mailto:zzzlew@foxmail.com">zzzlew@foxmail.com</a>。</div>
       </section>
 
       <section class="chapter" id="risks">
