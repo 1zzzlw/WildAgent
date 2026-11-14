@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+import asyncio
 
 from loguru import logger
 
@@ -155,8 +156,9 @@ async def material_planner(state: GenerationState) -> dict:
         from app.design.resolver import attach_material_plan, architecture_plan_from_document
 
         updated_document = attach_material_plan(design_document, plan)
-        updated_document, _ = design_repository.save(updated_document)
-        updated_document, resolved_design = design_repository.approve(updated_document.session_id, updated_document.revision)
+        updated_document, _ = await asyncio.to_thread(design_repository.save, updated_document)
+        updated_document, resolved_design = await asyncio.to_thread(
+            design_repository.approve, updated_document.session_id, updated_document.revision)
         design_document = updated_document.model_dump(mode="json")
         architecture_plan = architecture_plan_from_document(updated_document)
     if callback:

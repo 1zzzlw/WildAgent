@@ -1,7 +1,6 @@
 """保护导入场景持久化和删除会话的可观察 API 行为。"""
 import asyncio
 import importlib
-import json
 import sys
 from pathlib import Path
 
@@ -13,17 +12,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from app.api import scenes, sessions
 from app.design.repository import DesignRepository
 from app.services.generation_job_service import GenerationJobService
+from app.repositories.blueprints import blueprint_repository
+from app.repositories.conversations import conversations
 
 
 @pytest.fixture
-def workspace(tmp_path, monkeypatch):
+def workspace(tmp_path, monkeypatch, storage):
     scenes_dir = tmp_path/'scenes'
-    scenes_dir.mkdir()
-    monkeypatch.setattr(scenes, 'SCENES_DIR', scenes_dir)
-    monkeypatch.setattr(sessions, 'SCENES_DIR', scenes_dir)
-    monkeypatch.setattr(sessions, 'SESSIONS_DIR', tmp_path/'sessions')
     repository = importlib.import_module('app.design.repository')
-    monkeypatch.setattr(repository, 'design_repository', DesignRepository(tmp_path/'designs'))
+    monkeypatch.setattr(repository, 'design_repository', DesignRepository())
     jobs = GenerationJobService(tmp_path/'jobs.sqlite3')
     monkeypatch.setattr(importlib.import_module('app.services.generation_job_service'), 'generation_job_service', jobs)
     app = FastAPI()
@@ -49,7 +46,8 @@ def test_save_replace_list_reload(workspace):
             assert (await client.get(path)).json() == changed
             rows = (await client.get('/api/sessions')).json()
             assert rows[0]['filename'] == '2026-10-22/session_101_import.wild'
-            assert len(list(directory.rglob('*.wild'))) == 1
+            assert len(blueprint_repository.list(None)) == 1
+            assert not list(directory.rglob('*.wild'))
         await jobs.shutdown()
     asyncio.run(run())
 
@@ -64,12 +62,12 @@ def test_real_active_job_blocks_deletion_without_data_loss(workspace, status):
             async with __import__('aiosqlite').connect(jobs.database_path) as db:
                 await db.execute("UPDATE generation_jobs SET status = 'waiting_review'")
                 await db.commit()
-        saved = directory/'session_101_villa.wild'
-        saved.write_text(json.dumps(blueprint()), encoding='utf-8')
+        saved = 'session_101_villa.wild'
+        blueprint_repository.save(saved, blueprint())
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url='http://test') as client:
             response = await client.delete('/api/sessions/session_101')
             assert response.status_code == 409
-            assert saved.exists()
+            assert blueprint_repository.get(saved) is not None
             assert (await jobs.get_job('req_active')).status == status
         await jobs.shutdown()
     asyncio.run(run())
@@ -81,15 +79,15 @@ def test_stale_history_does_not_block_delete_or_touch_similar_session(workspace)
         await jobs.initialize()
         await jobs._insert_job('req_done', 'session_101', {})
         await jobs.publish_event('req_done', {'type': 'agent_reply', 'content': '完成'})
-        sessions._write_session_meta('session_101', {'turns': [{'request_id': 'stale', 'status': 'waiting_review'}]})
-        target = directory/'session_101_villa.wild'
-        other = directory/'session_1010_villa.wild'
-        target.write_text(json.dumps(blueprint()), encoding='utf-8')
-        other.write_text(json.dumps(blueprint('其他建筑')), encoding='utf-8')
+        conversations.write('session_101', {'turns': [{'request_id': 'stale', 'status': 'waiting_review'}]})
+        target = 'session_101_villa.wild'
+        other = 'session_1010_villa.wild'
+        blueprint_repository.save(target, blueprint())
+        blueprint_repository.save(other, blueprint('其他建筑'))
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url='http://test') as client:
             assert (await client.delete('/api/sessions/session_101')).status_code == 200
-            assert not target.exists() and other.exists()
-            assert not sessions._session_path('session_101').exists()
+            assert blueprint_repository.get(target) is None and blueprint_repository.get(other) is not None
+            assert conversations.read('session_101') is None
             assert await jobs.get_job('req_done') is None
             assert await jobs.events_after('req_done', 0) == []
             assert (await client.delete('/api/sessions/session_101')).status_code == 200

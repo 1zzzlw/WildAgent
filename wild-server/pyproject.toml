@@ -18,13 +18,19 @@ dependencies = [
     "openai>=2.0.0",
     "httpx>=0.28.1",
     "jsonschema>=4.25.1",
+    "sqlalchemy>=2.0,<3",
+    "pymysql[rsa]>=1.2.4,<2",
+    "redis>=5,<8",
+    "langgraph-checkpoint-mysql[asyncmy]>=3,<4",
 ]
 
 [dependency-groups]
 dev = [
+    "fakeredis[lua]>=2,<3",
     "langgraph-api>=0.11.0",
     "langgraph-cli[inmem]",
     "langsmith>=0.10.9",
+    "pytest>=8,<10",
     "python-dotenv>=1.2.2",
 ]
 

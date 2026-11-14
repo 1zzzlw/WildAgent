@@ -7,7 +7,7 @@
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.utils.runtime_env import runtime_env_path
@@ -143,6 +143,38 @@ class AssetConfig(BaseModel):
     max_total_bytes: int = 80 * 1024 * 1024
 
 
+class MySQLConfig(BaseModel):
+    host: str = "127.0.0.1"
+    port: int = Field(default=3306, ge=1, le=65535)
+    database: str = "wild_agent"
+    username: str = "wild_agent"
+    password: SecretStr = SecretStr("")
+    pool_size: int = Field(default=10, ge=1, le=100)
+    connect_timeout: int = Field(default=5, ge=1, le=60)
+
+
+class RedisConfig(BaseModel):
+    host: str = "127.0.0.1"
+    port: int = Field(default=6379, ge=1, le=65535)
+    database: int = Field(default=0, ge=0)
+    username: str = ""
+    password: SecretStr = SecretStr("")
+    ssl: bool = False
+    key_prefix: str = "wild:"
+    session_seconds: int = Field(default=43200, ge=60)
+
+
+class SMTPConfig(BaseModel):
+    host: str = ""
+    port: int = Field(default=465, ge=1, le=65535)
+    username: str = ""
+    password: SecretStr = SecretStr("")
+    from_address: str = ""
+    security: Literal["ssl", "starttls", "plain"] = "ssl"
+    code_seconds: int = Field(default=600, ge=60, le=1800)
+    resend_seconds: int = Field(default=60, ge=30, le=600)
+
+
 class Settings(BaseSettings):
     """整个后端进程使用的顶层配置对象。"""
 
@@ -164,6 +196,9 @@ class Settings(BaseSettings):
     rag: RAGConfig = Field(default_factory=RAGConfig)
     web_research: WebResearchConfig = Field(default_factory=WebResearchConfig)
     assets: AssetConfig = Field(default_factory=AssetConfig)
+    mysql: MySQLConfig = Field(default_factory=MySQLConfig)
+    redis: RedisConfig = Field(default_factory=RedisConfig)
+    smtp: SMTPConfig = Field(default_factory=SMTPConfig)
 
 
 # 导入 config.py 时完成一次解析；业务模块不应在运行中修改这个对象。

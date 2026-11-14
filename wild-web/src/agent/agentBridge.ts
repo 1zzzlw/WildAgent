@@ -981,25 +981,13 @@ export class AgentBridge {
     }
   }
 
-  /** 从后端获取所有会话列表（优先新接口，fallback 旧接口） */
+  /** 获取当前账号可访问的会话列表。 */
   async fetchSessionList(): Promise<Array<{ session_id?: string; filename?: string; name: string; elements_count: number; updated_at: number; created_at?: number; components_count?: number; message_count?: number; status?: string; building_type?: string }> | null> {
     try {
       const baseUrl = this.httpBaseUrl
 
-      // 优先使用新 sessions API
-      let response = await fetch(`${baseUrl}/api/sessions`)
-      if (response.ok) {
-        return await response.json()
-      }
-
-      // fallback: 旧 scenes 文件列表
-      // （旧接口返回格式不含 status/building_type/components_count 等新字段）
-      response = await fetch(`${baseUrl}/api/scenes`)
-      if (!response.ok) {
-        return null
-      }
-      const scenes = await response.json()
-      return scenes.map((s: any) => ({ ...s, status: 'saved' }))
+      const response = await fetch(`${baseUrl}/api/sessions`, { cache: 'no-store' })
+      return response.ok ? await response.json() : null
     } catch (err) {
       console.error('[AgentBridge] 获取会话列表失败:', err)
       return null

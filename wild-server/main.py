@@ -13,6 +13,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 from loguru import logger
+import asyncio
+from sqlalchemy.exc import SQLAlchemyError
+from redis.exceptions import RedisError
 
 from app.api.ws_agent import (
     router as ws_router,
@@ -29,6 +32,11 @@ from app.api.item_catalog import router as item_catalog_router
 from app.api.auth import router as auth_router, enforce_write_access
 from app.services.agent_service import agent_service
 from config import config
+from app.infrastructure.database import database
+from app.infrastructure.cache import cache
+from app.infrastructure.realtime import realtime_bus
+from app.extensions.presence import presence_service
+from app.repositories.errors import AccessDenied
 
 
 @asynccontextmanager
@@ -38,18 +46,19 @@ async def lifespan(app: FastAPI):
     ``yield`` 之前在服务开始接收请求前执行，``yield`` 之后在服务退出时执行。
     参数 ``app`` 由 FastAPI 注入，保留它是为了符合 lifespan 回调协议。
     """
-    # 启动阶段：先输出启动日志，再初始化未来可能加入的外部连接。
     print_log()
-    init_connect()
-    await startup_generation_jobs()
-
-    # 控制权交还给 FastAPI；应用会在这里持续运行，直到收到关闭信号。
     try:
+        await init_connect()
+        await realtime_bus.start()
+        await presence_service.startup()
+        await startup_generation_jobs()
         yield
     finally:
-        # 先暂停持久化任务并关闭 SQLite，再释放其他外部连接。
         await shutdown_generation_jobs()
-        close_connect()
+        await presence_service.shutdown()
+        await realtime_bus.close()
+        await cache.aclose()
+        await asyncio.to_thread(close_connect)
 
 
 def print_log():
@@ -57,13 +66,15 @@ def print_log():
     logger.info("服务启动")
 
 
-def init_connect():
-    """初始化外部服务连接的预留入口。"""
-    logger.info("建立连接成功")
+async def init_connect():
+    await asyncio.to_thread(database.initialize)
+    await asyncio.to_thread(cache.check)
+    logger.info("MySQL 与 Redis 连接已就绪")
 
 
 def close_connect():
-    """释放外部服务连接的预留入口。"""
+    database.close()
+    cache.close()
     logger.info("断开服务")
 
 
@@ -73,6 +84,17 @@ app = FastAPI(
     # 由上面的上下文管理器接管应用启动、关闭前后的逻辑。
     lifespan=lifespan
 )
+
+
+@app.exception_handler(SQLAlchemyError)
+@app.exception_handler(RedisError)
+async def storage_error_handler(request, exc):
+    return JSONResponse(status_code=503, content={"detail": "数据服务暂不可用，请稍后重试"})
+
+
+@app.exception_handler(AccessDenied)
+async def ownership_error_handler(request, exc):
+    return JSONResponse(status_code=404, content={"detail": "资料不存在"})
 
 # 开发阶段允许 Vite 前端从不同端口访问 API 和 WebSocket。
 app.add_middleware(
@@ -123,8 +145,16 @@ async def readiness():
             and sync_stats.get("total", 0) > 0
         )
     )
+    storage_ready = True
+    try:
+        await asyncio.to_thread(database.check)
+        await asyncio.to_thread(cache.check)
+    except (SQLAlchemyError, RedisError):
+        storage_ready = False
+    ready = rag_ready and storage_ready
     payload = {
-        "status": "ready" if rag_ready else "not_ready",
+        "status": "ready" if ready else "not_ready",
+        "storage": {"ready": storage_ready, "database": "mysql", "cache": "redis"},
         "rag": {
             "enabled": config.rag.enabled,
             "ready": rag_ready,
@@ -134,7 +164,7 @@ async def readiness():
             "sync": sync_stats,
         },
     }
-    return JSONResponse(status_code=200 if rag_ready else 503, content=payload)
+    return JSONResponse(status_code=200 if ready else 503, content=payload)
 
 
 if __name__ == "__main__":

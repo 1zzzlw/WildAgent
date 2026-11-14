@@ -1,7 +1,7 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 
-interface LoginUser { username: string; role: 'editor' | 'guest' }
+interface LoginUser { id?: string; username: string; email?: string; identity?: 1 | 2; role: 'editor' | 'guest' }
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<LoginUser | null>(null)
@@ -9,16 +9,32 @@ export const useAuthStore = defineStore('auth', () => {
   const canEdit = computed(() => user.value?.role === 'editor')
   const isGuest = computed(() => user.value?.role === 'guest')
 
-  async function login(username?: string, password?: string) {
-    const response = await fetch(`/api/auth/${username === undefined ? 'guest' : 'login'}`, {
+  async function authRequest(path: string, body?: unknown) {
+    const response = await fetch(`/api/auth/${path}`, {
       method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
-      body: username === undefined ? undefined : JSON.stringify({ username, password }),
+      body: body === undefined ? undefined : JSON.stringify(body),
     })
+    const data = await response.json().catch(() => ({}))
     if (!response.ok) {
-      const data = await response.json().catch(() => ({}))
-      throw new Error(typeof data.detail === 'string' ? data.detail : '登录失败，请稍后重试')
+      const detail = data.detail
+      throw new Error(typeof detail === 'string' ? detail : Array.isArray(detail)
+        ? detail.map((item: { msg?: string }) => item.msg).filter(Boolean).join('；') : '请求失败，请稍后重试')
     }
-    user.value = await response.json()
+    return data
+  }
+
+  async function login(email?: string, password?: string) {
+    user.value = await authRequest(email === undefined ? 'guest' : 'login',
+      email === undefined ? undefined : { email, password })
+    initialized.value = true
+  }
+
+  async function sendEmailCode(email: string): Promise<{ resend_after: number; expires_in: number }> {
+    return await authRequest('email-code', { email })
+  }
+
+  async function register(body: { username: string; email: string; password: string; confirm_password: string; code: string }) {
+    user.value = await authRequest('register', body)
     initialized.value = true
   }
 
@@ -36,5 +52,5 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = null
   }
 
-  return { user, initialized, canEdit, isGuest, login, restore, logout }
+  return { user, initialized, canEdit, isGuest, login, sendEmailCode, register, restore, logout }
 })

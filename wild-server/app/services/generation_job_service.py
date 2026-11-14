@@ -5,13 +5,24 @@ from __future__ import annotations
 import asyncio
 import json
 import sqlite3
-import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Awaitable, Callable
 
-import aiosqlite
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+from langgraph.checkpoint.mysql.asyncmy import AsyncMySaver
+import asyncmy
+from sqlalchemy import create_engine
+from sqlalchemy.exc import SQLAlchemyError
+from redis.exceptions import LockError
+
+from config import config
+from app.infrastructure.database import Database, database
+from app.infrastructure.schema import metadata
+from app.infrastructure.checkpoints import check_schema
+from app.infrastructure.cache import cache
+from app.infrastructure.realtime import realtime_bus, session_lock
+from app.repositories.jobs import JobRepository
 from loguru import logger
 
 from app.contracts.agent_events import versioned_event
@@ -19,12 +30,8 @@ from app.contracts.agent_events import versioned_event
 
 JobRunner = Callable[[Any, dict, bool], Awaitable[None]]
 
-_SERVER_ROOT = Path(__file__).resolve().parents[2]
 GENERATION_PIPELINE_VERSION = "design-document-auto-v1"
 _PIPELINE_UPGRADE_ERROR = "生成流程已升级，旧任务无法继续恢复，请重新发起生成请求"
-DEFAULT_CHECKPOINT_PATH = (
-    _SERVER_ROOT / "storage" / "sessions" / "langgraph_checkpoints.sqlite3"
-)
 _PERSISTED_EVENT_TYPES = {
     "agent_step",
     "thinking_status",
@@ -70,7 +77,7 @@ class DurableEventSink:
             self.error = str(payload.get("error") or payload.get("content") or "校验未通过")
         try:
             await self.service.publish_event(self.request_id, payload)
-        except sqlite3.Error as exc:
+        except (sqlite3.Error, SQLAlchemyError) as exc:
             self.failed = True
             self.error = str(exc)
             logger.error(f"[{self.request_id}] 事件记录失败，继续向客户端发送已有结果: {exc}")
@@ -80,10 +87,16 @@ class DurableEventSink:
 class GenerationJobService:
     """让图任务独立于任意一条 WebSocket 连接。"""
 
-    def __init__(self, database_path: Path = DEFAULT_CHECKPOINT_PATH):
-        self.database_path = Path(database_path)
+    def __init__(self, database_path: Path | None = None, *, bus=realtime_bus):
+        # 显式路径仅用于隔离回归；应用默认始终连接 MySQL。
+        self.database_path = Path(database_path) if database_path is not None else None
+        db = Database(create_engine(f"sqlite:///{self.database_path}", connect_args={"check_same_thread": False})) if self.database_path else database
+        self.repository = JobRepository(db)
+        self.bus = bus
+        self._recovery_task = None
+        self._checkpoint_pool = None
         self._checkpoint_context = None
-        self._checkpointer: AsyncSqliteSaver | None = None
+        self._checkpointer: AsyncSqliteSaver | AsyncMySaver | None = None
         self._runner: JobRunner | None = None
         self._active_tasks: dict[str, asyncio.Task] = {}
         self._subscribers: dict[str, dict[int, Any]] = {}
@@ -94,7 +107,7 @@ class GenerationJobService:
         self._initialized = False
 
     @property
-    def checkpointer(self) -> AsyncSqliteSaver:
+    def checkpointer(self):
         if self._checkpointer is None:
             raise RuntimeError("GenerationJobService 尚未初始化")
         return self._checkpointer
@@ -105,15 +118,28 @@ class GenerationJobService:
         async with self._init_lock:
             if self._initialized:
                 return
-            self.database_path.parent.mkdir(parents=True, exist_ok=True)
-            await self._initialize_job_tables()
-            self._checkpoint_context = AsyncSqliteSaver.from_conn_string(
-                str(self.database_path)
-            )
-            self._checkpointer = await self._checkpoint_context.__aenter__()
-            await self._checkpointer.setup()
-            self._initialized = True
-            logger.info(f"LangGraph SQLite checkpoint 已启用: {self.database_path}")
+            try:
+                if self.database_path is not None:
+                    self.database_path.parent.mkdir(parents=True, exist_ok=True)
+                    await asyncio.to_thread(metadata.create_all, self.repository.database.engine)
+                    self._checkpoint_context = AsyncSqliteSaver.from_conn_string(str(self.database_path))
+                    self._checkpointer = await self._checkpoint_context.__aenter__()
+                    await self._checkpointer.setup()
+                else:
+                    await asyncio.to_thread(check_schema)
+                    cfg = config.mysql
+                    self._checkpoint_pool = await asyncmy.create_pool(host=cfg.host, port=cfg.port,
+                        user=cfg.username, password=cfg.password.get_secret_value(), db=cfg.database,
+                        charset="utf8mb4", autocommit=True, minsize=1, maxsize=4,
+                        connect_timeout=cfg.connect_timeout, pool_recycle=1800)
+                    self._checkpointer = AsyncMySaver(self._checkpoint_pool)
+                    await self.bus.start()
+                    self.bus.subscribe("generation", self._receive_remote)
+                self._initialized = True
+                logger.info("LangGraph 持久化已启用")
+            except BaseException:
+                await self.shutdown()
+                raise
 
     async def startup(self, runner: JobRunner) -> None:
         await self.initialize()
@@ -131,10 +157,16 @@ class GenerationJobService:
         ]
         for job in incomplete:
             self._spawn(job, resume=True)
+        if self.database_path is None and self._recovery_task is None:
+            self._recovery_task = asyncio.create_task(self._recover_loop(), name="generation-recovery")
         if incomplete:
             logger.warning(f"正在恢复 {len(incomplete)} 个未完成 LangGraph 任务")
 
     async def shutdown(self) -> None:
+        if self._recovery_task:
+            self._recovery_task.cancel()
+            await asyncio.gather(self._recovery_task, return_exceptions=True)
+            self._recovery_task = None
         tasks = list(self._active_tasks.values())
         for task in tasks:
             task.cancel()
@@ -144,12 +176,24 @@ class GenerationJobService:
         self._stopped_requests.clear()
         if self._checkpoint_context is not None:
             await self._checkpoint_context.__aexit__(None, None, None)
+        if self._checkpoint_pool is not None:
+            self._checkpoint_pool.close()
+            await self._checkpoint_pool.wait_closed()
+            self._checkpoint_pool = None
+        self.bus.unsubscribe("generation", self._receive_remote)
         self._checkpoint_context = None
         self._checkpointer = None
         self._runner = None
         self._initialized = False
 
     async def start_job(self, payload: dict, subscriber: Any) -> tuple[GenerationJob, bool]:
+        await self.initialize()
+        if self.database_path is not None:
+            return await self._start_job(payload, subscriber)
+        async with session_lock(str(payload.get("session_id") or payload.get("request_id") or "")):
+            return await self._start_job(payload, subscriber)
+
+    async def _start_job(self, payload: dict, subscriber: Any) -> tuple[GenerationJob, bool]:
         """创建任务；同一会话已有运行任务时附着旧任务而不重复生成。"""
         await self.initialize()
         request_id = str(payload.get("request_id") or "")
@@ -166,6 +210,8 @@ class GenerationJobService:
 
         existing = await self.get_job(request_id)
         if existing is not None:
+            if existing.session_id != session_id:
+                raise ValueError("任务不属于当前会话")
             return existing, False
 
         job_payload = dict(payload)
@@ -205,6 +251,8 @@ class GenerationJobService:
                     return job
                 self._stopped_requests.add(request_id)
                 await self._mark_status(request_id, "stopped", None)
+            if self.database_path is None:
+                await self.bus.publish("generation", {"command": "stop", "request_id": request_id})
             task = self._active_tasks.get(request_id)
             if task is not None and not task.done():
                 task.cancel("user_stop")
@@ -223,6 +271,8 @@ class GenerationJobService:
         """重新附着连接，必要时恢复任务，并补发断线期间的关键事件。"""
         await self.initialize()
         job = await self.get_job(request_id) if request_id else None
+        if job is not None and job.session_id != session_id:
+            raise ValueError("任务不属于当前会话")
         if job is None:
             job = await self.get_active_job_for_session(session_id)
         if job is None:
@@ -290,104 +340,36 @@ class GenerationJobService:
                 if request_id in self._stopped_requests and event.get("type") != "generation_stopped":
                     return
                 sequence = await self._append_event(request_id, event)
+                if not sequence:
+                    return
                 event["event_seq"] = sequence
                 await self._broadcast(request_id, event)
             return
         await self._broadcast(request_id, event)
 
     async def events_after(self, request_id: str, after_seq: int) -> list[dict]:
-        async with aiosqlite.connect(self.database_path) as db:
-            cursor = await db.execute(
-                """SELECT payload_json FROM generation_events
-                   WHERE request_id = ? AND seq > ? ORDER BY seq""",
-                (request_id, max(0, int(after_seq))),
-            )
-            rows = await cursor.fetchall()
-        return [json.loads(row[0]) for row in rows]
+        return await asyncio.to_thread(self.repository.events_after, request_id, after_seq)
 
     async def get_job(self, request_id: str | None) -> GenerationJob | None:
-        if not request_id:
-            return None
-        async with aiosqlite.connect(self.database_path) as db:
-            cursor = await db.execute(
-                """SELECT request_id, session_id, payload_json, status,
-                          last_event_seq, error
-                   FROM generation_jobs WHERE request_id = ?""",
-                (request_id,),
-            )
-            row = await cursor.fetchone()
-        return self._row_to_job(row)
+        return self._row_to_job(await asyncio.to_thread(self.repository.get, request_id)) if request_id else None
 
     async def get_running_job_for_session(self, session_id: str) -> GenerationJob | None:
-        async with aiosqlite.connect(self.database_path) as db:
-            cursor = await db.execute(
-                """SELECT request_id, session_id, payload_json, status,
-                          last_event_seq, error
-                   FROM generation_jobs
-                   WHERE session_id = ? AND status = 'running'
-                   ORDER BY updated_at DESC LIMIT 1""",
-                (session_id,),
-            )
-            row = await cursor.fetchone()
-        return self._row_to_job(row)
+        return self._row_to_job(await asyncio.to_thread(self.repository.active, session_id, ("running",)))
 
     async def get_active_job_for_session(self, session_id: str) -> GenerationJob | None:
-        """同一会话的运行或待审核任务都视为活动任务。"""
-
-        async with aiosqlite.connect(self.database_path) as db:
-            cursor = await db.execute(
-                """SELECT request_id, session_id, payload_json, status,
-                          last_event_seq, error
-                   FROM generation_jobs
-                   WHERE session_id = ? AND status IN ('running', 'waiting_review')
-                   ORDER BY updated_at DESC LIMIT 1""",
-                (session_id,),
-            )
-            row = await cursor.fetchone()
-        return self._row_to_job(row)
+        return self._row_to_job(await asyncio.to_thread(self.repository.active, session_id))
 
     async def delete_session_jobs(self, session_id: str) -> None:
-        """以持久化任务为准判断占用；检查通过才删除已结束任务和事件。"""
         await self.initialize()
-        async with aiosqlite.connect(self.database_path) as db:
-            await db.execute("BEGIN IMMEDIATE")
-            cursor = await db.execute(
-                "SELECT request_id FROM generation_jobs WHERE session_id = ? "
-                "AND status IN ('running', 'waiting_review') LIMIT 1", (session_id,),
-            )
-            if await cursor.fetchone():
-                raise ValueError("该会话仍有生成或待审核任务，请先停止任务再删除")
-            await db.execute(
-                "DELETE FROM generation_events WHERE request_id IN "
-                "(SELECT request_id FROM generation_jobs WHERE session_id = ?)", (session_id,),
-            )
-            await db.execute("DELETE FROM generation_jobs WHERE session_id = ?", (session_id,))
-            await db.commit()
+        request_ids = await asyncio.to_thread(self.repository.delete_session, session_id)
+        for request_id in request_ids:
+            await self.checkpointer.adelete_thread("generation:" + request_id)
 
     async def list_running_jobs(self) -> list[GenerationJob]:
-        async with aiosqlite.connect(self.database_path) as db:
-            cursor = await db.execute(
-                """SELECT request_id, session_id, payload_json, status,
-                          last_event_seq, error
-                   FROM generation_jobs WHERE status = 'running'
-                   ORDER BY created_at"""
-            )
-            rows = await cursor.fetchall()
-        return [self._row_to_job(row) for row in rows if row is not None]
+        return [self._row_to_job(row) for row in await asyncio.to_thread(self.repository.list, ("running",))]
 
     async def list_active_jobs(self) -> list[GenerationJob]:
-        """列出可能需要恢复或等待审核的任务，供启动时做版本隔离。"""
-
-        async with aiosqlite.connect(self.database_path) as db:
-            cursor = await db.execute(
-                """SELECT request_id, session_id, payload_json, status,
-                          last_event_seq, error
-                   FROM generation_jobs
-                   WHERE status IN ('running', 'waiting_review')
-                   ORDER BY created_at"""
-            )
-            rows = await cursor.fetchall()
-        return [self._row_to_job(row) for row in rows if row is not None]
+        return [self._row_to_job(row) for row in await asyncio.to_thread(self.repository.list)]
 
     @staticmethod
     def _uses_current_pipeline(job: GenerationJob) -> bool:
@@ -422,11 +404,68 @@ class GenerationJobService:
         if existing is not None and not existing.done():
             return existing
         task = asyncio.create_task(
-            self._run_job(job, resume=resume),
+            self._run_claimed_job(job, resume=resume),
             name=f"langgraph:{job.request_id}",
         )
         self._active_tasks[job.request_id] = task
         return task
+
+    async def _recover_loop(self):
+        while True:
+            await asyncio.sleep(30)
+            try:
+                for job in await self.list_running_jobs():
+                    if self._uses_current_pipeline(job) and job.request_id not in self._active_tasks:
+                        self._spawn(job, resume=True)
+            except Exception:
+                logger.warning("任务恢复扫描暂不可用，将在下一轮重新检查")
+
+    async def _run_claimed_job(self, job: GenerationJob, *, resume: bool):
+        if self.database_path is not None:
+            return await self._run_job(job, resume=resume)
+        lock = cache.async_client.lock(cache.key("generation:lease:" + job.request_id), timeout=60, blocking=False)
+        work = renewal = None
+        try:
+            if not await lock.acquire(blocking=False):
+                return
+            latest = await self.get_job(job.request_id)
+            if latest is None or latest.status != "running":
+                return
+            work = asyncio.create_task(self._run_job(job, resume=resume))
+            async def renew():
+                while True:
+                    await asyncio.sleep(15)
+                    await lock.extend(60, replace_ttl=True)
+                    latest = await self.get_job(job.request_id)
+                    if latest is None or latest.status == "stopped":
+                        raise asyncio.CancelledError()
+            renewal = asyncio.create_task(renew())
+            done, _ = await asyncio.wait((work, renewal), return_when=asyncio.FIRST_COMPLETED)
+            for task in done:
+                await task
+        finally:
+            for task in (work, renewal):
+                if task and not task.done():
+                    task.cancel()
+            await asyncio.gather(*(task for task in (work, renewal) if task), return_exceptions=True)
+            try:
+                if await lock.owned():
+                    await lock.release()
+            except LockError:
+                pass
+            if self._active_tasks.get(job.request_id) is asyncio.current_task():
+                self._active_tasks.pop(job.request_id, None)
+
+    async def _receive_remote(self, data: dict):
+        request_id = data["request_id"]
+        if data.get("command") == "stop":
+            self._stopped_requests.add(request_id)
+            task = self._active_tasks.get(request_id)
+            if task:
+                task.cancel("remote_user_stop")
+            return
+        async with self._event_locks.setdefault(request_id, asyncio.Lock()):
+            await self._broadcast_local(request_id, data["event"])
 
     async def _run_job(self, job: GenerationJob, *, resume: bool) -> None:
         sink = DurableEventSink(self, job.request_id)
@@ -462,130 +501,36 @@ class GenerationJobService:
                 self._active_tasks.pop(job.request_id, None)
 
     async def _broadcast(self, request_id: str, event: dict) -> None:
+        await self._broadcast_local(request_id, event)
+        if self.database_path is None:
+            from redis.exceptions import RedisError
+            try:
+                await self.bus.publish("generation", {"request_id": request_id, "event": event})
+            except RedisError:
+                logger.warning("实时通知暂不可用，已保留事件供断线重放")
+
+    async def _broadcast_local(self, request_id: str, event: dict) -> None:
         subscribers = list(self._subscribers.get(request_id, {}).values())
         failed = []
         for subscriber in subscribers:
             try:
-                await subscriber.send_json(event)
+                await asyncio.wait_for(subscriber.send_json(event), timeout=5)
             except Exception:
                 failed.append(subscriber)
         for subscriber in failed:
             await self.detach(subscriber)
 
-    async def _initialize_job_tables(self) -> None:
-        async with aiosqlite.connect(self.database_path) as db:
-            await db.executescript("""
-                PRAGMA journal_mode=WAL;
-                CREATE TABLE IF NOT EXISTS generation_jobs (
-                    request_id TEXT PRIMARY KEY,
-                    session_id TEXT NOT NULL,
-                    payload_json TEXT NOT NULL,
-                    status TEXT NOT NULL,
-                    last_event_seq INTEGER NOT NULL DEFAULT 0,
-                    error TEXT,
-                    created_at REAL NOT NULL,
-                    updated_at REAL NOT NULL
-                );
-                CREATE INDEX IF NOT EXISTS idx_generation_jobs_session_status
-                    ON generation_jobs(session_id, status, updated_at);
-                CREATE TABLE IF NOT EXISTS generation_events (
-                    request_id TEXT NOT NULL,
-                    seq INTEGER NOT NULL,
-                    payload_json TEXT NOT NULL,
-                    created_at REAL NOT NULL,
-                    PRIMARY KEY (request_id, seq)
-                );
-            """)
-            await db.commit()
-
-    async def _insert_job(
-        self,
-        request_id: str,
-        session_id: str,
-        payload: dict,
-    ) -> None:
-        now = time.time()
-        async with aiosqlite.connect(self.database_path) as db:
-            await db.execute(
-                """INSERT INTO generation_jobs
-                   (request_id, session_id, payload_json, status,
-                    last_event_seq, created_at, updated_at)
-                   VALUES (?, ?, ?, 'running', 0, ?, ?)""",
-                (
-                    request_id,
-                    session_id,
-                    json.dumps(payload, ensure_ascii=False),
-                    now,
-                    now,
-                ),
-            )
-            await db.commit()
+    async def _insert_job(self, request_id: str, session_id: str, payload: dict) -> None:
+        await asyncio.to_thread(self.repository.insert, request_id, session_id, payload)
 
     async def _append_event(self, request_id: str, payload: dict) -> int:
-        now = time.time()
-        async with aiosqlite.connect(self.database_path) as db:
-            await db.execute("BEGIN IMMEDIATE")
-            cursor = await db.execute(
-                "SELECT last_event_seq FROM generation_jobs WHERE request_id = ?",
-                (request_id,),
-            )
-            row = await cursor.fetchone()
-            if row is None:
-                await db.rollback()
-                return 0
-            sequence = int(row[0]) + 1
-            stored = {**payload, "event_seq": sequence}
-            await db.execute(
-                """INSERT INTO generation_events
-                   (request_id, seq, payload_json, created_at)
-                   VALUES (?, ?, ?, ?)""",
-                (
-                    request_id,
-                    sequence,
-                    json.dumps(stored, ensure_ascii=False),
-                    now,
-                ),
-            )
-            terminal_status = _TERMINAL_EVENT_STATUS.get(payload.get("type"))
-            if terminal_status and payload.get("validation_passed") is False:
-                terminal_status = "failed"
-            if terminal_status is None:
-                await db.execute(
-                    """UPDATE generation_jobs
-                       SET last_event_seq = ?, updated_at = ?
-                       WHERE request_id = ?""",
-                    (sequence, now, request_id),
-                )
-            else:
-                await db.execute(
-                    """UPDATE generation_jobs
-                       SET last_event_seq = ?, status = ?, error = ?, updated_at = ?
-                       WHERE request_id = ?""",
-                    (
-                        sequence,
-                        terminal_status,
-                        (payload.get("error") or payload.get("content")) if terminal_status == "failed" else None,
-                        now,
-                        request_id,
-                    ),
-                )
-            await db.commit()
-        return sequence
+        terminal = _TERMINAL_EVENT_STATUS.get(payload.get("type"))
+        if terminal and payload.get("validation_passed") is False:
+            terminal = "failed"
+        return await asyncio.to_thread(self.repository.append, request_id, payload, terminal)
 
-    async def _mark_status(
-        self,
-        request_id: str,
-        status: str,
-        error: str | None,
-    ) -> None:
-        async with aiosqlite.connect(self.database_path) as db:
-            await db.execute(
-                """UPDATE generation_jobs
-                   SET status = ?, error = ?, updated_at = ?
-                   WHERE request_id = ? AND status != 'stopped'""",
-                (status, error, time.time(), request_id),
-            )
-            await db.commit()
+    async def _mark_status(self, request_id: str, status: str, error: str | None) -> None:
+        await asyncio.to_thread(self.repository.mark, request_id, status, error)
 
     @staticmethod
     def _row_to_job(row) -> GenerationJob | None:

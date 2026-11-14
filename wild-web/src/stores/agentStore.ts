@@ -3,7 +3,7 @@
  *
  * 管理 AI Agent 会话和消息：
  * - session: 会话信息（session_id, messages, connected）
- * - sessions: 从后端 storage/scenes 文件列表恢复的会话列表
+ * - sessions: 从后端数据库恢复的可访问会话列表
  * - connectionStatus: 详细连接状态
  * - pendingPatch: 待用户确认的 Patch
  * - isProcessing: Agent 是否正在处理
@@ -11,9 +11,9 @@
  * - networkError: 最近一次网络错误信息
  *
  * 消息持久化：
- * - 每次 addMessage 即时写入 localStorage（key: wild_msgs_{sessionId}）
+ * - 每次 addMessage 写入当前账号的 localStorage 缓存
  * - switchToSession 时自动从 localStorage 恢复消息
- * - 草稿会话存 localStorage（key: wild_draft_sessions）
+ * - 草稿、消息、轮次和最近会话按账号 ID 隔离
  *
  * 核心方法：
  * - addUserMessage() / addAgentMessage() / addSystemMessage(): 添加消息
@@ -48,6 +48,7 @@ import type {
 } from '../types/agent'
 import { BUILDING_DETAIL_LEVELS } from '../types/agent'
 import type { ScenePatch } from '../types/scenePatch'
+import { useAuthStore } from './authStore'
 
 type ThinkingStatus = 'idle' | 'thinking' | 'completed' | 'unsupported' | 'error'
 
@@ -58,6 +59,15 @@ const STORAGE_KEY_LAST_SESSION = 'wild_last_session'
 const STORAGE_KEY_DRAFT_SESSIONS = 'wild_draft_sessions'
 const MSG_STORAGE_PREFIX = 'wild_msgs_'
 const TURN_STORAGE_PREFIX = 'wild_turns_'
+
+function accountStorageKey(key: string): string {
+  return `${key}:${useAuthStore().user?.id || 'guest'}`
+}
+
+function newSessionId(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(16))
+  return 'session_' + Array.from(bytes, value => value.toString(16).padStart(2, '0')).join('')
+}
 
 function compactSessionTitle(name: string, maxLength = 16): string {
   const normalized = String(name || '').replace(/\s+/g, '')
@@ -80,13 +90,13 @@ function loadProceduralMaterialsEnabled(): boolean {
 
 function saveMessagesToLocal(sessionId: string, messages: ChatMessage[]) {
   try {
-    localStorage.setItem(MSG_STORAGE_PREFIX + sessionId, JSON.stringify(messages))
+    localStorage.setItem(accountStorageKey(MSG_STORAGE_PREFIX + sessionId), JSON.stringify(messages))
   } catch { /* localStorage 满或不可用，静默失败 */ }
 }
 
 function loadMessagesFromLocal(sessionId: string): ChatMessage[] {
   try {
-    const raw = localStorage.getItem(MSG_STORAGE_PREFIX + sessionId)
+    const raw = localStorage.getItem(accountStorageKey(MSG_STORAGE_PREFIX + sessionId))
     return raw ? JSON.parse(raw) : []
   } catch {
     return []
@@ -95,19 +105,19 @@ function loadMessagesFromLocal(sessionId: string): ChatMessage[] {
 
 function removeMessagesFromLocal(sessionId: string) {
   try {
-    localStorage.removeItem(MSG_STORAGE_PREFIX + sessionId)
+    localStorage.removeItem(accountStorageKey(MSG_STORAGE_PREFIX + sessionId))
   } catch { /* ignore */ }
 }
 
 function saveTurnsToLocal(sessionId: string, turns: AgentTurn[]) {
   try {
-    localStorage.setItem(TURN_STORAGE_PREFIX + sessionId, JSON.stringify(turns))
+    localStorage.setItem(accountStorageKey(TURN_STORAGE_PREFIX + sessionId), JSON.stringify(turns))
   } catch { /* ignore */ }
 }
 
 function loadTurnsFromLocal(sessionId: string): AgentTurn[] {
   try {
-    const raw = localStorage.getItem(TURN_STORAGE_PREFIX + sessionId)
+    const raw = localStorage.getItem(accountStorageKey(TURN_STORAGE_PREFIX + sessionId))
     return normalizeLoadedTurns(raw ? JSON.parse(raw) : [])
   } catch {
     return []
@@ -138,19 +148,19 @@ function normalizeLoadedTurns(value: unknown, interruptRunning = true): AgentTur
 }
 
 function removeTurnsFromLocal(sessionId: string) {
-  try { localStorage.removeItem(TURN_STORAGE_PREFIX + sessionId) } catch { /* ignore */ }
+  try { localStorage.removeItem(accountStorageKey(TURN_STORAGE_PREFIX + sessionId)) } catch { /* ignore */ }
 }
 
 function saveDraftSessions(sessions: SessionInfo[]) {
   try {
     const drafts = sessions.filter(s => s.status === 'draft')
-    localStorage.setItem(STORAGE_KEY_DRAFT_SESSIONS, JSON.stringify(drafts))
+    localStorage.setItem(accountStorageKey(STORAGE_KEY_DRAFT_SESSIONS), JSON.stringify(drafts))
   } catch { /* ignore */ }
 }
 
 function loadDraftSessions(): SessionInfo[] {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY_DRAFT_SESSIONS)
+    const raw = localStorage.getItem(accountStorageKey(STORAGE_KEY_DRAFT_SESSIONS))
     return raw ? JSON.parse(raw) : []
   } catch {
     return []
@@ -158,11 +168,11 @@ function loadDraftSessions(): SessionInfo[] {
 }
 
 function saveLastSession(sessionId: string) {
-  try { localStorage.setItem(STORAGE_KEY_LAST_SESSION, sessionId) } catch { /* ignore */ }
+  try { localStorage.setItem(accountStorageKey(STORAGE_KEY_LAST_SESSION), sessionId) } catch { /* ignore */ }
 }
 
 function loadLastSession(): string | null {
-  try { return localStorage.getItem(STORAGE_KEY_LAST_SESSION) } catch { return null }
+  try { return localStorage.getItem(accountStorageKey(STORAGE_KEY_LAST_SESSION)) } catch { return null }
 }
 
 /** 相对时间格式化（"刚刚" / "5分钟前" / "2小时前" / "3天前"） */
@@ -176,7 +186,7 @@ export function formatRelativeTime(ts: number): string {
 }
 
 export const useAgentStore = defineStore('agent', () => {
-  // ── 会话列表（页面启动后由后端 storage/scenes 文件列表填充）──
+  // ── 会话列表（页面启动后由后端数据库填充）──
   const sessions = ref<SessionInfo[]>([])
   const currentSessionId = ref<string>('')
   /** 每个会话独立保存执行轮次；运行事件不再依附于全局浮动面板。 */
@@ -185,7 +195,7 @@ export const useAgentStore = defineStore('agent', () => {
 
   // ── 当前会话 ──
   const session = ref<AgentSession>({
-    session_id: `session_${Date.now()}`,
+    session_id: newSessionId(),
     messages: [],
     connected: false
   })
@@ -803,7 +813,7 @@ export const useAgentStore = defineStore('agent', () => {
   // ── 会话管理 ──
 
   function createSession(name?: string): string {
-    const id = `session_${Date.now()}`
+    const id = newSessionId()
     const info: SessionInfo = {
       session_id: id,
       name: name || '新建筑',
@@ -910,7 +920,7 @@ export const useAgentStore = defineStore('agent', () => {
 
   function resetSession() {
     session.value = {
-      session_id: `session_${Date.now()}`,
+      session_id: newSessionId(),
       messages: [],
       connected: false
     }

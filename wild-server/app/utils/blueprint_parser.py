@@ -22,12 +22,9 @@ _UTILS_DIR = Path(__file__).resolve().parent    # app/utils/
 _APP_DIR = _UTILS_DIR.parent                     # app/
 _SERVER_ROOT = _APP_DIR.parent                   # wild-server/ 或容器内 /app
 
-# SCENES_DIR 优先从环境变量 WILD_SCENES_DIR 读取，方便在不同部署环境中覆盖。
-# 容器内：WORKDIR=/app，挂载 $DEPLOY_DATA_DIR/scenes:/app/storage/scenes，
-#          所以默认值 /app/storage/scenes 与 Jenkins 部署脚本一致。
-# 本地开发：wild-server/storage/scenes（相对项目根推导）。
+# 仅供旧资料迁移与显式文件导出工具使用。在线蓝图保存由 BlueprintRepository 写入 MySQL。
 import os as _os
-SCENES_DIR = Path(_os.environ.get("WILD_SCENES_DIR", "") or (_SERVER_ROOT / "storage" / "scenes"))
+SCENES_DIR = _SERVER_ROOT / "storage" / "scenes"
 
 # 将 wild-core 暂不支持的模型常见叫法收敛到可渲染的 furniture subtype。
 # sofa 已是引擎原生 subtype（furniture.ts buildSofa），不再降级为 chair。

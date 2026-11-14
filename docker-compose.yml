@@ -4,6 +4,7 @@ services:
     ports:
       - "8000:8000"
     volumes:
+      # 纹理、向量索引、迁移源与诊断记录；在线蓝图及会话使用 MySQL。
       - ./wild-server/storage:/app/storage
       - ./wild-server/.env:/app/runtime-config/.env
     env_file:
@@ -12,6 +13,9 @@ services:
       WILD_RUNTIME_ENV_FILE: /app/runtime-config/.env
       WILD_RUNTIME_ENV_PERSISTENT: "true"
       WILD_RUNTIME_ENV_HOST_PATH: ./wild-server/.env
+    extra_hosts:
+      # .env 使用 host.docker.internal 时，可访问宿主机 MySQL / Redis。
+      - "host.docker.internal:host-gateway"
     networks:
       default:
         aliases:

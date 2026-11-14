@@ -1,15 +1,18 @@
-"""DesignDocument 的原子文件持久化、版本归档与 Patch 应用。"""
+"""DesignDocument 的数据库版本存储与 Patch 应用。"""
 
 from __future__ import annotations
 
 from copy import deepcopy
-from pathlib import Path
 import re
-import shutil
 from typing import Any
 
+from sqlalchemy import delete, insert, select, update
+from app.infrastructure.database import Database, database
+from app.infrastructure.schema import designs
+from app.repositories.conversations import ensure_session, now_ms
+
 from .contracts import DesignDocument, DesignPatch, utc_now_iso
-from .resolver import render_design_svg, resolve_design
+from .resolver import resolve_design
 
 
 _SESSION_RE = re.compile(r"^[A-Za-z0-9_-]+$")
@@ -21,47 +24,41 @@ class DesignConflictError(ValueError):
 
 
 class DesignRepository:
-    def __init__(self, root: Path | None = None):
-        server_root = Path(__file__).resolve().parents[2]
-        self.root = Path(root or server_root / "storage" / "designs")
+    def __init__(self, db: Database = database):
+        self.database = db
 
     def _safe_session_id(self, session_id: str) -> str:
-        if not _SESSION_RE.fullmatch(str(session_id or "")):
+        if not _SESSION_RE.fullmatch(str(session_id or "")) or len(session_id) > 128:
             raise ValueError("无效的 session_id")
         return session_id
 
-    def document_path(self, session_id: str) -> Path:
-        return self.root / f"{self._safe_session_id(session_id)}.design.json"
-
-    def resolved_path(self, session_id: str) -> Path:
-        return self.root / f"{self._safe_session_id(session_id)}.resolved.json"
-
-    def svg_path(self, session_id: str) -> Path:
-        return self.root / f"{self._safe_session_id(session_id)}.svg"
-
-    def _atomic_write(self, path: Path, content: str) -> None:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        temporary = path.with_suffix(path.suffix + ".tmp")
-        temporary.write_text(content, encoding="utf-8")
-        temporary.replace(path)
-
     def get(self, session_id: str) -> DesignDocument | None:
-        path = self.document_path(session_id)
-        if not path.exists():
-            return None
-        return DesignDocument.model_validate_json(path.read_text(encoding="utf-8"))
+        self._safe_session_id(session_id)
+        with self.database.engine.connect() as conn:
+            row = conn.execute(select(designs.c.document_json).where(designs.c.session_id == session_id)
+                               .order_by(designs.c.revision.desc()).limit(1)).first()
+            return DesignDocument.model_validate(row[0]) if row else None
 
-    def save(self, document: DesignDocument | dict[str, Any]) -> tuple[DesignDocument, dict[str, Any]]:
+    def save(self, document: DesignDocument | dict[str, Any], *, expected_revision: int | None = None) -> tuple[DesignDocument, dict[str, Any]]:
         doc = document if isinstance(document, DesignDocument) else DesignDocument.model_validate(document)
+        self._safe_session_id(doc.session_id)
         self._validate_component_capabilities(doc)
         resolved = resolve_design(doc)
-        payload = doc.model_dump_json(indent=2)
-        resolved_payload = resolved.model_dump_json(indent=2)
-        self._atomic_write(self.document_path(doc.session_id), payload)
-        self._atomic_write(self.resolved_path(doc.session_id), resolved_payload)
-        self._atomic_write(self.svg_path(doc.session_id), render_design_svg(doc, resolved))
-        history_dir = self.root / "history" / self._safe_session_id(doc.session_id)
-        self._atomic_write(history_dir / f"revision_{doc.revision}.json", payload)
+        with self.database.engine.begin() as conn:
+            ensure_session(conn, doc.session_id)
+            latest = conn.execute(select(designs.c.revision).where(designs.c.session_id == doc.session_id)
+                                  .order_by(designs.c.revision.desc()).limit(1).with_for_update()).scalar()
+            if expected_revision is not None and latest != expected_revision:
+                raise DesignConflictError("设计版本已更新，请重新读取后修改")
+            if latest is not None and doc.revision < latest:
+                raise DesignConflictError("不能覆盖较新的设计版本")
+            condition = (designs.c.session_id == doc.session_id) & (designs.c.revision == doc.revision)
+            value = dict(document_json=doc.model_dump(mode="json"),
+                         resolved_json=resolved.model_dump(mode="json"), updated_at=now_ms())
+            if conn.execute(select(designs.c.revision).where(condition)).first():
+                conn.execute(update(designs).where(condition).values(**value))
+            else:
+                conn.execute(insert(designs).values(session_id=doc.session_id, revision=doc.revision, **value))
         return doc, resolved.model_dump(mode="json")
 
     @staticmethod
@@ -87,13 +84,9 @@ class DesignRepository:
             )
 
     def delete(self, session_id: str) -> None:
-        safe_session_id = self._safe_session_id(session_id)
-        for path in (self.document_path(session_id), self.resolved_path(session_id), self.svg_path(session_id)):
-            if path.exists():
-                path.unlink()
-        history_dir = self.root / "history" / safe_session_id
-        if history_dir.exists():
-            shutil.rmtree(history_dir)
+        self._safe_session_id(session_id)
+        with self.database.engine.begin() as conn:
+            conn.execute(delete(designs).where(designs.c.session_id == session_id))
 
     def apply_patch(self, session_id: str, patch: DesignPatch | dict[str, Any]) -> tuple[DesignDocument, dict[str, Any]]:
         change = patch if isinstance(patch, DesignPatch) else DesignPatch.model_validate(patch)
@@ -120,7 +113,7 @@ class DesignRepository:
         data["status"] = "draft"
         data["approved_at"] = None
         data["updated_at"] = utc_now_iso()
-        return self.save(DesignDocument.model_validate(data))
+        return self.save(DesignDocument.model_validate(data), expected_revision=current.revision)
 
     def approve(self, session_id: str, base_revision: int) -> tuple[DesignDocument, dict[str, Any]]:
         current = self.get(session_id)
@@ -140,7 +133,7 @@ class DesignRepository:
         data["status"] = "approved"
         data["approved_at"] = utc_now_iso()
         data["updated_at"] = data["approved_at"]
-        return self.save(DesignDocument.model_validate(data))
+        return self.save(DesignDocument.model_validate(data), expected_revision=current.revision)
 
     def mark_compiled(
         self,
@@ -166,7 +159,7 @@ class DesignRepository:
         data = current.model_dump(mode="json")
         data["status"] = "compiled"
         data["updated_at"] = utc_now_iso()
-        return self.save(DesignDocument.model_validate(data))
+        return self.save(DesignDocument.model_validate(data), expected_revision=current.revision)
 
     @staticmethod
     def _tokens(path: str) -> list[str]:

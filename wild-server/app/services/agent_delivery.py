@@ -8,10 +8,9 @@ import re as _re
 from loguru import logger
 
 from app.utils.blueprint_parser import (
-    SCENES_DIR,
     compact_blueprint_title,
-    save_blueprint_file_as,
 )
+from app.repositories.blueprints import blueprint_repository
 
 
 class GenerationRejectedError(RuntimeError):
@@ -19,7 +18,7 @@ class GenerationRejectedError(RuntimeError):
 
 
 class ArtifactSaveError(RuntimeError):
-    """服务端文件保存失败。"""
+    """服务端蓝图持久化失败。"""
 
 
 # 超过此值仍记为校验错误，但不阻止保存已有结果。
@@ -237,7 +236,7 @@ def prepare_blueprint_delivery(
     rel_path = f"{_dt.date.today():%Y-%m-%d}/{filename}"
 
     try:
-        save_blueprint_file_as(blueprint, SCENES_DIR, rel_path)
+        blueprint_repository.save(rel_path, blueprint, session_id=session_id)
     except Exception as exc:
         raise ArtifactSaveError(str(exc)) from exc
 
@@ -276,8 +275,8 @@ def commit_generation_result(
 
     - ``session_id`` 决定确定性文件名，``request_id`` 是幂等键：同一会话重复提交
       覆盖同一文件而非产生副本，因此断线重放或部分失败后的重试是安全的。
-    - 顺序契约：先原子落盘 .wild（``prepare_blueprint_delivery`` 内部保证），再让
-      调用方发布 ``blueprint_generated`` / ``agent_reply`` 终端事件；落盘失败抛
+    - 顺序契约：先提交 MySQL 事务（``prepare_blueprint_delivery`` 内部保证），再让
+      调用方发布 ``blueprint_generated`` / ``agent_reply`` 终端事件；提交失败抛
       ``ArtifactSaveError``，调用方不得继续发成功事件。
     - 校验未通过也保存已有实体，失败状态和错误报告随产物返回。
     """

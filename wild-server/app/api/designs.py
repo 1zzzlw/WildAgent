@@ -31,12 +31,12 @@ def _package(document: DesignDocument, resolved: dict) -> dict:
 
 
 @router.get("/schema")
-async def get_design_schema():
+def get_design_schema():
     return JSONResponse(content=DesignDocument.model_json_schema())
 
 
 @router.get("/{session_id}")
-async def get_design(session_id: str):
+def get_design(session_id: str):
     try:
         document = design_repository.get(session_id)
     except ValueError as exc:
@@ -48,7 +48,7 @@ async def get_design(session_id: str):
 
 
 @router.patch("/{session_id}")
-async def patch_design(session_id: str, patch: DesignPatch):
+def patch_design(session_id: str, patch: DesignPatch):
     try:
         document, resolved = design_repository.apply_patch(session_id, patch)
     except FileNotFoundError as exc:
@@ -61,7 +61,7 @@ async def patch_design(session_id: str, patch: DesignPatch):
 
 
 @router.post("/{session_id}/approve")
-async def approve_design(session_id: str, body: ApproveDesignRequest):
+def approve_design(session_id: str, body: ApproveDesignRequest):
     try:
         document, resolved = design_repository.approve(session_id, body.base_revision)
     except FileNotFoundError as exc:
@@ -74,7 +74,7 @@ async def approve_design(session_id: str, body: ApproveDesignRequest):
 
 
 @router.get("/{session_id}/preview.svg")
-async def get_design_preview(session_id: str, revision: int | None = None, floor: int | None = None):
+def get_design_preview(session_id: str, revision: int | None = None, floor: int | None = None):
     try:
         document = design_repository.get(session_id)
     except ValueError as exc:

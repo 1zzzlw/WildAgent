@@ -18,9 +18,9 @@ def test_empty_scaffold_is_not_a_retained_building(geometry):
 
 
 def test_empty_delivery_is_rejected_before_save(monkeypatch):
-    def unexpected_save(*args):
+    def unexpected_save(*args, **kwargs):
         pytest.fail("空建筑不能写入场景文件")
-    monkeypatch.setattr(delivery, "save_blueprint_file_as", unexpected_save)
+    monkeypatch.setattr(delivery.blueprint_repository, "save", unexpected_save)
     with pytest.raises(delivery.GenerationRejectedError, match="实体"):
         delivery.prepare_blueprint_delivery({"geometry": {"elements": [], "components": []}},
                                             "empty_generation", [], status="failed")
@@ -44,7 +44,7 @@ def test_partial_components_are_saved_with_failure_report(monkeypatch):
     blueprint = {"meta": {"name": "保留组件"}, "geometry": {
         "elements": [], "components": [{"id": "window", "type": "window"}]}}
     saved = []
-    monkeypatch.setattr(delivery, "save_blueprint_file_as", lambda value, *_: saved.append(deepcopy(value)))
+    monkeypatch.setattr(delivery.blueprint_repository, "save", lambda filename, value, **_: saved.append(deepcopy(value)))
     retained = delivery.retain_generation_blueprint({"merged_blueprint": blueprint})
     result = delivery.prepare_blueprint_delivery(retained, "partial_generation", [
         {"name": "implementation_incomplete", "has_error": True, "output": "主体尚未完成"},

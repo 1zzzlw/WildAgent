@@ -52,7 +52,8 @@ Agent WebSocket API
 import json
 import asyncio
 import time
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+import re
+from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
 from loguru import logger
 from config import config
 from app.agent.routing import (
@@ -87,7 +88,9 @@ from app.services.agent_delivery import (
 from app.services.generation_job_service import generation_job_service
 from app.extensions.presence import presence_service
 from app.utils.ws_heartbeat import WebSocketHeartbeat
-from app.api.auth import can_edit
+from app.api.auth import current_user
+from app.services.access_service import check_session
+from app.repositories.conversations import conversations
 
 router = APIRouter()
 
@@ -428,6 +431,7 @@ async def agent_websocket(ws: WebSocket):
             raw = await ws.receive_text()
             # 任意合法/非法文本都表示连接仍活跃，应刷新最后消息时间。
             heartbeat.touch()
+            await presence_service.touch(ws)
 
             try:
                 data = json.loads(raw)
@@ -456,13 +460,33 @@ async def agent_websocket(ws: WebSocket):
 
             msg_type = data.get("type")
 
-            if msg_type not in {"ping", "presence_identify"} and not can_edit(ws):
+            user = await asyncio.to_thread(current_user, ws) if msg_type not in {"ping", "presence_identify"} else None
+            if msg_type not in {"ping", "presence_identify"} and (user or {}).get("role") != "editor":
                 await _send_event(ws, {
                     "type": "error", "code": "permission_denied",
                     "request_id": data.get("request_id"), "session_id": data.get("session_id"),
                     "error": "请使用账号密码登录后操作",
                 })
                 continue
+
+            if msg_type in {"user_message", "stop_generation", "resume_generation"}:
+                session_id = str(data.get("session_id") or "")
+                request_id = str(data.get("request_id") or "")
+                if (not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", session_id)
+                        or (request_id and not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", request_id))):
+                    await _send_event(ws, {"type": "error", "code": "invalid_request", "error": "无效的会话或任务标识"})
+                    continue
+                try:
+                    await asyncio.to_thread(check_session, session_id, user)
+                    previous = await generation_job_service.get_job(request_id) if request_id else None
+                    if previous is not None and previous.session_id != session_id:
+                        raise HTTPException(status_code=404, detail="任务不存在")
+                    if msg_type == "user_message":
+                        await asyncio.to_thread(conversations.ensure, session_id, user["id"])
+                except HTTPException:
+                    await _send_event(ws, {"type": "error", "code": "permission_denied", "request_id": request_id,
+                                           "session_id": session_id, "error": "会话或任务不存在"})
+                    continue
 
             if msg_type == "ping":
                 # 原样回传前端时间戳，便于前端计算往返延迟。
@@ -1442,7 +1466,7 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
                 + "; ".join(f"{entry['label']}（{entry['status']}）" for entry in shortfall[:5])
             )
     try:
-        delivery = commit_generation_result(
+        delivery = await asyncio.to_thread(commit_generation_result,
             session_id,
             request_id,
             merged_blueprint,
@@ -1489,7 +1513,7 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
         try:
             from app.design.repository import design_repository
 
-            design_repository.mark_compiled(
+            await asyncio.to_thread(design_repository.mark_compiled,
                 session_id,
                 revision=int(design_document.get("revision") or 0),
                 design_hash=str(design_hash),

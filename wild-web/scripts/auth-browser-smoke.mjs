@@ -10,7 +10,7 @@ const downloads = await mkdtemp(join(tmpdir(), 'wild-auth-download-'))
 await mkdir(resolve(output, '下载验证'), { recursive: true })
 // 仅对隔离回归服务种入样例，不连接用户的实际存储。
 assert.equal((await fetch(`${origin}/api/editor-smoke-storage`)).status, 200)
-const login = await fetch(`${origin}/api/auth/login`, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:'zlw',password:'123456'})})
+const login = await fetch(`${origin}/api/auth/login`, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:'zlw@example.com',password:'123456'})})
 assert.equal(login.status, 200)
 const cookie = login.headers.get('set-cookie').split(';')[0]
 const fixture = JSON.parse(await readFile(resolve('scripts/fixtures/presentation.json'), 'utf8'))
@@ -24,7 +24,7 @@ const p = browser.page
 const viewport = code => p.evaluate(`(()=>{const s=document.querySelector('.canvas-viewport').__vueParentComponent.setupState;${code}})()`)
 const documentState = () => viewport('return {json:JSON.stringify(s.sceneStore.document.blueprint),revision:s.sceneStore.document.revision,dirty:s.sceneStore.document.dirty};')
 const storage = () => p.evaluate(`fetch('/api/editor-smoke-storage').then(r=>r.json())`)
-const waitLogin = () => p.wait('document.querySelector("#login-username") && !document.querySelector("#login-username").disabled')
+const waitLogin = () => p.wait('document.querySelector("#login-email") && !document.querySelector("#login-email").disabled')
 const waitScene = () => p.wait('!!document.querySelector(".canvas-viewport") && document.querySelector(".canvas-viewport").__vueParentComponent.setupState.sceneStore.reconstructed?.meshes.length > 0')
 async function fill(selector, value) {
   await p.click(selector)
@@ -34,7 +34,7 @@ async function fill(selector, value) {
 }
 async function signIn(username, password='123456') {
   await waitLogin()
-  await fill('#login-username', username)
+  await fill('#login-email', username + '@example.com')
   await fill('#login-password', password)
   await p.click('button[type="submit"]')
 }
@@ -67,7 +67,7 @@ try {
   assert.equal(await p.evaluate('document.documentElement.scrollWidth<=innerWidth'), true)
   await p.screenshot(output + '/02-手机登录.png')
   await p.resize(390,600)
-  assert.equal(await p.evaluate('document.querySelector(".login-page").scrollHeight>600 && document.querySelector("#login-username").getBoundingClientRect().top>0'),true)
+  assert.equal(await p.evaluate('document.querySelector(".login-page").scrollHeight>600 && document.querySelector("#login-email").getBoundingClientRect().top>0'),true)
   await p.resize(1440,1000)
   await p.click('[aria-label="切换为暗色主题"]')
   await p.screenshot(output + '/03-暗色登录.png')
@@ -78,7 +78,7 @@ try {
   await p.send('Page.reload')
   await waitLogin()
   await signIn('zlw', 'wrong-password')
-  await p.wait('document.querySelector("[role=alert]")?.textContent.includes("账号或密码错误")')
+  await p.wait('document.querySelector("[role=alert]")?.textContent.includes("邮箱或密码错误")')
   assert.equal(await p.evaluate('!!document.querySelector(".editor-header")'), false)
 
   await p.click('.guest-button')

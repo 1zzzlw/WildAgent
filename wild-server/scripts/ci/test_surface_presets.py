@@ -94,11 +94,11 @@ def test_resolved_surface_plan_passes_design_document_contract(role_specs):
             assert ResolvedMaterialPlan.model_validate(selected).model_dump(mode="json") == selected
 
 
-def test_surface_plan_survives_document_persistence_and_projection(tmp_path):
+def test_surface_plan_survives_document_persistence_and_projection(storage):
     source = architecture_document()
     plan = resolve_material_plan(None, [])
     document = attach_material_plan(source, plan)
-    repository = DesignRepository(tmp_path)
+    repository = DesignRepository()
     saved, resolved = repository.save(document)
     loaded = repository.get(saved.session_id)
     assert loaded is not None
@@ -124,13 +124,13 @@ def test_legacy_material_plan_and_unknown_fields_remain_strict():
         ResolvedMaterialPlan.model_validate(plan)
 
 
-def test_material_node_saves_surface_plan_and_reaches_implementation_plan(tmp_path, monkeypatch):
+def test_material_node_saves_surface_plan_and_reaches_implementation_plan(storage, monkeypatch):
     from app.agent.generation.material import workflow
     from app.agent.plan.workflow import plan_node
     from app.design import repository
     from app.design.resolver import architecture_plan_from_document
 
-    store = DesignRepository(tmp_path)
+    store = DesignRepository()
     monkeypatch.setattr(repository, "design_repository", store)
     monkeypatch.setattr(workflow.asset_storage, "list_manifests", lambda: [])
     monkeypatch.setattr(workflow, "create_llm", lambda **kwargs: object())

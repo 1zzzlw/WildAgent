@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from app.rag.trace import append_rag_feedback
@@ -19,10 +19,12 @@ class RAGFeedbackRequest(BaseModel):
 
 
 @router.post("/feedback")
-async def add_rag_feedback(body: RAGFeedbackRequest):
+def add_rag_feedback(body: RAGFeedbackRequest, request: Request):
     """rating 只接受 up/down；反馈写入对应 Trace 文件，不另建匿名孤儿记录。"""
 
     rating = body.rating.strip().lower()
+    from app.services.access_service import check_session
+    check_session(body.session_id, getattr(request.state, "user", None))
     if rating not in {"up", "down"}:
         raise HTTPException(status_code=400, detail="rating 只能是 up 或 down")
     try:

@@ -6,30 +6,31 @@
       <div class="building-mark" aria-hidden="true"><i></i><i></i><i></i></div>
       <h1 id="login-title">{{ registering ? '创建你的 WILD 账号' : '走进你的建筑世界' }}</h1>
       <p class="intro">{{ registering ? '从一个想法开始，描绘属于你的建筑世界。' : '登录后编辑与保存蓝图，也可以先以游客身份看看。' }}</p>
-      <form v-if="registering" class="register-form" @submit.prevent="previewRegistration" @input="registrationNotice = ''">
+      <form v-if="registering" class="register-form" @submit.prevent="registerAccount" @input="error = ''">
         <label for="register-username">用户名</label>
-        <input ref="registerUsernameInput" id="register-username" v-model.trim="registration.username" name="username" autocomplete="username" placeholder="怎么称呼你" pattern=".*\S.*" title="用户名不能只包含空格" :disabled="checking" required />
+        <input ref="registerUsernameInput" id="register-username" v-model.trim="registration.username" name="username" autocomplete="username" placeholder="怎么称呼你" minlength="2" maxlength="64" pattern=".*\S.*" title="用户名不能只包含空格" :disabled="busy || sendingCode || checking" required />
         <label for="register-email">邮箱</label>
-        <input ref="registerEmailInput" id="register-email" v-model.trim="registration.email" name="email" type="email" autocomplete="email" placeholder="请输入邮箱地址" :disabled="checking" required />
+        <input ref="registerEmailInput" id="register-email" v-model.trim="registration.email" name="email" type="email" autocomplete="email" placeholder="请输入邮箱地址" :disabled="busy || sendingCode || checking" required />
         <label for="register-code">邮箱验证码</label>
         <div class="verification-field">
-          <input id="register-code" v-model.trim="registration.code" name="verification-code" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="6 位数字验证码" pattern="[0-9]{6}" maxlength="6" title="请输入 6 位数字验证码" :disabled="checking" required />
-          <button class="code-button" type="button" :disabled="checking" @click="previewVerificationCode">获取验证码</button>
+          <input id="register-code" v-model.trim="registration.code" name="verification-code" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="6 位数字验证码" pattern="[0-9]{6}" maxlength="6" title="请输入 6 位数字验证码" :disabled="busy || sendingCode || checking" required />
+          <button class="code-button" type="button" :disabled="busy || sendingCode || checking || codeSeconds > 0" @click="sendVerificationCode">{{ sendingCode ? '发送中…' : codeSeconds > 0 ? codeSeconds + ' 秒后重发' : '获取验证码' }}</button>
         </div>
         <label for="register-password">密码</label>
         <div class="password-field">
-          <input id="register-password" v-model="registration.password" name="password" :type="showPassword ? 'text' : 'password'" autocomplete="new-password" placeholder="设置你的登录密码" :disabled="checking" required />
-          <button class="password-toggle" type="button" :aria-label="showPassword ? '隐藏密码' : '显示密码'" :aria-pressed="showPassword" aria-controls="register-password register-confirm-password" :disabled="checking" @click="showPassword = !showPassword">{{ showPassword ? '隐藏' : '显示' }}</button>
+          <input id="register-password" v-model="registration.password" name="password" :type="showPassword ? 'text' : 'password'" autocomplete="new-password" placeholder="至少 8 位登录密码" minlength="8" maxlength="128" :disabled="busy || sendingCode || checking" required />
+          <button class="password-toggle" type="button" :aria-label="showPassword ? '隐藏密码' : '显示密码'" :aria-pressed="showPassword" aria-controls="register-password register-confirm-password" :disabled="busy || sendingCode || checking" @click="showPassword = !showPassword">{{ showPassword ? '隐藏' : '显示' }}</button>
         </div>
         <label for="register-confirm-password">确认密码</label>
-        <input ref="confirmPasswordInput" id="register-confirm-password" v-model="registration.confirmPassword" name="confirm-password" :type="showPassword ? 'text' : 'password'" autocomplete="new-password" placeholder="请再次输入密码" :aria-invalid="confirmTouched && passwordMismatch ? true : undefined" :aria-describedby="confirmTouched && passwordMismatch ? 'confirm-password-error' : undefined" :disabled="checking" required @blur="confirmTouched = true" />
+        <input ref="confirmPasswordInput" id="register-confirm-password" v-model="registration.confirmPassword" name="confirm-password" :type="showPassword ? 'text' : 'password'" autocomplete="new-password" placeholder="请再次输入密码" minlength="8" maxlength="128" :aria-invalid="confirmTouched && passwordMismatch ? true : undefined" :aria-describedby="confirmTouched && passwordMismatch ? 'confirm-password-error' : undefined" :disabled="busy || sendingCode || checking" required @blur="confirmTouched = true" />
         <p v-if="confirmTouched && passwordMismatch" id="confirm-password-error" class="field-error" role="alert">两次输入的密码不一致</p>
         <p v-if="registrationNotice" class="registration-notice" role="status">{{ registrationNotice }}</p>
-        <button class="primary-button" type="submit" :disabled="checking">注册</button>
+        <p v-if="error" class="field-error" role="alert">{{ error }}</p>
+        <button class="primary-button" type="submit" :disabled="busy || sendingCode || checking">{{ busy ? '正在注册…' : '注册' }}</button>
       </form>
       <form v-else @submit.prevent="signIn(false)">
-        <label for="login-username">账号</label>
-        <input ref="loginUsernameInput" id="login-username" v-model="username" name="username" autocomplete="username" placeholder="请输入账号" :disabled="busy || checking" required />
+        <label for="login-email">邮箱</label>
+        <input ref="loginEmailInput" id="login-email" v-model.trim="email" name="email" type="email" autocomplete="username" placeholder="请输入注册邮箱" :disabled="busy || checking" required />
         <label for="login-password">密码</label>
         <input id="login-password" v-model="password" name="password" type="password" autocomplete="current-password" placeholder="请输入密码" :disabled="busy || checking" required />
         <p v-if="error" class="login-error" role="alert">{{ error }}</p>
@@ -37,7 +38,7 @@
       </form>
       <p class="account-switch">
         {{ registering ? '已有账号？' : '还没有账号？' }}
-        <button type="button" :disabled="busy || checking" @click="switchMode">{{ registering ? '返回登录' : '立即注册' }}</button>
+        <button type="button" :disabled="busy || sendingCode || checking" @click="switchMode">{{ registering ? '返回登录' : '立即注册' }}</button>
       </p>
       <template v-if="!registering">
         <div class="divider"><span>或</span></div>
@@ -51,7 +52,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, reactive, ref, watchEffect } from 'vue'
+import { computed, nextTick, onUnmounted, reactive, ref, watchEffect } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useAuthStore } from '../../stores/authStore'
 import { useThemeStore } from '../../stores/themeStore'
@@ -60,16 +61,21 @@ import OnlinePresence from '../../extensions/presence/OnlinePresence.vue'
 defineProps<{ checking: boolean }>()
 const auth = useAuthStore()
 const theme = useThemeStore()
-const username = ref('')
+const email = ref('')
 const password = ref('')
 const busy = ref(false)
 const error = ref('')
 const registering = ref(false)
 const registration = reactive({ username: '', email: '', code: '', password: '', confirmPassword: '' })
 const registrationNotice = ref('')
+const sendingCode = ref(false)
+const codeSeconds = ref(0)
+let codeTimer: ReturnType<typeof setInterval> | undefined
+let mounted = true
+onUnmounted(() => { mounted = false; clearInterval(codeTimer) })
 const showPassword = ref(false)
 const registerUsernameInput = ref<HTMLInputElement>()
-const loginUsernameInput = ref<HTMLInputElement>()
+const loginEmailInput = ref<HTMLInputElement>()
 const registerEmailInput = ref<HTMLInputElement>()
 const confirmPasswordInput = ref<HTMLInputElement>()
 const confirmTouched = ref(false)
@@ -90,18 +96,42 @@ async function switchMode() {
   showPassword.value = false
   confirmTouched.value = false
   await nextTick()
-  const input = registering.value ? registerUsernameInput.value : loginUsernameInput.value
+  const input = registering.value ? registerUsernameInput.value : loginEmailInput.value
   input?.focus()
 }
 
-function previewVerificationCode() {
-  if (!registerEmailInput.value?.reportValidity()) return
-  registrationNotice.value = '验证码服务暂未开放，敬请期待。'
+async function sendVerificationCode() {
+  if (sendingCode.value || codeSeconds.value > 0 || !registerEmailInput.value?.reportValidity()) return
+  sendingCode.value = true
+  error.value = ''
+  registrationNotice.value = ''
+  try {
+    const result = await auth.sendEmailCode(registration.email)
+    if (!mounted) return
+    registrationNotice.value = '验证码已发送，请查收邮箱。'
+    const retryAt = Date.now() + result.resend_after * 1000
+    clearInterval(codeTimer)
+    codeSeconds.value = result.resend_after
+    codeTimer = setInterval(() => {
+      codeSeconds.value = Math.max(0, Math.ceil((retryAt - Date.now()) / 1000))
+      if (!codeSeconds.value) clearInterval(codeTimer)
+    }, 1000)
+  } catch (reason) {
+    error.value = reason instanceof Error && reason.message !== 'Failed to fetch' ? reason.message : '发送失败，请检查网络后重试'
+  } finally { sendingCode.value = false }
 }
 
-function previewRegistration() {
-  // 仅展示注册表单；待接入注册服务后再提交，不复用登录接口或保存密码。
-  registrationNotice.value = '注册暂未开放，敬请期待。'
+async function registerAccount() {
+  if (busy.value || sendingCode.value || passwordMismatch.value) return
+  busy.value = true
+  error.value = ''
+  try {
+    await auth.register({ username: registration.username, email: registration.email,
+      password: registration.password, confirm_password: registration.confirmPassword, code: registration.code })
+    registration.password = registration.confirmPassword = registration.code = ''
+  } catch (reason) {
+    error.value = reason instanceof Error && reason.message !== 'Failed to fetch' ? reason.message : '注册失败，请检查网络后重试'
+  } finally { busy.value = false }
 }
 
 async function signIn(guest: boolean) {
@@ -109,7 +139,7 @@ async function signIn(guest: boolean) {
   busy.value = true
   error.value = ''
   try {
-    await auth.login(guest ? undefined : username.value.trim(), guest ? undefined : password.value)
+    await auth.login(guest ? undefined : email.value, guest ? undefined : password.value)
     password.value = ''
   } catch (reason) {
     error.value = reason instanceof Error && reason.message !== 'Failed to fetch' ? reason.message : '无法连接登录服务，请稍后重试'
