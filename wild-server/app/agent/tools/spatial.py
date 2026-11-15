@@ -1,0 +1,27 @@
+"""LangChain 工具包装；几何校验与修复实现位于领域层。"""
+from langchain.tools import tool
+from app.domain.validation import spatial as validators
+
+validate_blueprint_structure = tool(validators.validate_blueprint_structure)
+validate_opening_coords = tool(validators.validate_opening_coords)
+validate_wall_junctions = tool(validators.validate_wall_junctions)
+validate_roof_coverage = tool(validators.validate_roof_coverage)
+validate_roof_top_coverage = tool(validators.validate_roof_top_coverage)
+validate_stair_alignment = tool(validators.validate_stair_alignment)
+validate_element_required_fields = tool(validators.validate_element_required_fields)
+fix_opening_coords = tool(validators.fix_opening_coords)
+validate_reference_integrity = tool(validators.validate_reference_integrity)
+fix_material_references = tool(validators.fix_material_references)
+validate_model_quality = tool(validators.validate_model_quality)
+validate_stacked_member_containment = tool(validators.validate_stacked_member_containment)
+validate_collision = tool(validators.validate_collision)
+validate_opening_fit = tool(validators.validate_opening_fit)
+validate_element_dimensions = tool(validators.validate_element_dimensions)
+get_wall_bounding_box = tool(validators.get_wall_bounding_box)
+fix_roof_coverage = tool(validators.fix_roof_coverage)
+fix_wall_junctions = tool(validators.fix_wall_junctions)
+fix_opening_fit = tool(validators.fix_opening_fit)
+fix_stair_alignment = tool(validators.fix_stair_alignment)
+fix_element_dimensions = tool(validators.fix_element_dimensions)
+fix_element_elevations = tool(validators.fix_element_elevations)
+fix_primitive_elevations = tool(validators.fix_primitive_elevations)

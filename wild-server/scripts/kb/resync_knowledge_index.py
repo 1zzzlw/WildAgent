@@ -18,10 +18,9 @@ sys.path.insert(0, str(SERVER_ROOT))
 
 
 def main() -> int:
-    from app.services.agent_service import AgentService
+    from app.infrastructure.retrieval.resources import create_spec_loader
 
-    service = AgentService()
-    loader = service.spec_loader
+    loader = create_spec_loader()
     print(f"loader: {type(loader).__name__}")
     if not hasattr(loader, "sync_index"):
         print("此 loader 没有 sync_index（可能是降级的基础文件 Loader）")

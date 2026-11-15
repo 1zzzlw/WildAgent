@@ -4,6 +4,6 @@
 异常分支的模型调用与动作闭集在 `plan/replan.py`。
 """
 
-from app.agent.plan.workflow import replanner_node
+from app.agent.workflows.planning.workflow import replanner_node
 
 __all__ = ["replanner_node"]

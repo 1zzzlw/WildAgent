@@ -101,6 +101,7 @@ CREATE TABLE IF NOT EXISTS design_documents (
 )ENGINE=InnoDB CHARSET=utf8mb4 COLLATE utf8mb4_bin;
 
 -- 对应 langgraph-checkpoint-mysql 3.0.0 的最终表结构，迁移版本 21。
+-- checkpoint_ns_hash 由应用计算并绑定，保持 BINARY(16)，无需安装 MySQL MD5 兼容组件。
 -- 来源：https://github.com/tjni/langgraph-checkpoint-mysql
 -- 后端运行时只检查版本，不自动建表或执行 ALTER。
 

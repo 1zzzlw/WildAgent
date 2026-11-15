@@ -13,6 +13,8 @@ wild-server/storage/item_catalog/imported/
 wild-server/storage/geoip/*.mmdb
 wild-server/.langgraph_api/
 wild-server/rag_bg_sync_*
+/wild-server/.rag_bg_sync_test/
+/wild-server/pytest-of-*/
 wild-server/.probe_tmp/
 /wild-web/lantu/
 

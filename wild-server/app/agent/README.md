@@ -1,58 +1,42 @@
-# Agent 后端目录边界
+# Agent 目录与职责
 
-`app/agent` 只负责 LangGraph 工作流及建筑生成领域逻辑。跨工作流复用的模型调用、RAG 和传输协议分别位于 `app/llm`、`app/rag` 和 `app/contracts`。
-
-## 目录职责
-
-- `graph.py`：创建 StateGraph、注册节点、连接边和条件路由。
-- `state.py`：声明图的公开输入与完整持久化状态。
-- `routing.py`：识别用户意图并生成路由决策。
-- `runtime.py`：保存不应写入 checkpoint 的运行时回调和上下文。
-- `nodes/`：LangGraph 的薄入口；只暴露图所需函数，不放 Prompt、解析器、校验器或修复算法。
-- `planning/`：动态任务契约、归一化与校验（`execution.py`），以及结构化要求编译、节点消费指导、
-  逐条验收和阶段进度（`requirements.py`）。
-- `generation/`：建筑方案、骨架、立面、组件、材质与空间规则。
-- `knowledge/`：知识使用策略和仅对当前请求生效的受控网络研究。
-- `validation/`：结构化问题、诊断快照和 Blueprint 约束校验。
-- `repair/`：模型选择、程序执行的白名单修复工具。
-- `prompts/`：按问答、规划、生成、研究、恢复和修复阶段拆分的提示词构建器。
-- `assets/`：独立于建筑主图的 PBR 资源工作流。
-
-## 依赖规则
-
-1. `graph.py` 可以依赖 `state.py` 和 `nodes/`，节点之间不得互相导入。
-2. 节点可以调用 `planning`、`generation`、`knowledge`、`validation`、`repair`、`app.llm` 和 `app.rag`。
-3. 领域模块不得反向依赖 `nodes/` 或 `graph.py`。
-4. `state.py` 与 `planning/contracts.py` 是结构化状态边界，不依赖具体节点。
-5. API 和 Service 优先调用公开工作流入口；共享基础设施不放回 `app/agent` 根目录。
-
-## 计划与验收边界
-
-建筑主链为 `architecture → material_plan → plan → execute / replanner → compile → final_validate`。
-图纸与材质在 `material_plan` 中通过现有设计契约校验、保存并确定生成版本，然后自动继续。
-`design_ready` 事件只负责展示设计文档与图纸，不暂停生成，也不接受批准或修改意见的恢复消息。
-物件方案从 `object_design` 开始，在材质确定后经过 `skeleton` 进入同一计划与执行链。
-
-固定节点顺序只由 `graph.py` 决定。计划层不复制节点流程，也不负责选择下一个节点：
+`app/agent` 负责 LangGraph 编排、模型设计与修订。确定性的设计解析、蓝图编译、空间计算和校验放在 `app/domain`；模型连接和检索实现放在 `app/infrastructure`；任务生命周期与结果保存由 `app/application/generation` 管理。
 
 ```text
-execution_plan          本次需求要完成什么
-structured_requirements 已批准任务编译出的、节点可消费和可校验的业务约束
-acceptance_results      每条验收条件的实际值与证据；业务完成的唯一依据
-execution_progress      固定节点运行到哪里；只用于展示，不证明业务完成
+agent/
+├── graph.py                  # 注册节点、连接边和条件路由
+├── state.py                  # 持久化图状态与状态合并
+├── routing.py                # 路由判定
+├── runtime.py                # 不写入 checkpoint 的资源引用和请求回调
+├── nodes/                    # 图节点薄入口
+├── workflows/
+│   ├── intent/               # 意图分类
+│   ├── design/               # 建筑方案、物件方案及骨架生成
+│   ├── material/             # 材质选择
+│   ├── planning/             # 动态任务规划与重规划
+│   ├── execution/            # 构件实现与处理
+│   ├── assembly/             # 装配与编译阶段编排
+│   ├── validation/           # 校验流程与模型诊断
+│   ├── editing/              # 场景 Patch 生成
+│   ├── repair/               # 基于失败证据的模型修订
+│   ├── knowledge/            # 问答与受控研究
+│   ├── vision/               # 视觉评估工作流
+│   └── assets/               # 独立 PBR 资源工作流
+├── prompts/                  # 各阶段提示词构建器
+└── tools/                    # LangChain 工具包装
 ```
 
-节点运行成功只更新 `execution_progress`；动态任务是否完成由 `acceptance_results` 计算。
-无法机器判定的验收标为 `needs_review`，当前能力明确做不到的标为 `unsupported`——
-两者都**只标记不阻断**（`severity="warning"`），写进验收结果供人查看，但不会终止本轮生成。
+阅读主链从 `graph.py` 开始，通过 `nodes/*_node.py` 进入对应工作流。建筑链路为 `architecture → material_plan → plan → execute / replanner → compile → final_validate`。物件方案从 `object_design` 开始，在材质确定后经过 `skeleton` 进入计划和执行链。
 
-真正会让本轮失败的只剩两类：**计划对象本身不合法**（缺字段、ID 重复、引用被篡改，
-放过去下游必然崩）和 **模型服务终态错误**（没有任何东西可生成）。
-判定准则：问"是真的做不了，还是做得到但和用户措辞不一致、或者这份数据本身坏了"——
-只有后者才配终止一次生成。
+图纸与材质通过设计契约校验、保存并确定版本后自动继续。`design_ready` 事件用于展示，不创建人工审核中断。节点进度只说明流程走到哪里，不能代替业务验收和视觉确认；校验失败时可保留已有可编辑实体，同时明确返回失败状态。
 
-## 阅读顺序
+依赖约定：
 
-从 `graph.py` 看节点与边，从 `nodes/*_node.py` 找到该节点对应的用例，再进入所属领域的
-`*workflow.py` 阅读执行步骤。具体的数据解析、确定性规则和 Prompt 继续沿 import 进入同目录
-模块；因此一个工作流文件只说明“先做什么、后做什么”，不再同时充当规则仓库。
+- `graph.py` 调用节点，节点调用所属工作流；节点不互相导入。
+- 工作流可调用领域计算和基础设施，不反向导入 API、应用用例或 bootstrap。
+- `domain` 不导入 Agent、API、应用层或基础设施，也不创建模型和数据库资源。
+- 确定性校验实现在 `domain/validation`；`agent/tools/spatial.py` 只包装模型可调用的工具。
+- 模型客户端和知识加载器由 `bootstrap/resources.py` 显式创建，`runtime.py` 保存稳定引用。
+- 新功能优先复用现有工作流与通用计算入口，不在节点、提示词中复制几何规则。
+
+外部请求先进入 `application/generation/runner.py`。执行上下文、流事件投影、结果交付分别位于 `context.py`、`streaming.py`、`finalize.py`；持久化任务和断线补发位于 `jobs.py`。REST 业务用例位于 `application`，HTTP 状态码与响应格式在 `api` 适配。

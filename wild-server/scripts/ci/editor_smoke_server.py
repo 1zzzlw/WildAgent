@@ -34,9 +34,10 @@ if mysql_port:
     os.environ.update(MYSQL__HOST="127.0.0.1", MYSQL__PORT=mysql_port, MYSQL__USERNAME="root",
                       MYSQL__PASSWORD="", MYSQL__DATABASE=database_name)
 from config import SMTPConfig, RedisConfig, config
-from app.infrastructure.database import database
-from app.infrastructure.cache import cache
-from app.infrastructure.schema import metadata, blueprints
+from app.infrastructure.persistence.database import database
+from app.infrastructure.redis.connection import cache
+from app.infrastructure.persistence.schema import metadata
+from app.infrastructure.persistence.schema import blueprints
 
 if mysql_port:
     url = URL.create("mysql+pymysql", host="127.0.0.1", port=int(mysql_port), username="root", password="",
@@ -51,7 +52,7 @@ if mysql_port:
 else:
     database._engine = create_engine(f"sqlite:///{storage/'storage.sqlite3'}", connect_args={"check_same_thread":False})
     metadata.create_all(database.engine)
-    jobs = importlib.import_module("app.services.generation_job_service")
+    jobs = importlib.import_module("app.application.generation.jobs")
     jobs.generation_job_service = jobs.GenerationJobService(storage/"jobs.sqlite3")
 
 prefix = "wild-browser:" + uuid4().hex + ":"
@@ -65,8 +66,8 @@ if not redis_port:
     cache._async_client = fakeredis.aioredis.FakeRedis(server=fake_server, decode_responses=True)
     cache.create_async_client = lambda **_: fakeredis.aioredis.FakeRedis(server=fake_server, decode_responses=True)
 
-from app.repositories.accounts import accounts
-from app.services import account_service
+from app.infrastructure.persistence.repositories.accounts import accounts
+from app.application import accounts as account_service
 
 for username in ("zlw", "lxw", "mf"):
     accounts.create(username, username + "@example.com", account_service.hash_password("123456"))
@@ -81,7 +82,8 @@ class SMTP:
     def login(self, *args): pass
     def send_message(self, message): sent_mail.append(message)
 config.smtp = SMTPConfig(host="test.example.com", from_address="wild@example.com")
-account_service.smtplib.SMTP_SSL = SMTP
+from app.infrastructure.mail import sender
+sender.smtplib.SMTP_SSL = SMTP
 
 from main import app
 

@@ -4,7 +4,8 @@
 
 """
 
-from typing import Annotated, Any, Literal, NotRequired, TypedDict
+from typing import Annotated, Any, NotRequired, TypedDict
+from app.domain.design.types import IntentName, TargetKind, DetailLevel
 
 
 def merge_state_mapping(left: dict | None, right: dict | None) -> dict:
@@ -14,11 +15,8 @@ def merge_state_mapping(left: dict | None, right: dict | None) -> dict:
     return merged
 
 
-IntentName = Literal["generate", "edit", "chat"]
 
-TargetKind = Literal["architecture", "object"]
 
-DetailLevel = Literal["minimal", "simple", "standard", "detailed"]
 
 
 class GenerationInput(TypedDict):

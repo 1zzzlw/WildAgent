@@ -36,3 +36,6 @@ dev = [
 
 [tool.fastapi]
 entrypoint = "main:app"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

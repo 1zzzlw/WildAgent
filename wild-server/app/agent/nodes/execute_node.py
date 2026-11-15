@@ -4,6 +4,6 @@
 处理器在 `app/agent/plan/handlers.py`，有界工具循环在 `app/agent/plan/tool_loop.py`。
 """
 
-from app.agent.plan.workflow import execute_node
+from app.agent.workflows.planning.workflow import execute_node
 
 __all__ = ["execute_node"]

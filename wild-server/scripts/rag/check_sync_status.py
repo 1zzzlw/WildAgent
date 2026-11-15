@@ -5,7 +5,7 @@ r"""检查当前 RAG Loader、后台同步和持久化集合状态。
     .\.venv\Scripts\python.exe -m scripts.rag.check_sync_status
     .\.venv\Scripts\python.exe -m scripts.rag.check_sync_status --wait-seconds 120
 
-导入 AgentService 只会启动后台同步，不会在主线程等待全量 Embedding。
+显式创建检索资源并启动配置要求的后台同步。
 """
 
 from __future__ import annotations
@@ -29,10 +29,10 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     # 先解析参数，让 --help 不需要初始化 Agent、Chroma 或 Embedding。
-    from app.services.agent_service import agent_service
-    from app.spec.loader import RAGSpecLoader
+    from app.infrastructure.retrieval.resources import create_spec_loader
+    from app.infrastructure.retrieval.loader import RAGSpecLoader
 
-    loader = agent_service.spec_loader
+    loader = create_spec_loader()
     print(f"Spec Loader: {type(loader).__name__}")
     print(f"来源文档数: {len(loader.list_sources())}")
 

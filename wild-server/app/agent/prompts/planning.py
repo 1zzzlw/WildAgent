@@ -54,11 +54,11 @@ def build_architecture_plan_prompt(
 ) -> str:
     """首轮交付完整设计；设计方法和专项关系由知识库提供。"""
     import json
-    from app.agent.knowledge.component_names import component_reference_prompt
-    from app.agent.generation.architecture.profile import resolve_complexity_profile
-    from app.agent.generation.material.plan import ROLE_SPECS
-    from app.design.parametric import PARAMETRIC_PROTOCOL
-    from app.design.contracts import RoofDecision
+    from app.domain.components.names import component_reference_prompt
+    from app.domain.design.architecture.profile import resolve_complexity_profile
+    from app.domain.blueprint.materials.plan import ROLE_SPECS
+    from app.domain.design.parametric import PARAMETRIC_PROTOCOL
+    from app.domain.design.contracts import RoofDecision
     roof_axis = RoofDecision.model_json_schema()["properties"]["ridge_axis"]
     complexity = resolve_complexity_profile((complexity_profile or {}).get("level", "simple"))
     current = json.dumps({k: v for k, v in current_plan.items()
@@ -310,7 +310,7 @@ def build_material_plan_prompt(
     只会让模型编出一个不存在的建筑语境。
     """
     import json as _json
-    from app.agent.generation.material.surfaces import surface_catalog
+    from app.domain.blueprint.materials.surfaces import surface_catalog
     builtin_surfaces = surface_catalog()
     style_section = _style_preference_section(style_preference) if object_scene else ""
     explicit_materials = [{"id": c.get("id"), "role": c["material_role"], "material": c["form"]["material"]}

@@ -4,6 +4,6 @@
 具体用例位于 ``generation.objects.workflow``。
 """
 
-from app.agent.generation.objects.workflow import object_planner
+from app.agent.workflows.design.objects import object_planner
 
 __all__ = ["object_planner"]

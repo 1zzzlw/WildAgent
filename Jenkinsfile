@@ -626,7 +626,7 @@ esac
 docker exec wild-server python -c "from config import config; print('model='+config.chat.name); print('model_configured='+str(bool(config.chat.name.strip() and config.chat.api_key.strip())).lower()); print('base_url='+(config.chat.base_url or '(default)')); print('rag_enabled='+str(config.rag.enabled).lower()); print('embedding='+config.embedding.name); print('hash_fallback='+str(config.rag.allow_hash_fallback).lower())"
 docker exec wild-server python -c "import urllib.request; response=urllib.request.urlopen('http://127.0.0.1:8000/health/ready', timeout=10); body=response.read().decode('utf-8'); print('backend_http_status='+str(response.status)); print('backend_readiness='+body); assert response.status == 200"
 # 容器内直接读取配置路径元数据，不匿名调用受保护接口，也不输出配置内容。
-docker exec wild-server python -c "from app.utils.runtime_env import runtime_env_path,runtime_env_host_path,runtime_env_is_persistent; path=str(runtime_env_path()); persistent=runtime_env_is_persistent(); print('runtime_config_path='+path); print('runtime_config_host_path='+(runtime_env_host_path() or '(unknown)')); print('runtime_config_persistent='+str(persistent).lower()); assert path=='/app/runtime-config/.env'; assert persistent is True"
+docker exec wild-server python -c "from app.infrastructure.configuration import runtime_env_path,runtime_env_host_path,runtime_env_is_persistent; path=str(runtime_env_path()); persistent=runtime_env_is_persistent(); print('runtime_config_path='+path); print('runtime_config_host_path='+(runtime_env_host_path() or '(unknown)')); print('runtime_config_persistent='+str(persistent).lower()); assert path=='/app/runtime-config/.env'; assert persistent is True"
 REMOTE_SCRIPT
 
             echo "=== 部署后清理旧镜像 ==="

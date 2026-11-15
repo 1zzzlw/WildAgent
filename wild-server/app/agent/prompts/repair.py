@@ -15,7 +15,7 @@ def build_callback_prompt(
         passed_component_ids: 已通过校验的组件 ID（LLM 不得修改）
     """
     import json as _json
-    from app.agent.repair.tools import REPAIR_TOOL_SPECS
+    from app.agent.workflows.repair.tools import REPAIR_TOOL_SPECS
 
     failed_text = ""
     for fc in failed_components:

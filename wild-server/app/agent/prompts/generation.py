@@ -224,7 +224,7 @@ def _is_list_output(component_type: str) -> bool:
     """输出形态来自注册表，不在这里重新列举类型。"""
 
     try:
-        from app.agent.generation.component.registry import COMPONENT_REGISTRY
+        from app.domain.components.registry import COMPONENT_REGISTRY
 
         config = COMPONENT_REGISTRY.get(component_type)
         if config is not None:
@@ -242,7 +242,7 @@ def _host_bound(component_type: str) -> bool:
     """
 
     try:
-        from app.agent.generation.component.registry import COMPONENT_REGISTRY
+        from app.domain.components.registry import COMPONENT_REGISTRY
 
         config = COMPONENT_REGISTRY.get(component_type)
         required = list(config.required_fields) if config is not None else []
@@ -276,7 +276,7 @@ def _task_slice(
 
     import json as _json
 
-    from app.agent.plan.slot_utils import component_slots
+    from app.domain.components.slots import component_slots
 
     slots = component_slots(design_brief, component_type)
     #: 物件场景没有立面槽位，逐件规格由 `object_specs` 承载（见 objects/skeleton.py）。

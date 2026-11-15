@@ -23,7 +23,7 @@ SERVER_ROOT = Path(__file__).resolve().parents[2]
 if str(SERVER_ROOT) not in sys.path:
     sys.path.insert(0, str(SERVER_ROOT))
 
-from app.agent.knowledge.web.staging import STAGING_ROOT  # noqa: E402
+from app.agent.workflows.knowledge.web.staging import STAGING_ROOT
 from config import config  # noqa: E402
 
 KB_ROOT = SERVER_ROOT / "storage" / "knowledge_base"
@@ -65,7 +65,9 @@ def promote(path: Path, *, target_dir: Path, dry_run: bool) -> bool:
 
     # 触发正式 Loader 增量同步（只读 + 增量，不手写 Chroma）。
     try:
-        from app.spec.loader import RAGSpecLoader, collect_markdown_paths, create_embedding_function
+        from app.infrastructure.retrieval.loader import RAGSpecLoader
+        from app.infrastructure.retrieval.loader import collect_markdown_paths
+        from app.infrastructure.retrieval.loader import create_embedding_function
 
         base_paths = [str(KB_ROOT / "BLUEPRINT-SPEC-MINIMAL.md")]
         rag_paths = [str(p) for p in collect_markdown_paths(KB_ROOT, exclude=base_paths)]

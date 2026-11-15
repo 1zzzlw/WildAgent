@@ -26,7 +26,8 @@ if sys.platform == 'win32':
         import locale
         locale.setlocale(locale.LC_ALL, '')
 
-from app.spec.loader import MarkdownChunker, collect_markdown_paths
+from app.infrastructure.retrieval.loader import MarkdownChunker
+from app.infrastructure.retrieval.loader import collect_markdown_paths
 
 
 # ── 控制台输出双写（Tee） ───────────────────────────────────────────

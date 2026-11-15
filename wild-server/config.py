@@ -10,7 +10,7 @@ from typing import Literal
 from pydantic import BaseModel, Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from app.utils.runtime_env import runtime_env_path
+from app.infrastructure.configuration import runtime_env_path
 
 ModelProvider = Literal["auto", "openai", "dashscope", "deepseek", "moonshot", "mimo", "custom"]
 

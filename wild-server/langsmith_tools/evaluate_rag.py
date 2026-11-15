@@ -53,7 +53,7 @@ def main():
         parser.error("--top-k 必须大于 0")
 
     from dotenv import load_dotenv
-    from app.utils.runtime_env import runtime_env_path
+    from app.infrastructure.configuration import runtime_env_path
 
     load_dotenv(runtime_env_path(), override=False)
     if not os.environ.get("LANGSMITH_API_KEY"):

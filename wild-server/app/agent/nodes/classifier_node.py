@@ -5,6 +5,6 @@
 具体用例位于 ``agent.intent.workflow``。
 """
 
-from app.agent.intent.workflow import classifier_node
+from app.agent.workflows.intent.workflow import classifier_node
 
 __all__ = ["classifier_node"]

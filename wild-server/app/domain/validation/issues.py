@@ -1,0 +1,310 @@
+"""把文本校验结果转换成稳定、可序列化的修复问题协议。"""
+
+from __future__ import annotations
+
+import hashlib
+import re
+from copy import deepcopy
+from typing import Iterable
+
+
+_ENTITY_MARKER = re.compile(r"\[(?:component:)?([\w.-]+(?:\s*,\s*[\w.-]+)*)\]")
+_PARENT_WALL_MARKER = re.compile(r"在父墙\s*\[([\w.-]+)\]")
+
+_VALIDATOR_CODES = {
+    "validate_blueprint_structure": "BLUEPRINT_STRUCTURE",
+    "validate_element_required_fields": "REQUIRED_FIELD",
+    "validate_reference_integrity": "REFERENCE_INTEGRITY",
+    "validate_opening_coords": "OPENING_COORDINATES",
+    "validate_opening_fit": "OPENING_FIT",
+    "validate_wall_junctions": "WALL_JUNCTION",
+    "validate_stair_alignment": "STAIR_ALIGNMENT",
+    "validate_roof_coverage": "ROOF_COVERAGE",
+    "validate_stacked_member_containment": "STACKED_MEMBER_CONTAINMENT",
+    "validate_element_dimensions": "ELEMENT_DIMENSIONS",
+    "validate_model_quality": "MODEL_QUALITY",
+    "validate_collision": "COLLISION",
+    "validate_design_brief": "DESIGN_CONSTRAINT",
+}
+
+_ISSUE_CLASSIFICATION = {
+    "validate_blueprint_structure": ("schema_contract", "validator"),
+    "validate_element_required_fields": ("schema_contract", "prompt"),
+    "validate_reference_integrity": ("host_relation", "validator"),
+    "validate_opening_coords": ("coordinate_frame", "deterministic_fix"),
+    "validate_opening_fit": ("host_relation", "deterministic_fix"),
+    "validate_wall_junctions": ("coordinate_frame", "deterministic_fix"),
+    "validate_stair_alignment": ("level_continuity", "deterministic_fix"),
+    "validate_roof_coverage": ("coverage_geometry", "deterministic_fix"),
+    "validate_stacked_member_containment": ("coverage_geometry", "deterministic_fix"),
+    "validate_element_dimensions": ("schema_contract", "deterministic_fix"),
+    "validate_model_quality": ("model_instruction", "prompt"),
+    "validate_collision": ("coverage_geometry", "deterministic_fix"),
+    "validate_design_brief": ("model_instruction", "prompt"),
+    "validate_wild_schema": ("schema_contract", "prompt"),
+    "implementation": ("model_instruction", "prompt"),
+    "design_stair_connection": ("level_continuity", "prompt"),
+    "design_component_geometry": ("model_instruction", "prompt"),
+    "design_construction_conflict": ("host_relation", "design_revision"),
+    "approved_design_mutation": ("model_instruction", "design_revision"),
+    "approved_design_invalid": ("coverage_geometry", "design_revision"),
+}
+
+
+def classify_validation_issue(validator: str) -> tuple[str, str]:
+    """将不断增长的具体错误收敛到有限根因类别和修复层级。"""
+    if validator in _ISSUE_CLASSIFICATION:
+        return _ISSUE_CLASSIFICATION[validator]
+    if validator.startswith("validate_") and validator.endswith("_placement"):
+        return "host_relation", "deterministic_fix"
+    return "schema_contract", "validator"
+
+_TOOL_HINTS = {
+    "validate_element_required_fields": ["patch_entity"],
+    "validate_reference_integrity": ["set_material_reference", "reparent_opening"],
+    "validate_opening_coords": ["move_opening", "reparent_opening"],
+    "validate_opening_fit": ["move_opening", "resize_opening", "reparent_opening"],
+    "validate_wall_junctions": ["patch_entity"],
+    "validate_stair_alignment": ["patch_entity"],
+    "validate_roof_coverage": ["patch_entity"],
+    "validate_stacked_member_containment": ["patch_entity"],
+    "validate_element_dimensions": ["patch_entity"],
+    "validate_collision": ["move_opening", "resize_opening", "patch_entity"],
+    "validate_design_brief": ["add_entity"],
+}
+
+_MISSING_QUOTA = re.compile(r"\b([a-z_]+)\s+数量\s+\d+\s+少于设计下限")
+_MISSING_COMPONENT = re.compile(r"没有\s+([a-z_]+)\s+构件")
+_FACADE_OVERAGE = re.compile(
+    r"墙\s+([\w.-]+)\s+有\s+\d+\s+个门窗，超过立面上限\s+\d+"
+)
+
+
+def _field(result: object, name: str, default=None):
+    if isinstance(result, dict):
+        return result.get(name, default)
+    return getattr(result, name, default)
+
+
+def _entity_index(blueprint: dict) -> dict[str, dict]:
+    geometry = blueprint.get("geometry", {})
+    entities = [
+        *geometry.get("elements", []),
+        *geometry.get("components", []),
+    ]
+    return {
+        entity["id"]: entity
+        for entity in entities
+        if isinstance(entity, dict) and entity.get("id")
+    }
+
+
+def wild_schema_issues(blueprint: dict, schema: dict | None) -> list[dict]:
+    """局部实现和最终候选复用同一 Schema 错误证据，保留 JSON 路径和当前值。"""
+    import jsonschema
+
+    if schema is None:
+        return [{"message": "WILD Schema 不可用", "entity_ids": []}]
+    issues = []
+    for error in jsonschema.Draft202012Validator(schema).iter_errors(blueprint):
+        path = list(error.absolute_path)
+        entity_id = None
+        if len(path) >= 3 and path[0] == "geometry" and path[1] in {"elements", "components"}:
+            entity = blueprint["geometry"][path[1]][path[2]]
+            entity_id = entity.get("id") if isinstance(entity, dict) else None
+        pointer = "/" + "/".join(str(part).replace("~", "~0").replace("/", "~1") for part in path)
+        issues.append({"message": f"{pointer}: {error.message}"[:800], "field_path": pointer,
+                       "entity_id": entity_id, "entity_ids": [entity_id] if entity_id else [],
+                       "expected": {"validator": error.validator, "value": error.validator_value},
+                       "actual": deepcopy(error.instance)})
+    return issues
+
+
+def validation_issues_from_results(
+    results: Iterable[object],
+    blueprint: dict,
+) -> list[dict]:
+    """将最终校验器输出拆为逐行问题，并尽可能绑定到具体实体。"""
+    entities = _entity_index(blueprint)
+    issues: list[dict] = []
+    seen: set[tuple[str, str | None, str]] = set()
+
+    for result in results:
+        if not _field(result, "has_error", False):
+            continue
+        validator = str(_field(result, "name", "unknown")).replace(" [recheck]", "")
+        category, repair_level = classify_validation_issue(validator)
+        structured = _field(result, "issues")
+        if isinstance(structured, list) and structured:
+            for issue in structured:
+                if not isinstance(issue, dict) or issue.get("severity", "error") != "error":
+                    continue
+                issues.append({"code": _VALIDATOR_CODES.get(validator, validator.upper()),
+                               "category": category, "validator": validator, "severity": "error",
+                               "recommended_repair_level": repair_level, **issue})
+            continue
+        output = str(_field(result, "output", "") or "")
+        error_lines = [line.strip() for line in output.splitlines() if "❌" in line]
+        if not error_lines:
+            error_lines = [output.strip() or f"{validator} 校验失败"]
+
+        for line in error_lines:
+            facade_match = (
+                _FACADE_OVERAGE.search(line)
+                if validator == "validate_design_brief"
+                else None
+            )
+            mentioned = list(dict.fromkeys(i.strip() for m in _ENTITY_MARKER.finditer(line)
+                                           for i in m.group(1).split(",") if i.strip() in entities))
+            # 门窗重叠消息中的父墙只是定位上下文；把它当作冲突实体会重做主体及所有依附构件。
+            if "上重叠" in line:
+                parent_wall = _PARENT_WALL_MARKER.search(line)
+                if parent_wall:
+                    mentioned = [i for i in mentioned if i != parent_wall.group(1)]
+            marker_id = facade_match.group(1) if facade_match else (
+                mentioned[0] if mentioned else None
+            )
+            entity_id = marker_id if marker_id in entities else None
+            entity = entities.get(entity_id or "", {})
+            message = line[:800]
+            quota_match = (_MISSING_QUOTA.search(message) or _MISSING_COMPONENT.search(message)) if validator == "validate_design_brief" else None
+            target_type = quota_match.group(1) if quota_match else None
+            related_entity_ids = mentioned[1:]
+            if facade_match and entity_id:
+                related_entity_ids = [
+                    candidate_id
+                    for candidate_id, candidate in entities.items()
+                    if candidate.get("type") in {"door", "window"}
+                    and candidate.get("parentWall") == entity_id
+                ]
+            suggested_tools = (
+                ["remove_entity", "reparent_opening"]
+                if facade_match
+                else list(_TOOL_HINTS.get(validator, ["patch_entity"]))
+            )
+            key = (validator, entity_id, message)
+            if key in seen:
+                continue
+            seen.add(key)
+            issues.append({
+                "code": _VALIDATOR_CODES.get(validator, validator.upper()),
+                "category": category,
+                "validator": validator,
+                "severity": "error",
+                "entity_id": entity_id,
+                "entity_ids": mentioned,
+                "entity_type": entity.get("type") if entity else None,
+                "related_entity_ids": related_entity_ids,
+                "message": message,
+                "repair_mode": "model_tool" if entity_id or target_type else "manual",
+                "recommended_repair_level": repair_level,
+                "suggested_tools": suggested_tools,
+                "repair_target": f"design:{target_type}" if target_type else None,
+                "target_type": target_type,
+            })
+
+    return issues
+
+
+def group_issues_by_entity(issues: Iterable[dict]) -> dict[str, list[dict]]:
+    """按实体 ID 聚合问题；没有实体归属的全局问题不会进入模型局部修复。"""
+    grouped: dict[str, list[dict]] = {}
+    for issue in issues:
+        entity_id = issue.get("entity_id")
+        if entity_id:
+            grouped.setdefault(entity_id, []).append(issue)
+    return grouped
+
+
+def repair_feedback(issues: Iterable[dict], blueprint: dict, *, markers=(), records=None,
+                    design_hash: str = "", source: str = "") -> dict:
+    """将原始校验问题绑定到当前产物、图纸归属和实际参数；未知归属保留为空。"""
+    from app.domain.validation.diagnostics import blueprint_fingerprint
+
+    entities = _entity_index(blueprint)
+    markers = {marker["id"]: marker for marker in markers}
+    records = records or {}
+    owners = {entity_id: marker_id for marker_id, record in records.items()
+              for entity_id in record.get("entity_ids", [])}
+    feedback, targets, marker_ids = [], set(), set()
+    for original in issues:
+        issue = deepcopy(original)
+        ids = set(issue.get("entity_ids") or []) | set(issue.get("related_entity_ids") or [])
+        if issue.get("entity_id"):
+            ids.add(issue["entity_id"])
+        owned = {owners[i] for i in ids if i in owners}
+        if issue.get("marker_id"):
+            owned.add(issue["marker_id"])
+        if not ids:
+            ids.update(i for marker_id in owned for i in records.get(marker_id, {}).get("entity_ids", []))
+        if "expected" not in issue or issue["expected"] is None:
+            issue["expected"] = {i: {key: deepcopy(value) for key, value in markers[i].get("design", {}).items()
+                                    if key in {"size", "placement", "floor_connections", "form", "massing", "volume"}}
+                                 for i in sorted(owned) if i in markers}
+        if ("actual" not in issue or issue["actual"] is None
+                or isinstance(issue["actual"], dict) and set(issue["actual"]) == {"entity_ids"}):
+            issue["actual"] = {"entities": [deepcopy(entities[i]) for i in sorted(ids) if i in entities]}
+        issue["entity_ids"], issue["marker_ids"] = sorted(ids), sorted(owned)
+        issue.setdefault("recommended_repair_level", classify_validation_issue(issue.get("validator", ""))[1])
+        feedback.append(issue)
+        targets.update(ids)
+        marker_ids.update(owned)
+    return {"source": source, "design_hash": design_hash,
+            "blueprint_fingerprint": blueprint_fingerprint(blueprint), "issues": feedback,
+            "entity_ids": sorted(targets), "marker_ids": sorted(marker_ids),
+            "requires_design_revision": any(i["recommended_repair_level"] == "design_revision" for i in feedback)}
+
+
+def repeated_failed_candidate(record: dict, *, context_fingerprint: str | None = None) -> bool:
+    """有两份连续、同依赖的失败证据才允许提前结束，实现舍弃不能自报无进展。"""
+    if record.get("stop_reason") != "repeated_failed_candidate":
+        return False
+    marker_id = record.get("marker_id")
+    failures = [t.get("failed_candidates", {}).get(marker_id) for t in record.get("attempts", [])
+                if t.get("stage") and marker_id in t.get("marker_ids", [])]
+    if len(failures) < 2 or not failures[-1] or failures[-1] != failures[-2]:
+        return False
+    evidence = failures[-1]
+    return (all(isinstance(evidence.get(k), str) and evidence[k] for k in
+                ("candidate_fingerprint", "context_fingerprint", "issues_fingerprint"))
+            and bool(evidence.get("issues"))
+            and (context_fingerprint is None or evidence["context_fingerprint"] == context_fingerprint))
+
+
+def _issue_fingerprint(issue: dict) -> tuple[str, str | None, str]:
+    """单个问题的稳定指纹。
+
+    仅用 ``(code, entity_id)`` 无法区分同一校验器在同一实体上的不同错误：
+    例如同一扇门“超出墙右端”与修复后新出现的“与窗重叠”都落在
+    ``OPENING_FIT`` 上，旧错误换新错误会通过复检。加入消息哈希后，
+    只有错误消息本身减少才算改善。
+    """
+    code = str(issue.get("code", "UNKNOWN"))
+    entity_ids = set(issue.get("entity_ids") or []) | set(issue.get("related_entity_ids") or [])
+    if issue.get("entity_id"):
+        entity_ids.add(issue["entity_id"])
+    entity_id = ",".join(sorted(entity_ids)) or issue.get("marker_id") or issue.get("design_path")
+    message = str(issue.get("message", "") or "")
+    digest = hashlib.sha1(message.encode("utf-8", errors="replace")).hexdigest()[:12]
+    return code, entity_id, digest
+
+
+def issue_fingerprints(issues: Iterable[dict]) -> set[tuple[str, str | None, str]]:
+    """返回适合比较修复前后问题集合的稳定指纹。"""
+    return {_issue_fingerprint(issue) for issue in issues}
+
+
+def compare_issue_sets(before: list[dict], after: list[dict]) -> dict:
+    """只有错误严格减少且未引入新类型/实体组合时才允许提交修复。"""
+    before_fingerprints = issue_fingerprints(before)
+    after_fingerprints = issue_fingerprints(after)
+    introduced = sorted(
+        after_fingerprints - before_fingerprints,
+        key=lambda item: (item[0], item[1] or ""),
+    )
+    return {
+        "accepted": len(after_fingerprints) < len(before_fingerprints) and not introduced,
+        "before_count": len(before_fingerprints),
+        "after_count": len(after_fingerprints),
+        "introduced_issues": introduced,
+    }

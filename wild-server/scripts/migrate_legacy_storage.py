@@ -12,15 +12,21 @@ import tempfile
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import pymysql
-from langgraph.checkpoint.mysql.pymysql import PyMySQLSaver
 from langgraph.checkpoint.sqlite import SqliteSaver
 from sqlalchemy import insert, select
 
-from app.design.contracts import DesignDocument
-from app.infrastructure.database import database
-from app.infrastructure.schema import designs, events, jobs
-from app.repositories.blueprints import blueprint_repository, session_for_filename, validate_filename
-from app.repositories.conversations import conversations, ensure_session, now_ms
+from app.domain.design.contracts import DesignDocument
+from app.infrastructure.persistence.checkpoints import MySQLCheckpointSaver
+from app.infrastructure.persistence.database import database
+from app.infrastructure.persistence.schema import designs
+from app.infrastructure.persistence.schema import events
+from app.infrastructure.persistence.schema import jobs
+from app.infrastructure.persistence.repositories.blueprints import blueprint_repository
+from app.infrastructure.persistence.repositories.blueprints import session_for_filename
+from app.infrastructure.persistence.repositories.blueprints import validate_filename
+from app.infrastructure.persistence.repositories.conversations import conversations
+from app.infrastructure.persistence.repositories.conversations import ensure_session
+from app.infrastructure.persistence.repositories.conversations import now_ms
 from config import config
 
 
@@ -127,7 +133,7 @@ def _copy_runtime(path: Path, apply: bool, counts: dict):
             with pymysql.connect(host=cfg.host, port=cfg.port, user=cfg.username,
                 password=cfg.password.get_secret_value(), database=cfg.database,
                 charset="utf8mb4", autocommit=True) as connection:
-                target = PyMySQLSaver(connection)
+                target = MySQLCheckpointSaver(connection)
                 with SqliteSaver.from_conn_string(str(snapshot)) as old:
                     for entry in old.list(None):
                         if target.get_tuple(entry.config) is not None:

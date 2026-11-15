@@ -13,7 +13,7 @@ REPOSITORY_ROOT = SERVER_ROOT.parent
 DEFAULT_OUTPUT = REPOSITORY_ROOT / "docs" / "9月9日优化" / "design-document.schema.json"
 sys.path.insert(0, str(SERVER_ROOT))
 
-from app.design.contracts import DesignDocument  # noqa: E402
+from app.domain.design.contracts import DesignDocument
 
 
 def schema_text() -> str:

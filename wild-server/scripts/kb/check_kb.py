@@ -15,7 +15,7 @@ WS = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(WS))
 
 import yaml  # noqa: E402
-from app.spec.loader import MarkdownChunker  # noqa: E402
+from app.infrastructure.retrieval.loader import MarkdownChunker
 
 KB = WS / "storage" / "knowledge_base"
 CFG = KB / "config.yaml"

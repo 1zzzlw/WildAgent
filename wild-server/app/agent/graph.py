@@ -15,10 +15,12 @@ from app.agent.nodes.plan_node import plan_node
 from app.agent.nodes.replanner_node import replanner_node
 from app.agent.nodes.skeleton_node import skeleton_generator
 from app.agent.nodes.validate_node import validate_node
-from app.agent.plan.contracts import PlanDocument
-from app.agent.plan.replan import MAX_NO_PROGRESS_ROUNDS
-from app.agent.plan.store import poll_runnable, refresh_statuses
-from app.agent.state import GenerationInput, GenerationState
+from app.domain.planning.contracts import PlanDocument
+from app.agent.workflows.planning.replan import MAX_NO_PROGRESS_ROUNDS
+from app.domain.planning.store import poll_runnable
+from app.domain.planning.store import refresh_statuses
+from app.agent.state import GenerationInput
+from app.agent.state import GenerationState
 
 def plan_recursion_limit(plan_item_count: int, max_retries: int = 3) -> int:
     """按任务/标记数估算图步骤：最多五次 execute/replanner 和对应装配检查。"""
