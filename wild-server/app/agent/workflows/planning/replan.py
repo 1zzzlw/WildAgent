@@ -343,7 +343,11 @@ def apply_decision(
     }
 
     if decision.action == "add_items":
-        fresh = [item for item in (_validate_new_item(raw, plan) for raw in decision.items) if item]
+        fresh = []
+        for raw in decision.items:
+            new_item = _validate_new_item(raw, plan)
+            if new_item:
+                fresh.append(new_item)
         if not fresh:
             outcome["rejected"] = "没有任何合法的可追加条目（op/kind 不在闭集或能力清单内）"
             return plan, outcome

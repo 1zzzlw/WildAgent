@@ -43,12 +43,12 @@ def state_updates_from_candidate(
                 new_items.append(item)
         if skeleton_changed:
             skeleton_geometry[bucket] = new_items
-    existing_skeleton_ids = {
-        item.get("id")
-        for bucket in ("elements", "components")
-        for item in skeleton_geometry.get(bucket, [])
-        if isinstance(item, dict) and item.get("id")
-    }
+    existing_skeleton_ids = set()
+    for geometry_bucket in ("elements", "components"):
+        for current_item in skeleton_geometry.get(geometry_bucket, []):
+            if not (isinstance(current_item, dict) and current_item.get("id")):
+                continue
+            existing_skeleton_ids.add(current_item.get("id"))
     candidate_element_ids = {
         item.get("id")
         for item in geometry.get("elements", [])

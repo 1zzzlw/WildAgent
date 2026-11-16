@@ -175,7 +175,12 @@ def _resolve_generate(
     fragments = (state.get("component_fragments") or {}).get(item.kind)
     produced = _produced_count(fragments)
     # 普通任务也只按本次产物 ID 记账；全场景数量留作观察值。
-    fragment_items = fragments if isinstance(fragments, list) else [fragments] if isinstance(fragments, dict) else []
+    if isinstance(fragments, list):
+        fragment_items = fragments
+    elif isinstance(fragments, dict):
+        fragment_items = [fragments]
+    else:
+        fragment_items = []
     owned_ids = set(item.run.artifacts) or {e.get("id") for e in fragment_items if isinstance(e, dict) and e.get("id")}
     landed = sum(e.get("id") in owned_ids and e.get("type") == item.kind for e in [*elements, *components])
     matched, slots = _slot_match(item.kind, state.get("design_brief"), components)

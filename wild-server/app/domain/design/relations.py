@@ -7,8 +7,13 @@ NATIVE_SIZE_FIELDS = {("balcony", "height"): "slabThickness", ("canopy", "height
 
 def entity_index(blueprint: dict) -> dict:
     geometry = blueprint.get("geometry") or {}
-    return {e["id"]: e for bucket in ("elements", "components")
-            for e in geometry.get(bucket, []) if isinstance(e, dict) and e.get("id")}
+    result = {}
+    for bucket in ("elements", "components"):
+        for entity in geometry.get(bucket, []):
+            if not (isinstance(entity, dict) and entity.get("id")):
+                continue
+            result[entity["id"]] = entity
+    return result
 
 
 def furniture_target(marker, entity):
@@ -243,7 +248,12 @@ def coalesce_body_walls(blueprint, row, markers, *, diagram_hosts=None):
             or any(not isinstance(geometry.get(k, []), list) for k in ("elements", "components"))):
         return row, []
     existing = list(entity_index(blueprint).values())
-    incoming = [e for k in ("elements", "components") for e in geometry.get(k, []) if isinstance(e, dict)]
+    incoming = []
+    for key in ("elements", "components"):
+        for current_entity in geometry.get(key, []):
+            if not isinstance(current_entity, dict):
+                continue
+            incoming.append(current_entity)
     changes = []
     interior = {h["id"]: h for h in diagram_hosts or []
                 if str(h.get("design_path", "")).startswith("/decisions/floor_layouts/")}
@@ -266,7 +276,12 @@ def coalesce_body_walls(blueprint, row, markers, *, diagram_hosts=None):
     def strings(value):
         if isinstance(value, str):
             return {value}
-        values = value.values() if isinstance(value, dict) else value if isinstance(value, (list, tuple)) else []
+        if isinstance(value, dict):
+            values = value.values()
+        elif isinstance(value, (list, tuple)):
+            values = value
+        else:
+            values = []
         return set().union(*(strings(v) for v in values))
 
     markers = deepcopy(list(markers))
@@ -295,7 +310,12 @@ def coalesce_body_walls(blueprint, row, markers, *, diagram_hosts=None):
                 or not _is_positive_number(entity.get("thickness"))
                 or ("height" in entity and not _is_positive_number(entity["height"]))):
             return None
-        axis = 0 if abs(a[2]-b[2]) < 1e-9 else 2 if abs(a[0]-b[0]) < 1e-9 else None
+        if abs(a[2] - b[2]) < 1e-09:
+            axis = 0
+        elif abs(a[0] - b[0]) < 1e-09:
+            axis = 2
+        else:
+            axis = None
         low, high = _wall_vertical_range(entity)
         if axis is None or abs(a[axis]-b[axis]) < 1e-9 or high-low < 1e-9:
             return None
@@ -390,8 +410,15 @@ def coalesce_body_walls(blueprint, row, markers, *, diagram_hosts=None):
                         "retained_entity_id": owners[0], "retained_entity_ids": owners,
                         "before": entity, "after": pieces[0] if len(pieces) == 1 else pieces or None,
                         "semantic_change": False})
-    geometry["elements"] = [part for e in geometry.get("elements", [])
-                            for part in (replacements.get(e.get("id"), [e]) if isinstance(e, dict) else [e])]
+    updated_items = []
+    for current_entity in geometry.get("elements", []):
+        for part in (
+            replacements.get(current_entity.get("id"), [current_entity])
+            if isinstance(current_entity, dict)
+            else [current_entity]
+        ):
+            updated_items.append(part)
+    geometry["elements"] = updated_items
     return row, changes
 
 
@@ -422,7 +449,10 @@ def place_roof_surface(row, marker):
     if (not isinstance(volume, dict) or design.get("roof_type", design.get("type")) != "shed"
             or design.get("size") or (design.get("placement") or {}).get("position")):
         return []
-    entities = [e for bucket in ("elements", "components") for e in row.get("geometry", {}).get(bucket, [])]
+    entities = []
+    for bucket in ("elements", "components"):
+        for current_entity in row.get("geometry", {}).get(bucket, []):
+            entities.append(current_entity)
     if len(entities) != 1 or not (surface := roof_box_surface(entities[0])):
         return []
     a, b, c, d = surface["bounds"]
@@ -590,8 +620,14 @@ def balcony_geometry(blueprint):
     from app.domain.compilation.assembly.merge import balcony_footprint
     from app.domain.validation.spatial import _is_finite_vector3
     index = entity_index(blueprint)
-    points = [p for w in index.values() if w.get("type") == "wall"
-              for p in (w.get("from"), w.get("to")) if _is_finite_vector3(p)]
+    points = []
+    for current_wall in index.values():
+        if not current_wall.get("type") == "wall":
+            continue
+        for point in (current_wall.get("from"), current_wall.get("to")):
+            if not _is_finite_vector3(point):
+                continue
+            points.append(point)
     if not points:
         return {}
     center = ((min(p[0] for p in points)+max(p[0] for p in points))/2,
@@ -931,7 +967,12 @@ def wall_attached_point(blueprint: dict, component: dict, along: float, y: float
         raise ValueError("宿主墙长度无效")
     ux, uz = (b[0]-a[0])/length, (b[2]-a[2])/length
     nx, nz = -uz, ux
-    points = [p for e in entities.values() if e.get("type") == "wall" for p in (e["from"], e["to"])]
+    points = []
+    for entity in entities.values():
+        if not entity.get("type") == "wall":
+            continue
+        for current_point in (entity["from"], entity["to"]):
+            points.append(current_point)
     cx = (min(p[0] for p in points)+max(p[0] for p in points))/2
     cz = (min(p[2] for p in points)+max(p[2] for p in points))/2
     offset = component["from"][2]

@@ -35,7 +35,10 @@ TOOL_LOOP_RECURSION_LIMIT = MAX_TOOL_CALLS * 2 + 4
 
 def _available_tools(tools: list[Any], limits: dict[str, int], messages: list[Any]) -> list[Any]:
     """按模型实际请求的次数撤下工具，错误和被拒绝的调用也消耗轮次。"""
-    calls = [call for message in messages for call in getattr(message, "tool_calls", None) or []]
+    calls = []
+    for message in messages:
+        for current_call in getattr(message, "tool_calls", None) or []:
+            calls.append(current_call)
     if len(calls) >= MAX_TOOL_CALLS:
         return []
     return [tool for tool in tools if sum(call.get("name") == tool.name for call in calls) < limits[tool.name]]

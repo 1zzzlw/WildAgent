@@ -102,13 +102,22 @@ def design_geometry_context(design):
         }
         for v in design.get("volumes") or []
     }
-    levels = [
-        {"index": index, "base_y": elevations[index], "top_y": elevations[index + 1],
-         "height": elevations[index + 1] - elevations[index],
-         "volume_ids": [v["id"] for v in design.get("volumes") or []
-                        if v["start_floor"] <= slot <= v["end_floor"]], "voids": []}
-        for slot, index in enumerate(indices, 1)
-    ]
+    levels = []
+    for slot, index in enumerate(indices, 1):
+        volume_ids = []
+        for volume in design.get("volumes") or []:
+            if volume["start_floor"] <= slot <= volume["end_floor"]:
+                volume_ids.append(volume["id"])
+        levels.append(
+            {
+                "index": index,
+                "base_y": elevations[index],
+                "top_y": elevations[index + 1],
+                "height": elevations[index + 1] - elevations[index],
+                "volume_ids": volume_ids,
+                "voids": [],
+            }
+        )
     by_floor = {level["index"]: level for level in levels}
     for layout_index, layout in enumerate(design.get("floor_layouts") or []):
         for room_index, room in enumerate(layout.get("rooms") or []):
@@ -234,7 +243,11 @@ def design_relation_checks(design, markers, frames):
     if stairs and all(targets for _, targets in stairs) and design["massing"].get("representation_mode", "full") == "full":
         reached = {1}
         while True:
-            expanded = reached | {t["to_floor"] for _, targets in stairs for t in targets if t["from_floor"] in reached}
+            expanded = set(reached)
+            for _, targets in stairs:
+                for target in targets:
+                    if target["from_floor"] in reached:
+                        expanded.add(target["to_floor"])
             if expanded == reached:
                 break
             reached = expanded
@@ -306,7 +319,11 @@ def floor_layout_conflicts(design):
 def rectangle_uncovered_area(bounds, regions):
     """矩形减去矩形并集的面积；重复、重叠覆盖不能抵消其他位置的空缺。"""
     x0, z0, x1, z1 = bounds
-    xs = sorted({x0, x1, *(max(x0, min(x1, x)) for r in regions for x in (r[0], r[2]))})
+    x_coordinates = {x0, x1}
+    for region in regions:
+        for x in (region[0], region[2]):
+            x_coordinates.add(max(x0, min(x1, x)))
+    xs = sorted(x_coordinates)
     covered = 0
     for left, right in zip(xs, xs[1:]):
         intervals = sorted((max(z0, r[1]), min(z1, r[3])) for r in regions
@@ -424,8 +441,15 @@ def exterior_facade_intervals(volume, face, floor, volumes):
             start, end = length-end, length-start
         if end <= start:
             continue
-        segments = [(a, b) for left, right in segments for a, b in
-                    ((left, min(right, start)), (max(left, end), right)) if b-a > 0.001]
+        updated_segments = []
+        for left, right in segments:
+            for segment_start, segment_end in (
+                (left, min(right, start)),
+                (max(left, end), right),
+            ):
+                if segment_end - segment_start > 0.001:
+                    updated_segments.append((segment_start, segment_end))
+        segments = updated_segments
     return segments
 
 

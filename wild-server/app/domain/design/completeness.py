@@ -212,11 +212,24 @@ def evaluate_design(document: DesignDocument, design_hash: str) -> list[DesignGa
             still_degraded = exists == change.get("after_exists", True) and value_matches(actual, change.get("after"))
             target_schema = path_schema(document, target)
             supported = target_schema is not None and schema_value_supported(target_schema, change.get("before"))
-            gaps.append(DesignGap(
-                id=f"gap.normalization.{trace.rule_id}.{trace.design_revision}.{index}",
-                constraint_id=next(iter(change.get("constraint_ids") or []), "request.source"),
-                status=("open" if supported and change.get("category") != "derived" else "needs_review") if still_degraded else "satisfied",
-                design_hash=design_hash, target=target, expected=change.get("before"), actual=actual,
-                evidence=f"{target}：{change['reason']}；原值 {change.get('before')!r}，降级值 {change.get('after')!r}。修订须遵守当前契约，不能恢复非法值。",
-            ))
+            if not still_degraded:
+                status = "satisfied"
+            elif supported and change.get("category") != "derived":
+                status = "open"
+            else:
+                status = "needs_review"
+            gaps.append(
+                DesignGap(
+                    id=f"gap.normalization.{trace.rule_id}.{trace.design_revision}.{index}",
+                    constraint_id=next(
+                        iter(change.get("constraint_ids") or []), "request.source"
+                    ),
+                    status=status,
+                    design_hash=design_hash,
+                    target=target,
+                    expected=change.get("before"),
+                    actual=actual,
+                    evidence=f"{target}：{change['reason']}；原值 {change.get('before')!r}，降级值 {change.get('after')!r}。修订须遵守当前契约，不能恢复非法值。",
+                )
+            )
     return gaps

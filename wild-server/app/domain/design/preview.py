@@ -71,7 +71,11 @@ def render_drawing_svg(document, resolved, floor=None):
         else:
             pending.append(marker)
     bounds = [(v.x, v.z, v.width, v.depth) for v in d.volumes]
-    bounds.extend(b for layout in layouts for room in layout.get("rooms") or [] if (b := _room_bounds(room)))
+    for layout in layouts:
+        for room in layout.get("rooms") or []:
+            room_bounds = _room_bounds(room)
+            if room_bounds:
+                bounds.append(room_bounds)
     for marker, family, _, p in located.values():
         size = marker["design"].get("size") or {}
         w, depth = size.get("width", 0), size.get("depth", 0)
@@ -79,7 +83,9 @@ def render_drawing_svg(document, resolved, floor=None):
     xmin, zmin = min(b[0] for b in bounds), min(b[1] for b in bounds)
     xmax, zmax = max(b[0]+b[2] for b in bounds), max(b[1]+b[3] for b in bounds)
     scale = min(660/max(xmax-xmin, 1), 570/max(zmax-zmin, 1))
-    warning_lines = [s for w in resolved.warnings for s in textwrap.wrap(w, 27)]
+    warning_lines = []
+    for warning in resolved.warnings:
+        warning_lines.extend(textwrap.wrap(warning, 27))
     sheet_height = max(880, 790+len(warning_lines)*21, 860+len(pending)*20)
     height = sheet_height*len(selected)
     parts = [f'<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="{height}" viewBox="0 0 1200 {height}" font-family="Microsoft YaHei, Noto Sans SC, sans-serif">',
@@ -104,8 +110,12 @@ def render_drawing_svg(document, resolved, floor=None):
             return (ox+p[0]*scale, oz+p[-1]*scale)
 
         layer = [w for w in walls if abs(w["from"][1]-level.base_y) < 0.001]
-        rooms = [(room, _room_bounds(room)) for layout in layouts if layout.get("floor") == level.index
-                 for room in layout.get("rooms") or []]
+        rooms = []
+        for current_layout in layouts:
+            if current_layout.get("floor") != level.index:
+                continue
+            for current_room in current_layout.get("rooms") or []:
+                rooms.append((current_room, _room_bounds(current_room)))
         semantic = representative_floor_indices(d.massing)
         for i, v in enumerate(d.volumes):
             if not v.start_floor <= semantic.index(level.index)+1 <= v.end_floor:
@@ -229,8 +239,13 @@ def render_drawing_svg(document, resolved, floor=None):
         elif any(not b for _, b in rooms):
             notices.append("部分房间缺少可绘制的 bounds，位置待设计。")
         notices += warning_lines
-        for i, s in enumerate(s for n in notices for s in textwrap.wrap(n, 27)):
-            text(820, top+705+i*21, s, "#d6ad72", 13)
+        notice_line_index = 0
+        for notice in notices:
+            for notice_line in textwrap.wrap(notice, 27):
+                text(
+                    820, top + 705 + notice_line_index * 21, notice_line, "#d6ad72", 13
+                )
+                notice_line_index += 1
         for i, marker in enumerate(pending):
             text(40, top+839+i*20, f"未定位：{marker['type']} · {marker['id']}", "#d6ad72", 12,
                  f'data-marker-id="{escape(marker["id"], quote=True)}"')

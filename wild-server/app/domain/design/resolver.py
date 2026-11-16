@@ -65,15 +65,12 @@ def build_design_document(
 ) -> DesignDocument:
     """把完整方案保存为版本化设计文档；按目标类型分派建筑或物件。"""
 
-    old = (
-        previous
-        if isinstance(previous, DesignDocument)
-        else (
-            DesignDocument.model_validate(previous)
-            if isinstance(previous, dict)
-            else None
-        )
-    )
+    if isinstance(previous, DesignDocument):
+        old = previous
+    elif isinstance(previous, dict):
+        old = DesignDocument.model_validate(previous)
+    else:
+        old = None
     plan = deepcopy(architecture_plan)
     now = utc_now_iso()
 
@@ -88,6 +85,54 @@ def build_design_document(
             now=now,
         )
 
+    empty_pattern_changes = _normalize_empty_facade_patterns(plan)
+
+    # 保留部分 complexity 字段用于后续验证，但不包含已废弃的 level 字段
+    complexity = dict(plan.get("complexity") or {})
+    complexity.setdefault("min_volumes", 1)
+    complexity.setdefault("min_detail_packages", 0)
+    complexity.setdefault("target_structural_elements", 10)
+    complexity.setdefault("grid_bays", [2, 2])
+    complexity.setdefault("reason", "")
+    curtain_wall = bool(plan.get("curtain_wall"))
+    profile = str(plan.get("profile") or building_type or "building")
+    now = utc_now_iso()
+    constraints = _design_constraints(plan, old, source_request, revision_feedback)
+
+    materials = _merge_material_intent(plan, old)
+
+    document = DesignDocument(
+        design_id=(old.design_id if old else f"design_{session_id}"),
+        session_id=session_id,
+        revision=(old.revision + 1 if old else 1),
+        status="draft",
+        created_at=(old.created_at if old else now),
+        updated_at=now,
+        requirements=DesignRequirements(
+            source_request=source_request,
+            building_type=building_type or profile,
+            profile=profile,
+            style_intent=list(style_intent or []),
+        ),
+        decisions=_architecture_decisions(
+            plan, complexity, profile, curtain_wall, materials
+        ),
+        constraints=constraints,
+        locks=list(old.locks if old else []),
+        rule_trace=[],
+    )
+
+    changes = _record_normalization(
+        document, plan, empty_pattern_changes, old, constraints
+    )
+
+    if changes:
+        _update_normalized_rationale(document)
+    return document
+
+
+def _normalize_empty_facade_patterns(plan: dict[str, Any]) -> list[dict[str, Any]]:
+    """将显式空立面展开为空开间，并记录等价的协议规范化。"""
     from app.domain.design.normalization import field_changes
 
     empty_pattern_changes = []
@@ -100,7 +145,7 @@ def build_design_document(
         if isinstance(volume, dict)
     )
     for path, facades in layouts:
-        for face, facade in (facades.items() if isinstance(facades, dict) else []):
+        for face, facade in facades.items() if isinstance(facades, dict) else []:
             if (
                 not isinstance(facade, dict)
                 or type(facade.get("bays")) is not int
@@ -123,17 +168,13 @@ def build_design_document(
                         reason="显式空数组表示没有开口，与逐开间 empty 等价；不改变围护或构件设计",
                     )
                     empty_pattern_changes.append(change)
+    return empty_pattern_changes
 
-    # 保留部分 complexity 字段用于后续验证，但不包含已废弃的 level 字段
-    complexity = dict(plan.get("complexity") or {})
-    complexity.setdefault("min_volumes", 1)
-    complexity.setdefault("min_detail_packages", 0)
-    complexity.setdefault("target_structural_elements", 10)
-    complexity.setdefault("grid_bays", [2, 2])
-    complexity.setdefault("reason", "")
-    curtain_wall = bool(plan.get("curtain_wall"))
-    profile = str(plan.get("profile") or building_type or "building")
-    now = utc_now_iso()
+
+def _design_constraints(
+    plan, old, source_request, revision_feedback
+) -> list[DesignConstraint]:
+    """继承旧约束，再合并当前需求中可追溯的设计约束。"""
     constraints = [
         DesignConstraint(
             id="request.source",
@@ -154,98 +195,100 @@ def build_design_document(
     constraints = merge_design_constraints(
         constraints, plan.get("design_constraints"), source_request, revision_feedback
     )
+    return constraints
 
-    document = DesignDocument(
-        design_id=(old.design_id if old else f"design_{session_id}"),
-        session_id=session_id,
-        revision=(old.revision + 1 if old else 1),
-        status="draft",
-        created_at=(old.created_at if old else now),
-        updated_at=now,
-        requirements=DesignRequirements(
-            source_request=source_request,
-            building_type=building_type or profile,
-            profile=profile,
-            style_intent=list(style_intent or []),
+
+def _merge_material_intent(plan, old) -> dict[str, Any]:
+    """继承材质意图；新方案不直接覆盖已经解析的材质实现。"""
+    materials = old.decisions.materials.model_dump(mode="json") if old else {}
+    if isinstance(plan.get("materials"), dict):
+        for key, value in plan["materials"].items():
+            if key != "resolved_plan":
+                materials[key] = value
+    if isinstance(plan.get("materials"), dict) and "regions" in plan["materials"]:
+        materials["regions"] = (plan.get("materials") or {}).get("regions", [])
+    elif "material_regions" in plan:
+        materials["regions"] = plan["material_regions"]
+    return materials
+
+
+def _architecture_decisions(
+    plan, complexity, profile, curtain_wall, materials
+) -> ArchitectureDecisions:
+    """将图纸字段映射到建筑决策契约。"""
+    return ArchitectureDecisions(
+        **{
+            k: v
+            for k, v in plan.items()
+            if k not in ArchitectureDecisions.model_fields
+            and k
+            not in {
+                "schema_version",
+                "profile",
+                "design_constraints",
+                "normalization_changes",
+                "curtain_wall",
+                "material_regions",
+            }
+        },
+        concept=str(plan.get("concept") or ""),
+        massing=plan["massing"],
+        complexity=ComplexityDecision.model_validate(complexity),
+        volumes=plan["volumes"],
+        structural_grid=plan["structural_grid"],
+        envelope=plan.get("envelope")
+        or EnvelopeDecision(
+            system="curtain_wall" if curtain_wall else "unspecified",
+            curtain_wall={} if curtain_wall else None,
         ),
-        decisions=ArchitectureDecisions(
-            **{
-                k: v
-                for k, v in plan.items()
-                if k not in ArchitectureDecisions.model_fields
-                and k
-                not in {
-                    "schema_version",
-                    "profile",
-                    "design_constraints",
-                    "normalization_changes",
-                    "curtain_wall",
-                    "material_regions",
-                }
-            },
-            concept=str(plan.get("concept") or ""),
-            massing=plan["massing"],
-            complexity=ComplexityDecision.model_validate(complexity),
-            volumes=plan["volumes"],
-            structural_grid=plan["structural_grid"],
-            envelope=plan.get("envelope")
-            or EnvelopeDecision(
-                system="curtain_wall" if curtain_wall else "unspecified",
-                curtain_wall={} if curtain_wall else None,
+        facades=plan["facades"],
+        roof=plan["roof"],
+        circulation={
+            **(plan.get("circulation") or {}),
+            "vertical_strategy": str(
+                (plan.get("circulation") or {}).get("vertical_strategy")
+                or ("core_and_stair" if profile == "high_rise" else "stair")
             ),
-            facades=plan["facades"],
-            roof=plan["roof"],
-            circulation={
-                **(plan.get("circulation") or {}),
-                "vertical_strategy": str(
-                    (plan.get("circulation") or {}).get("vertical_strategy")
-                    or ("core_and_stair" if profile == "high_rise" else "stair")
-                ),
-            },
-            materials={
-                **(old.decisions.materials.model_dump(mode="json") if old else {}),
-                **(
-                    {k: v for k, v in plan["materials"].items() if k != "resolved_plan"}
-                    if isinstance(plan.get("materials"), dict)
-                    else {}
-                ),
-                **(
-                    {"regions": (plan.get("materials") or {}).get("regions", [])}
-                    if isinstance(plan.get("materials"), dict)
-                    and "regions" in plan["materials"]
-                    else (
-                        {"regions": plan["material_regions"]}
-                        if "material_regions" in plan
-                        else {}
-                    )
-                ),
-            },
-            detail_packages=list(plan.get("detail_packages") or []),
-            component_quota=plan.get("component_quota") or {},
-            components=plan.get("components") or [],
-            balcony_access_count=int(plan.get("balcony_access_count") or 0),
-            balcony_width=plan.get("balcony_width"),
-            required_components=list(plan.get("required_components") or []),
-            unsupported_component_types=list(
-                plan.get("unsupported_component_types") or []
-            ),
-            design_rationale=list(plan.get("design_rationale") or []),
-            design_intent=plan.get("design_intent"),
-        ),
-        constraints=constraints,
-        locks=list(old.locks if old else []),
-        rule_trace=[],
+        },
+        materials=materials,
+        detail_packages=list(plan.get("detail_packages") or []),
+        component_quota=plan.get("component_quota") or {},
+        components=plan.get("components") or [],
+        balcony_access_count=int(plan.get("balcony_access_count") or 0),
+        balcony_width=plan.get("balcony_width"),
+        required_components=list(plan.get("required_components") or []),
+        unsupported_component_types=list(plan.get("unsupported_component_types") or []),
+        design_rationale=list(plan.get("design_rationale") or []),
+        design_intent=plan.get("design_intent"),
     )
+
+
+def _record_normalization(
+    document, plan, empty_pattern_changes, old, constraints
+) -> list[dict[str, Any]]:
+    """为规范化结果绑定约束和来源，并继承历史变更证据。"""
+    from app.domain.design.normalization import field_changes
 
     changes = empty_pattern_changes + (plan.get("normalization_changes") or [])
     raw_roof = plan.get("roof")
-    if (isinstance(raw_roof, dict) and "ridge_axis" in raw_roof
-            and raw_roof["ridge_axis"] != document.decisions.roof.ridge_axis):
-        axis_changes = field_changes(raw_roof["ridge_axis"], document.decisions.roof.ridge_axis,
-            path="/decisions/roof/ridge_axis", rule="roof.axis_applicability", source="model")
+    if (
+        isinstance(raw_roof, dict)
+        and "ridge_axis" in raw_roof
+        and raw_roof["ridge_axis"] != document.decisions.roof.ridge_axis
+    ):
+        axis_changes = field_changes(
+            raw_roof["ridge_axis"],
+            document.decisions.roof.ridge_axis,
+            path="/decisions/roof/ridge_axis",
+            rule="roof.axis_applicability",
+            source="model",
+        )
         for change in axis_changes:
-            change.update(category="protocol", semantic_change=False,
-                          reason="当前已知屋型没有可选屋脊方向；使用兼容默认值，不改变屋面形态")
+            change.update(
+                category="protocol",
+                semantic_change=False,
+                reason="当前已知屋型没有可选屋脊方向；使用兼容默认值，不改变屋面形态",
+            )
         changes.extend(axis_changes)
     if old:
         document.rule_trace.extend(t for t in old.rule_trace if t.changes)
@@ -281,42 +324,47 @@ def build_design_document(
                 changes=changes,
             )
         )
+    return changes
 
-    if changes:
-        from app.domain.design.normalization import decision_summary
 
+def _update_normalized_rationale(document: DesignDocument) -> None:
+    """同步规范化后的决策说明，保留尚需核对的设计状态。"""
+    from app.domain.design.normalization import decision_summary
+
+    document.decisions.design_rationale = [
+        decision_summary(architecture_plan_from_document(document)),
+        *[
+            text
+            for text in document.decisions.design_rationale
+            if not text.removeprefix("[待核对] ").startswith("[决策事实]")
+        ][:11],
+    ]
+
+    # Keep prose explicitly unverified when it no longer has reliable decision evidence.
+    from app.domain.design.completeness import evaluate_design
+
+    gaps = evaluate_design(document, _stable_hash(document))
+    if any(g.status != "satisfied" for g in gaps):
         document.decisions.design_rationale = [
-            decision_summary(architecture_plan_from_document(document)),
-            *[
+            (
                 text
-                for text in document.decisions.design_rationale
-                if not text.removeprefix("[待核对] ").startswith("[决策事实]")
-            ][:11],
+                if text.startswith(("[待核对]", "[决策事实]"))
+                else "[待核对] " + text
+            )
+            for text in document.decisions.design_rationale
         ]
-
-        # Keep prose explicitly unverified when it no longer has reliable decision evidence.
-        from app.domain.design.completeness import evaluate_design
-
-        gaps = evaluate_design(document, _stable_hash(document))
-        if any(g.status != "satisfied" for g in gaps):
-            document.decisions.design_rationale = [
-                (
-                    text
-                    if text.startswith(("[待核对]", "[决策事实]"))
-                    else "[待核对] " + text
-                )
-                for text in document.decisions.design_rationale
-            ]
-            if any(
-                c.get("semantic_change") for t in document.rule_trace for c in t.changes
-            ):
-                concept = document.decisions.concept
-                document.decisions.concept = (
-                    concept
-                    if concept.startswith("[待核对]")
-                    else ("[待核对] " + concept)[:240]
-                )
-    return document
+        has_semantic_change = False
+        for trace in document.rule_trace:
+            if any(change.get("semantic_change") for change in trace.changes):
+                has_semantic_change = True
+                break
+        if has_semantic_change:
+            concept = document.decisions.concept
+            document.decisions.concept = (
+                concept
+                if concept.startswith("[待核对]")
+                else ("[待核对] " + concept)[:240]
+            )
 
 
 def _build_object_document(

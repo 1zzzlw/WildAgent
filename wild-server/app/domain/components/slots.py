@@ -58,10 +58,11 @@ def slot_batch_summary(design_brief: Any) -> dict[str, Any]:
         )
         variants = grouped.setdefault(kind, {})
         variants[signature] = variants.get(signature, 0) + 1
-    return {
-        kind: {
-            "total": sum(variants.values()),
-            "variants": [
+    summary = {}
+    for kind, variants in sorted(grouped.items()):
+        variant_rows = []
+        for signature, count in sorted(variants.items()):
+            variant_rows.append(
                 {
                     "width": signature[0],
                     "height": signature[1],
@@ -69,11 +70,9 @@ def slot_batch_summary(design_brief: Any) -> dict[str, Any]:
                     "span": signature[3],
                     "count": count,
                 }
-                for signature, count in sorted(variants.items())
-            ],
-        }
-        for kind, variants in sorted(grouped.items())
-    }
+            )
+        summary[kind] = {"total": sum(variants.values()), "variants": variant_rows}
+    return summary
 
 
 __all__ = ["component_slots", "slot_batch_summary", "slot_counts", "slot_ids_for"]

@@ -543,10 +543,11 @@ def _normalize_generic_item(raw: dict[str, Any], user_message: str) -> dict[str,
     else:
         return None
 
-    normalized = [
-        part for part in (normalize_primitive_part(item) for item in candidates[:_MAX_PARTS])
-        if part is not None
-    ]
+    normalized = []
+    for candidate in candidates[:_MAX_PARTS]:
+        part = normalize_primitive_part(candidate)
+        if part is not None:
+            normalized.append(part)
     if not normalized:
         return None
 

@@ -59,8 +59,12 @@ def runtime_fingerprint() -> dict[str, Any]:
     """源码是进程首轮文件快照；可热更新知识按本次执行重新取摘要。"""
     server = SERVER_ROOT
     root = server / "storage/knowledge_base"
-    knowledge = [path for directory in ("knowledge", "rules") for path in (root / directory).rglob("*")
-                 if path.is_file() and path.suffix in {".md", ".json"}]
+    knowledge = []
+    for directory in ("knowledge", "rules"):
+        for current_path in (root / directory).rglob("*"):
+            if not (current_path.is_file() and current_path.suffix in {".md", ".json"}):
+                continue
+            knowledge.append(current_path)
     knowledge.extend(path for path in (root / "config.yaml", root / "schema.json") if path.is_file())
     return {**_process_fingerprint(), "knowledge_sha256": _content_fingerprint(knowledge, server.parent),
             "knowledge_file_count": len(knowledge), "knowledge_snapshot_kind": "execution_source_files"}

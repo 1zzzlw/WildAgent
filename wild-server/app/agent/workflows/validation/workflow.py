@@ -113,11 +113,9 @@ async def validate_node(state: GenerationState) -> dict:
         # 计算通过的组件 ID
         all_component_ids = get_all_entity_ids(merged_blueprint)
         failed_component_ids = {fc["component_id"] for fc in failed_components}
-        failed_component_ids.update(
-            related_id
-            for failed in failed_components
-            for related_id in failed.get("related_entity_ids", [])
-        )
+        for failed in failed_components:
+            for related_id in failed.get("related_entity_ids", []):
+                failed_component_ids.add(related_id)
         passed_component_ids = [cid for cid in all_component_ids if cid not in failed_component_ids]
         
         architectural = (state.get("design_document") or {}).get("decisions", {}).get("kind") == "architecture"

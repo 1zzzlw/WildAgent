@@ -27,7 +27,10 @@ def _catalog_for_files(signature):
         names[kind] = {"kind": kind, "label": label, "entity_type": kind if kind in {"wall", "floor", "beam"} else "",
                        "aliases": {kind, label}, "references": []}
     names["wall"]["aliases"].add("solid")
-    native_keys = {_name_key(alias): kind for kind, row in names.items() for alias in row["aliases"]}
+    native_keys = {}
+    for component_kind, definition in names.items():
+        for alias in definition["aliases"]:
+            native_keys[_name_key(alias)] = component_kind
     chunker = MarkdownChunker(metadata_config_path=signature[0][0])
     for path, _mtime, _size in signature[1:]:
         for chunk in chunker.split_file(Path(path), namespace="component_names"):
@@ -88,7 +91,12 @@ def component_reference_prompt(kinds=None):
         if kind not in selected:
             continue
         sources = sorted({f"{r['file']} ({r['status']})" for r in row["references"]})
-        availability = "、".join(sources) if sources else ("原生协议；无专用形态示例" if row["entity_type"] else "流程条目")
+        if sources:
+            availability = "、".join(sources)
+        elif row["entity_type"]:
+            availability = "原生协议；无专用形态示例"
+        else:
+            availability = "流程条目"
         conditions = sorted({r.get("applies_to", "") for r in row["references"] if r.get("applies_to")})
         if conditions:
             availability += "；适用：" + "、".join(conditions)

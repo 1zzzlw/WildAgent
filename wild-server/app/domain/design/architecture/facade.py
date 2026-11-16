@@ -561,14 +561,18 @@ def _retry_slot_position(
     return None
 
 
-def resolve_facade_layout(blueprint: dict[str, Any], plan: dict[str, Any]) -> dict[str, Any]:
+def resolve_facade_layout(
+    blueprint: dict[str, Any], plan: dict[str, Any]
+) -> dict[str, Any]:
     """把抽象立面轴网解析成真实 wall id 与精确门窗局部坐标。"""
     massing = plan.get("massing") if isinstance(plan.get("massing"), dict) else {}
     curtain_wall = bool(plan.get("curtain_wall"))
     curtain_params = load_curtain_wall_parameters() if curtain_wall else None
     realization = {
         "floors": int(massing.get("floors") or massing.get("modeled_floors") or 1),
-        "modeled_floors": int(massing.get("modeled_floors") or massing.get("floors") or 1),
+        "modeled_floors": int(
+            massing.get("modeled_floors") or massing.get("floors") or 1
+        ),
         "floor_height": float(massing.get("floor_height") or 3.2),
         "representation_mode": str(massing.get("representation_mode") or "full"),
         "shape": str(massing.get("shape") or "rectangle"),
@@ -590,7 +594,11 @@ def resolve_facade_layout(blueprint: dict[str, Any], plan: dict[str, Any]) -> di
         roof_slots = _planned_roof_slots(plan, realization)
         quotas = deepcopy(plan.get("component_quota", {}))
         if roof_slots:
-            quotas["roof"] = {**quotas.get("roof", {}), "min": len(roof_slots), "max": len(roof_slots)}
+            quotas["roof"] = {
+                **quotas.get("roof", {}),
+                "min": len(roof_slots),
+                "max": len(roof_slots),
+            }
         return {
             "facade_plan": {},
             "component_quota": quotas,
@@ -605,10 +613,15 @@ def resolve_facade_layout(blueprint: dict[str, Any], plan: dict[str, Any]) -> di
     level_bounds: dict[float, dict[str, float]] = {}
     for wall in walls:
         level_key = round(float(wall["base_y"]), 3)
-        bounds = level_bounds.setdefault(level_key, {
-            "min_x": wall["x"], "max_x": wall["x"],
-            "min_z": wall["z"], "max_z": wall["z"],
-        })
+        bounds = level_bounds.setdefault(
+            level_key,
+            {
+                "min_x": wall["x"],
+                "max_x": wall["x"],
+                "min_z": wall["z"],
+                "max_z": wall["z"],
+            },
+        )
         bounds["min_x"] = min(bounds["min_x"], wall["x"])
         bounds["max_x"] = max(bounds["max_x"], wall["x"])
         bounds["min_z"] = min(bounds["min_z"], wall["z"])
@@ -626,36 +639,12 @@ def resolve_facade_layout(blueprint: dict[str, Any], plan: dict[str, Any]) -> di
     balcony_access_remaining = max(0, int(plan.get("balcony_access_count") or 0))
     balcony_width = plan.get("balcony_width")
     for wall in sorted(walls, key=lambda item: (item["base_y"], str(item["id"]))):
-        bounds = level_bounds[round(float(wall["base_y"]), 3)]
-        span = max(
-            bounds["max_x"] - bounds["min_x"],
-            bounds["max_z"] - bounds["min_z"],
-            1.0,
+        facing, external, level, volume = _facade_wall_context(
+            wall, level_bounds, realization
         )
-        boundary_tolerance = max(0.35, span * 0.04)
-        if wall["axis"] == "x":
-            distances = {
-                "front": abs(wall["z"] - bounds["min_z"]),
-                "back": abs(wall["z"] - bounds["max_z"]),
-            }
-        else:
-            distances = {
-                "left": abs(wall["x"] - bounds["min_x"]),
-                "right": abs(wall["x"] - bounds["max_x"]),
-            }
-        facing = min(distances, key=distances.get)
-        external = distances[facing] <= boundary_tolerance
-        level = int(wall.get("story_index") or round(wall["base_y"] / realization["floor_height"]) + 1)
-        active_volumes = [volume for volume in realization["volumes"]
-                          if int(volume.get("start_floor", 1)) <= level <= int(volume.get("end_floor", level))]
-        volume = None
-        for side in (("front", "back") if wall["axis"] == "x" else ("left", "right")):
-            volume = _volume_for_face(active_volumes, side, wall["start"], wall["end"])
-            if volume is not None:
-                facing = side
-                external = True
-                break
-        facade = _effective_facade(plan.get("facades", {}), volume if external else None, facing)
+        facade = _effective_facade(
+            plan.get("facades", {}), volume if external else None, facing
+        )
         bays = max(1, int(facade.get("bays", 1)))
         is_ground = abs(wall["base_y"] - min_y) < 0.25
         pattern_key = "ground_pattern" if is_ground else "upper_pattern"
@@ -673,21 +662,28 @@ def resolve_facade_layout(blueprint: dict[str, Any], plan: dict[str, Any]) -> di
         if is_balcony_access_wall:
             requested_access_width = (
                 float(balcony_width)
-                if isinstance(balcony_width, (int, float)) and not isinstance(balcony_width, bool)
+                if isinstance(balcony_width, (int, float))
+                and not isinstance(balcony_width, bool)
                 else wall["length"] - 0.2
             )
             access_width = max(0.8, min(wall["length"], requested_access_width))
-            wall_slots.append({
-                "id": f"{wall['id']}:floor_{wall.get('story_index', 1)}:door:balcony_access",
-                "type": "door",
-                "role": "balcony_access",
-                "wall_id": wall["id"],
-                "facing": facing,
-                "bay": 1,
-                "from": [round((wall["length"] - access_width) / 2, 3), round(wall["base_y"], 3), 0.0],
-                "width": round(access_width, 3),
-                "height": round(max(0.8, min(2.6, wall["height"] - 0.25)), 3),
-            })
+            wall_slots.append(
+                {
+                    "id": f"{wall['id']}:floor_{wall.get('story_index', 1)}:door:balcony_access",
+                    "type": "door",
+                    "role": "balcony_access",
+                    "wall_id": wall["id"],
+                    "facing": facing,
+                    "bay": 1,
+                    "from": [
+                        round((wall["length"] - access_width) / 2, 3),
+                        round(wall["base_y"], 3),
+                        0.0,
+                    ],
+                    "width": round(access_width, 3),
+                    "height": round(max(0.8, min(2.6, wall["height"] - 0.25)), 3),
+                }
+            )
             slots.extend(wall_slots)
             balcony_access_remaining -= 1
         for bay_index, raw_opening in enumerate(pattern[:bays]):
@@ -724,7 +720,10 @@ def resolve_facade_layout(blueprint: dict[str, Any], plan: dict[str, Any]) -> di
                 width = min(target_width, available_width)
             elif curtain_wall:
                 # 幕墙窗带贴合开间，只留配方设定的细窄竖梃缝；不再用固定上限卡宽。
-                width = max(curtain_params.min_window_width, bay_width - curtain_params.mullion_gap)
+                width = max(
+                    curtain_params.min_window_width,
+                    bay_width - curtain_params.mullion_gap,
+                )
             else:
                 width = max(0.75, min(2.2, bay_width * 0.62))
                 width = min(width, max(0.5, bay_width - 0.35))
@@ -745,7 +744,11 @@ def resolve_facade_layout(blueprint: dict[str, Any], plan: dict[str, Any]) -> di
                     curtain_params.sill_height,
                     wall["height"] * curtain_params.sill_ratio,
                 )
-                height_cap = wall["height"] - (bottom - wall["base_y"]) - curtain_params.top_clearance
+                height_cap = (
+                    wall["height"]
+                    - (bottom - wall["base_y"])
+                    - curtain_params.top_clearance
+                )
             else:
                 bottom = wall["base_y"] + min(1.0, wall["height"] * 0.3)
                 height_cap = 1.55
@@ -782,90 +785,47 @@ def resolve_facade_layout(blueprint: dict[str, Any], plan: dict[str, Any]) -> di
                 )
                 for existing in wall_slots
             ):
-                alternative = _retry_slot_position(slot, wall, bay_index, bays, wall_slots)
+                alternative = _retry_slot_position(
+                    slot, wall, bay_index, bays, wall_slots
+                )
                 if alternative is None:
                     continue
                 slot = alternative
             wall_slots.append(slot)
             slots.append(slot)
-        wall_plan = facade_plan.setdefault(str(wall["id"]), {
-            "facing": facing if external else "internal",
-            "intent": (
-                "阳台后方设置通室内入口"
-                if is_balcony_access_wall
-                else "按建筑方案轴网布置门窗"
-                if external
-                else "内部/退台墙，不自动开口"
-            ),
-            "max_openings": 0,
-            "is_main_facade": False,
-            "slots": [],
-        })
+        if is_balcony_access_wall:
+            wall_intent = "阳台后方设置通室内入口"
+        elif external:
+            wall_intent = "按建筑方案轴网布置门窗"
+        else:
+            wall_intent = "内部/退台墙，不自动开口"
+        wall_plan = facade_plan.setdefault(
+            str(wall["id"]),
+            {
+                "facing": facing if external else "internal",
+                "intent": wall_intent,
+                "max_openings": 0,
+                "is_main_facade": False,
+                "slots": [],
+            },
+        )
         wall_plan["max_openings"] += len(wall_slots)
-        wall_plan["is_main_facade"] = (
-            wall_plan["is_main_facade"] or (external and facing == "front")
+        wall_plan["is_main_facade"] = wall_plan["is_main_facade"] or (
+            external and facing == "front"
         )
         wall_plan["slots"].extend(wall_slots)
 
-    slots.sort(key=lambda slot: (
-        {"front": 0, "back": 1, "left": 2, "right": 3}.get(slot["facing"], 4),
-        slot["bay"],
-        slot["from"][1],
-    ))
-
-    quotas = deepcopy(plan.get("component_quota", {}))
-    for opening_type in ("door", "window"):
-        available = sum(1 for slot in slots if slot["type"] == opening_type)
-        limits = quotas.setdefault(opening_type, {})
-        if curtain_wall and opening_type == "window":
-            # 幕墙全立面密铺：每个窗槽位都必须有窗。这里忽略模型/回退配额上限，
-            # 直接按实际立面槽位数量补齐，否则按少量配额沿全高抽样会变成
-            # 「每几层才一个窗」的错乱散布。
-            limits["max"] = available
-            limits["min"] = available
-            continue
-        maximum = limits.get("max")
-        limits["max"] = available if not isinstance(maximum, (int, float)) else min(int(maximum), available)
-        minimum = limits.get("min", 0)
-        limits["min"] = min(int(minimum) if isinstance(minimum, (int, float)) else 0, limits["max"])
-
-    balcony_slots = [
-        {
-            "id": str(slot["id"]).replace(":door:", ":balcony:"),
-            "wall_id": slot["wall_id"],
-            "from": deepcopy(slot["from"]),
-            "width": slot["width"],
-        }
-        for slot in slots
-        if slot.get("role") == "balcony_access"
-    ]
-    balcony_limits = quotas.get("balcony", {})
-    balcony_minimum = (
-        int(balcony_limits.get("min", 0))
-        if isinstance(balcony_limits, dict)
-        and isinstance(balcony_limits.get("min", 0), (int, float))
-        else 0
+    slots.sort(
+        key=lambda slot: (
+            {"front": 0, "back": 1, "left": 2, "right": 3}.get(slot["facing"], 4),
+            slot["bay"],
+            slot["from"][1],
+        )
     )
-    if len(balcony_slots) < balcony_minimum:
-        balcony_slots.extend(_derived_balcony_slots(
-            slots,
-            walls,
-            count=balcony_minimum - len(balcony_slots),
-            minimum_y=min_y,
-            requested_width=(
-                float(balcony_width)
-                if isinstance(balcony_width, (int, float)) and not isinstance(balcony_width, bool)
-                else None
-            ),
-        ))
-    roof_slots = _planned_roof_slots(plan, realization)
-    if roof_slots:
-        quotas["roof"] = {
-            **quotas.get("roof", {}),
-            "min": len(roof_slots),
-            "max": len(roof_slots),
-            "note": "每个体量各一块，不跨越内院/退台凹口",
-        }
+
+    quotas, balcony_slots, roof_slots = _facade_component_quotas(
+        plan, slots, realization, curtain_wall, walls, min_y, balcony_width
+    )
     railing_slots = _planned_terrace_railing_slots(blueprint, slots, realization)
 
     return {
@@ -1366,3 +1326,114 @@ def conform_railings_to_slots(
         })
         stats["synthesized"] += 1
     return result, stats
+
+
+def _facade_wall_context(wall, level_bounds, realization):
+    """根据同层边界推导墙朝向、外露关系、层号和归属体量。"""
+    bounds = level_bounds[round(float(wall["base_y"]), 3)]
+    span = max(
+        bounds["max_x"] - bounds["min_x"],
+        bounds["max_z"] - bounds["min_z"],
+        1.0,
+    )
+    boundary_tolerance = max(0.35, span * 0.04)
+    if wall["axis"] == "x":
+        distances = {
+            "front": abs(wall["z"] - bounds["min_z"]),
+            "back": abs(wall["z"] - bounds["max_z"]),
+        }
+    else:
+        distances = {
+            "left": abs(wall["x"] - bounds["min_x"]),
+            "right": abs(wall["x"] - bounds["max_x"]),
+        }
+    facing = min(distances, key=distances.get)
+    external = distances[facing] <= boundary_tolerance
+    level = int(
+        wall.get("story_index")
+        or round(wall["base_y"] / realization["floor_height"]) + 1
+    )
+    active_volumes = [
+        volume
+        for volume in realization["volumes"]
+        if int(volume.get("start_floor", 1))
+        <= level
+        <= int(volume.get("end_floor", level))
+    ]
+    volume = None
+    for side in ("front", "back") if wall["axis"] == "x" else ("left", "right"):
+        volume = _volume_for_face(active_volumes, side, wall["start"], wall["end"])
+        if volume is not None:
+            facing = side
+            external = True
+            break
+    return facing, external, level, volume
+
+
+def _facade_component_quotas(
+    plan, slots, realization, curtain_wall, walls, min_y, balcony_width
+):
+    """由实际门窗槽位、阳台通行需求和计划屋面形成构件配额。"""
+    quotas = deepcopy(plan.get("component_quota", {}))
+    for opening_type in ("door", "window"):
+        available = sum(1 for slot in slots if slot["type"] == opening_type)
+        limits = quotas.setdefault(opening_type, {})
+        if curtain_wall and opening_type == "window":
+            # 幕墙全立面密铺：每个窗槽位都必须有窗。这里忽略模型/回退配额上限，
+            # 直接按实际立面槽位数量补齐，否则按少量配额沿全高抽样会变成
+            # 「每几层才一个窗」的错乱散布。
+            limits["max"] = available
+            limits["min"] = available
+            continue
+        maximum = limits.get("max")
+        limits["max"] = (
+            available
+            if not isinstance(maximum, (int, float))
+            else min(int(maximum), available)
+        )
+        minimum = limits.get("min", 0)
+        limits["min"] = min(
+            int(minimum) if isinstance(minimum, (int, float)) else 0, limits["max"]
+        )
+
+    balcony_slots = [
+        {
+            "id": str(slot["id"]).replace(":door:", ":balcony:"),
+            "wall_id": slot["wall_id"],
+            "from": deepcopy(slot["from"]),
+            "width": slot["width"],
+        }
+        for slot in slots
+        if slot.get("role") == "balcony_access"
+    ]
+    balcony_limits = quotas.get("balcony", {})
+    balcony_minimum = (
+        int(balcony_limits.get("min", 0))
+        if isinstance(balcony_limits, dict)
+        and isinstance(balcony_limits.get("min", 0), (int, float))
+        else 0
+    )
+    if len(balcony_slots) < balcony_minimum:
+        balcony_slots.extend(
+            _derived_balcony_slots(
+                slots,
+                walls,
+                count=balcony_minimum - len(balcony_slots),
+                minimum_y=min_y,
+                requested_width=(
+                    float(balcony_width)
+                    if isinstance(balcony_width, (int, float))
+                    and not isinstance(balcony_width, bool)
+                    else None
+                ),
+            )
+        )
+    roof_slots = _planned_roof_slots(plan, realization)
+    if roof_slots:
+        quotas["roof"] = {
+            **quotas.get("roof", {}),
+            "min": len(roof_slots),
+            "max": len(roof_slots),
+            "note": "每个体量各一块，不跨越内院/退台凹口",
+        }
+    return quotas, balcony_slots, roof_slots

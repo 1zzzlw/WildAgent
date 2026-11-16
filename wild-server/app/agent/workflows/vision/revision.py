@@ -452,10 +452,7 @@ async def revise_by_visibility(
     """
 
     from app.domain.design.compilation import compile_document
-    from app.domain.design.compilation import project_drawing
     from app.domain.design.resolver import architecture_plan_from_document
-    from app.domain.design.architecture.design_blocks import block_of_design_field
-    from app.domain.design.architecture.design_blocks import ordered_blocks
     from app.agent.workflows.design.drafting import draft_design
     from app.domain.design.architecture.revision_patch import apply_design_patch
 
@@ -473,64 +470,82 @@ async def revise_by_visibility(
     validate_connected = validate is not None
     render_connected = render is not None
 
-    def _evaluate(doc: Any, compiled) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
-        """渲染已编译的版本并评价，编译结果由调用方复用。"""
-
-        blueprint = compiled.blueprint
-        if not render_connected or not isinstance(blueprint, dict):
-            return blueprint, None
-        manifest = render(blueprint)
-        from app.agent.workflows.vision.evaluation import validated_review
-        evaluation = validated_review(review(blueprint, manifest) if review else None, manifest)
-        evaluation["proxy"] = proxy_evaluate(blueprint, doc.model_dump(mode="json"))
-        evaluation["render"] = {
-            **(manifest or {}),
-            "baselineVersion": (manifest or {}).get("baselineVersion"),
-            "shots": [s.get("file") for s in (manifest or {}).get("shots") or []],
-        }
-        return blueprint, evaluation
+    def _evaluate(doc, compiled):
+        return _evaluate_rendered_revision(doc, compiled, render, review)
 
     base_result = compile_document(current)
     try:
         base_blueprint, base_evaluation = _evaluate(current, base_result)
-        base_pipeline = validate(deepcopy(base_blueprint)) if (validate and base_blueprint) else 0
+        base_pipeline = (
+            validate(deepcopy(base_blueprint)) if (validate and base_blueprint) else 0
+        )
     except Exception as exc:
-        return RevisionOutcome(document=original, blueprint=base_result.blueprint,
-                               changed=False, diag={"stopReason": "render_error", "error": str(exc)}, ledger=ledger)
+        return RevisionOutcome(
+            document=original,
+            blueprint=base_result.blueprint,
+            changed=False,
+            diag={"stopReason": "render_error", "error": str(exc)},
+            ledger=ledger,
+        )
     base_issues = visible_issue_count(base_evaluation or {})
-    ledger.record(label="baseline", design_hash=resolved_hash(current), blueprint=base_blueprint,
-                  evaluation=base_evaluation, verdict=None, document=original)
-    history.append(("baseline", base_blueprint, {**(base_evaluation or {}),
-                                                    "compileErrors": sum(d.severity == "error" for d in base_result.defects),
-                                                    "pipelineErrors": base_pipeline}))
+    ledger.record(
+        label="baseline",
+        design_hash=resolved_hash(current),
+        blueprint=base_blueprint,
+        evaluation=base_evaluation,
+        verdict=None,
+        document=original,
+    )
+    history.append(
+        (
+            "baseline",
+            base_blueprint,
+            {
+                **(base_evaluation or {}),
+                "compileErrors": sum(
+                    d.severity == "error" for d in base_result.defects
+                ),
+                "pipelineErrors": base_pipeline,
+            },
+        )
+    )
     run.recorded.extend(recorded_only(base_evaluation or {}))
 
-    if not render_connected or not validate_connected or not (base_evaluation or {}).get("complete"):
+    if (
+        not render_connected
+        or not validate_connected
+        or not (base_evaluation or {}).get("complete")
+    ):
         # 🔴 没渲染就没有"可见"。拿几何数据编一个评价出来就是 P7-B 明令禁止的
         #   "假装做视觉判断"，所以这里直接停，并如实说明原因。
         run.stop_reason = "review_required"
-        diag = _diag(run, max_rounds=max_rounds, call_budget=call_budget,
-                     max_no_progress=max_no_progress, start=started, now=now)
+        diag = _diag(
+            run,
+            max_rounds=max_rounds,
+            call_budget=call_budget,
+            max_no_progress=max_no_progress,
+            start=started,
+            now=now,
+        )
         diag["renderConnected"] = render_connected
         diag["validateConnected"] = validate_connected
         diag["note"] = (
             "渲染、几何校验或完整截图评价尚未就绪；本次未做任何修订。"
             "这是 P7-B「不假装做视觉判断」的直接落点。"
         )
-        return RevisionOutcome(document=original, blueprint=base_blueprint, changed=False,
-                               diag=diag, ledger=ledger)
+        return RevisionOutcome(
+            document=original,
+            blueprint=base_blueprint,
+            changed=False,
+            diag=diag,
+            ledger=ledger,
+        )
 
-    def fulfillment_gaps(doc, compiled):
-        from app.domain.design.fulfillment import evaluate_fulfillment
-        resolved = project_drawing(doc)
-        resolved.design_gaps = [*resolved.design_gaps, *evaluate_fulfillment(
-            doc, compiled.blueprint, resolved.design_hash,
-            (compiled.stats.get("instance_overrides") or {}).get("instance_entities"),
-            (compiled.design_brief or {}).get("roof_slots"),
-        )]
-        return resolved
+    fulfillment_gaps = _revision_fulfillment
 
-    baseline_fulfillment = {g.id: g.status for g in fulfillment_gaps(current, base_result).design_gaps}
+    baseline_fulfillment = {
+        g.id: g.status for g in fulfillment_gaps(current, base_result).design_gaps
+    }
     for round_index in range(max_rounds):
         if now() - started >= time_budget:
             run.stop_reason = "time_budget"
@@ -540,12 +555,7 @@ async def revise_by_visibility(
             run.stop_reason = "satisfied" if last_issues == 0 else "no_issues"
             break
 
-        blocks: list[str] = []
-        for item in evidence:
-            block = block_of_design_field(str(item["target"]).strip("/").replace("/", "."))
-            if block and block.name not in blocks:
-                blocks.append(block.name)
-        allowed_blocks = [b.name for b in ordered_blocks() if b.name in blocks]
+        allowed_blocks = _revision_blocks(evidence)
         if not allowed_blocks:
             # 认不出的映射不猜（convergence 红线 3）：只记录，不动稿。
             run.stop_reason = "no_issues"
@@ -563,29 +573,42 @@ async def revise_by_visibility(
 
         plan = architecture_plan_from_document(current)
         materials = current.decisions.materials.resolved_plan
-        context = {**plan,
-                   "material_plan": materials.model_dump(mode="json") if materials else None}
+        context = {
+            **plan,
+            "material_plan": materials.model_dump(mode="json") if materials else None,
+        }
         run.calls += 1
         round_log: dict[str, Any] = {
-            "round": round_index, "blocks": allowed_blocks,
-            "evidence": [e["id"] for e in evidence], "baseHash": resolved_hash(current),
+            "round": round_index,
+            "blocks": allowed_blocks,
+            "evidence": [e["id"] for e in evidence],
+            "baseHash": resolved_hash(current),
         }
         try:
-            patch, block_diag = await asyncio.wait_for(draft_blocks(
-                base_prompt=_REVISION_PROMPT + "\n本轮任务与完成条件：\n"
-                             + _tasks_json(evidence, allowed_blocks, current),
-                user_request=user_message, thinking_mode=thinking_mode,
-                only_blocks=allowed_blocks, complexity_profile=complexity_profile,
-                current_plan=context,
-                allow_design_changes=True, max_attempts=1,
-                on_reasoning_delta=on_reasoning_delta,
-            ), timeout=max(0.01, time_budget - (now() - started)))
+            patch, block_diag = await asyncio.wait_for(
+                draft_blocks(
+                    base_prompt=_REVISION_PROMPT
+                    + "\n本轮任务与完成条件：\n"
+                    + _tasks_json(evidence, allowed_blocks, current),
+                    user_request=user_message,
+                    thinking_mode=thinking_mode,
+                    only_blocks=allowed_blocks,
+                    complexity_profile=complexity_profile,
+                    current_plan=context,
+                    allow_design_changes=True,
+                    max_attempts=1,
+                    on_reasoning_delta=on_reasoning_delta,
+                ),
+                timeout=max(0.01, time_budget - (now() - started)),
+            )
         except asyncio.TimeoutError:
             run.stop_reason = "time_budget"
             break
         except Exception as exc:
             # 红线：模型故障不掐掉整轮生成，图纸仍然可用。
-            logger.warning(f"[vision_revision] 重出设计块时模型故障，保留当前版本: {exc}")
+            logger.warning(
+                f"[vision_revision] 重出设计块时模型故障，保留当前版本: {exc}"
+            )
             run.stop_reason = "model_error"
             round_log["modelError"] = str(exc)
             run.rounds.append(round_log)
@@ -593,7 +616,9 @@ async def revise_by_visibility(
 
         if not patch or (block_diag or {}).get("unsettled_blocks"):
             round_log["noDraft"] = True
-            round_log["unsettled"] = list((block_diag or {}).get("unsettled_blocks") or [])
+            round_log["unsettled"] = list(
+                (block_diag or {}).get("unsettled_blocks") or []
+            )
             run.rounds.append(round_log)
             run.no_progress += 1
             if run.no_progress >= max(1, int(max_no_progress)):
@@ -603,10 +628,16 @@ async def revise_by_visibility(
 
         try:
             candidate, normalization_changes, derived_changes = apply_design_patch(
-                current, patch, allowed_blocks=allowed_blocks, user_message=user_message,
+                current,
+                patch,
+                allowed_blocks=allowed_blocks,
+                user_message=user_message,
                 complexity_profile=complexity_profile,
             )
-            round_log.update(normalizationChanges=normalization_changes, derivedChanges=derived_changes)
+            round_log.update(
+                normalizationChanges=normalization_changes,
+                derivedChanges=derived_changes,
+            )
         except Exception as exc:
             round_log["rejectReason"] = str(exc)
             run.rounds.append(round_log)
@@ -618,15 +649,24 @@ async def revise_by_visibility(
 
         try:
             candidate_result = compile_document(candidate)
-            candidate_blueprint, candidate_evaluation = _evaluate(candidate, candidate_result)
-            candidate_pipeline = validate(deepcopy(candidate_blueprint)) if candidate_blueprint else 1
+            candidate_blueprint, candidate_evaluation = _evaluate(
+                candidate, candidate_result
+            )
+            candidate_pipeline = (
+                validate(deepcopy(candidate_blueprint)) if candidate_blueprint else 1
+            )
         except Exception as exc:
             round_log["renderOrValidationError"] = str(exc)
             run.rounds.append(round_log)
             run.stop_reason = "render_error"
-            ledger.record(label=f"candidate_{round_index + 1}", design_hash=resolved_hash(candidate),
-                          blueprint=None, evaluation=None, verdict=None,
-                          document=candidate.model_dump(mode="json"))
+            ledger.record(
+                label=f"candidate_{round_index + 1}",
+                design_hash=resolved_hash(candidate),
+                blueprint=None,
+                evaluation=None,
+                verdict=None,
+                document=candidate.model_dump(mode="json"),
+            )
             break
         candidate_resolved = fulfillment_gaps(candidate, candidate_result)
         verdict = candidate_verdict(
@@ -637,29 +677,38 @@ async def revise_by_visibility(
             evaluation=candidate_evaluation,
             baseline_issues=last_issues if last_issues is not None else base_issues,
         )
-        round_log.update({
-            "issuesBefore": last_issues if last_issues is not None else base_issues,
-            "issuesAfter": visible_issue_count(candidate_evaluation or {}),
-            "verdict": verdict.to_dict(), "resultHash": resolved_hash(candidate),
-        })
+        round_log.update(
+            {
+                "issuesBefore": last_issues if last_issues is not None else base_issues,
+                "issuesAfter": visible_issue_count(candidate_evaluation or {}),
+                "verdict": verdict.to_dict(),
+                "resultHash": resolved_hash(candidate),
+            }
+        )
         run.rounds.append(round_log)
 
         label = f"candidate_{round_index + 1}"
-        scored = {**(candidate_evaluation or {}),
-                  "accepted": verdict.accepted,
-                  "compileErrors": verdict.compile_errors,
-                  "pipelineErrors": verdict.pipeline_errors,
-                  "fulfillmentOpen": verdict.fulfillment_open}
+        scored = {
+            **(candidate_evaluation or {}),
+            "accepted": verdict.accepted,
+            "compileErrors": verdict.compile_errors,
+            "pipelineErrors": verdict.pipeline_errors,
+            "fulfillmentOpen": verdict.fulfillment_open,
+        }
         history.append((label, candidate_blueprint, scored))
         # 🔴截图列表可能为空（渲染回调没给图）。直接取 [0] 会在**候选刚通过
         #   校验之后**抛 IndexError，把一次成功的修订变成崩溃 —— 恰恰是最不该
         #   崩的时刻。取不到就留None，报告里显示"无截图"，不假装有。
         shots = ((candidate_evaluation or {}).get("render") or {}).get("shots") or []
-        ledger.record(label=label, design_hash=resolved_hash(candidate),
-                      blueprint=candidate_blueprint, evaluation=candidate_evaluation,
-                      verdict=verdict,
-                      screenshot=shots[0] if shots else None,
-                      document=candidate.model_dump(mode="json"))
+        ledger.record(
+            label=label,
+            design_hash=resolved_hash(candidate),
+            blueprint=candidate_blueprint,
+            evaluation=candidate_evaluation,
+            verdict=verdict,
+            screenshot=shots[0] if shots else None,
+            document=candidate.model_dump(mode="json"),
+        )
         run.recorded.extend(recorded_only(candidate_evaluation or {}))
 
         if not (candidate_evaluation or {}).get("complete"):
@@ -667,11 +716,18 @@ async def revise_by_visibility(
             break
 
         if verdict.accepted:
-            baseline_fulfillment = {g.id: g.status for g in candidate_resolved.design_gaps}
+            baseline_fulfillment = {
+                g.id: g.status for g in candidate_resolved.design_gaps
+            }
             current = candidate
             base_evaluation = candidate_evaluation
             base_blueprint = candidate_blueprint
-            run.no_progress = 0 if verdict.issues < (last_issues if last_issues is not None else base_issues) else run.no_progress + 1
+            run.no_progress = (
+                0
+                if verdict.issues
+                < (last_issues if last_issues is not None else base_issues)
+                else run.no_progress + 1
+            )
         else:
             # 变差 ⇒ 不采纳。current 保持不变即等价于回退，且历史留档在 ledger 里。
             run.no_progress += 1
@@ -690,27 +746,38 @@ async def revise_by_visibility(
     best_blueprint = history[0][1]
     current = DesignDocument.model_validate(original)
     if best_label and best_label != "baseline":
-        best_blueprint = next((bp for lbl, bp, _ in history if lbl == best_label), base_blueprint)
+        best_blueprint = next(
+            (bp for lbl, bp, _ in history if lbl == best_label), base_blueprint
+        )
         entry = ledger.of(best_label)
         if entry is not None and entry.get("document") is not None:
             current = DesignDocument.model_validate(entry["document"])
 
-    diag = _diag(run, max_rounds=max_rounds, call_budget=call_budget,
-                 max_no_progress=max_no_progress, start=started, now=now)
+    diag = _diag(
+        run,
+        max_rounds=max_rounds,
+        call_budget=call_budget,
+        max_no_progress=max_no_progress,
+        start=started,
+        now=now,
+    )
     diag["budget"]["timeBudgetSeconds"] = time_budget
-    diag.update({
-        "bestVersion": best_label,
-        "adopted": bool(best_label and best_label != "baseline"),
-        "renderConnected": render_connected,
-        "validateConnected": validate_connected,
-        "confidenceLevels": list(CONFIDENCE_LEVELS),
-        "requiresDesignReview": bool(best_label and best_label != "baseline"),
-    })
+    diag.update(
+        {
+            "bestVersion": best_label,
+            "adopted": bool(best_label and best_label != "baseline"),
+            "renderConnected": render_connected,
+            "validateConnected": validate_connected,
+            "confidenceLevels": list(CONFIDENCE_LEVELS),
+            "requiresDesignReview": bool(best_label and best_label != "baseline"),
+        }
+    )
     return RevisionOutcome(
         document=current.model_dump(mode="json"),
         blueprint=best_blueprint,
         changed=current.model_dump(mode="json") != original,
-        diag=diag, ledger=ledger,
+        diag=diag,
+        ledger=ledger,
     )
 
 
@@ -789,3 +856,60 @@ __all__ = [
     "vision_design_field",
     "visible_issue_count",
 ]
+
+
+def _evaluate_rendered_revision(doc, compiled, render, review):
+    """复用当前编译结果进行真实渲染评价，保留未接入渲染的状态。"""
+    render_connected = render is not None
+    """渲染已编译的版本并评价，编译结果由调用方复用。"""
+
+    blueprint = compiled.blueprint
+    if not render_connected or not isinstance(blueprint, dict):
+        return blueprint, None
+    manifest = render(blueprint)
+    from app.agent.workflows.vision.evaluation import validated_review
+
+    evaluation = validated_review(
+        review(blueprint, manifest) if review else None, manifest
+    )
+    evaluation["proxy"] = proxy_evaluate(blueprint, doc.model_dump(mode="json"))
+    evaluation["render"] = {
+        **(manifest or {}),
+        "baselineVersion": (manifest or {}).get("baselineVersion"),
+        "shots": [s.get("file") for s in (manifest or {}).get("shots") or []],
+    }
+    return blueprint, evaluation
+
+
+def _revision_fulfillment(doc, compiled):
+    """核对设计投影和编译产物的同一版本履约证据。"""
+    from app.domain.design.compilation import project_drawing
+
+    from app.domain.design.fulfillment import evaluate_fulfillment
+
+    resolved = project_drawing(doc)
+    resolved.design_gaps = [
+        *resolved.design_gaps,
+        *evaluate_fulfillment(
+            doc,
+            compiled.blueprint,
+            resolved.design_hash,
+            (compiled.stats.get("instance_overrides") or {}).get("instance_entities"),
+            (compiled.design_brief or {}).get("roof_slots"),
+        ),
+    ]
+    return resolved
+
+
+def _revision_blocks(evidence):
+    """仅选择当前可见问题所属的设计字段组。"""
+    from app.domain.design.architecture.design_blocks import block_of_design_field
+    from app.domain.design.architecture.design_blocks import ordered_blocks
+
+    blocks: list[str] = []
+    for item in evidence:
+        block = block_of_design_field(str(item["target"]).strip("/").replace("/", "."))
+        if block and block.name not in blocks:
+            blocks.append(block.name)
+    allowed_blocks = [b.name for b in ordered_blocks() if b.name in blocks]
+    return allowed_blocks

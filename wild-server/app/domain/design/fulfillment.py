@@ -179,219 +179,53 @@ def _entity_check(
 
     # ── 体量：层数 / 尺寸 ──
     if root == "massing":
-        field = tokens[2] if len(tokens) > 2 else ""
-        if field == "floors":
-            levels = _floor_levels(blueprint)
-            representation = getattr(document.decisions, "massing", None)
-            mode = getattr(representation, "representation_mode", "full")
-            if mode != "full":
-                return (
-                    "needs_review", levels,
-                    f"设计声明 representation_mode={mode}，示意模式不要求逐层楼板实体",
-                )
-            status = _numeric_check(float(len(levels)), expected, check)
-            evidence = f"楼板标高 {levels}"
-            return status, len(levels), evidence
-        if field in {"width", "depth"}:
-            bbox = _bbox(blueprint)
-            if bbox is None:
-                return "needs_review", None, "蓝图没有可取包围盒的实体"
-            min_x, min_z, max_x, max_z = bbox
-            actual = (max_x - min_x) if field == "width" else (max_z - min_z)
-            status = _numeric_check(round(actual, 3), expected, check)
-            return status, round(actual, 3), f"墙体包围盒 {field}={round(actual, 3)}"
-        if field == "floor_height":
-            levels = _floor_levels(blueprint)
-            if len(levels) < 2:
-                return "needs_review", None, f"楼板标高只有 {len(levels)} 层，算不出层高"
-            heights = [round(levels[index + 1] - levels[index], 2) for index in range(len(levels) - 1)]
-            statuses = [_numeric_check(height, expected, check) for height in heights]
-            status = "open" if "open" in statuses else "needs_review" if "needs_review" in statuses else "satisfied"
-            return status, heights, f"层高 {heights}"
-        return "unsupported", None, f"massing.{field} 在实体侧没有可核对的对应物"
+        return _check_massing_entities(blueprint, document, tokens, expected, check)
 
     # ── 屋顶：形态 ──
     if root == "roof":
-        field = tokens[2] if len(tokens) > 2 else ""
-        if field == "volumes":
-            return _roof_volume_check(blueprint, tokens, expected, check, document, roof_slots)
-        if field != "type":
-            return (
-                "unsupported", None,
-                f"roof.{field} 由派生规则决定（实体侧无独立字段）：出檐与脊高是算出来的，"
-                "逐体量差异走 roof.volumes",
-            )
-        roofs = _by_type(blueprint, "roof")
-        if not roofs:
-            return "open", None, "蓝图里没有屋顶实体"
-        actual = sorted({str(item.get("roofType") or "") for item in roofs})
-        ids = [str(item.get("id")) for item in roofs]
-        if check == "contains":
-            return ("satisfied" if expected in actual else "open"), actual, f"屋顶实体 {ids}"
-        if check != "equals":
-            return "needs_review", actual, f"屋顶形态检查 {check} 不适用"
-        # 🔴 P5-A：图纸声明了逐体量覆盖时，``roof.type`` 是**模板**而不是"整栋唯一形态"。
-        # 判据不是"覆盖条数 < 屋面条数"（那是数数，不是语义），而是**每个与模板不同的
-        # 形态都能被某条已声明的覆盖解释**：解释得了就是兑现了另一条要求，不该在这里
-        # 再报一次缺失；解释不了的（凭空冒出第三种形态）才是真缺口。
-        overrides = getattr(document.decisions, "roof", None)
-        declared_types = {
-            str(item.type)
-            for item in (getattr(overrides, "volumes", None) or [])
-            if isinstance(getattr(item, "type", None), str) and item.type
-        }
-        if declared_types:
-            if not roof_slots or len(roof_slots) != len(roofs):
-                return "needs_review", actual, "逐体量屋面映射不完整，不能凭形态集合证明覆盖位置正确"
-            for index, slot in enumerate(roof_slots, 1):
-                entity = _entity_by_id(blueprint, f"roof_planned_{index:02d}")
-                if not entity or entity.get("roofType") != slot.get("roofType", expected):
-                    return "open", actual, f"体量 {slot.get('volume')} 最终屋型与其槽位不一致"
-            return "satisfied", actual, "模板与逐体量覆盖已按槽位逐一核对最终屋面"
-        status = "satisfied" if actual == [str(expected)] else "open"
-        return status, actual, f"屋顶实体 {ids} 的 roofType"
+        return _check_roof_entities(
+            blueprint, document, tokens, expected, check, roof_slots
+        )
 
     # ── 立面：每面槽位数 / 开敞表态 ──
     if root == "facades":
-        if len(tokens) < 4:
-            return "unsupported", None, f"{target} 未指到具体面"
-        face, field = tokens[2], tokens[3]
-        if field in {"ground_pattern", "upper_pattern"}:
-            return _envelope_check(blueprint, document, face, field, expected, check)
-        if field != "bays":
-            return (
-                "unsupported", None,
-                f"facades.{face}.{field} 是开口类型序列，实体侧只能核对数量，不能按名逐槽核对",
-            )
-        facade = document.decisions.facades.get(face)
-        if facade is None or any(opening_kind(token) not in {"door", "window"}
-                                 for token in [*facade.ground_pattern, *facade.upper_pattern]):
-            return "needs_review", None, "开间包含实墙或开敞槽位，不能用门窗数量代替开间数"
-        grouped = _openings_by_facing(blueprint)
-        if face not in grouped:
-            return "needs_review", 0, f"蓝图里没有可判定为 {face} 面的墙（几何推不出朝向）"
-        levels = sorted({round(float(w["from"][1]), 2) for w in _by_type(blueprint, "wall")
-                         if isinstance(w.get("from"), list) and len(w["from"]) == 3})
-        per_level = {level: len(grouped[face].get(level, [])) for level in levels}
-        if not per_level:
-            return "needs_review", None, "缺少楼层标高，无法逐层核对开间"
-        if check == "minimum":
-            worst = min(per_level.values())
-            status = _numeric_check(float(worst), expected, check)
-        elif check == "equals":
-            # 每层都要等于 bays：任一层少了就是立面节奏错位。
-            status = "satisfied" if all(
-                count == expected for count in per_level.values()
-            ) else "open"
-        else:
-            return "needs_review", per_level, f"{face} 面槽位检查 {check} 不适用"
-        ids = [str(item.get("id")) for items in grouped[face].values() for item in items]
-        return (
-            status, per_level,
-            f"{face} 面逐层开口数 {per_level}；开口实体 {ids[:12]}",
+        return _check_facade_entities(
+            blueprint, document, tokens, target, expected, check
         )
 
     # ── 竖向交通 ──
     if root == "circulation":
-        field = tokens[2] if len(tokens) > 2 else ""
-        if field != "vertical_strategy":
-            return "unsupported", None, f"circulation.{field} 在实体侧无对应物"
-        if str(expected) == "core_and_stair":
-            return "needs_review", None, "楼梯存在不能证明核心筒交通策略已兑现"
-        stairs = _by_type(blueprint, "stair")
-        wants_stair = str(expected) in {"stair", "core_and_stair"}
-        if check == "contains":
-            wants_stair = True
-        if str(expected) == "none" or (check == "contains" and expected == "none"):
-            return ("satisfied" if not stairs else "open"), len(stairs), f"stair 实体 {len(stairs)} 个"
-        if not wants_stair:
-            return "unsupported", None, f"vertical_strategy={expected!r} 尚无实体侧判据"
-        return (
-            ("satisfied" if stairs else "open"), len(stairs),
-            f"stair 实体 {[str(item.get('id')) for item in stairs]}",
-        )
+        return _check_circulation_entities(blueprint, tokens, expected, check)
 
     # ── 配额与必需构件（数量级）──
     if root in {"component_quota", "required_components"}:
-        if root == "required_components":
-            if check == "absent" and isinstance(expected, str):
-                present = _by_type(blueprint, expected)
-                return ("open" if present else "satisfied"), len(present), f"最终 {expected} 实体 {len(present)} 个"
-            if check != "contains":
-                return "needs_review", None, f"required_components 的 {check} 检查无实体侧判据"
-            if not isinstance(expected, str) or not expected:
-                return "needs_review", None, "contains 需要一个构件类型名称"
-            present = _by_type(blueprint, expected)
-            return ("satisfied" if present else "open"), len(present), f"最终 {expected} 实体 {len(present)} 个"
-        component_type = tokens[2] if len(tokens) > 2 else ""
-        bound = tokens[3] if len(tokens) > 3 else ""
-        if component_type and bound not in {"min", "max"}:
-            return "unsupported", None, f"component_quota.{component_type}.{bound} 不是数量界"
-        actual = len(_by_type(blueprint, component_type))
-        if bound == "max":
-            from math import isfinite
-            if (isinstance(expected, bool) or not isinstance(expected, (int, float))
-                    or not isfinite(expected) or expected < 0 or check != "equals"):
-                return "needs_review", actual, "数量上限需要非负有限数值及 equals 判据"
-            return (
-                ("satisfied" if actual <= float(expected) else "open"), actual,
-                f"{component_type} 实体 {actual} 个（上限 {expected}）",
-            )
-        if not component_type or bound != "min":
-            return "needs_review", actual, "数量要求必须定位到具体构件的 min/max"
-        status = _numeric_check(float(actual), expected, "minimum" if check == "equals" else check)
-        return status, actual, f"{component_type} 实体 {actual} 个（下限 {expected}）"
+        return _check_component_quantity(blueprint, root, tokens, expected, check)
 
     # ── 实例清单：靠编译器给出的「实例索引 → 实体 id」映射逐条核对 ──
-    if root == "components" and len(tokens) == 2 and isinstance(expected, list) and check == "equals":
-        rows = []
-        used = set()
-        declared = document.decisions.components
-        if len(expected) != len(declared):
-            return "open", len(declared), "已采用的实例数组长度改变，不能用部分成员冒充整组兑现"
-        for expected_instance in expected:
-            if not isinstance(expected_instance, dict):
-                rows.append(("unsupported", None, "实例要求不是对象"))
-                continue
-            matches = [i for i, inst in enumerate(declared) if i not in used and (
-                inst.id == expected_instance["id"] if expected_instance.get("id") else
-                value_matches(inst.model_dump(mode="json", exclude_none=True), expected_instance))]
-            if len(matches) != 1:
-                rows.append(("open", None, "实例绑定缺失或重复，不能借用同类型旧实体"))
-                continue
-            i = matches[0]
-            used.add(i)
-            rows.append(_instance_check(blueprint, ["decisions", "components", str(i)],
-                                        expected_instance, check, instance_entities))
-        return _aggregate(rows)
+    if (
+        root == "components"
+        and len(tokens) == 2
+        and isinstance(expected, list)
+        and check == "equals"
+    ):
+        return _check_component_collection(
+            blueprint, document, expected, check, instance_entities
+        )
     if root == "components":
         return _instance_check(blueprint, tokens, expected, check, instance_entities)
 
-    if root == "materials" and len(tokens) >= 4 and tokens[2] == "regions" and tokens[3].isdigit():
-        from app.domain.blueprint.materials.plan import material_region_field
-        index = int(tokens[3])
-        intent = document.decisions.materials
-        if index >= len(intent.regions) or not intent.resolved_plan or check != "equals":
-            return "needs_review", None, "材质区域或已解析方案缺失，或判据不适用"
-        if len(tokens) > 4 and tokens[4] not in {"role", "type"}:
-            return "needs_review", None, "该材质字段不是可核对的实体绑定"
-        region = intent.regions[index]
-        declared = region.model_dump(mode="json") if len(tokens) == 4 else getattr(region, tokens[4], None)
-        if not value_matches(declared, expected):
-            return "open", declared, "当前材质绑定不符合要求"
-        role = next((item for item in intent.resolved_plan.roles if item.role == region.role), None)
-        field = material_region_field(region.role, region.type)
-        if role is None or field is None:
-            return "unsupported", None, "该区域的材质角色或引用字段不受支持"
-        entities = _by_type(blueprint, region.type)
-        actual = {item["id"]: item.get(field) for item in entities}
-        matched = bool(entities) and all(ref == role.materialId for ref in actual.values())
-        matched = matched and value_matches((blueprint.get("materials") or {}).get(role.materialId), role.material)
-        return ("satisfied" if matched else "open"), actual, f"逐实体核对 {field} 与材质 {role.materialId} 参数"
+    if (
+        root == "materials"
+        and len(tokens) >= 4
+        and tokens[2] == "regions"
+        and tokens[3].isdigit()
+    ):
+        return _check_material_region(blueprint, document, tokens, expected, check)
 
     if root in {"volumes", "structural_grid", "materials"}:
         return (
-            "needs_review", None,
+            "needs_review",
+            None,
             f"{root} 的实体侧核对依赖尚未建立的映射（体量/轴网/材质），按红线不做文案关键词匹配",
         )
 
@@ -683,9 +517,12 @@ def _instance_check(
                 f"{label}实体 {entity_id} 没有 {key} 字段，尺寸无法核对",
             )
         actual = entity[key]
-        status = _numeric_check(actual, expected, check) if isinstance(actual, (int, float)) else (
-            "satisfied" if value_matches(actual, expected) else "open"
-        )
+        if isinstance(actual, (int, float)):
+            status = _numeric_check(actual, expected, check)
+        elif value_matches(actual, expected):
+            status = "satisfied"
+        else:
+            status = "open"
         return status, actual, f"{label}实体 {entity_id}.{key} = {actual!r}（图纸声明 {expected!r}）"
 
     return (
@@ -822,3 +659,324 @@ def fulfillment_line(summary: dict[str, Any]) -> str:
     if summary.get("unsupported"):
         parts.append(f"当前不支持 {summary['unsupported']}")
     return "；".join(parts)
+
+
+def _check_massing_entities(blueprint, document, tokens, expected, check):
+    """核对实体层数、墙体包围盒和逐层高度。"""
+    field = tokens[2] if len(tokens) > 2 else ""
+    if field == "floors":
+        levels = _floor_levels(blueprint)
+        representation = getattr(document.decisions, "massing", None)
+        mode = getattr(representation, "representation_mode", "full")
+        if mode != "full":
+            return (
+                "needs_review",
+                levels,
+                f"设计声明 representation_mode={mode}，示意模式不要求逐层楼板实体",
+            )
+        status = _numeric_check(float(len(levels)), expected, check)
+        evidence = f"楼板标高 {levels}"
+        return status, len(levels), evidence
+    if field in {"width", "depth"}:
+        bbox = _bbox(blueprint)
+        if bbox is None:
+            return "needs_review", None, "蓝图没有可取包围盒的实体"
+        min_x, min_z, max_x, max_z = bbox
+        actual = (max_x - min_x) if field == "width" else (max_z - min_z)
+        status = _numeric_check(round(actual, 3), expected, check)
+        return status, round(actual, 3), f"墙体包围盒 {field}={round(actual, 3)}"
+    if field == "floor_height":
+        levels = _floor_levels(blueprint)
+        if len(levels) < 2:
+            return "needs_review", None, f"楼板标高只有 {len(levels)} 层，算不出层高"
+        heights = [
+            round(levels[index + 1] - levels[index], 2)
+            for index in range(len(levels) - 1)
+        ]
+        statuses = [_numeric_check(height, expected, check) for height in heights]
+        if "open" in statuses:
+            status = "open"
+        elif "needs_review" in statuses:
+            status = "needs_review"
+        else:
+            status = "satisfied"
+        return status, heights, f"层高 {heights}"
+    return "unsupported", None, f"massing.{field} 在实体侧没有可核对的对应物"
+
+
+def _check_roof_entities(blueprint, document, tokens, expected, check, roof_slots):
+    """核对屋面模板、逐体量覆盖和最终屋型。"""
+    field = tokens[2] if len(tokens) > 2 else ""
+    if field == "volumes":
+        return _roof_volume_check(
+            blueprint, tokens, expected, check, document, roof_slots
+        )
+    if field != "type":
+        return (
+            "unsupported",
+            None,
+            f"roof.{field} 由派生规则决定（实体侧无独立字段）：出檐与脊高是算出来的，"
+            "逐体量差异走 roof.volumes",
+        )
+    roofs = _by_type(blueprint, "roof")
+    if not roofs:
+        return "open", None, "蓝图里没有屋顶实体"
+    actual = sorted({str(item.get("roofType") or "") for item in roofs})
+    ids = [str(item.get("id")) for item in roofs]
+    if check == "contains":
+        return (
+            ("satisfied" if expected in actual else "open"),
+            actual,
+            f"屋顶实体 {ids}",
+        )
+    if check != "equals":
+        return "needs_review", actual, f"屋顶形态检查 {check} 不适用"
+    # 🔴 P5-A：图纸声明了逐体量覆盖时，``roof.type`` 是**模板**而不是"整栋唯一形态"。
+    # 判据不是"覆盖条数 < 屋面条数"（那是数数，不是语义），而是**每个与模板不同的
+    # 形态都能被某条已声明的覆盖解释**：解释得了就是兑现了另一条要求，不该在这里
+    # 再报一次缺失；解释不了的（凭空冒出第三种形态）才是真缺口。
+    overrides = getattr(document.decisions, "roof", None)
+    declared_types = {
+        str(item.type)
+        for item in (getattr(overrides, "volumes", None) or [])
+        if isinstance(getattr(item, "type", None), str) and item.type
+    }
+    if declared_types:
+        if not roof_slots or len(roof_slots) != len(roofs):
+            return (
+                "needs_review",
+                actual,
+                "逐体量屋面映射不完整，不能凭形态集合证明覆盖位置正确",
+            )
+        for index, slot in enumerate(roof_slots, 1):
+            entity = _entity_by_id(blueprint, f"roof_planned_{index:02d}")
+            if not entity or entity.get("roofType") != slot.get("roofType", expected):
+                return (
+                    "open",
+                    actual,
+                    f"体量 {slot.get('volume')} 最终屋型与其槽位不一致",
+                )
+        return "satisfied", actual, "模板与逐体量覆盖已按槽位逐一核对最终屋面"
+    status = "satisfied" if actual == [str(expected)] else "open"
+    return status, actual, f"屋顶实体 {ids} 的 roofType"
+
+
+def _check_facade_entities(blueprint, document, tokens, target, expected, check):
+    """按立面及楼层核对开口槽位和开敞要求。"""
+    if len(tokens) < 4:
+        return "unsupported", None, f"{target} 未指到具体面"
+    face, field = tokens[2], tokens[3]
+    if field in {"ground_pattern", "upper_pattern"}:
+        return _envelope_check(blueprint, document, face, field, expected, check)
+    if field != "bays":
+        return (
+            "unsupported",
+            None,
+            f"facades.{face}.{field} 是开口类型序列，实体侧只能核对数量，不能按名逐槽核对",
+        )
+    facade = document.decisions.facades.get(face)
+    if facade is None or any(
+        opening_kind(token) not in {"door", "window"}
+        for token in [*facade.ground_pattern, *facade.upper_pattern]
+    ):
+        return "needs_review", None, "开间包含实墙或开敞槽位，不能用门窗数量代替开间数"
+    grouped = _openings_by_facing(blueprint)
+    if face not in grouped:
+        return "needs_review", 0, f"蓝图里没有可判定为 {face} 面的墙（几何推不出朝向）"
+    levels = sorted(
+        {
+            round(float(w["from"][1]), 2)
+            for w in _by_type(blueprint, "wall")
+            if isinstance(w.get("from"), list) and len(w["from"]) == 3
+        }
+    )
+    per_level = {level: len(grouped[face].get(level, [])) for level in levels}
+    if not per_level:
+        return "needs_review", None, "缺少楼层标高，无法逐层核对开间"
+    if check == "minimum":
+        worst = min(per_level.values())
+        status = _numeric_check(float(worst), expected, check)
+    elif check == "equals":
+        # 每层都要等于 bays：任一层少了就是立面节奏错位。
+        status = (
+            "satisfied"
+            if all(count == expected for count in per_level.values())
+            else "open"
+        )
+    else:
+        return "needs_review", per_level, f"{face} 面槽位检查 {check} 不适用"
+    ids = []
+    for items in grouped[face].values():
+        for current_item in items:
+            ids.append(str(current_item.get("id")))
+    return (
+        status,
+        per_level,
+        f"{face} 面逐层开口数 {per_level}；开口实体 {ids[:12]}",
+    )
+
+
+def _check_circulation_entities(blueprint, tokens, expected, check):
+    """核对明确的竖向交通需求。"""
+    field = tokens[2] if len(tokens) > 2 else ""
+    if field != "vertical_strategy":
+        return "unsupported", None, f"circulation.{field} 在实体侧无对应物"
+    if str(expected) == "core_and_stair":
+        return "needs_review", None, "楼梯存在不能证明核心筒交通策略已兑现"
+    stairs = _by_type(blueprint, "stair")
+    wants_stair = str(expected) in {"stair", "core_and_stair"}
+    if check == "contains":
+        wants_stair = True
+    if str(expected) == "none" or (check == "contains" and expected == "none"):
+        return (
+            ("satisfied" if not stairs else "open"),
+            len(stairs),
+            f"stair 实体 {len(stairs)} 个",
+        )
+    if not wants_stair:
+        return "unsupported", None, f"vertical_strategy={expected!r} 尚无实体侧判据"
+    return (
+        ("satisfied" if stairs else "open"),
+        len(stairs),
+        f"stair 实体 {[str(item.get('id')) for item in stairs]}",
+    )
+
+
+def _check_component_quantity(blueprint, root, tokens, expected, check):
+    """核对必需构件和明确声明的数量上下界。"""
+    if root == "required_components":
+        if check == "absent" and isinstance(expected, str):
+            present = _by_type(blueprint, expected)
+            return (
+                ("open" if present else "satisfied"),
+                len(present),
+                f"最终 {expected} 实体 {len(present)} 个",
+            )
+        if check != "contains":
+            return (
+                "needs_review",
+                None,
+                f"required_components 的 {check} 检查无实体侧判据",
+            )
+        if not isinstance(expected, str) or not expected:
+            return "needs_review", None, "contains 需要一个构件类型名称"
+        present = _by_type(blueprint, expected)
+        return (
+            ("satisfied" if present else "open"),
+            len(present),
+            f"最终 {expected} 实体 {len(present)} 个",
+        )
+    component_type = tokens[2] if len(tokens) > 2 else ""
+    bound = tokens[3] if len(tokens) > 3 else ""
+    if component_type and bound not in {"min", "max"}:
+        return (
+            "unsupported",
+            None,
+            f"component_quota.{component_type}.{bound} 不是数量界",
+        )
+    actual = len(_by_type(blueprint, component_type))
+    if bound == "max":
+        from math import isfinite
+
+        if (
+            isinstance(expected, bool)
+            or not isinstance(expected, (int, float))
+            or not isfinite(expected)
+            or expected < 0
+            or check != "equals"
+        ):
+            return "needs_review", actual, "数量上限需要非负有限数值及 equals 判据"
+        return (
+            ("satisfied" if actual <= float(expected) else "open"),
+            actual,
+            f"{component_type} 实体 {actual} 个（上限 {expected}）",
+        )
+    if not component_type or bound != "min":
+        return "needs_review", actual, "数量要求必须定位到具体构件的 min/max"
+    status = _numeric_check(
+        float(actual), expected, "minimum" if check == "equals" else check
+    )
+    return status, actual, f"{component_type} 实体 {actual} 个（下限 {expected}）"
+
+
+def _check_component_collection(
+    blueprint, document, expected, check, instance_entities
+):
+    """逐个绑定实例要求，拒绝缺失、重复和借用旧实体。"""
+    rows = []
+    used = set()
+    declared = document.decisions.components
+    if len(expected) != len(declared):
+        return (
+            "open",
+            len(declared),
+            "已采用的实例数组长度改变，不能用部分成员冒充整组兑现",
+        )
+    for expected_instance in expected:
+        if not isinstance(expected_instance, dict):
+            rows.append(("unsupported", None, "实例要求不是对象"))
+            continue
+        matches = [
+            i
+            for i, inst in enumerate(declared)
+            if i not in used
+            and (
+                inst.id == expected_instance["id"]
+                if expected_instance.get("id")
+                else value_matches(
+                    inst.model_dump(mode="json", exclude_none=True), expected_instance
+                )
+            )
+        ]
+        if len(matches) != 1:
+            rows.append(("open", None, "实例绑定缺失或重复，不能借用同类型旧实体"))
+            continue
+        i = matches[0]
+        used.add(i)
+        rows.append(
+            _instance_check(
+                blueprint,
+                ["decisions", "components", str(i)],
+                expected_instance,
+                check,
+                instance_entities,
+            )
+        )
+    return _aggregate(rows)
+
+
+def _check_material_region(blueprint, document, tokens, expected, check):
+    """核对材质区域意图与逐实体的实际材质绑定。"""
+    from app.domain.blueprint.materials.plan import material_region_field
+
+    index = int(tokens[3])
+    intent = document.decisions.materials
+    if index >= len(intent.regions) or not intent.resolved_plan or check != "equals":
+        return "needs_review", None, "材质区域或已解析方案缺失，或判据不适用"
+    if len(tokens) > 4 and tokens[4] not in {"role", "type"}:
+        return "needs_review", None, "该材质字段不是可核对的实体绑定"
+    region = intent.regions[index]
+    declared = (
+        region.model_dump(mode="json")
+        if len(tokens) == 4
+        else getattr(region, tokens[4], None)
+    )
+    if not value_matches(declared, expected):
+        return "open", declared, "当前材质绑定不符合要求"
+    role = next(
+        (item for item in intent.resolved_plan.roles if item.role == region.role), None
+    )
+    field = material_region_field(region.role, region.type)
+    if role is None or field is None:
+        return "unsupported", None, "该区域的材质角色或引用字段不受支持"
+    entities = _by_type(blueprint, region.type)
+    actual = {item["id"]: item.get(field) for item in entities}
+    matched = bool(entities) and all(ref == role.materialId for ref in actual.values())
+    matched = matched and value_matches(
+        (blueprint.get("materials") or {}).get(role.materialId), role.material
+    )
+    return (
+        ("satisfied" if matched else "open"),
+        actual,
+        f"逐实体核对 {field} 与材质 {role.materialId} 参数",
+    )

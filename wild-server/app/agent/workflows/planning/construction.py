@@ -29,7 +29,10 @@ def implementation_entities(geometry):
 def _complete_native(row, marker, context):
     """单实体才有唯一的整体尺寸；不把整组尺寸强加给组合中的零件。"""
     geometry = row["geometry"]
-    entities = [e for k in ("elements", "components") for e in geometry.get(k, [])]
+    entities = []
+    for current_key in ("elements", "components"):
+        for current_entity in geometry.get(current_key, []):
+            entities.append(current_entity)
     if len(entities) != 1:
         return []
     from app.domain.components.names import resolve_component_name

@@ -438,13 +438,12 @@ class MarkdownChunker:
                 current.clear()
 
         for block_type, block in logical_blocks:
-            candidates = (
-                self._split_table(block, budget)
-                if block_type == "table"
-                else [block]
-                if block_type == "code"
-                else self._split_normal_block(block, budget)
-            )
+            if block_type == "table":
+                candidates = self._split_table(block, budget)
+            elif block_type == "code":
+                candidates = [block]
+            else:
+                candidates = self._split_normal_block(block, budget)
             for candidate in candidates:
                 # 超长代码块作为原子知识单元保留；由文档 linter 提示作者重构。
                 if len(candidate) > budget:

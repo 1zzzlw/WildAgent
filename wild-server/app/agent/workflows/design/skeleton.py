@@ -42,7 +42,9 @@ async def skeleton_generator(state: GenerationState) -> dict:
     on_reasoning_delta = get_reasoning_callback()
     architecture_plan = state.get("architecture_plan")
     material_plan = state.get("material_plan")
-    deterministic_primary = isinstance(architecture_plan, dict) and bool(architecture_plan)
+    deterministic_primary = isinstance(architecture_plan, dict) and bool(
+        architecture_plan
+    )
     # 物件场景走"空几何骨架"：没有墙、楼板、层高，也就没有"复杂度达标"这件事。
     # 判据与方案层、材质层共用同一个 `is_object_plan`，不在这里另判一次。
     from app.domain.design.resolver import is_object_plan
@@ -61,49 +63,18 @@ async def skeleton_generator(state: GenerationState) -> dict:
         )
 
     # ── 1. 仅兼容无结构化方案的旧入口；正常生成链不再二次检索和重新设计 ──
-    rag_t0 = _time.time()
-    rag_error = None
-    spec_text = ""
-    rag_hits = []
-    if not deterministic_primary:
-        from app.agent.runtime import agent_runtime
-
-        selected_query = plan_knowledge_query(user_message, architecture_plan)
-        queries = [
-            SpecQuery("墙、楼板、楼梯与屋顶的已实现组装关系", {"doc_type": "recipe", "entity_name": "supported_assembly_relations"}),
-            SpecQuery(selected_query, {"doc_type": "recipe", "knowledge_role": "relation"}),
-            SpecQuery("墙体 楼板 柱子 梁", {"doc_type": "component", "entity_type": "structural_component"}),
-            SpecQuery("墙体标高与宿主范围", {"doc_type": "component", "entity_type": "wall"}),
-        ]
-        try:
-            rag_result = await asyncio.to_thread(agent_runtime.spec_loader.load_many_result, queries, per_query=2)
-            spec_text = rag_result.text
-        except Exception as exc:
-            rag_error = str(exc)
-            logger.warning(f"[skeleton] RAG 检索失败，继续使用方案约束: {exc}")
-        rag_hits = [] if rag_error else [
-            {
-                "source": hit.metadata.get("source", "?"),
-                "heading": hit.metadata.get("heading", "?"),
-                "doc_type": hit.metadata.get("doc_type", "?"),
-                "entity_type": hit.metadata.get("entity_type", "?"),
-            }
-            for hit in rag_result.hits
-        ]
-    else:
-        logger.info("[skeleton] 使用已批准方案的确定性编译路径，跳过 RAG 与骨架 LLM")
-    if rag_error:
-        spec_text = ""
-    rag_ms = int((_time.time() - rag_t0) * 1000)
-    rag_chars = len(spec_text)
-    logger.info(
-        f"[skeleton] RAG 完成（能力与关系知识）: {rag_chars} 字符, {rag_ms}ms, "
-        f"hits={json.dumps(rag_hits, ensure_ascii=False, default=str)}"
+    spec_text, retrieval = await _load_skeleton_rules(
+        deterministic_primary, user_message, architecture_plan
     )
+    rag_error = retrieval["error"]
+    rag_hits = retrieval["hits"]
+    rag_ms = retrieval["ms"]
+    rag_chars = retrieval["chars"]
 
     # ── 2. 构建 Prompt ──
     system_prompt = (
-        "" if deterministic_primary
+        ""
+        if deterministic_primary
         else build_skeleton_prompt(spec_text, architecture_plan, material_plan)
     )
     prompt_chars = len(system_prompt)
@@ -150,7 +121,7 @@ async def skeleton_generator(state: GenerationState) -> dict:
     llm_ms = 0 if deterministic_primary else int((_time.time() - llm_t0) * 1000)
     llm_chars = len(reply_text)
     reasoning_chars = len(reasoning)
-    
+
     if not deterministic_primary:
         logger.info(
             f"[skeleton] LLM 回复: {llm_chars} 字符, {llm_ms}ms"
@@ -177,8 +148,8 @@ async def skeleton_generator(state: GenerationState) -> dict:
         blueprint = extract_blueprint_from_text(reasoning)
         if blueprint:
             used_reasoning_fallback = True
-            suggested_components = (
-                suggested_components or parse_components_from_reply(reasoning)
+            suggested_components = suggested_components or parse_components_from_reply(
+                reasoning
             )
             if not architecture_plan:
                 design_brief = design_brief or parse_design_brief(reasoning)
@@ -243,24 +214,9 @@ async def skeleton_generator(state: GenerationState) -> dict:
             }
 
     # ── 5. 归一化和 Schema 校验 ──
-    blueprint = normalize_blueprint_input(blueprint)
-    schema_issues = validate_blueprint_schema(blueprint, allow_empty_geometry=object_scene)
-    if not schema_issues:
-        blueprint = apply_resolved_material_plan(blueprint, material_plan, role_specs=role_specs)
-    floor_coordinates = {
-        element.get("id", "?"): {
-            "from": element.get("from"),
-            "to": element.get("to"),
-        }
-        for element in blueprint.get("geometry", {}).get("elements", [])
-        if isinstance(element, dict) and element.get("type") == "floor"
-    }
-    if floor_coordinates:
-        logger.info(
-            "[skeleton] 楼板坐标规范化结果: "
-            + json.dumps(floor_coordinates, ensure_ascii=False, default=str)
-        )
-    schema_issues = validate_blueprint_schema(blueprint, allow_empty_geometry=object_scene)
+    blueprint, schema_issues, floor_coordinates = _normalize_skeleton_schema(
+        blueprint, object_scene, material_plan, role_specs
+    )
 
     if (
         schema_issues
@@ -277,7 +233,9 @@ async def skeleton_generator(state: GenerationState) -> dict:
             role_specs=role_specs,
         )
         deterministic_fallback_reason = "模型骨架未通过 Schema 预检"
-        schema_issues = validate_blueprint_schema(blueprint, allow_empty_geometry=object_scene)
+        schema_issues = validate_blueprint_schema(
+            blueprint, allow_empty_geometry=object_scene
+        )
 
     # 复杂度评估只对建筑有意义：它衡量的是体量覆盖、逐层墙标高、竖向交通与
     # 结构构件数量。物件场景的 elements 本来就是空的（家具由 generate 条目后写入），
@@ -306,14 +264,19 @@ async def skeleton_generator(state: GenerationState) -> dict:
                 role_specs=role_specs,
             )
             deterministic_fallback_reason = "模型骨架未满足结构与方案约束"
-            schema_issues = validate_blueprint_schema(blueprint, allow_empty_geometry=object_scene)
+            schema_issues = validate_blueprint_schema(
+                blueprint, allow_empty_geometry=object_scene
+            )
             complexity_diag = evaluate_skeleton_complexity(blueprint, architecture_plan)
 
     if complexity_diag and not complexity_diag["meets_target"]:
         return {
             "error": "确定性骨架仍未满足结构与方案约束，停止派发组件",
             "status": "failed",
-            "skeleton_diag": {"complexity": complexity_diag, "deterministic_fallback_reason": deterministic_fallback_reason},
+            "skeleton_diag": {
+                "complexity": complexity_diag,
+                "deterministic_fallback_reason": deterministic_fallback_reason,
+            },
         }
 
     if schema_issues:
@@ -396,44 +359,29 @@ async def skeleton_generator(state: GenerationState) -> dict:
         }
 
     # ── 6. 工具调用：计算墙体包围盒 ──
-    bbox_result = {}
-    spatial_invariants = {}
-    try:
-        from app.domain.validation.spatial import compute_wall_bounding_box
-        from app.domain.geometry.invariants import build_spatial_invariants
-
-        bbox_result = compute_wall_bounding_box(blueprint)
-        spatial_invariants = build_spatial_invariants(blueprint, bbox_result)
-        logger.info("[skeleton] 墙体包围盒计算完成")
-    except Exception as e:
-        logger.error(f"[skeleton] 包围盒计算失败: {e}")
+    bbox_result, spatial_invariants = _skeleton_spatial_context(blueprint)
 
     # ── 6.5 把抽象轴网解析为真实 wall id 和精确局部门窗槽位 ──
     # 物件场景没有立面轴网，也就没有槽位可解析：设计清单直接由方案里的
     # component_quota 生成（家具的数量靠 quota 表达，不靠槽位）。
-    if object_scene:
-        design_brief = object_design_brief(architecture_plan)
-        logger.info(
-            f"[skeleton] 物件设计清单: {json.dumps(design_brief.get('component_quota', {}), ensure_ascii=False, default=str)}"
-        )
-    elif isinstance(architecture_plan, dict):
-        from app.domain.design.architecture import resolve_facade_layout
-
-        design_brief = resolve_facade_layout(blueprint, architecture_plan)
-        logger.info(
-            f"[skeleton] 立面槽位解析完成: {len(design_brief.get('opening_slots', []))} 个槽位"
-        )
+    design_brief = _skeleton_design_brief(
+        object_scene, architecture_plan, blueprint, design_brief
+    )
 
     # ── 7. 生成骨架摘要（几何轮廓 + 确定性开口方案）──
     summary = build_skeleton_summary(blueprint, design_brief)
-    
+
     elements = blueprint.get("geometry", {}).get("elements", [])
     total_ms = int((_time.time() - t0) * 1000)
 
-    logger.info(f"[skeleton] 骨架生成完成: {len(elements)} 个构件, 建议组件: {suggested_components}, {total_ms}ms")
+    logger.info(
+        f"[skeleton] 骨架生成完成: {len(elements)} 个构件, 建议组件: {suggested_components}, {total_ms}ms"
+    )
     if design_brief:
         quota = design_brief.get("component_quota", {})
-        logger.info(f"[skeleton] 设计清单: {json.dumps(quota, ensure_ascii=False, default=str)}")
+        logger.info(
+            f"[skeleton] 设计清单: {json.dumps(quota, ensure_ascii=False, default=str)}"
+        )
     if deterministic_primary and on_reasoning_delta is not None:
         await on_reasoning_delta(
             "skeleton:progress",
@@ -443,8 +391,8 @@ async def skeleton_generator(state: GenerationState) -> dict:
                 "下一节点将直接展开执行计划。\n"
                 if object_scene
                 else f"骨架编译完成：{len(elements)} 个结构元素、"
-                     f"{len((design_brief or {}).get('opening_slots', []))} 个组件槽位；"
-                     "下一节点将直接展开执行计划。\n"
+                f"{len((design_brief or {}).get('opening_slots', []))} 个组件槽位；"
+                "下一节点将直接展开执行计划。\n"
             ),
         )
 
@@ -525,3 +473,128 @@ async def _recover_blueprint_json(
         }
 
 
+async def _load_skeleton_rules(deterministic_primary, user_message, architecture_plan):
+    """仅为无结构化方案的兼容入口检索骨架规则，返回检索诊断。"""
+    rag_t0 = _time.time()
+    rag_error = None
+    spec_text = ""
+    rag_hits = []
+    if not deterministic_primary:
+        from app.agent.runtime import agent_runtime
+
+        selected_query = plan_knowledge_query(user_message, architecture_plan)
+        queries = [
+            SpecQuery(
+                "墙、楼板、楼梯与屋顶的已实现组装关系",
+                {"doc_type": "recipe", "entity_name": "supported_assembly_relations"},
+            ),
+            SpecQuery(
+                selected_query, {"doc_type": "recipe", "knowledge_role": "relation"}
+            ),
+            SpecQuery(
+                "墙体 楼板 柱子 梁",
+                {"doc_type": "component", "entity_type": "structural_component"},
+            ),
+            SpecQuery(
+                "墙体标高与宿主范围", {"doc_type": "component", "entity_type": "wall"}
+            ),
+        ]
+        try:
+            rag_result = await asyncio.to_thread(
+                agent_runtime.spec_loader.load_many_result, queries, per_query=2
+            )
+            spec_text = rag_result.text
+        except Exception as exc:
+            rag_error = str(exc)
+            logger.warning(f"[skeleton] RAG 检索失败，继续使用方案约束: {exc}")
+        rag_hits = (
+            []
+            if rag_error
+            else [
+                {
+                    "source": hit.metadata.get("source", "?"),
+                    "heading": hit.metadata.get("heading", "?"),
+                    "doc_type": hit.metadata.get("doc_type", "?"),
+                    "entity_type": hit.metadata.get("entity_type", "?"),
+                }
+                for hit in rag_result.hits
+            ]
+        )
+    else:
+        logger.info("[skeleton] 使用已批准方案的确定性编译路径，跳过 RAG 与骨架 LLM")
+    if rag_error:
+        spec_text = ""
+    rag_ms = int((_time.time() - rag_t0) * 1000)
+    rag_chars = len(spec_text)
+    logger.info(
+        f"[skeleton] RAG 完成（能力与关系知识）: {rag_chars} 字符, {rag_ms}ms, "
+        f"hits={json.dumps(rag_hits, ensure_ascii=False, default=str)}"
+    )
+    return spec_text, {
+        "error": rag_error,
+        "hits": rag_hits,
+        "ms": rag_ms,
+        "chars": rag_chars,
+    }
+
+
+def _normalize_skeleton_schema(blueprint, object_scene, material_plan, role_specs):
+    """规范化骨架坐标并重新检查同一套 Blueprint 契约。"""
+    blueprint = normalize_blueprint_input(blueprint)
+    schema_issues = validate_blueprint_schema(
+        blueprint, allow_empty_geometry=object_scene
+    )
+    if not schema_issues:
+        blueprint = apply_resolved_material_plan(
+            blueprint, material_plan, role_specs=role_specs
+        )
+    floor_coordinates = {
+        element.get("id", "?"): {
+            "from": element.get("from"),
+            "to": element.get("to"),
+        }
+        for element in blueprint.get("geometry", {}).get("elements", [])
+        if isinstance(element, dict) and element.get("type") == "floor"
+    }
+    if floor_coordinates:
+        logger.info(
+            "[skeleton] 楼板坐标规范化结果: "
+            + json.dumps(floor_coordinates, ensure_ascii=False, default=str)
+        )
+    schema_issues = validate_blueprint_schema(
+        blueprint, allow_empty_geometry=object_scene
+    )
+    return blueprint, schema_issues, floor_coordinates
+
+
+def _skeleton_spatial_context(blueprint):
+    """计算墙体包围盒和空间不变量，保留失败诊断。"""
+    bbox_result = {}
+    spatial_invariants = {}
+    try:
+        from app.domain.validation.spatial import compute_wall_bounding_box
+        from app.domain.geometry.invariants import build_spatial_invariants
+
+        bbox_result = compute_wall_bounding_box(blueprint)
+        spatial_invariants = build_spatial_invariants(blueprint, bbox_result)
+        logger.info("[skeleton] 墙体包围盒计算完成")
+    except Exception as e:
+        logger.error(f"[skeleton] 包围盒计算失败: {e}")
+    return bbox_result, spatial_invariants
+
+
+def _skeleton_design_brief(object_scene, architecture_plan, blueprint, design_brief):
+    """按物件或建筑方案形成后续计划需要的设计清单。"""
+    if object_scene:
+        design_brief = object_design_brief(architecture_plan)
+        logger.info(
+            f"[skeleton] 物件设计清单: {json.dumps(design_brief.get('component_quota', {}), ensure_ascii=False, default=str)}"
+        )
+    elif isinstance(architecture_plan, dict):
+        from app.domain.design.architecture import resolve_facade_layout
+
+        design_brief = resolve_facade_layout(blueprint, architecture_plan)
+        logger.info(
+            f"[skeleton] 立面槽位解析完成: {len(design_brief.get('opening_slots', []))} 个槽位"
+        )
+    return design_brief

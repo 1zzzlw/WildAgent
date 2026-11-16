@@ -131,8 +131,13 @@ def _resolve_union_wall_segments(
         )
         for volume in volumes
     ]
-    xs = sorted({value for rectangle in rectangles for value in (rectangle[0], rectangle[2])})
-    zs = sorted({value for rectangle in rectangles for value in (rectangle[1], rectangle[3])})
+    x_coordinates = set()
+    z_coordinates = set()
+    for rectangle in rectangles:
+        x_coordinates.update((rectangle[0], rectangle[2]))
+        z_coordinates.update((rectangle[1], rectangle[3]))
+    xs = sorted(x_coordinates)
+    zs = sorted(z_coordinates)
     occupied: set[tuple[int, int]] = set()
     for x_index in range(len(xs) - 1):
         for z_index in range(len(zs) - 1):
@@ -381,31 +386,44 @@ def evaluate_skeleton_complexity(
             changed = True
             while changed:
                 changed = False
-                component_points = [
-                    (float(walls[index][field][0]), float(walls[index][field][2]))
-                    for index in component for field in ("from", "to")
-                ]
+                component_points = []
+                for current_index in component:
+                    for current_field in ("from", "to"):
+                        component_points.append(
+                            (
+                                float(walls[current_index][current_field][0]),
+                                float(walls[current_index][current_field][2]),
+                            )
+                        )
                 for index in list(pending):
                     wall_points = [
                         (float(walls[index][field][0]), float(walls[index][field][2]))
                         for field in ("from", "to")
                     ]
-                    if any(
-                        math.hypot(first[0] - second[0], first[1] - second[1]) <= 0.05
-                        for first in component_points for second in wall_points
-                    ):
+                    touches_component = False
+                    for first in component_points:
+                        for second in wall_points:
+                            if (
+                                math.hypot(first[0] - second[0], first[1] - second[1])
+                                <= 0.05
+                            ):
+                                touches_component = True
+                                break
+                        if touches_component:
+                            break
+                    if touches_component:
                         pending.remove(index)
                         component.add(index)
                         changed = True
             connected_walls = [walls[index] for index in component]
-            xs = [
-                float(point) for wall in connected_walls
-                for point in (wall["from"][0], wall["to"][0])
-            ]
-            zs = [
-                float(point) for wall in connected_walls
-                for point in (wall["from"][2], wall["to"][2])
-            ]
+            xs = []
+            for current_wall in connected_walls:
+                for current_point in (current_wall["from"][0], current_wall["to"][0]):
+                    xs.append(float(current_point))
+            zs = []
+            for current_wall in connected_walls:
+                for current_point in (current_wall["from"][2], current_wall["to"][2]):
+                    zs.append(float(current_point))
             volume_footprints.add(tuple(round(value, 2) for value in (
                 min(xs), min(zs), max(xs), max(zs),
             )))
@@ -738,16 +756,22 @@ def _cut_core_shaft_openings(blueprint: dict[str, Any], floor_height: float) -> 
             pass
 
 
-def build_deterministic_skeleton(plan: dict[str, Any], user_message: str = "", *, normalized_input: bool = False) -> dict[str, Any]:
+def build_deterministic_skeleton(
+    plan: dict[str, Any], user_message: str = "", *, normalized_input: bool = False
+) -> dict[str, Any]:
     """在骨架模型不可用或复杂度不足时生成可校验的体量化概念骨架。
 
     full 模式按方案 volumes 落实组合体量；schematic 模式仍使用完整总高度外壳，
     避免一次生成数百层元素。
     """
-    normalized = plan if normalized_input else normalize_architecture_plan(
-        plan,
-        user_message,
-        plan.get("complexity") if isinstance(plan, dict) else None,
+    normalized = (
+        plan
+        if normalized_input
+        else normalize_architecture_plan(
+            plan,
+            user_message,
+            plan.get("complexity") if isinstance(plan, dict) else None,
+        )
     )
     massing = normalized["massing"]
     width = float(massing["width"])
@@ -758,7 +782,10 @@ def build_deterministic_skeleton(plan: dict[str, Any], user_message: str = "", *
     schematic = massing["representation_mode"] == "schematic"
     total_height = floors * floor_height
     volumes = normalized.get("volumes") or _fallback_volumes(
-        width, depth, modeled_floors, normalized["complexity"],
+        width,
+        depth,
+        modeled_floors,
+        normalized["complexity"],
     )
     vertical_strategy = str(
         (normalized.get("circulation") or {}).get("vertical_strategy") or "stair"
@@ -767,16 +794,20 @@ def build_deterministic_skeleton(plan: dict[str, Any], user_message: str = "", *
     want_core = vertical_strategy == "core_and_stair" and floors > 1
     level_regions = []
     for level in range(1, modeled_floors + 1):
-        level_regions.append([
+        level_regions.append(
             [
-                float(volume.get("x", 0.0)),
-                float(volume.get("z", 0.0)),
-                float(volume.get("x", 0.0)) + float(volume.get("width", width)),
-                float(volume.get("z", 0.0)) + float(volume.get("depth", depth)),
+                [
+                    float(volume.get("x", 0.0)),
+                    float(volume.get("z", 0.0)),
+                    float(volume.get("x", 0.0)) + float(volume.get("width", width)),
+                    float(volume.get("z", 0.0)) + float(volume.get("depth", depth)),
+                ]
+                for volume in volumes
+                if int(volume.get("start_floor", 1))
+                <= level
+                <= int(volume.get("end_floor", modeled_floors))
             ]
-            for volume in volumes
-            if int(volume.get("start_floor", 1)) <= level <= int(volume.get("end_floor", modeled_floors))
-        ])
+        )
     preferred_stair_width = min(1.8, max(1.0, width * 0.08))
     footprint = shared_footprint(level_regions)
     # 核心筒与楼梯必须在公共区内分工：旧实现里核心筒按包围盒居中、楼梯按公共区
@@ -793,10 +824,15 @@ def build_deterministic_skeleton(plan: dict[str, Any], user_message: str = "", *
     if want_core and vertical_layout is None:
         # 公共区放不下井道设备尺寸 → 降级为纯楼梯，而不是把井道硬塞进建筑里。
         want_core = False
-    stair_layout = (
-        vertical_layout["stair"] if vertical_layout is not None
-        else shared_stair_layout(level_regions, floor_height, preferred_stair_width)
-    ) if want_stair else None
+    if want_stair:
+        if vertical_layout is not None:
+            stair_layout = vertical_layout["stair"]
+        else:
+            stair_layout = shared_stair_layout(
+                level_regions, floor_height, preferred_stair_width
+            )
+    else:
+        stair_layout = None
     if want_stair and stair_layout is None:
         stair_x = max(1.0, min(width - 1.0, width * 0.2))
         stair_z0 = max(0.8, min(depth - 2.0, depth * 0.2))
@@ -814,131 +850,33 @@ def build_deterministic_skeleton(plan: dict[str, Any], user_message: str = "", *
     if schematic:
         schematic_zones = _schematic_volume_zones(volumes, floors, modeled_floors)
         if not schematic_zones:
-            schematic_zones = [{
-                "start_floor": 1,
-                "end_floor": floors,
-                "volumes": [{
-                    "id": "main", "x": 0.0, "z": 0.0,
-                    "width": width, "depth": depth,
-                    "semantic_start_floor": 1, "semantic_end_floor": floors,
-                }],
-            }]
-        shell_material = "glass" if normalized.get("curtain_wall") else "wall_finish"
-        for zone_index, zone in enumerate(schematic_zones, start=1):
-            base_y = (int(zone["start_floor"]) - 1) * floor_height
-            top_y = int(zone["end_floor"]) * floor_height
-            segments = _resolve_union_wall_segments(zone["volumes"])
-            side_counts: dict[str, int] = {}
-            for segment in segments:
-                side = str(segment["side"])
-                side_counts[side] = side_counts.get(side, 0) + 1
-                start_x, start_z = segment["from"]
-                end_x, end_z = segment["to"]
-                elements.append({
-                    "type": "wall",
-                    "id": f"wall_{side}_shell_{zone_index}_{side_counts[side]}",
-                    "from": [start_x, base_y, start_z],
-                    "to": [end_x, top_y, end_z],
-                    "thickness": 0.24,
-                    "material": shell_material,
-                })
-            if normalized.get("curtain_wall"):
-                _append_curtain_wall_grid(
-                    elements,
-                    segments,
-                    base_y=base_y,
-                    top_y=top_y,
-                    start_floor=int(zone["start_floor"]),
-                    end_floor=int(zone["end_floor"]),
-                    floor_height=floor_height,
-                    facades=normalized.get("facades", {}),
-                    zone_index=zone_index,
-                )
-
-        mapped_volumes = _schematic_volume_ranges(volumes, floors, modeled_floors)
-        ground_volumes = [
-            volume for volume in mapped_volumes
-            if int(volume["semantic_start_floor"]) <= 1 <= int(volume["semantic_end_floor"])
-        ]
-        top_volumes = [
-            volume for volume in mapped_volumes
-            if int(volume["semantic_start_floor"]) <= floors <= int(volume["semantic_end_floor"])
-        ]
-        for label, elevation, active in (
-            ("ground", 0.0, ground_volumes),
-            ("top", total_height, top_volumes),
-        ):
-            for index, volume in enumerate(active, start=1):
-                suffix = "" if len(active) == 1 else f"_{index}"
-                elements.append({
-                    "type": "floor", "id": f"floor_{label}{suffix}",
-                    "from": [float(volume["x"]), elevation, float(volume["z"])],
-                    "to": [
-                        float(volume["x"]) + float(volume["width"]), elevation,
-                        float(volume["z"]) + float(volume["depth"]),
+            schematic_zones = [
+                {
+                    "start_floor": 1,
+                    "end_floor": floors,
+                    "volumes": [
+                        {
+                            "id": "main",
+                            "x": 0.0,
+                            "z": 0.0,
+                            "width": width,
+                            "depth": depth,
+                            "semantic_start_floor": 1,
+                            "semantic_end_floor": floors,
+                        }
                     ],
-                    "thickness": 0.2, "material": "concrete",
-                })
+                }
+            ]
+        _append_schematic_walls(elements, schematic_zones, normalized, floor_height)
+
+        mapped_volumes = _append_shell_floor_plates(
+            elements, volumes, floors, modeled_floors, total_height
+        )
 
         if floors > 1:
-            for volume in mapped_volumes:
-                template_id = (
-                    "standard_floor_plate"
-                    if len(mapped_volumes) == 1
-                    else f"standard_floor_plate_{volume['id']}"
-                )
-                templates[template_id] = {
-                    "type": "floor", "id": template_id,
-                    "from": [0.0, 0.0, 0.0],
-                    "to": [float(volume["width"]), 0.0, float(volume["depth"])],
-                    "thickness": 0.2, "material": "concrete",
-                }
-            for level in range(1, floors):
-                supported_story = level + 1
-                for volume in mapped_volumes:
-                    if not (
-                        int(volume["semantic_start_floor"])
-                        <= supported_story
-                        <= int(volume["semantic_end_floor"])
-                    ):
-                        continue
-                    template_id = (
-                        "standard_floor_plate"
-                        if len(mapped_volumes) == 1
-                        else f"standard_floor_plate_{volume['id']}"
-                    )
-                    instances.append({
-                        "id": f"floor_standard_{level}_{volume['id']}",
-                        "ref": template_id,
-                        "position": [
-                            float(volume["x"]), round(level * floor_height, 3),
-                            float(volume["z"]),
-                        ],
-                    })
-
-            if stair_layout:
-                start = stair_layout["start"]
-                end = stair_layout["end"]
-                for direction, lower, upper in (
-                    ("forward", start, end),
-                    ("reverse", end, start),
-                ):
-                    template_id = f"standard_storey_stair_{direction}"
-                    templates[template_id] = {
-                        "type": "stair", "id": template_id,
-                        "from": [lower[0], 0.0, lower[1]],
-                        "to": [upper[0], floor_height, upper[1]],
-                        "width": stair_layout["width"],
-                        "material": "concrete",
-                    }
-                instances.extend({
-                    "id": f"stair_standard_{level}_{level + 1}",
-                    "ref": (
-                        "standard_storey_stair_forward"
-                        if level % 2 else "standard_storey_stair_reverse"
-                    ),
-                    "position": [0.0, round((level - 1) * floor_height, 3), 0.0],
-                } for level in range(1, floors))
+            _append_standard_storeys(
+                templates, instances, mapped_volumes, floors, floor_height, stair_layout
+            )
 
         if want_core and vertical_layout is not None:
             _append_vertical_core(
@@ -950,80 +888,9 @@ def build_deterministic_skeleton(plan: dict[str, Any], user_message: str = "", *
                 floor_height=floor_height,
             )
     else:
-        floor_plates = _resolve_floor_plate_plan(volumes, modeled_floors, floor_height)
-        for level in range(1, modeled_floors + 1):
-            active_volumes = [
-                volume for volume in volumes
-                if int(volume["start_floor"]) <= level <= int(volume["end_floor"])
-            ] or [
-                {
-                    "id": "main", "x": 0.0, "z": 0.0,
-                    "width": width, "depth": depth,
-                }
-            ]
-            base_y = (level - 1) * floor_height
-            top_y = level * floor_height
-            for plate in (item for item in floor_plates if item["level"] == level):
-                x0, z0, x1, z1 = plate["bounds"]
-                elements.append({
-                    "type": "floor",
-                    "id": f"floor_{level}_{plate['volume_id']}",
-                    "from": [x0, plate["elevation"], z0],
-                    "to": [x1, plate["elevation"], z1],
-                    "thickness": 0.2,
-                    "material": "concrete",
-                })
-            # 逐体量立面覆盖优先于共享立面；全 open 的墙段不生成实体墙。
-            if len(active_volumes) > 1:
-                side_counts: dict[str, int] = {}
-                for segment in _resolve_union_wall_segments(
-                    active_volumes,
-                    split_by_volume=any(volume.get("facades") for volume in active_volumes),
-                ):
-                    side = str(segment["side"])
-                    owner = next((volume for volume in active_volumes
-                                  if volume.get("id") == segment.get("volume")), None)
-                    facade = _effective_facade(normalized.get("facades", {}), owner, side)
-                    pattern = facade.get("ground_pattern" if level == 1 else "upper_pattern")
-                    if is_open_side(pattern or []):
-                        continue
-                    side_counts[side] = side_counts.get(side, 0) + 1
-                    start_x, start_z = segment["from"]
-                    end_x, end_z = segment["to"]
-                    elements.append({
-                        "type": "wall",
-                        "id": f"wall_{side}_{level}_{side_counts[side]}",
-                        "from": [start_x, base_y, start_z],
-                        "to": [end_x, top_y, end_z],
-                        "thickness": 0.24,
-                        "material": "wall_finish",
-                    })
-                continue
-
-            for volume in active_volumes:
-                volume_id = str(volume["id"])
-                x0 = float(volume["x"])
-                z0 = float(volume["z"])
-                x1 = x0 + float(volume["width"])
-                z1 = z0 + float(volume["depth"])
-                suffix = f"{level}_{volume_id}" if len(active_volumes) > 1 else str(level)
-                wall_specs = [
-                    ("front", x0, z0, x1, z0),
-                    ("right", x1, z0, x1, z1),
-                    ("back", x1, z1, x0, z1),
-                    ("left", x0, z1, x0, z0),
-                ]
-                for side, start_x, start_z, end_x, end_z in wall_specs:
-                    facade = _effective_facade(normalized.get("facades", {}), volume, side)
-                    pattern = facade.get("ground_pattern" if level == 1 else "upper_pattern")
-                    if is_open_side(pattern or []):
-                        continue
-                    elements.append({
-                        "type": "wall", "id": f"wall_{side}_{suffix}",
-                        "from": [start_x, base_y, start_z],
-                        "to": [end_x, top_y, end_z],
-                        "thickness": 0.24, "material": "wall_finish",
-                    })
+        _append_full_storeys(
+            elements, volumes, modeled_floors, floor_height, normalized
+        )
 
     if not schematic and want_core and vertical_layout is not None:
         _append_vertical_core(
@@ -1041,19 +908,346 @@ def build_deterministic_skeleton(plan: dict[str, Any], user_message: str = "", *
         for level in range(modeled_floors - 1):
             base_y = level * floor_height
             lower, upper = (
-                (stair_start, stair_end)
-                if level % 2 == 0
-                else (stair_end, stair_start)
+                (stair_start, stair_end) if level % 2 == 0 else (stair_end, stair_start)
             )
-            elements.append({
+            elements.append(
+                {
+                    "type": "stair",
+                    "id": f"stair_{level + 1}_{level + 2}",
+                    "from": [lower[0], round(base_y, 3), lower[1]],
+                    "to": [upper[0], round(base_y + floor_height, 3), upper[1]],
+                    "width": stair_layout["width"],
+                    "material": "concrete",
+                }
+            )
+
+    _append_skeleton_columns(
+        elements, schematic, schematic_zones, normalized, floor_height, total_height
+    )
+
+    blueprint = {
+        "meta": {
+            "version": "1.0",
+            "type": "building",
+            "name": str(normalized.get("concept") or "确定性回退建筑")[:80],
+        },
+        "geometry": {
+            "elements": elements,
+            "components": [],
+            **({"templates": templates, "instances": instances} if templates else {}),
+        },
+        "materials": {
+            "concrete": {
+                "baseColor": [0.72, 0.72, 0.72],
+                "roughness": 0.65,
+                "metallic": 0.0,
+                "albedo": 1.0,
+                "lightingCondition": "D65_noon",
+            },
+            "wall_finish": {
+                "baseColor": [0.86, 0.84, 0.80],
+                "roughness": 0.72,
+                "metallic": 0.0,
+                "albedo": 1.0,
+                "lightingCondition": "D65_noon",
+            },
+            "wood": {
+                "baseColor": [0.42, 0.24, 0.12],
+                "roughness": 0.68,
+                "metallic": 0.0,
+                "albedo": 1.0,
+                "lightingCondition": "D65_noon",
+            },
+            "metal": {
+                "baseColor": [0.16, 0.17, 0.18],
+                "roughness": 0.34,
+                "metallic": 0.7,
+                "albedo": 1.0,
+                "lightingCondition": "D65_noon",
+            },
+            "glass": {
+                "baseColor": [0.52, 0.70, 0.82],
+                "roughness": 0.12,
+                "metallic": 0.0,
+                "albedo": 1.0,
+                "materialClass": "glass",
+                "transmission": 0.9,
+                "ior": 1.5,
+                "thickness": 0.12,
+                "lightingCondition": "D65_noon",
+            },
+            "roof": {
+                "baseColor": [0.30, 0.31, 0.33],
+                "roughness": 0.75,
+                "metallic": 0.0,
+                "albedo": 1.0,
+                "lightingCondition": "D65_noon",
+            },
+        },
+        "behaviors": {},
+    }
+    cut_stair_openings(blueprint)
+    _cut_core_shaft_openings(blueprint, floor_height)
+    return blueprint
+
+
+def _append_schematic_walls(elements, schematic_zones, normalized, floor_height):
+    """按语义楼层区间生成示意围护和幕墙分格。"""
+    shell_material = "glass" if normalized.get("curtain_wall") else "wall_finish"
+    for zone_index, zone in enumerate(schematic_zones, start=1):
+        base_y = (int(zone["start_floor"]) - 1) * floor_height
+        top_y = int(zone["end_floor"]) * floor_height
+        segments = _resolve_union_wall_segments(zone["volumes"])
+        side_counts: dict[str, int] = {}
+        for segment in segments:
+            side = str(segment["side"])
+            side_counts[side] = side_counts.get(side, 0) + 1
+            start_x, start_z = segment["from"]
+            end_x, end_z = segment["to"]
+            elements.append(
+                {
+                    "type": "wall",
+                    "id": f"wall_{side}_shell_{zone_index}_{side_counts[side]}",
+                    "from": [start_x, base_y, start_z],
+                    "to": [end_x, top_y, end_z],
+                    "thickness": 0.24,
+                    "material": shell_material,
+                }
+            )
+        if normalized.get("curtain_wall"):
+            _append_curtain_wall_grid(
+                elements,
+                segments,
+                base_y=base_y,
+                top_y=top_y,
+                start_floor=int(zone["start_floor"]),
+                end_floor=int(zone["end_floor"]),
+                floor_height=floor_height,
+                facades=normalized.get("facades", {}),
+                zone_index=zone_index,
+            )
+
+
+def _append_shell_floor_plates(elements, volumes, floors, modeled_floors, total_height):
+    """在示意体量的首层与顶层保留实际楼板。"""
+    mapped_volumes = _schematic_volume_ranges(volumes, floors, modeled_floors)
+    ground_volumes = [
+        volume
+        for volume in mapped_volumes
+        if int(volume["semantic_start_floor"]) <= 1 <= int(volume["semantic_end_floor"])
+    ]
+    top_volumes = [
+        volume
+        for volume in mapped_volumes
+        if int(volume["semantic_start_floor"])
+        <= floors
+        <= int(volume["semantic_end_floor"])
+    ]
+    for label, elevation, active in (
+        ("ground", 0.0, ground_volumes),
+        ("top", total_height, top_volumes),
+    ):
+        for index, volume in enumerate(active, start=1):
+            suffix = "" if len(active) == 1 else f"_{index}"
+            elements.append(
+                {
+                    "type": "floor",
+                    "id": f"floor_{label}{suffix}",
+                    "from": [float(volume["x"]), elevation, float(volume["z"])],
+                    "to": [
+                        float(volume["x"]) + float(volume["width"]),
+                        elevation,
+                        float(volume["z"]) + float(volume["depth"]),
+                    ],
+                    "thickness": 0.2,
+                    "material": "concrete",
+                }
+            )
+    return mapped_volumes
+
+
+def _append_standard_storeys(
+    templates, instances, mapped_volumes, floors, floor_height, stair_layout
+):
+    """为中间楼面和层间楼梯生成参数化模板与实例。"""
+    for volume in mapped_volumes:
+        template_id = (
+            "standard_floor_plate"
+            if len(mapped_volumes) == 1
+            else f"standard_floor_plate_{volume['id']}"
+        )
+        templates[template_id] = {
+            "type": "floor",
+            "id": template_id,
+            "from": [0.0, 0.0, 0.0],
+            "to": [float(volume["width"]), 0.0, float(volume["depth"])],
+            "thickness": 0.2,
+            "material": "concrete",
+        }
+    for level in range(1, floors):
+        supported_story = level + 1
+        for volume in mapped_volumes:
+            if not (
+                int(volume["semantic_start_floor"])
+                <= supported_story
+                <= int(volume["semantic_end_floor"])
+            ):
+                continue
+            template_id = (
+                "standard_floor_plate"
+                if len(mapped_volumes) == 1
+                else f"standard_floor_plate_{volume['id']}"
+            )
+            instances.append(
+                {
+                    "id": f"floor_standard_{level}_{volume['id']}",
+                    "ref": template_id,
+                    "position": [
+                        float(volume["x"]),
+                        round(level * floor_height, 3),
+                        float(volume["z"]),
+                    ],
+                }
+            )
+
+    if stair_layout:
+        start = stair_layout["start"]
+        end = stair_layout["end"]
+        for direction, lower, upper in (
+            ("forward", start, end),
+            ("reverse", end, start),
+        ):
+            template_id = f"standard_storey_stair_{direction}"
+            templates[template_id] = {
                 "type": "stair",
-                "id": f"stair_{level + 1}_{level + 2}",
-                "from": [lower[0], round(base_y, 3), lower[1]],
-                "to": [upper[0], round(base_y + floor_height, 3), upper[1]],
+                "id": template_id,
+                "from": [lower[0], 0.0, lower[1]],
+                "to": [upper[0], floor_height, upper[1]],
                 "width": stair_layout["width"],
                 "material": "concrete",
-            })
+            }
+        instances.extend(
+            {
+                "id": f"stair_standard_{level}_{level + 1}",
+                "ref": (
+                    "standard_storey_stair_forward"
+                    if level % 2
+                    else "standard_storey_stair_reverse"
+                ),
+                "position": [0.0, round((level - 1) * floor_height, 3), 0.0],
+            }
+            for level in range(1, floors)
+        )
 
+
+def _append_full_storeys(elements, volumes, modeled_floors, floor_height, normalized):
+    """逐层生成实体楼面和有效立面，保留显式开敞边。"""
+    width = float(normalized["massing"]["width"])
+    depth = float(normalized["massing"]["depth"])
+    floor_plates = _resolve_floor_plate_plan(volumes, modeled_floors, floor_height)
+    for level in range(1, modeled_floors + 1):
+        active_volumes = [
+            volume
+            for volume in volumes
+            if int(volume["start_floor"]) <= level <= int(volume["end_floor"])
+        ] or [
+            {
+                "id": "main",
+                "x": 0.0,
+                "z": 0.0,
+                "width": width,
+                "depth": depth,
+            }
+        ]
+        base_y = (level - 1) * floor_height
+        top_y = level * floor_height
+        for plate in (item for item in floor_plates if item["level"] == level):
+            x0, z0, x1, z1 = plate["bounds"]
+            elements.append(
+                {
+                    "type": "floor",
+                    "id": f"floor_{level}_{plate['volume_id']}",
+                    "from": [x0, plate["elevation"], z0],
+                    "to": [x1, plate["elevation"], z1],
+                    "thickness": 0.2,
+                    "material": "concrete",
+                }
+            )
+        # 逐体量立面覆盖优先于共享立面；全 open 的墙段不生成实体墙。
+        if len(active_volumes) > 1:
+            side_counts: dict[str, int] = {}
+            for segment in _resolve_union_wall_segments(
+                active_volumes,
+                split_by_volume=any(volume.get("facades") for volume in active_volumes),
+            ):
+                side = str(segment["side"])
+                owner = next(
+                    (
+                        volume
+                        for volume in active_volumes
+                        if volume.get("id") == segment.get("volume")
+                    ),
+                    None,
+                )
+                facade = _effective_facade(normalized.get("facades", {}), owner, side)
+                pattern = facade.get(
+                    "ground_pattern" if level == 1 else "upper_pattern"
+                )
+                if is_open_side(pattern or []):
+                    continue
+                side_counts[side] = side_counts.get(side, 0) + 1
+                start_x, start_z = segment["from"]
+                end_x, end_z = segment["to"]
+                elements.append(
+                    {
+                        "type": "wall",
+                        "id": f"wall_{side}_{level}_{side_counts[side]}",
+                        "from": [start_x, base_y, start_z],
+                        "to": [end_x, top_y, end_z],
+                        "thickness": 0.24,
+                        "material": "wall_finish",
+                    }
+                )
+            continue
+
+        for volume in active_volumes:
+            volume_id = str(volume["id"])
+            x0 = float(volume["x"])
+            z0 = float(volume["z"])
+            x1 = x0 + float(volume["width"])
+            z1 = z0 + float(volume["depth"])
+            suffix = f"{level}_{volume_id}" if len(active_volumes) > 1 else str(level)
+            wall_specs = [
+                ("front", x0, z0, x1, z0),
+                ("right", x1, z0, x1, z1),
+                ("back", x1, z1, x0, z1),
+                ("left", x0, z1, x0, z0),
+            ]
+            for side, start_x, start_z, end_x, end_z in wall_specs:
+                facade = _effective_facade(normalized.get("facades", {}), volume, side)
+                pattern = facade.get(
+                    "ground_pattern" if level == 1 else "upper_pattern"
+                )
+                if is_open_side(pattern or []):
+                    continue
+                elements.append(
+                    {
+                        "type": "wall",
+                        "id": f"wall_{side}_{suffix}",
+                        "from": [start_x, base_y, start_z],
+                        "to": [end_x, top_y, end_z],
+                        "thickness": 0.24,
+                        "material": "wall_finish",
+                    }
+                )
+
+
+def _append_skeleton_columns(
+    elements, schematic, schematic_zones, normalized, floor_height, total_height
+):
+    """按现有示意分区或公共建筑策略生成确定性柱构件。"""
+    width = float(normalized["massing"]["width"])
+    depth = float(normalized["massing"]["depth"])
     if schematic:
         radius = min(0.6, max(0.2, min(width, depth) * 0.012))
         column_keys: set[tuple[float, float, float, float]] = set()
@@ -1085,80 +1279,49 @@ def build_deterministic_skeleton(plan: dict[str, Any], user_message: str = "", *
                     part_base = base_y + part * segment_height
                     for corner_index, (x, z) in enumerate(corners, start=1):
                         key = (
-                            round(x, 3), round(z, 3), round(part_base, 3),
+                            round(x, 3),
+                            round(z, 3),
+                            round(part_base, 3),
                             round(part_base + segment_height, 3),
                         )
                         if key in column_keys:
                             continue
                         column_keys.add(key)
-                        elements.append({
-                            "type": "column",
-                            "id": (
-                                f"column_zone_{zone_index}_{volume['id']}_"
-                                f"{part + 1}_{corner_index}"
-                            ),
-                            "base": [x, round(part_base, 3), z],
-                            "height": round(segment_height, 3),
-                            "bottomRadius": radius,
-                            "topRadius": radius,
-                            "style": "modern",
-                            "material": "concrete",
-                        })
+                        elements.append(
+                            {
+                                "type": "column",
+                                "id": (
+                                    f"column_zone_{zone_index}_{volume['id']}_"
+                                    f"{part + 1}_{corner_index}"
+                                ),
+                                "base": [x, round(part_base, 3), z],
+                                "height": round(segment_height, 3),
+                                "bottomRadius": radius,
+                                "topRadius": radius,
+                                "style": "modern",
+                                "material": "concrete",
+                            }
+                        )
     elif normalized["profile"] in {"long_span_public", "high_rise"}:
         radius = min(0.6, max(0.2, min(width, depth) * 0.012))
-        for index, (x, z) in enumerate((
-            (0.5, 0.5), (width - 0.5, 0.5),
-            (width - 0.5, depth - 0.5), (0.5, depth - 0.5),
-        ), start=1):
-            elements.append({
-                "type": "column", "id": f"column_corner_{index}",
-                "base": [x, 0.0, z], "height": total_height,
-                "bottomRadius": radius, "topRadius": radius,
-                "style": "modern", "material": "concrete",
-            })
-
-    blueprint = {
-        "meta": {
-            "version": "1.0",
-            "type": "building",
-            "name": str(normalized.get("concept") or "确定性回退建筑")[:80],
-        },
-        "geometry": {
-            "elements": elements,
-            "components": [],
-            **({"templates": templates, "instances": instances} if templates else {}),
-        },
-        "materials": {
-            "concrete": {
-                "baseColor": [0.72, 0.72, 0.72], "roughness": 0.65,
-                "metallic": 0.0, "albedo": 1.0, "lightingCondition": "D65_noon",
-            },
-            "wall_finish": {
-                "baseColor": [0.86, 0.84, 0.80], "roughness": 0.72,
-                "metallic": 0.0, "albedo": 1.0, "lightingCondition": "D65_noon",
-            },
-            "wood": {
-                "baseColor": [0.42, 0.24, 0.12], "roughness": 0.68,
-                "metallic": 0.0, "albedo": 1.0, "lightingCondition": "D65_noon",
-            },
-            "metal": {
-                "baseColor": [0.16, 0.17, 0.18], "roughness": 0.34,
-                "metallic": 0.7, "albedo": 1.0, "lightingCondition": "D65_noon",
-            },
-            "glass": {
-                "baseColor": [0.52, 0.70, 0.82], "roughness": 0.12,
-                "metallic": 0.0, "albedo": 1.0,
-                "materialClass": "glass", "transmission": 0.9,
-                "ior": 1.5, "thickness": 0.12,
-                "lightingCondition": "D65_noon",
-            },
-            "roof": {
-                "baseColor": [0.30, 0.31, 0.33], "roughness": 0.75,
-                "metallic": 0.0, "albedo": 1.0, "lightingCondition": "D65_noon",
-            },
-        },
-        "behaviors": {},
-    }
-    cut_stair_openings(blueprint)
-    _cut_core_shaft_openings(blueprint, floor_height)
-    return blueprint
+        for index, (x, z) in enumerate(
+            (
+                (0.5, 0.5),
+                (width - 0.5, 0.5),
+                (width - 0.5, depth - 0.5),
+                (0.5, depth - 0.5),
+            ),
+            start=1,
+        ):
+            elements.append(
+                {
+                    "type": "column",
+                    "id": f"column_corner_{index}",
+                    "base": [x, 0.0, z],
+                    "height": total_height,
+                    "bottomRadius": radius,
+                    "topRadius": radius,
+                    "style": "modern",
+                    "material": "concrete",
+                }
+            )

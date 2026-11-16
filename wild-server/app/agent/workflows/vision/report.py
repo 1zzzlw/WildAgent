@@ -14,8 +14,12 @@ from app.agent.workflows.vision.benchmark import significance_claim
 
 
 def summarize(records: list[dict]) -> dict:
-    cards = {(group, task.id): ScoreCard(group=group, task_id=task.id)
-             for group in GROUPS for task in TASKS}
+    cards = {}
+    for group in GROUPS:
+        for current_task in TASKS:
+            cards[group, current_task.id] = ScoreCard(
+                group=group, task_id=current_task.id
+            )
     seen = set()
     for record in records:
         key = (record.get("group"), record.get("taskId"))
@@ -72,15 +76,33 @@ def main() -> None:
     if args.records:
         result = summarize(json.loads(args.records.read_text(encoding="utf-8-sig")))
     else:
-        result = [{
-            "group": group, "taskId": task.id, "runId": str(run + 1),
-            "taskSpecDigest": task_spec_digest(), "prompt": task.prompt,
-            "geometry": {"valid": None, "evidence": ""},
-            "requirements": {r.id: {"status": "needs_review", "evidence": "", "criterion": r.description}
-                             for r in task.requirements},
-            "modelCalls": None, "tokens": None, "durationSeconds": None,
-            "screenshots": [], "failureType": "not_run",
-        } for group in GROUPS for task in TASKS for run in range(RUNS_PER_TASK)]
+        result = []
+        for group in GROUPS:
+            for task in TASKS:
+                for run in range(RUNS_PER_TASK):
+                    result.append(
+                        {
+                            "group": group,
+                            "taskId": task.id,
+                            "runId": str(run + 1),
+                            "taskSpecDigest": task_spec_digest(),
+                            "prompt": task.prompt,
+                            "geometry": {"valid": None, "evidence": ""},
+                            "requirements": {
+                                r.id: {
+                                    "status": "needs_review",
+                                    "evidence": "",
+                                    "criterion": r.description,
+                                }
+                                for r in task.requirements
+                            },
+                            "modelCalls": None,
+                            "tokens": None,
+                            "durationSeconds": None,
+                            "screenshots": [],
+                            "failureType": "not_run",
+                        }
+                    )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
 

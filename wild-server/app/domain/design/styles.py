@@ -102,16 +102,14 @@ class StyleRegistry:
 
     def infer(self, text: str, default: str = "modern") -> str:
         normalized = str(text or "").lower()
-        ranked = sorted(
-            (
-                (
-                    sum(len(keyword) + 4 for keyword in package["keywords"] if keyword in normalized),
-                    str(package["id"]),
-                )
-                for package in self.list()
-            ),
-            key=lambda item: (-item[0], item[1]),
-        )
+        ranked = []
+        for package in self.list():
+            score = 0
+            for keyword in package["keywords"]:
+                if keyword in normalized:
+                    score += len(keyword) + 4
+            ranked.append((score, str(package["id"])))
+        ranked.sort(key=lambda item: (-item[0], item[1]))
         return ranked[0][1] if ranked and ranked[0][0] > 0 else default
 
     def recommend(

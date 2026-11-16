@@ -478,7 +478,9 @@ class RAGSpecLoader(SpecLoader):
         self._namespace = namespace
         # 模型切换时默认保护旧集合。只有迁移/维护命令显式授权，才允许原地删库重建。
         self._allow_destructive_rebuild = bool(allow_destructive_rebuild)
-        self._chunker = MarkdownChunker(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+        self._chunker = MarkdownChunker(
+            chunk_size=chunk_size, chunk_overlap=chunk_overlap
+        )
         self._loaded_at: float | None = None
         # 保存同步状态，供 AgentService 写诊断日志。
         self._last_sync_stats = {"total": 0, "updated": 0, "deleted": 0}
@@ -493,8 +495,7 @@ class RAGSpecLoader(SpecLoader):
         # 因此关闭别名改写；真实语义 embedding 下启用。
         embedding_name = getattr(embedding_function, "__class__", None)
         self._query_rewrite_enabled = (
-            embedding_name is None
-            or embedding_name.__name__ != "HashEmbeddingFunction"
+            embedding_name is None or embedding_name.__name__ != "HashEmbeddingFunction"
         )
         # 后台同步的一次性调度状态：进程内单飞 + 跨进程文件锁，避免 dev reload
         # 的父/子进程或重复构造同时写同一份 Chroma。
@@ -529,7 +530,7 @@ class RAGSpecLoader(SpecLoader):
     # 慢/超时时阻塞数分钟。这里提供"构造完成后由守护线程后台同步"的路径，
     # 并配进程级文件锁，防止 dev reload 父/子进程同时写同一份 Chroma。
     _PROCESS_LOCK_NAME = ".wild_rag_sync.lock"
-    _PROCESS_LOCK_WAIT = 1.0   # 拿不到锁时的轮询间隔（秒）
+    _PROCESS_LOCK_WAIT = 1.0  # 拿不到锁时的轮询间隔（秒）
 
     def start_background_sync(
         self,
@@ -575,10 +576,13 @@ class RAGSpecLoader(SpecLoader):
                 if lock_handle is None:
                     logger.info(
                         "RAG 索引同步：另一进程正在同步，按退避等待后重试（第 {}/{} 次）",
-                        attempt, attempts,
+                        attempt,
+                        attempts,
                     )
                     if attempt < attempts:
-                        delay = backoff_seconds[min(attempt - 1, len(backoff_seconds) - 1)]
+                        delay = backoff_seconds[
+                            min(attempt - 1, len(backoff_seconds) - 1)
+                        ]
                         time.sleep(delay)
                     continue
                 status = self._sync_status
@@ -599,12 +603,16 @@ class RAGSpecLoader(SpecLoader):
                         logger.error(
                             "RAG 索引同步：后台已耗尽 {}/{} 次尝试，{}；"
                             "保持 degraded，等待手动同步或下次启动补齐",
-                            attempt, attempts, error_text,
+                            attempt,
+                            attempts,
+                            error_text,
                         )
                         return
                     logger.warning(
                         "RAG 索引同步：后台第 {}/{} 次未完成，{}；将按退避策略重试",
-                        attempt, attempts, error_text,
+                        attempt,
+                        attempts,
+                        error_text,
                     )
                     # 退避等待期间不要占用跨进程锁，让 dev reload 的另一个健康
                     # 进程有机会接手同步。
@@ -625,7 +633,9 @@ class RAGSpecLoader(SpecLoader):
                 self._sync_status.update(phase="degraded", last_error=error_text)
                 logger.error(
                     "RAG 索引同步失败（后台，第 {}/{} 次），索引保持部分可用：{}",
-                    attempt, attempts, error_text,
+                    attempt,
+                    attempts,
+                    error_text,
                 )
                 if attempt >= attempts:
                     return
@@ -648,6 +658,7 @@ class RAGSpecLoader(SpecLoader):
         try:
             if os.name == "nt":
                 import msvcrt
+
                 # msvcrt.locking 从当前文件位置开始锁定；固定锁第 0 个字节，避免
                 # a+b 的初始指针位于文件末尾而导致不同进程锁住不同区域。
                 handle.seek(0)
@@ -659,6 +670,7 @@ class RAGSpecLoader(SpecLoader):
                 msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
             else:
                 import fcntl
+
                 fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
         except OSError:
             handle.close()
@@ -674,10 +686,12 @@ class RAGSpecLoader(SpecLoader):
         try:
             if os.name == "nt":
                 import msvcrt
+
                 handle.seek(0)
                 msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
             else:
                 import fcntl
+
                 fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
         except OSError:
             pass
@@ -690,7 +704,9 @@ class RAGSpecLoader(SpecLoader):
     def load(self, query: str = "", *, purpose: str = "generation") -> str:
         return self.load_result(query, purpose=purpose).text
 
-    def load_result(self, query: str = "", *, purpose: str = "generation") -> SpecLoadResult:
+    def load_result(
+        self, query: str = "", *, purpose: str = "generation"
+    ) -> SpecLoadResult:
         # 基础规范始终完整注入；扩展知识只在有查询时按需召回。
         base_text = self._load_base_text()
         try:
@@ -715,7 +731,9 @@ class RAGSpecLoader(SpecLoader):
         purpose: str = "generation",
         include_base: bool = True,
     ) -> str:
-        return self.load_many_result(queries, per_query=per_query, purpose=purpose, include_base=include_base).text
+        return self.load_many_result(
+            queries, per_query=per_query, purpose=purpose, include_base=include_base
+        ).text
 
     def load_many_result(
         self,
@@ -795,7 +813,9 @@ class RAGSpecLoader(SpecLoader):
             context = f"{base_text}\n\n{marker}"
             self._record_composed_context(operation, base_text, [], context)
             return SpecLoadResult(context)
-        context = f"{base_text}\n\n---\n\n{self._format_retrieved(selected)}\n\n{marker}"
+        context = (
+            f"{base_text}\n\n---\n\n{self._format_retrieved(selected)}\n\n{marker}"
+        )
         self._record_composed_context(operation, base_text, selected, context)
         return SpecLoadResult(context, tuple(selected))
 
@@ -855,35 +875,9 @@ class RAGSpecLoader(SpecLoader):
         chunks_by_id = {chunk.id: chunk for chunk in chunks}
 
         # 只读取当前 namespace，避免同步操作误删集合中的其他逻辑索引。
-        existing = collection.get(
-            where={"namespace": self._namespace},
-            include=["metadatas"],
+        stale_ids, pending_chunks, metadata_only_chunks = _index_sync_changes(
+            collection, self._namespace, chunks_by_id
         )
-        existing_id_list = existing.get("ids") or []
-        existing_metadata_list = existing.get("metadatas") or []
-        existing_ids = set(existing_id_list)
-        existing_metadata_by_id = {
-            chunk_id: (
-                existing_metadata_list[index]
-                if index < len(existing_metadata_list) and existing_metadata_list[index]
-                else {}
-            )
-            for index, chunk_id in enumerate(existing_id_list)
-        }
-        current_ids = set(chunks_by_id)
-
-        # 集合差得到两类最小变更：索引中多出的旧块，以及本地新出现的块。
-        stale_ids = sorted(existing_ids - current_ids)
-        pending_chunks = [
-            chunks_by_id[chunk_id]
-            for chunk_id in sorted(current_ids - existing_ids)
-        ]
-        # chunk ID 只由来源、位置和正文决定；分类 metadata 改变时无需重新 embedding。
-        metadata_only_chunks = [
-            chunks_by_id[chunk_id]
-            for chunk_id in sorted(current_ids & existing_ids)
-            if existing_metadata_by_id.get(chunk_id) != chunks_by_id[chunk_id].metadata
-        ]
 
         # 每批与 EmbeddingFunction 的上限保持一致；成功后立即持久化，重启时
         # 可以从尚未入库的块继续同步。
@@ -895,7 +889,11 @@ class RAGSpecLoader(SpecLoader):
         batch_count = math.ceil(total / batch_size)
         logger.info(
             "RAG 索引同步：共 {} 块，待向量化 {} 块（{} 批），待删除 {} 块，待更新元数据 {} 块",
-            len(chunks), total, batch_count, len(stale_ids), len(metadata_only_chunks),
+            len(chunks),
+            total,
+            batch_count,
+            len(stale_ids),
+            len(metadata_only_chunks),
         )
         if not total:
             logger.info("RAG 索引同步：无需重新向量化")
@@ -905,38 +903,18 @@ class RAGSpecLoader(SpecLoader):
             filled = completed * 20 // total
             logger.info(
                 "RAG 向量化 [{}{}] {:.0f}% {}/{} 块 | {} | 累计 {:.1f}s",
-                "#" * filled, "-" * (20 - filled), completed * 100 / total,
-                completed, total, status, time.perf_counter() - started,
-            )
-
-        def describe_batch(batch: list[SpecChunk]) -> str:
-            sources = sorted({
-                str(chunk.metadata.get("source_file") or chunk.metadata.get("source") or "unknown")
-                for chunk in batch
-            })
-            source_preview = ", ".join(sources[:3])
-            if len(sources) > 3:
-                source_preview += f" 等 {len(sources)} 个文件"
-            input_chars = sum(len(chunk.document) for chunk in batch)
-            return f"{len(batch)} 块/{input_chars} 字符（{source_preview}）"
-
-        def embed_and_upsert(batch: list[SpecChunk], label: str) -> None:
-            documents = [chunk.document for chunk in batch]
-            embeddings = self._embedding_function.embed_documents(documents)
-            logger.info(
-                "RAG 向量化：{} 已收到 {} 个向量，正在写入 Chroma……",
-                label, len(embeddings),
-            )
-            collection.upsert(
-                ids=[chunk.id for chunk in batch],
-                documents=documents,
-                embeddings=embeddings,
-                metadatas=[chunk.metadata for chunk in batch],
+                "#" * filled,
+                "-" * (20 - filled),
+                completed * 100 / total,
+                completed,
+                total,
+                status,
+                time.perf_counter() - started,
             )
 
         for start in range(0, len(stale_ids), batch_size):
             # 删除已移除文件、已改变内容或因重新分片而失效的旧 ID。
-            collection.delete(ids=stale_ids[start:start + batch_size])
+            collection.delete(ids=stale_ids[start : start + batch_size])
 
         completed = 0
         deferred_batches: list[tuple[int, list[SpecChunk]]] = []
@@ -951,12 +929,13 @@ class RAGSpecLoader(SpecLoader):
                 budget_exceeded = True
                 logger.warning(
                     "RAG 索引同步：已达到时间预算（{:.0f}s），剩余 {} 块保留为待同步",
-                    budget_seconds, total - completed,
+                    budget_seconds,
+                    total - completed,
                 )
                 break
-            batch = pending_chunks[start:start + batch_size]
+            batch = pending_chunks[start : start + batch_size]
             batch_number = start // batch_size + 1
-            batch_description = describe_batch(batch)
+            batch_description = _describe_embedding_batch(batch)
             log_progress(
                 completed,
                 f"第 {batch_number}/{batch_count} 批：请求 Embedding，"
@@ -966,7 +945,12 @@ class RAGSpecLoader(SpecLoader):
             try:
                 # 显式拆开远程向量计算与本地 Chroma 写入，避免 upsert 内部调用
                 # 把网络等待和数据库等待混在同一个不可观测步骤中。
-                embed_and_upsert(batch, f"第 {batch_number}/{batch_count} 批")
+                _embed_index_batch(
+                    self._embedding_function,
+                    collection,
+                    batch,
+                    f"第 {batch_number}/{batch_count} 批",
+                )
             except Exception as exc:
                 if type(exc).__name__ == "APITimeoutError":
                     consecutive_timeouts += 1
@@ -974,7 +958,9 @@ class RAGSpecLoader(SpecLoader):
                     logger.warning(
                         "RAG 向量化超时：第 {}/{} 批已延后，将继续处理后续批次；"
                         "本批 {}，耗时 {:.1f}s",
-                        batch_number, batch_count, batch_description,
+                        batch_number,
+                        batch_count,
+                        batch_description,
                         time.perf_counter() - batch_started,
                     )
                     if consecutive_timeouts >= 3:
@@ -992,8 +978,12 @@ class RAGSpecLoader(SpecLoader):
                     continue
                 logger.error(
                     "RAG 向量化失败：第 {}/{} 批，已完成 {}/{} 块，本批耗时 {:.1f}s，错误类型 {}",
-                    batch_number, batch_count, completed, total,
-                    time.perf_counter() - batch_started, type(exc).__name__,
+                    batch_number,
+                    batch_count,
+                    completed,
+                    total,
+                    time.perf_counter() - batch_started,
+                    type(exc).__name__,
                 )
                 raise
             consecutive_timeouts = 0
@@ -1007,7 +997,9 @@ class RAGSpecLoader(SpecLoader):
             )
 
         if deferred_batches and not stalled and not budget_exceeded:
-            logger.warning("RAG 索引同步：开始重试 {} 个超时批次", len(deferred_batches))
+            logger.warning(
+                "RAG 索引同步：开始重试 {} 个超时批次", len(deferred_batches)
+            )
         for batch_number, batch in deferred_batches:
             if stalled or budget_exceeded:
                 # 服务不可用或预算耗尽时不再重试延后批次，避免无意义的长时间等待；
@@ -1015,14 +1007,21 @@ class RAGSpecLoader(SpecLoader):
                 break
             batch_started = time.perf_counter()
             try:
-                embed_and_upsert(batch, f"重试原第 {batch_number}/{batch_count} 批")
+                _embed_index_batch(
+                    self._embedding_function,
+                    collection,
+                    batch,
+                    f"重试原第 {batch_number}/{batch_count} 批",
+                )
             except Exception as exc:
                 if type(exc).__name__ != "APITimeoutError":
                     raise
                 logger.error(
                     "RAG 超时批次重试失败：原第 {}/{} 批，本次保留为待同步，"
                     "不影响其余索引使用；失败 {} 块，耗时 {:.1f}s",
-                    batch_number, batch_count, len(batch),
+                    batch_number,
+                    batch_count,
+                    len(batch),
                     time.perf_counter() - batch_started,
                 )
                 continue
@@ -1037,7 +1036,7 @@ class RAGSpecLoader(SpecLoader):
             )
 
         for start in range(0, len(metadata_only_chunks), batch_size):
-            batch = metadata_only_chunks[start:start + batch_size]
+            batch = metadata_only_chunks[start : start + batch_size]
             collection.update(
                 ids=[chunk.id for chunk in batch],
                 metadatas=[chunk.metadata for chunk in batch],
@@ -1062,12 +1061,14 @@ class RAGSpecLoader(SpecLoader):
             logger.warning(
                 "RAG 索引同步：本轮停止，索引部分可用；仍有 {} 块待同步，"
                 "后续启动或手动同步将自动补齐（本轮耗时 {:.1f}s）",
-                pending_remaining, elapsed,
+                pending_remaining,
+                elapsed,
             )
         elif pending_remaining:
             logger.warning(
                 "RAG 索引同步完成但仍有 {} 块待同步；下次启动将自动重试，耗时 {:.1f}s",
-                pending_remaining, elapsed,
+                pending_remaining,
+                elapsed,
             )
         else:
             logger.info("RAG 索引同步完成，耗时 {:.1f}s", elapsed)
@@ -1172,23 +1173,26 @@ class RAGSpecLoader(SpecLoader):
         )
         for index in ranked_indices:
             document = documents[index]
-            metadata = metadatas[index] if index < len(metadatas) and metadatas[index] else {}
-            if (
-                not self._knowledge_source_is_active(metadata)
-                or not knowledge_hit_applies(query, metadata)
-            ):
+            metadata = (
+                metadatas[index] if index < len(metadatas) and metadatas[index] else {}
+            )
+            if not self._knowledge_source_is_active(
+                metadata
+            ) or not knowledge_hit_applies(query, metadata):
                 continue
             # 兼容旧索引：没有 content_hash metadata 时现场按同样规则补算。
             dedupe_hash = self._retrieval_hash(document or "", metadata)
             if dedupe_hash in seen_hashes:
                 continue
             seen_hashes.add(dedupe_hash)
-            retrieved.append(RetrievedSpecChunk(
-                document=document or "",
-                metadata=metadata,
-                distance=distances[index] if index < len(distances) else None,
-                id=str(ids[index]) if index < len(ids) else None,
-            ))
+            retrieved.append(
+                RetrievedSpecChunk(
+                    document=document or "",
+                    metadata=metadata,
+                    distance=distances[index] if index < len(distances) else None,
+                    id=str(ids[index]) if index < len(ids) else None,
+                )
+            )
             # 去重后达到 top_k 就停止；顺序已综合语义距离和知识成熟度。
             if len(retrieved) >= self._top_k:
                 break
@@ -1220,13 +1224,15 @@ class RAGSpecLoader(SpecLoader):
                 business_filter, _, ignored_access_keys = (
                     split_business_and_access_filters(metadata_filter)
                 )
-                query_traces.append(make_query_trace(
-                    text,
-                    metadata_filter=business_filter,
-                    effective_filter=self._query_where(metadata_filter),
-                    index_signature=self._trace_index_signature(),
-                    ignored_access_filter_keys=ignored_access_keys,
-                ))
+                query_traces.append(
+                    make_query_trace(
+                        text,
+                        metadata_filter=business_filter,
+                        effective_filter=self._query_where(metadata_filter),
+                        index_signature=self._trace_index_signature(),
+                        ignored_access_filter_keys=ignored_access_keys,
+                    )
+                )
         try:
             retrieved = self._retrieve_many(queries, per_query=per_query)
         except Exception as exc:
@@ -1266,7 +1272,9 @@ class RAGSpecLoader(SpecLoader):
         """
         rewrite_enabled = getattr(self, "_query_rewrite_enabled", True)
         has_spec_query = any(isinstance(query, SpecQuery) for query in queries)
-        alias_catalog = self._alias_catalog() if (has_spec_query and rewrite_enabled) else {}
+        alias_catalog = (
+            self._alias_catalog() if (has_spec_query and rewrite_enabled) else {}
+        )
         normalized_queries: list[tuple[str, dict[str, Any] | None]] = []
         for query in queries:
             if isinstance(query, SpecQuery):
@@ -1286,10 +1294,13 @@ class RAGSpecLoader(SpecLoader):
                     # 查询文本保持原文；只采纳粗粒度过滤补全（剔除推导的
                     # entity_name），调用方显式条件始终优先。
                     normalized_queries.append(
-                        (text, _without_derived_entity_name(
-                            metadata_filter,
-                            planned.metadata_filter,
-                        ))
+                        (
+                            text,
+                            _without_derived_entity_name(
+                                metadata_filter,
+                                planned.metadata_filter,
+                            ),
+                        )
                     )
                 else:
                     normalized_queries.append((text, metadata_filter))
@@ -1345,9 +1356,15 @@ class RAGSpecLoader(SpecLoader):
             id_groups = result.get("ids", []) or []
             for group_index, (query_index, _) in enumerate(items):
                 raw_results[query_index] = (
-                    document_groups[group_index] if group_index < len(document_groups) else [],
-                    metadata_groups[group_index] if group_index < len(metadata_groups) else [],
-                    distance_groups[group_index] if group_index < len(distance_groups) else [],
+                    document_groups[group_index]
+                    if group_index < len(document_groups)
+                    else [],
+                    metadata_groups[group_index]
+                    if group_index < len(metadata_groups)
+                    else [],
+                    distance_groups[group_index]
+                    if group_index < len(distance_groups)
+                    else [],
                     id_groups[group_index] if group_index < len(id_groups) else [],
                 )
 
@@ -1367,28 +1384,35 @@ class RAGSpecLoader(SpecLoader):
                 range(len(documents or [])),
                 key=lambda index: _retrieval_priority_score(
                     distances[index] if index < len(distances) else None,
-                    metadatas[index] if index < len(metadatas) and metadatas[index] else {},
+                    metadatas[index]
+                    if index < len(metadatas) and metadatas[index]
+                    else {},
                 ),
             )
             query_chunks: list[RetrievedSpecChunk] = []
             for index in ranked_indices:
                 document = documents[index]
-                metadata = metadatas[index] if index < len(metadatas) and metadatas[index] else {}
-                if (
-                    not self._knowledge_source_is_active(metadata)
-                    or not knowledge_hit_applies(query_text, metadata)
-                ):
+                metadata = (
+                    metadatas[index]
+                    if index < len(metadatas) and metadatas[index]
+                    else {}
+                )
+                if not self._knowledge_source_is_active(
+                    metadata
+                ) or not knowledge_hit_applies(query_text, metadata):
                     continue
                 dedupe_hash = self._retrieval_hash(document or "", metadata)
                 if dedupe_hash in seen_hashes:
                     continue
                 seen_hashes.add(dedupe_hash)
-                query_chunks.append(RetrievedSpecChunk(
-                    document=document or "",
-                    metadata=metadata,
-                    distance=distances[index] if index < len(distances) else None,
-                    id=str(ids[index]) if index < len(ids) else None,
-                ))
+                query_chunks.append(
+                    RetrievedSpecChunk(
+                        document=document or "",
+                        metadata=metadata,
+                        distance=distances[index] if index < len(distances) else None,
+                        id=str(ids[index]) if index < len(ids) else None,
+                    )
+                )
                 selected += 1
                 # 每个查询最多贡献 limit 个尚未被其他查询选中的片段。
                 if selected >= limit:
@@ -1398,15 +1422,16 @@ class RAGSpecLoader(SpecLoader):
                 query_chunks = self._rerank_retrieved(query_chunks, query_text)
             retrieved.extend(query_chunks)
 
-        retrieved = [
-            hit
-            for hit in self._expand_parent_neighbors(collection, retrieved)
-            if self._knowledge_source_is_active(hit.metadata)
-            and any(
+        active_hits = []
+        for hit in self._expand_parent_neighbors(collection, retrieved):
+            if not self._knowledge_source_is_active(hit.metadata):
+                continue
+            if any(
                 knowledge_hit_applies(text, hit.metadata)
                 for text, _ in normalized_queries
-            )
-        ]
+            ):
+                active_hits.append(hit)
+        retrieved = active_hits
         if retrieval_cache is not None and cache_key is not None:
             retrieval_cache[cache_key] = list(retrieved)
         return retrieved
@@ -1424,15 +1449,21 @@ class RAGSpecLoader(SpecLoader):
             stats.get("deleted", 0),
         )
         embedding_function = getattr(self, "_embedding_function", None)
-        payload = json.dumps({
-            "queries": [
-                (text, json.dumps(filt or {}, sort_keys=True, ensure_ascii=True))
-                for text, filt in normalized_queries
-            ],
-            "per_query": per_query,
-            "revision": revision,
-            "embedding": type(embedding_function).__name__ if embedding_function is not None else "none",
-        }, ensure_ascii=True, sort_keys=True)
+        payload = json.dumps(
+            {
+                "queries": [
+                    (text, json.dumps(filt or {}, sort_keys=True, ensure_ascii=True))
+                    for text, filt in normalized_queries
+                ],
+                "per_query": per_query,
+                "revision": revision,
+                "embedding": type(embedding_function).__name__
+                if embedding_function is not None
+                else "none",
+            },
+            ensure_ascii=True,
+            sort_keys=True,
+        )
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
     def _retrieval_hash(self, document: str, metadata: dict[str, Any]) -> str:
@@ -1470,17 +1501,17 @@ class RAGSpecLoader(SpecLoader):
         query_bigrams: set[str] = set()
         if query_terms:
             query_bigrams = {
-                query_terms[i:i + 2]
+                query_terms[i : i + 2]
                 for i in range(max(0, len(query_terms) - 1))
-                if query_terms[i:i + 2].strip()
+                if query_terms[i : i + 2].strip()
             }
 
         def _bigrams(text: str) -> set[str]:
             text = (text or "").strip()
             return {
-                text[i:i + 2]
+                text[i : i + 2]
                 for i in range(max(0, len(text) - 1))
-                if text[i:i + 2].strip()
+                if text[i : i + 2].strip()
             }
 
         def rank(chunk: RetrievedSpecChunk) -> tuple[int, int, float, int]:
@@ -1490,7 +1521,9 @@ class RAGSpecLoader(SpecLoader):
             chunk_bigrams = _bigrams(chunk.document)
             overlap = len(query_bigrams & chunk_bigrams) if chunk_bigrams else 0
             distance = chunk.distance
-            distance_key = float(distance) if isinstance(distance, (int, float)) else 999.0
+            distance_key = (
+                float(distance) if isinstance(distance, (int, float)) else 999.0
+            )
             # 权威性 → 重叠度（越多越靠前）→ 原始距离 → 稳定次序。
             return (authority_key, -overlap, distance_key, id(chunk))
 
@@ -1506,7 +1539,11 @@ class RAGSpecLoader(SpecLoader):
         cached = getattr(self, "_alias_catalog_cache", None)
         cached_revision = getattr(self, "_alias_catalog_revision", None)
         stats = getattr(self, "_last_sync_stats", None) or {}
-        revision = (stats.get("total", 0), stats.get("updated", 0), stats.get("deleted", 0))
+        revision = (
+            stats.get("total", 0),
+            stats.get("updated", 0),
+            stats.get("deleted", 0),
+        )
         if cached is not None and cached_revision == revision:
             return cached
         catalog: dict[str, Any] = {}
@@ -1564,13 +1601,19 @@ class RAGSpecLoader(SpecLoader):
                             isinstance(sibling_index, int)
                             and abs(sibling_index - part_index) <= neighbor_parts
                         ):
-                            candidates.append(RetrievedSpecChunk(
-                                document=document or "",
-                                metadata=metadata,
-                                distance=hit.distance if sibling_index == part_index else None,
-                                id=str(ids[index]) if index < len(ids) else None,
-                            ))
-                    candidates.sort(key=lambda item: int(item.metadata.get("part_index") or 0))
+                            candidates.append(
+                                RetrievedSpecChunk(
+                                    document=document or "",
+                                    metadata=metadata,
+                                    distance=hit.distance
+                                    if sibling_index == part_index
+                                    else None,
+                                    id=str(ids[index]) if index < len(ids) else None,
+                                )
+                            )
+                    candidates.sort(
+                        key=lambda item: int(item.metadata.get("part_index") or 0)
+                    )
                     if not candidates:
                         candidates = [hit]
 
@@ -1600,17 +1643,17 @@ class RAGSpecLoader(SpecLoader):
         # 新版本知识未同步时返回空知识，不能退回旧建筑模板。
         if "doc_scope" not in business_filter:
             conditions.append({"doc_scope": "generation"})
-        if "knowledge_role" not in business_filter and business_filter.get("doc_scope") != "reference":
+        if (
+            "knowledge_role" not in business_filter
+            and business_filter.get("doc_scope") != "reference"
+        ):
             conditions.append({"knowledge_role": {"$in": list(GENERATION_ROLES)}})
         if "status" not in business_filter:
             conditions.append({"status": {"$in": ["supported", "experimental"]}})
         if "authority" not in business_filter:
             conditions.append({"authority": {"$ne": "inferred"}})
         conditions.extend(access_conditions)
-        conditions.extend(
-            {key: value}
-            for key, value in business_filter.items()
-        )
+        conditions.extend({key: value} for key, value in business_filter.items())
         return {"$and": conditions}
 
     def _get_collection(self):
@@ -1681,11 +1724,13 @@ class RAGSpecLoader(SpecLoader):
         chunks: list[SpecChunk] = []
         for path in self._rag_paths:
             # README 等索引文档会由 chunker 改为 index scope，并在普通检索时排除。
-            chunks.extend(self._chunker.split_file(
-                path,
-                namespace=self._namespace,
-                doc_scope="generation",
-            ))
+            chunks.extend(
+                self._chunker.split_file(
+                    path,
+                    namespace=self._namespace,
+                    doc_scope="generation",
+                )
+            )
         return chunks
 
     def _format_retrieved(self, chunks: list[RetrievedSpecChunk]) -> str:
@@ -1701,12 +1746,21 @@ class RAGSpecLoader(SpecLoader):
             heading = chunk.metadata.get("heading", "")
             metadata_text = ", ".join(
                 f"{key}={chunk.metadata[key]}"
-                for key in ("doc_type", "entity_name", "topic", "knowledge_role", "status", "authority")
+                for key in (
+                    "doc_type",
+                    "entity_name",
+                    "topic",
+                    "knowledge_role",
+                    "status",
+                    "authority",
+                )
                 if chunk.metadata.get(key)
             )
             distance = chunk.distance
             # 展示原始距离；实际排序还叠加了有限的 status/authority 成熟度惩罚。
-            distance_text = f", distance={distance:.4f}" if isinstance(distance, float) else ""
+            distance_text = (
+                f", distance={distance:.4f}" if isinstance(distance, float) else ""
+            )
             chunk_id_text = chunk.id or "unknown"
             parts.append(
                 f"### 片段 {index}: {source} / {heading}{distance_text}\n\n"
@@ -1747,4 +1801,71 @@ def create_embedding_function(
 
     raise RuntimeError(
         "RAG 已启用，但缺少 EMBEDDING__API_KEY 或 EMBEDDING__NAME，且未允许 hash fallback"
+    )
+
+
+def _index_sync_changes(collection, namespace, chunks_by_id):
+    """比较当前命名空间和本地资料，区分旧块、新块与仅元数据变化的块。"""
+    existing = collection.get(
+        where={"namespace": namespace},
+        include=["metadatas"],
+    )
+    existing_id_list = existing.get("ids") or []
+    existing_metadata_list = existing.get("metadatas") or []
+    existing_ids = set(existing_id_list)
+    existing_metadata_by_id = {}
+    for index, chunk_id in enumerate(existing_id_list):
+        if index < len(existing_metadata_list) and existing_metadata_list[index]:
+            existing_metadata_by_id[chunk_id] = existing_metadata_list[index]
+        else:
+            existing_metadata_by_id[chunk_id] = {}
+    current_ids = set(chunks_by_id)
+
+    # 集合差得到两类最小变更：索引中多出的旧块，以及本地新出现的块。
+    stale_ids = sorted(existing_ids - current_ids)
+    pending_chunks = [
+        chunks_by_id[chunk_id] for chunk_id in sorted(current_ids - existing_ids)
+    ]
+    # chunk ID 只由来源、位置和正文决定；分类 metadata 改变时无需重新 embedding。
+    metadata_only_chunks = [
+        chunks_by_id[chunk_id]
+        for chunk_id in sorted(current_ids & existing_ids)
+        if existing_metadata_by_id.get(chunk_id) != chunks_by_id[chunk_id].metadata
+    ]
+    return stale_ids, pending_chunks, metadata_only_chunks
+
+
+def _describe_embedding_batch(batch):
+    """汇总向量化批次的文件来源、块数和字符数。"""
+    sources = sorted(
+        {
+            str(
+                chunk.metadata.get("source_file")
+                or chunk.metadata.get("source")
+                or "unknown"
+            )
+            for chunk in batch
+        }
+    )
+    source_preview = ", ".join(sources[:3])
+    if len(sources) > 3:
+        source_preview += f" 等 {len(sources)} 个文件"
+    input_chars = sum(len(chunk.document) for chunk in batch)
+    return f"{len(batch)} 块/{input_chars} 字符（{source_preview}）"
+
+
+def _embed_index_batch(embedding_function, collection, batch, label):
+    """分别执行远程向量计算和本地集合写入，保持可观测的批次边界。"""
+    documents = [chunk.document for chunk in batch]
+    embeddings = embedding_function.embed_documents(documents)
+    logger.info(
+        "RAG 向量化：{} 已收到 {} 个向量，正在写入 Chroma……",
+        label,
+        len(embeddings),
+    )
+    collection.upsert(
+        ids=[chunk.id for chunk in batch],
+        documents=documents,
+        embeddings=embeddings,
+        metadatas=[chunk.metadata for chunk in batch],
     )

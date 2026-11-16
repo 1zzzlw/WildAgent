@@ -62,7 +62,12 @@ def _explicit_facade_locations(d, explicit, indices, elevations):
         position = placement.get("position")
         size = item.get("size") or {}
         extension = size.get("depth", 0)/2 if family in {"balcony", "canopy"} else 0
-        y = position[1] + size.get("height", 0)/2 if position and family == "balcony" else position[1] if position else 0
+        if position and family == "balcony":
+            y = position[1] + size.get("height", 0) / 2
+        elif position:
+            y = position[1]
+        else:
+            y = 0
         for volume in d.volumes:
             for face, facade in {**d.facades, **volume.facades}.items():
                 # 墙方向与 project_drawing 的 from/to 一致。
@@ -258,8 +263,11 @@ def marker_results(state):
 
 
 def implementation_records(state):
-    return {key: value for diag in (state.get("component_diagnostics") or {}).values()
-            for key, value in (diag.get("implementations") or {}).items()}
+    result = {}
+    for diag in (state.get("component_diagnostics") or {}).values():
+        for key, value in (diag.get("implementations") or {}).items():
+            result[key] = value
+    return result
 
 
 def merge_marker_resources(blueprint, diag):
@@ -286,7 +294,12 @@ def assemble_marker_results(document, state):
     expected = {m["id"] for m in component_markers(document)}
     if set(records) - expected:
         raise ValueError("落实记录含有未设计标记")
-    owned = {entity_id for r in records.values() if r.get("status") == "implemented" for entity_id in r["entity_ids"]}
+    owned = set()
+    for record in records.values():
+        if not record.get("status") == "implemented":
+            continue
+        for entity_id in record["entity_ids"]:
+            owned.add(entity_id)
     if owned != set(entities):
         raise ValueError("落实记录与实际构件集合不一致")
     for diag in (state.get("component_diagnostics") or {}).values():

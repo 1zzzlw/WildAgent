@@ -211,33 +211,16 @@ async def _finalize_merge(state: GenerationState) -> dict:
     # JSON 提取失败不是服务故障（不设 terminal），但也不应静默消失：组件配额
     # min>0 时生成设计配额级错误交给回调 add_entity，否则记诊断告警。格式故障
     # 与几何问题区分开，避免误判修复对象。
-    json_parse_failures = collect_json_parse_failures(
-        state.get("component_diagnostics", {})
+    json_parse_quota_errors, json_parse_dropped = _classify_fragment_parse_failures(
+        state, design_brief
     )
-    json_parse_quota_errors: list[str] = []
-    json_parse_dropped: list[str] = []
-    if json_parse_failures:
-        quota = design_brief.get("component_quota", {}) if design_brief else {}
-        for component_type, label in json_parse_failures:
-            minimum = 0
-            if isinstance(quota.get(component_type), dict):
-                raw_min = quota[component_type].get("min", 0)
-                minimum = int(raw_min) if isinstance(raw_min, (int, float)) and not isinstance(raw_min, bool) else 0
-            if minimum > 0:
-                json_parse_quota_errors.append(
-                    f"{label}({component_type}) 结构化输出解析失败，且设计配额下限为 {minimum}"
-                )
-            else:
-                json_parse_dropped.append(f"{label}({component_type})")
-        if json_parse_quota_errors:
-            logger.warning(f"[merge] JSON 解析失败但配额要求存在: {json_parse_quota_errors}")
-        if json_parse_dropped:
-            logger.warning(f"[merge] JSON 解析失败且无配额下限，组件被丢弃: {json_parse_dropped}")
 
     # ── 1. 取合并底本 ──
     # 有批次合并的成果就用它（分片已经并过一次，再并一遍是重复元素）；
     # 没有的话（旧单条 merge 调用、诊断用例）退回"骨架 + 全部分片"一次性合并。
-    fragments, fragment_summary = _collect_fragments(state.get("component_fragments", {}))
+    fragments, fragment_summary = _collect_fragments(
+        state.get("component_fragments", {})
+    )
     summary_text = "、".join(fragment_summary) if fragment_summary else "无组件"
     if on_reasoning_delta:
         await on_reasoning_delta("merge", f"已收集分片: {summary_text}\n")
@@ -253,7 +236,9 @@ async def _finalize_merge(state: GenerationState) -> dict:
 
     elements = merged_blueprint.get("geometry", {}).get("elements", [])
     components = merged_blueprint.get("geometry", {}).get("components", [])
-    logger.info(f"[merge] 合并底本: {len(elements)} elements, {len(components)} components")
+    logger.info(
+        f"[merge] 合并底本: {len(elements)} elements, {len(components)} components"
+    )
 
     # ── 2.5 同一阳台只能保留一种表达：balcony 组件拥有自己的楼板和 U 形栏杆 ──
     balcony_cleanup = deduplicate_balcony_representations(merged_blueprint)
@@ -272,6 +257,189 @@ async def _finalize_merge(state: GenerationState) -> dict:
     # 不再被剃。数量的强制口径回到设计自己的表态：门窗按精确槽位吸附（2.7）。
 
     # ── 2.7 按方案槽位确定性吸附；模型负责风格，程序负责组合关系与安全边界 ──
+    layout_stats = _align_merge_slots(state, merged_blueprint, skeleton, design_brief)
+    opening_layout = layout_stats["opening_layout"]
+    entrance_layout = layout_stats["entrance_layout"]
+    balcony_layout = layout_stats["balcony_layout"]
+    roof_layout = layout_stats["roof_layout"]
+    railing_layout = layout_stats["railing_layout"]
+    elements = merged_blueprint.get("geometry", {}).get("elements", [])
+    components = merged_blueprint.get("geometry", {}).get("components", [])
+
+    design_errors = validate_design_brief_constraints(merged_blueprint, design_brief)
+    # 配额数量缺口 = 警告不阻断（用户决策 2026-09-29）：记入 merge_diag 供诊断与
+    # 模型补量参考，不进错误列表——数量不足不许拦下整张蓝图。
+    quota_shortfalls = design_quota_shortfalls(merged_blueprint, design_brief)
+    # JSON 提取失败且有配额下限的组件，视同配额缺失错误交给回调 add_entity；
+    # 与几何问题区分（repair_target 为 design:<type>，走既有设计配额修复路径）。
+    if json_parse_quota_errors:
+        design_errors = [*json_parse_quota_errors, *design_errors]
+
+    if on_reasoning_delta:
+        await on_reasoning_delta(
+            "merge",
+            _merge_progress_summary(
+                elements,
+                components,
+                balcony_cleanup,
+                ground_railing_cleanup,
+                layout_stats,
+                design_errors,
+                quota_shortfalls,
+            ),
+        )
+
+    # ── 3. 校验 → 修复 → 循环 ──
+    from app.domain.validation.candidate import evaluate_candidate
+
+    def evaluate(blueprint):
+        return evaluate_candidate(
+            blueprint,
+            design_document=state.get("design_document"),
+            design_brief=design_brief,
+            source="merge",
+        )
+
+    merge_diag: dict = {
+        "label": "合并",
+        "fragment_summary": summary_text,
+        "element_count": len(elements),
+        "component_count": len(components),
+        "opening_layout": opening_layout,
+        "entrance_layout": entrance_layout,
+        "balcony_layout": balcony_layout,
+        "roof_layout": roof_layout,
+        "railing_layout": railing_layout,
+        "balcony_cleanup": balcony_cleanup,
+        "ground_railing_cleanup": ground_railing_cleanup,
+        "design_errors": design_errors,
+        "design_quota_shortfalls": quota_shortfalls,
+        "iterations": [],
+    }
+
+    (
+        merged_blueprint,
+        final_errors,
+        pipeline_results,
+        repair_updates,
+    ) = await _validate_merged_blueprint(
+        state,
+        merged_blueprint,
+        json_parse_quota_errors,
+        merge_diag,
+        on_reasoning_delta,
+        evaluate,
+    )
+
+    # ── 4. 最终统计 ──
+    total_ms = int((_time.time() - t0) * 1000)
+    elements = merged_blueprint.get("geometry", {}).get("elements", [])
+    components = merged_blueprint.get("geometry", {}).get("components", [])
+
+    merge_diag["total_ms"] = total_ms
+    merge_diag["element_count"] = len(elements)
+    merge_diag["component_count"] = len(components)
+    merge_diag["final_errors"] = len(final_errors) + len(json_parse_quota_errors)
+    design_document = state.get("design_document") or {}
+    resolved_design = state.get("resolved_design") or {}
+    if isinstance(design_document, dict):
+        meta = merged_blueprint.setdefault("meta", {})
+        if isinstance(meta, dict):
+            meta["designRevision"] = design_document.get("revision")
+            meta["designHash"] = resolved_design.get("design_hash")
+            meta["designSchemaVersion"] = design_document.get("schema_version")
+    # 记录本轮证据；final_validate 会独立验收最终交付归一化后的内容。
+    merge_diag["blueprint_fingerprint"] = blueprint_fingerprint(merged_blueprint)
+    merge_diag["validation_results"] = [
+        {
+            "step": result.step,
+            "name": result.name,
+            "output": result.output,
+            "has_error": result.has_error,
+            "has_warning": result.has_warning,
+        }
+        for result in pipeline_results
+    ]
+
+    logger.info(
+        f"[merge] 合并完成: {len(elements)} elements, {len(components)} components, "
+        f"{len(merge_diag['iterations'])}轮, {total_ms}ms"
+    )
+
+    # ── 5. 归一化蓝图用于交付 ──
+    from app.domain.blueprint.normalizer import normalize_blueprint_for_delivery
+
+    merged_blueprint, norm_report = normalize_blueprint_for_delivery(merged_blueprint)
+    evaluation = evaluate(merged_blueprint)
+    merge_diag["validation_snapshot"] = evaluation["snapshot"]
+    merge_diag["blueprint_fingerprint"] = evaluation["snapshot"][
+        "blueprint_fingerprint"
+    ]
+    merge_diag["validation_results"] = evaluation["snapshot"]["results"]
+    merge_diag["final_errors"] = len(evaluation["errors"]) + len(
+        json_parse_quota_errors
+    )
+    merge_diag["normalization_changes"] = norm_report.changes
+    logger.info(f"[merge] 归一化修复: {norm_report.summary()}")
+
+    if on_reasoning_delta:
+        if (
+            norm_report.stripped_fields
+            or norm_report.repaired_fields
+            or norm_report.dropped_components
+        ):
+            await on_reasoning_delta(
+                "merge", f"\n**归一化修复**\n- {norm_report.summary()}\n"
+            )
+
+    return {
+        **repair_updates,
+        "merged_blueprint": merged_blueprint,
+        "merge_diag": merge_diag,
+        "design_brief": design_brief,
+    }
+
+
+def _classify_fragment_parse_failures(state, design_brief):
+    """区分缺少必需分片的解析错误和可观察的可选分片丢弃。"""
+    json_parse_failures = collect_json_parse_failures(
+        state.get("component_diagnostics", {})
+    )
+    json_parse_quota_errors: list[str] = []
+    json_parse_dropped: list[str] = []
+    if json_parse_failures:
+        quota = design_brief.get("component_quota", {}) if design_brief else {}
+        for component_type, label in json_parse_failures:
+            minimum = 0
+            if isinstance(quota.get(component_type), dict):
+                raw_min = quota[component_type].get("min", 0)
+                minimum = (
+                    int(raw_min)
+                    if isinstance(raw_min, (int, float))
+                    and not isinstance(raw_min, bool)
+                    else 0
+                )
+            if minimum > 0:
+                json_parse_quota_errors.append(
+                    f"{label}({component_type}) 结构化输出解析失败，且设计配额下限为 {minimum}"
+                )
+            else:
+                json_parse_dropped.append(f"{label}({component_type})")
+        if json_parse_quota_errors:
+            logger.warning(
+                f"[merge] JSON 解析失败但配额要求存在: {json_parse_quota_errors}"
+            )
+        if json_parse_dropped:
+            logger.warning(
+                f"[merge] JSON 解析失败且无配额下限，组件被丢弃: {json_parse_dropped}"
+            )
+    return json_parse_quota_errors, json_parse_dropped
+
+
+def _align_merge_slots(state, merged_blueprint, skeleton, design_brief):
+    """按已有图纸槽位对齐附属构件，并返回各类对齐诊断。"""
+    elements = merged_blueprint.get("geometry", {}).get("elements", [])
+    components = merged_blueprint.get("geometry", {}).get("components", [])
     opening_layout = {"snapped": 0, "synthesized": 0, "pruned": 0}
     entrance_layout = {"canopy_snapped": 0, "light_snapped": 0}
     balcony_layout = {"snapped": 0, "synthesized": 0, "pruned": 0}
@@ -294,98 +462,121 @@ async def _finalize_merge(state: GenerationState) -> dict:
             design_brief,
             merged_blueprint,
             # 已审核编译实体保留原布局；新增模型附属件仍走入口吸附。
-            fixed_ids={item.get("id") for item in (skeleton.get("geometry") or {}).get("components", [])}
-                if (state.get("design_document") or {}).get("status") in {"approved", "compiled"} else None,
+            fixed_ids={
+                item.get("id")
+                for item in (skeleton.get("geometry") or {}).get("components", [])
+            }
+            if (state.get("design_document") or {}).get("status")
+            in {"approved", "compiled"}
+            else None,
         )
-        components, balcony_layout = conform_balconies_to_slots(components, design_brief)
+        components, balcony_layout = conform_balconies_to_slots(
+            components, design_brief
+        )
         components, railing_layout = conform_railings_to_slots(components, design_brief)
         elements, roof_layout = conform_roofs_to_slots(elements, design_brief)
         merged_blueprint["geometry"]["elements"] = elements
         merged_blueprint["geometry"]["components"] = components
-        if any((*opening_layout.values(), *entrance_layout.values(), *balcony_layout.values(), *roof_layout.values(), *railing_layout.values())):
+        if any(
+            (
+                *opening_layout.values(),
+                *entrance_layout.values(),
+                *balcony_layout.values(),
+                *roof_layout.values(),
+                *railing_layout.values(),
+            )
+        ):
             logger.info(
                 f"[merge] 方案槽位对齐: opening={opening_layout}, entrance={entrance_layout}, "
                 f"balcony={balcony_layout}, roof={roof_layout}, railing={railing_layout}"
             )
-
-    design_errors = validate_design_brief_constraints(merged_blueprint, design_brief)
-    # 配额数量缺口 = 警告不阻断（用户决策 2026-09-29）：记入 merge_diag 供诊断与
-    # 模型补量参考，不进错误列表——数量不足不许拦下整张蓝图。
-    quota_shortfalls = design_quota_shortfalls(merged_blueprint, design_brief)
-    # JSON 提取失败且有配额下限的组件，视同配额缺失错误交给回调 add_entity；
-    # 与几何问题区分（repair_target 为 design:<type>，走既有设计配额修复路径）。
-    if json_parse_quota_errors:
-        design_errors = [*json_parse_quota_errors, *design_errors]
-
-    if on_reasoning_delta:
-        await on_reasoning_delta(
-            "merge",
-            f"初次合并完成: {len(elements)} 个结构元素, {len(components)} 个组件"
-            + (
-                f"（清理重复阳台楼板 {len(balcony_cleanup['removed_floor_ids'])}、"
-                f"栏杆 {balcony_cleanup['removed_railing_count']}）"
-                if balcony_cleanup["removed_floor_ids"] else ""
-            )
-            + (
-                f"（清理地面平台栏杆 {len(ground_railing_cleanup['removed_railing_ids'])}）"
-                if ground_railing_cleanup["removed_railing_ids"] else ""
-            )
-            + (
-                f"（槽位吸附 {opening_layout['snapped']}，补齐 {opening_layout['synthesized']}，"
-                f"剔除无槽位开口 {opening_layout['pruned']}）"
-                if any(opening_layout.values()) else ""
-            )
-            + (
-                f"（阳台对位 {balcony_layout['snapped']}，补齐 {balcony_layout['synthesized']}）"
-                if any(balcony_layout.values()) else ""
-            )
-            + (
-                f"（入口雨棚 {entrance_layout['canopy_snapped']}、入口灯 {entrance_layout['light_snapped']} 对齐入口门）"
-                if any(entrance_layout.values()) else ""
-            )
-            + (
-                f"（U 形屋顶拆分新增 {roof_layout['split']} 片）"
-                if any(roof_layout.values()) else ""
-            )
-            + (
-                f"（退台栏杆补齐 {railing_layout['synthesized']}）"
-                if any(railing_layout.values()) else ""
-            )
-            + (
-                f"\n设计约束预检发现 {len(design_errors)} 个问题。"
-                if design_errors else "\n设计约束预检通过。"
-            )
-            + (
-                f"另有 {len(quota_shortfalls)} 个配额数量缺口（警告，由模型补量）。"
-                if quota_shortfalls else ""
-            )
-            + f"\n开始校验→修复循环（最多 {MAX_MERGE_ITERATIONS} 轮）...\n",
-        )
-
-    # ── 3. 校验 → 修复 → 循环 ──
-    from app.domain.validation.results import final_validation_results
-    from app.domain.validation.candidate import evaluate_candidate
-
-    def evaluate(blueprint):
-        return evaluate_candidate(blueprint, design_document=state.get("design_document"),
-                                  design_brief=design_brief, source="merge")
-
-    merge_diag: dict = {
-        "label": "合并",
-        "fragment_summary": summary_text,
-        "element_count": len(elements),
-        "component_count": len(components),
+    return {
         "opening_layout": opening_layout,
         "entrance_layout": entrance_layout,
         "balcony_layout": balcony_layout,
         "roof_layout": roof_layout,
         "railing_layout": railing_layout,
-        "balcony_cleanup": balcony_cleanup,
-        "ground_railing_cleanup": ground_railing_cleanup,
-        "design_errors": design_errors,
-        "design_quota_shortfalls": quota_shortfalls,
-        "iterations": [],
     }
+
+
+def _merge_progress_summary(
+    elements,
+    components,
+    balcony_cleanup,
+    ground_railing_cleanup,
+    layout_stats,
+    design_errors,
+    quota_shortfalls,
+):
+    """格式化初次合并的数量、清理和设计检查结果。"""
+    opening_layout = layout_stats["opening_layout"]
+    entrance_layout = layout_stats["entrance_layout"]
+    balcony_layout = layout_stats["balcony_layout"]
+    roof_layout = layout_stats["roof_layout"]
+    railing_layout = layout_stats["railing_layout"]
+    return (
+        f"初次合并完成: {len(elements)} 个结构元素, {len(components)} 个组件"
+        + (
+            f"（清理重复阳台楼板 {len(balcony_cleanup['removed_floor_ids'])}、"
+            f"栏杆 {balcony_cleanup['removed_railing_count']}）"
+            if balcony_cleanup["removed_floor_ids"]
+            else ""
+        )
+        + (
+            f"（清理地面平台栏杆 {len(ground_railing_cleanup['removed_railing_ids'])}）"
+            if ground_railing_cleanup["removed_railing_ids"]
+            else ""
+        )
+        + (
+            f"（槽位吸附 {opening_layout['snapped']}，补齐 {opening_layout['synthesized']}，"
+            f"剔除无槽位开口 {opening_layout['pruned']}）"
+            if any(opening_layout.values())
+            else ""
+        )
+        + (
+            f"（阳台对位 {balcony_layout['snapped']}，补齐 {balcony_layout['synthesized']}）"
+            if any(balcony_layout.values())
+            else ""
+        )
+        + (
+            f"（入口雨棚 {entrance_layout['canopy_snapped']}、入口灯 {entrance_layout['light_snapped']} 对齐入口门）"
+            if any(entrance_layout.values())
+            else ""
+        )
+        + (
+            f"（U 形屋顶拆分新增 {roof_layout['split']} 片）"
+            if any(roof_layout.values())
+            else ""
+        )
+        + (
+            f"（退台栏杆补齐 {railing_layout['synthesized']}）"
+            if any(railing_layout.values())
+            else ""
+        )
+        + (
+            f"\n设计约束预检发现 {len(design_errors)} 个问题。"
+            if design_errors
+            else "\n设计约束预检通过。"
+        )
+        + (
+            f"另有 {len(quota_shortfalls)} 个配额数量缺口（警告，由模型补量）。"
+            if quota_shortfalls
+            else ""
+        )
+        + f"\n开始校验→修复循环（最多 {MAX_MERGE_ITERATIONS} 轮）...\n"
+    )
+
+
+async def _validate_merged_blueprint(
+    state,
+    merged_blueprint,
+    json_parse_quota_errors,
+    merge_diag,
+    on_reasoning_delta,
+    evaluate,
+):
+    """在副本上执行已有校验修复循环，只采用完整通过且保留履约成果的候选。"""
+    from app.domain.validation.results import final_validation_results
 
     final_errors: list = []
     pipeline_results: list = []
@@ -398,7 +589,10 @@ async def _finalize_merge(state: GenerationState) -> dict:
         evaluation = evaluate(merged_blueprint)
         pipeline_results = evaluation["results"]
         final_errors = evaluation["errors"]
-        design_errors = [*json_parse_quota_errors, *evaluation["snapshot"]["design_errors"]]
+        design_errors = [
+            *json_parse_quota_errors,
+            *evaluation["snapshot"]["design_errors"],
+        ]
         final_results = final_validation_results(pipeline_results)
 
         error_count = len(final_errors) + len(json_parse_quota_errors)
@@ -506,10 +700,18 @@ async def _finalize_merge(state: GenerationState) -> dict:
             break
 
         candidate_evaluation = evaluate(candidate)
-        before_satisfied = set((evaluation["fulfillment"] or {}).get("satisfied_ids") or [])
-        after_satisfied = set((candidate_evaluation["fulfillment"] or {}).get("satisfied_ids") or [])
-        accepted = (candidate != merged_blueprint and not candidate_evaluation["errors"]
-                    and before_satisfied <= after_satisfied and not json_parse_quota_errors)
+        before_satisfied = set(
+            (evaluation["fulfillment"] or {}).get("satisfied_ids") or []
+        )
+        after_satisfied = set(
+            (candidate_evaluation["fulfillment"] or {}).get("satisfied_ids") or []
+        )
+        accepted = (
+            candidate != merged_blueprint
+            and not candidate_evaluation["errors"]
+            and before_satisfied <= after_satisfied
+            and not json_parse_quota_errors
+        )
         merge_diag["repair_audit"] = {
             "accepted": accepted,
             "source_fingerprint": blueprint_fingerprint(merged_blueprint),
@@ -519,11 +721,20 @@ async def _finalize_merge(state: GenerationState) -> dict:
         if not accepted:
             merge_diag["stop_reason"] = "incomplete_candidate"
             break
-        from app.agent.workflows.repair.state_updates import state_updates_from_candidate
+        from app.agent.workflows.repair.state_updates import (
+            state_updates_from_candidate,
+        )
         from app.domain.design.relations import entity_index
-        old_entities, new_entities = entity_index(merged_blueprint), entity_index(candidate)
-        changed_ids = {entity_id for entity_id in old_entities.keys() | new_entities.keys()
-                       if old_entities.get(entity_id) != new_entities.get(entity_id)}
+
+        old_entities, new_entities = (
+            entity_index(merged_blueprint),
+            entity_index(candidate),
+        )
+        changed_ids = {
+            entity_id
+            for entity_id in old_entities.keys() | new_entities.keys()
+            if old_entities.get(entity_id) != new_entities.get(entity_id)
+        }
         repair_updates = state_updates_from_candidate(state, candidate, changed_ids)
         merged_blueprint = candidate
 
@@ -537,66 +748,4 @@ async def _finalize_merge(state: GenerationState) -> dict:
                 parts.append(f"未能修复: {', '.join(fail_names)}")
             msg = "；".join(parts) if parts else "无可用修复工具"
             await on_reasoning_delta("merge", f"{msg}\n进入下一轮校验...\n")
-
-    # ── 4. 最终统计 ──
-    total_ms = int((_time.time() - t0) * 1000)
-    elements = merged_blueprint.get("geometry", {}).get("elements", [])
-    components = merged_blueprint.get("geometry", {}).get("components", [])
-
-    merge_diag["total_ms"] = total_ms
-    merge_diag["element_count"] = len(elements)
-    merge_diag["component_count"] = len(components)
-    merge_diag["final_errors"] = len(final_errors) + len(json_parse_quota_errors)
-    design_document = state.get("design_document") or {}
-    resolved_design = state.get("resolved_design") or {}
-    if isinstance(design_document, dict):
-        meta = merged_blueprint.setdefault("meta", {})
-        if isinstance(meta, dict):
-            meta["designRevision"] = design_document.get("revision")
-            meta["designHash"] = resolved_design.get("design_hash")
-            meta["designSchemaVersion"] = design_document.get("schema_version")
-    # 记录本轮证据；final_validate 会独立验收最终交付归一化后的内容。
-    merge_diag["blueprint_fingerprint"] = blueprint_fingerprint(merged_blueprint)
-    merge_diag["validation_results"] = [
-        {
-            "step": result.step,
-            "name": result.name,
-            "output": result.output,
-            "has_error": result.has_error,
-            "has_warning": result.has_warning,
-        }
-        for result in pipeline_results
-    ]
-
-    logger.info(
-        f"[merge] 合并完成: {len(elements)} elements, {len(components)} components, "
-        f"{len(merge_diag['iterations'])}轮, {total_ms}ms"
-    )
-
-    # ── 5. 归一化蓝图用于交付 ──
-    from app.domain.blueprint.normalizer import normalize_blueprint_for_delivery
-    
-    merged_blueprint, norm_report = normalize_blueprint_for_delivery(merged_blueprint)
-    evaluation = evaluate(merged_blueprint)
-    merge_diag["validation_snapshot"] = evaluation["snapshot"]
-    merge_diag["blueprint_fingerprint"] = evaluation["snapshot"]["blueprint_fingerprint"]
-    merge_diag["validation_results"] = evaluation["snapshot"]["results"]
-    merge_diag["final_errors"] = len(evaluation["errors"]) + len(json_parse_quota_errors)
-    merge_diag["normalization_changes"] = norm_report.changes
-    logger.info(f"[merge] 归一化修复: {norm_report.summary()}")
-    
-    if on_reasoning_delta:
-        if norm_report.stripped_fields or norm_report.repaired_fields or norm_report.dropped_components:
-            await on_reasoning_delta(
-                "merge",
-                f"\n**归一化修复**\n"
-                f"- {norm_report.summary()}\n"
-            )
-
-    return {
-        **repair_updates,
-        "merged_blueprint": merged_blueprint,
-        "merge_diag": merge_diag,
-        "design_brief": design_brief,
-    }
-
+    return merged_blueprint, final_errors, pipeline_results, repair_updates

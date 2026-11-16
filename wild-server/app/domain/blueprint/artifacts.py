@@ -13,10 +13,16 @@ def retain_generation_blueprint(state: dict, fallback: dict | None = None) -> di
     candidates = [state.get("final_blueprint"), state.get("merged_blueprint")]
     fragments = state.get("component_fragments") or {}
     diagnostics = state.get("component_diagnostics") or {}
-    failed_rows = [row for diag in diagnostics.values()
-                   for key in ("partial_implementations", "failed_implementations")
-                   for row in (diag.get(key) or {}).values()
-                   if isinstance(row, dict) and isinstance(row.get("geometry"), dict)]
+    failed_rows = []
+    for current_diag in diagnostics.values():
+        for key in ("partial_implementations", "failed_implementations"):
+            for diagnostic_row in (current_diag.get(key) or {}).values():
+                if not (
+                    isinstance(diagnostic_row, dict)
+                    and isinstance(diagnostic_row.get("geometry"), dict)
+                ):
+                    continue
+                failed_rows.append(diagnostic_row)
     if failed_rows or (isinstance(fragments, dict) and any(isinstance(parts, list) and parts for parts in fragments.values())):
         draft = deepcopy(state.get("skeleton_blueprint") or {"meta": {}, "geometry": {}})
         geometry = draft.setdefault("geometry", {})
@@ -32,8 +38,15 @@ def retain_generation_blueprint(state: dict, fallback: dict | None = None) -> di
                 for name, definition in (diag.get(resource) or {}).items():
                     draft.setdefault(resource, {}).setdefault(name, deepcopy(definition))
         for row in failed_rows:
-            seen = {e.get("id") for bucket in ("elements", "components") for e in geometry[bucket]
-                    if isinstance(e, dict) and isinstance(e.get("id"), str)}
+            seen = set()
+            for geometry_bucket in ("elements", "components"):
+                for current_entity in geometry[geometry_bucket]:
+                    if not (
+                        isinstance(current_entity, dict)
+                        and isinstance(current_entity.get("id"), str)
+                    ):
+                        continue
+                    seen.add(current_entity.get("id"))
             for bucket in ("elements", "components"):
                 parts = row["geometry"].get(bucket)
                 if isinstance(parts, list):

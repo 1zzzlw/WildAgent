@@ -73,11 +73,13 @@ def _blocked_regions(blueprint):
 
 
 def stair_opening_issues(blueprint: dict) -> list[str]:
-    return [
-        f"❌ [{floor['id']}, {stair_id}] 楼板遮挡楼梯通道，缺少楼梯开口"
-        for floor, _, _, cuts in _blocked_regions(blueprint)
-        for stair_id, _ in cuts
-    ]
+    result = []
+    for floor, _, _, cuts in _blocked_regions(blueprint):
+        for stair_id, _ in cuts:
+            result.append(
+                f"❌ [{floor['id']}, {stair_id}] 楼板遮挡楼梯通道，缺少楼梯开口"
+            )
+    return result
 
 
 def cut_stair_openings(blueprint: dict) -> list[str]:

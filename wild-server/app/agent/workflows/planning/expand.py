@@ -300,7 +300,9 @@ def expand_plan(
     )
 
     # 显式实例绑定不能被模型策略漏掉，也不能被同类型旧产物压掉。
-    decision_instances = ((state.get("design_document") or {}).get("decisions") or {}).get("components") or []
+    decision_instances = (
+        (state.get("design_document") or {}).get("decisions") or {}
+    ).get("components") or []
     for instance in decision_instances:
         if instance.get("type") and all(e.kind != instance["type"] for e in entries):
             entries.append(PlanKindStrategy(kind=instance["type"]))
@@ -312,21 +314,13 @@ def expand_plan(
             "不再派发这些类型的 generate 条目"
         )
 
-    labels = {config.component_type: config.label for config in get_implemented_components()}
+    labels = {
+        config.component_type: config.label for config in get_implemented_components()
+    }
     blueprint_gaps = compile_gap_summary(state)
     uncompiled_kinds = set(blueprint_gaps.get("uncompiled") or [])
     # `类型:宿主` → 该类型被丢弃的宿主清单（同一类型的多条可能同源，去重保序）。
-    dropped_by_kind: dict[str, list[str]] = {}
-    for gap_entry in blueprint_gaps.get("instance_dropped") or []:
-        kind_name, _, host_name = str(gap_entry).partition(":")
-        if kind_name and host_name and host_name not in dropped_by_kind.setdefault(kind_name, []):
-            dropped_by_kind[kind_name].append(host_name)
-    # `类型.键: 原因` → 该类型被拒的形态键清单（同理去重保序）。
-    rejected_forms_by_kind: dict[str, list[str]] = {}
-    for gap_entry in blueprint_gaps.get("instance_form_rejected") or []:
-        kind_name, _, detail = str(gap_entry).partition(".")
-        if kind_name and detail and detail not in rejected_forms_by_kind.setdefault(kind_name, []):
-            rejected_forms_by_kind[kind_name].append(detail)
+    dropped_by_kind, rejected_forms_by_kind = _index_compile_gaps(blueprint_gaps)
     items: list[PlanItem] = []
     generate_ids: list[str] = []
     batch_merge_ids: list[str] = []
@@ -353,34 +347,26 @@ def expand_plan(
             params["entity_requirements"] = requirements
         unresolved = [r for r in requirements if not r["entity_id"]]
         if unresolved:
-            items.append(PlanItem(id=item_id, op="generate", kind=kind,
-                label=f"实例绑定待核对：{labels.get(kind, kind)}", status="unsupported",
-                target={"entity_requirements": requirements}, params={"needs_review": True},
-                run=ItemRun(evidence="实例宿主/目标尚不可解析，不能用同类型数量替代；需要设计修订")))
+            items.append(
+                PlanItem(
+                    id=item_id,
+                    op="generate",
+                    kind=kind,
+                    label=f"实例绑定待核对：{labels.get(kind, kind)}",
+                    status="unsupported",
+                    target={"entity_requirements": requirements},
+                    params={"needs_review": True},
+                    run=ItemRun(
+                        evidence="实例宿主/目标尚不可解析，不能用同类型数量替代；需要设计修订"
+                    ),
+                )
+            )
             continue
-        dropped_hosts = dropped_by_kind.get(kind) or []
-        rejected_forms = rejected_forms_by_kind.get(kind) or []
-        if dropped_hosts:
-            # 比"编译器没产出该类型"更具体：图纸**写过**这条实例，只是宿主没解析到。
-            params["blueprint_gap"] = (
-                "实例清单里这些宿主没解析到、该实例已整条丢弃"
-                f"（compile_report.instance_dropped）：{'、'.join(dropped_hosts[:4])}。"
-                "本条目先按知识库检索到的真实宿主契约重写，不要沿用这些宿主 id。"
-            )
-        elif rejected_forms:
-            # 图纸写过的**形态值**不合引擎字段契约，编译时被拒（值没落，几何仍用派生值）。
-            params["blueprint_gap"] = (
-                "图纸给这些形态字段写的值不符合引擎字段契约、编译时未采纳"
-                f"（compile_report.instance_form_rejected）：{'；'.join(rejected_forms[:4])}。"
-                "本条目按知识库检索到的字段契约生成该形态，不要沿用这些值。"
-            )
-        elif kind in uncompiled_kinds:
-            # 图纸缺口注入：条目要知道自己在补哪个洞——
-            # 编译器点名了该类型却没产出，这条 generate 就是模型通道的补洞任务。
-            params["blueprint_gap"] = (
-                "编译器没有产出该类型（compile_report.uncompiled）："
-                "本条目负责把它补进蓝图，先按知识库检索到的契约生成。"
-            )
+        gap_hint = _component_gap_hint(
+            kind, dropped_by_kind, rejected_forms_by_kind, uncompiled_kinds
+        )
+        if gap_hint is not None:
+            params["blueprint_gap"] = gap_hint
         items.append(
             PlanItem(
                 id=item_id,
@@ -388,7 +374,8 @@ def expand_plan(
                 kind=kind,
                 label=(
                     f"批量生成{labels.get(kind, kind)} × {batch_size}"
-                    if batch_size > 1 else f"生成{labels.get(kind, kind)}"
+                    if batch_size > 1
+                    else f"生成{labels.get(kind, kind)}"
                 ),
                 target={
                     "source_slots": source_slots,
@@ -512,12 +499,17 @@ def _batch_load(rows: list[dict]) -> dict[str, int]:
         floor = design.get("floor", (design.get("placement") or {}).get("floor"))
         if floor is not None:
             floors.add(floor)
+    dependencies = set()
+    for marker in rows:
+        dependencies.update(marker.get("depends_on") or [])
     return {
         "marker_count": len(rows),
-        "marker_chars": len(json.dumps(rows, ensure_ascii=False, separators=(",", ":"))),
+        "marker_chars": len(
+            json.dumps(rows, ensure_ascii=False, separators=(",", ":"))
+        ),
         "host_count": len({m["host"] for m in rows if m.get("host")}),
         "floor_count": len(floors),
-        "dependency_count": len({d for m in rows for d in m.get("depends_on") or []}),
+        "dependency_count": len(dependencies),
     }
 
 
@@ -557,8 +549,14 @@ def expand_design_markers(state: dict) -> PlanDocument:
                 if level == "minimal" and naming["entity_type"] in {"door", "window", "light"}:
                     kind = naming["entity_type"]
                 groups.setdefault(kind, []).append(marker)
-        batches = [(kind, batch) for kind, rows in groups.items()
-                   for batch in ([rows] if kind == "assembly" else _marker_batches(rows))]
+        batches = []
+        for component_kind, current_rows in groups.items():
+            if component_kind == "assembly":
+                component_batches = [current_rows]
+            else:
+                component_batches = _marker_batches(current_rows)
+            for batch in component_batches:
+                batches.append((component_kind, batch))
         for kind, rows in batches:
             task_id = f"generate_{len(items)+1}"
             complete = all(implementation_complete(records.get(m["id"])) for m in rows)
@@ -568,15 +566,32 @@ def expand_design_markers(state: dict) -> PlanDocument:
                 labels = [m.get("design", {}).get("name") for m in rows]
                 label = next((name.strip() for name in labels if isinstance(name, str) and name.strip()), label)
             parallel = kind not in {"building_body", "assembly"}
-            items.append(PlanItem(id=task_id, op="generate", kind=kind, label=label,
-                target={"marker_ids": [m["id"] for m in rows]},
-                depends_on=sorted({owners[d] for m in rows for d in m.get("depends_on", []) if d in owners}),
-                params={"design_markers": True, "design_hash": state["resolved_design"]["design_hash"],
+            dependency_tasks = set()
+            for marker in rows:
+                for dependency in marker.get("depends_on", []):
+                    if dependency in owners:
+                        dependency_tasks.add(owners[dependency])
+            items.append(
+                PlanItem(
+                    id=task_id,
+                    op="generate",
+                    kind=kind,
+                    label=label,
+                    target={"marker_ids": [m["id"] for m in rows]},
+                    depends_on=sorted(dependency_tasks),
+                    params={
+                        "design_markers": True,
+                        "design_hash": state["resolved_design"]["design_hash"],
                         "batch_load": _batch_load(rows),
                         "execution_mode": "parallel" if parallel else "serial",
-                        "parallel_group": "drawing" if parallel else ""},
-                status="done" if complete else "pending",
-                run=ItemRun(state="succeeded" if complete else "idle", max_attempts=1)))
+                        "parallel_group": "drawing" if parallel else "",
+                    },
+                    status="done" if complete else "pending",
+                    run=ItemRun(
+                        state="succeeded" if complete else "idle", max_attempts=1
+                    ),
+                )
+            )
             for marker in rows:
                 owners[marker["id"]] = task_id
                 pending.pop(marker["id"])
@@ -584,3 +599,58 @@ def expand_design_markers(state: dict) -> PlanDocument:
     return new_plan(items, detail_level=level,
                     budget={"iterations": len(markers)*(len(IMPLEMENTATION_STAGES)+1)+2,
                             "llm_calls": len(markers)*(len(IMPLEMENTATION_STAGES)+1), "max_items": len(items)})
+
+
+def _index_compile_gaps(blueprint_gaps):
+    """按构件类型索引未解析宿主与被拒的形态值。"""
+    dropped_by_kind: dict[str, list[str]] = {}
+    for gap_entry in blueprint_gaps.get("instance_dropped") or []:
+        kind_name, _, host_name = str(gap_entry).partition(":")
+        if (
+            kind_name
+            and host_name
+            and host_name not in dropped_by_kind.setdefault(kind_name, [])
+        ):
+            dropped_by_kind[kind_name].append(host_name)
+    # `类型.键: 原因` → 该类型被拒的形态键清单（同理去重保序）。
+    rejected_forms_by_kind: dict[str, list[str]] = {}
+    for gap_entry in blueprint_gaps.get("instance_form_rejected") or []:
+        kind_name, _, detail = str(gap_entry).partition(".")
+        if (
+            kind_name
+            and detail
+            and detail not in rejected_forms_by_kind.setdefault(kind_name, [])
+        ):
+            rejected_forms_by_kind[kind_name].append(detail)
+    return dropped_by_kind, rejected_forms_by_kind
+
+
+def _component_gap_hint(
+    kind, dropped_by_kind, rejected_forms_by_kind, uncompiled_kinds
+):
+    """说明当前任务应修复的宿主、形态或编译缺口。"""
+    params = {}
+    dropped_hosts = dropped_by_kind.get(kind) or []
+    rejected_forms = rejected_forms_by_kind.get(kind) or []
+    if dropped_hosts:
+        # 比"编译器没产出该类型"更具体：图纸**写过**这条实例，只是宿主没解析到。
+        params["blueprint_gap"] = (
+            "实例清单里这些宿主没解析到、该实例已整条丢弃"
+            f"（compile_report.instance_dropped）：{'、'.join(dropped_hosts[:4])}。"
+            "本条目先按知识库检索到的真实宿主契约重写，不要沿用这些宿主 id。"
+        )
+    elif rejected_forms:
+        # 图纸写过的**形态值**不合引擎字段契约，编译时被拒（值没落，几何仍用派生值）。
+        params["blueprint_gap"] = (
+            "图纸给这些形态字段写的值不符合引擎字段契约、编译时未采纳"
+            f"（compile_report.instance_form_rejected）：{'；'.join(rejected_forms[:4])}。"
+            "本条目按知识库检索到的字段契约生成该形态，不要沿用这些值。"
+        )
+    elif kind in uncompiled_kinds:
+        # 图纸缺口注入：条目要知道自己在补哪个洞——
+        # 编译器点名了该类型却没产出，这条 generate 就是模型通道的补洞任务。
+        params["blueprint_gap"] = (
+            "编译器没有产出该类型（compile_report.uncompiled）："
+            "本条目负责把它补进蓝图，先按知识库检索到的契约生成。"
+        )
+    return params.get("blueprint_gap")

@@ -84,8 +84,10 @@ def evaluate_candidate(blueprint: dict, *, design_document=None, design_brief=No
             if implementation.get("design_hash") != design_hash:
                 append("implementation_version", ["落实记录与设计版本不一致"])
             records = implementation.get("records") or {}
-            actual = {e["id"]: e for bucket in ("elements", "components")
-                      for e in blueprint.get("geometry", {}).get(bucket, [])}
+            actual = {}
+            for bucket in ("elements", "components"):
+                for entity in blueprint.get("geometry", {}).get(bucket, []):
+                    actual[entity["id"]] = entity
             markers = project_drawing(document).component_markers
             geometry_reviews = {}
             for marker in markers:

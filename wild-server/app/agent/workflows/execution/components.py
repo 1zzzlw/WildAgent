@@ -128,65 +128,18 @@ def create_component_generator(config: ComponentConfig):
     """创建组件生成节点（只做 LLM 生成，不做工具校验）"""
 
     async def generator(state: GenerationState) -> dict:
-        from app.agent.runtime import agent_runtime
-
         t0 = _time.time()
         user_message = state["user_message"]
-        skeleton_summary = state.get("skeleton_summary", "")
-        spatial_invariants = state.get("spatial_invariants", {})
-        if spatial_invariants:
-            skeleton_summary = (
-                f"{skeleton_summary}\n\n【确定性空间不变量（必须遵守，不得自行改写）】\n"
-                f"{json.dumps(spatial_invariants, ensure_ascii=False, default=str)}"
-            )
-        design_brief = state.get("design_brief")  # ← 骨架设计清单
-
-        # 图纸级缺口摘要（用户指令 2026-09-29）：编译报告的 uncompiled/defects，
-        # 让模型知道整张图纸还缺什么；条目自身的缺口在 plan_item.blueprint_gap。
-        gaps = state.get("blueprint_gaps")
-        if isinstance(gaps, dict) and gaps:
-            skeleton_summary = (
-                f"{skeleton_summary}\n\n【图纸缺口摘要（确定性编译报告，供参考）】\n"
-                f"{json.dumps(gaps, ensure_ascii=False, default=str)}"
-            )
+        skeleton_summary, design_brief = _component_design_context(state)
 
         logger.info(f"[{config.component_type}_gen] 开始生成 {config.label}")
 
         # ── 1. RAG 检索 ──
-        rag_t0 = _time.time()
-        selected_query = plan_knowledge_query(user_message, state.get("architecture_plan"))
-        queries = [
-            SpecQuery(selected_query, {"doc_type": "component", "entity_type": config.entity_type}),
-            SpecQuery(
-                f"{user_message}\n{config.label}构件参数与位置规则：{config.component_type} 的宿主、局部坐标、字段与边界",
-                {"doc_type": "component", "entity_type": config.entity_type},
-            ),
-        ]
-        for extra_query in config.rag_extra_queries:
-            queries.append(SpecQuery(extra_query, {"doc_type": "component", "entity_type": config.entity_type}))
-
-        rag_error = None
-        rag_result = None
-        try:
-            rag_result = await asyncio.to_thread(agent_runtime.spec_loader.load_many_result, queries, per_query=2)
-            spec_text = rag_result.text
-        except Exception as exc:
-            spec_text = ""
-            rag_error = str(exc)
-            logger.warning(
-                f"[{config.component_type}_gen] RAG 检索失败，继续使用骨架约束: {exc}"
-            )
-        rag_ms = int((_time.time() - rag_t0) * 1000)
-        rag_chars = len(spec_text)
-        rag_hits = [] if rag_error else [
-            {
-                "source": hit.metadata.get("source", "?"),
-                "heading": hit.metadata.get("heading", "?"),
-                "doc_type": hit.metadata.get("doc_type", "?"),
-                "entity_type": hit.metadata.get("entity_type", "?"),
-            }
-            for hit in rag_result.hits
-        ]
+        spec_text, retrieval = await _load_component_rules(config, state, user_message)
+        rag_error = retrieval["error"]
+        rag_hits = retrieval["hits"]
+        rag_ms = retrieval["ms"]
+        rag_chars = retrieval["chars"]
 
         # ── 2. 构建 Prompt ──
         # 字段约束优先来自知识库（§2.4）：检索到位就不注入代码里的静态规则，
@@ -209,7 +162,10 @@ def create_component_generator(config: ComponentConfig):
 
         messages = [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": build_component_user_message(config, design_brief)},
+            {
+                "role": "user",
+                "content": build_component_user_message(config, design_brief),
+            },
         ]
 
         llm_t0 = _time.time()
@@ -252,12 +208,14 @@ def create_component_generator(config: ComponentConfig):
             model_error = classify_model_error(e)
             empty_value = [] if config.is_list else None
             diag = {
-                    "label": config.label,
-                    "rag_chars": rag_chars, "rag_ms": rag_ms, "rag_hits": rag_hits,
-                    "rag_error": rag_error,
-                    "error": model_error["user_message"],
-                    "model_error": model_error,
-                }
+                "label": config.label,
+                "rag_chars": rag_chars,
+                "rag_ms": rag_ms,
+                "rag_hits": rag_hits,
+                "rag_error": rag_error,
+                "error": model_error["user_message"],
+                "model_error": model_error,
+            }
             return component_state_update(config, empty_value, "gen", diag)
 
         llm_ms = int((_time.time() - llm_t0) * 1000)
@@ -272,13 +230,21 @@ def create_component_generator(config: ComponentConfig):
         if tool_diag.get("error"):
             # 工具执行异常不是 JSON 格式错误；保留现场，不再发起无依据的格式恢复。
             diag = {
-                "label": config.label, "rag_chars": rag_chars, "rag_hits": rag_hits,
-                "rag_error": rag_error, "prompt_chars": prompt_chars,
-                "llm_chars": llm_chars, "llm_ms": llm_ms,
-                "tool_trace": tool_trace, "tool_loop": tool_diag, "fragment_count": 0,
+                "label": config.label,
+                "rag_chars": rag_chars,
+                "rag_hits": rag_hits,
+                "rag_error": rag_error,
+                "prompt_chars": prompt_chars,
+                "llm_chars": llm_chars,
+                "llm_ms": llm_ms,
+                "tool_trace": tool_trace,
+                "tool_loop": tool_diag,
+                "fragment_count": 0,
                 "model_error": classify_model_error(RuntimeError(tool_diag["error"])),
             }
-            return component_state_update(config, [] if config.is_list else None, "gen", diag)
+            return component_state_update(
+                config, [] if config.is_list else None, "gen", diag
+            )
 
         # ── 4. 提取 JSON ──
         if config.is_list:
@@ -305,28 +271,31 @@ def create_component_generator(config: ComponentConfig):
                 logger.warning(f"[{config.component_type}_gen] 未能提取 JSON")
                 empty_value = [] if config.is_list else None
                 diag = {
-                        "label": config.label,
-                        "rag_chars": rag_chars, "rag_ms": rag_ms, "rag_hits": rag_hits,
-                        "rag_error": rag_error,
-                        "prompt_chars": prompt_chars,
-                        "llm_chars": llm_chars, "llm_ms": llm_ms,
-                        "token_usage": token_usage,
-                        "reasoning_chars": reasoning_chars,
-                        "tool_trace": tool_trace,
-                        "tool_loop": tool_diag,
-                        "fragment_count": 0,
-                        "recovery_ms": recovery_ms,
-                        "error": "JSON 提取失败",
-                        # 显式标记格式故障：不是服务故障（不设 terminal，merge 不会
-                        # 误判为模型服务中断），但 merge 可据此诊断，避免“静默消失”。
-                        "json_parse_failed": True,
-                        "model_error": {
-                            "category": "json_parse",
-                            "terminal_current_run": False,
-                            "retryable": True,
-                            "user_message": f"{config.label} 结构化输出解析失败",
-                        },
-                    }
+                    "label": config.label,
+                    "rag_chars": rag_chars,
+                    "rag_ms": rag_ms,
+                    "rag_hits": rag_hits,
+                    "rag_error": rag_error,
+                    "prompt_chars": prompt_chars,
+                    "llm_chars": llm_chars,
+                    "llm_ms": llm_ms,
+                    "token_usage": token_usage,
+                    "reasoning_chars": reasoning_chars,
+                    "tool_trace": tool_trace,
+                    "tool_loop": tool_diag,
+                    "fragment_count": 0,
+                    "recovery_ms": recovery_ms,
+                    "error": "JSON 提取失败",
+                    # 显式标记格式故障：不是服务故障（不设 terminal，merge 不会
+                    # 误判为模型服务中断），但 merge 可据此诊断，避免“静默消失”。
+                    "json_parse_failed": True,
+                    "model_error": {
+                        "category": "json_parse",
+                        "terminal_current_run": False,
+                        "retryable": True,
+                        "user_message": f"{config.label} 结构化输出解析失败",
+                    },
+                }
                 return component_state_update(config, empty_value, "gen", diag)
 
         # ── 4.5 单位迁移：`rotation` 的度数写法收敛成契约的弧度三维数组 ──
@@ -339,29 +308,39 @@ def create_component_generator(config: ComponentConfig):
         valid = validate_fragments(fragments, config)
         total_ms = int((_time.time() - t0) * 1000)
 
-        logger.info(f"[{config.component_type}_gen] 完成: {len(valid)} 个 {config.label}, {total_ms}ms")
+        logger.info(
+            f"[{config.component_type}_gen] 完成: {len(valid)} 个 {config.label}, {total_ms}ms"
+        )
         if repaired_rotations:
             logger.info(
                 f"[{config.component_type}_gen] rotation 单位迁移 "
                 f"{repaired_rotations} 个（度数 → 弧度）"
             )
 
-        value = valid if config.is_list else (valid[0] if valid else None)
+        if config.is_list:
+            value = valid
+        elif valid:
+            value = valid[0]
+        else:
+            value = None
         diag = {
-                "label": config.label,
-                "rag_chars": rag_chars, "rag_ms": rag_ms, "rag_hits": rag_hits,
-                "rag_error": rag_error,
-                "prompt_chars": prompt_chars,
-                "llm_chars": llm_chars, "llm_ms": llm_ms,
-                "token_usage": token_usage,
-                "reasoning_chars": reasoning_chars,
-                "reasoning_preview": reasoning[:800] if reasoning else "",
-                "tool_trace": tool_trace,
-                "tool_loop": tool_diag,
-                "fragment_count": len(valid),
-                "raw_fragments": fragments,
-                "total_ms": total_ms,
-            }
+            "label": config.label,
+            "rag_chars": rag_chars,
+            "rag_ms": rag_ms,
+            "rag_hits": rag_hits,
+            "rag_error": rag_error,
+            "prompt_chars": prompt_chars,
+            "llm_chars": llm_chars,
+            "llm_ms": llm_ms,
+            "token_usage": token_usage,
+            "reasoning_chars": reasoning_chars,
+            "reasoning_preview": reasoning[:800] if reasoning else "",
+            "tool_trace": tool_trace,
+            "tool_loop": tool_diag,
+            "fragment_count": len(valid),
+            "raw_fragments": fragments,
+            "total_ms": total_ms,
+        }
         return component_state_update(config, value, "gen", diag)
 
     generator.__name__ = f"{config.component_type}_gen"
@@ -378,7 +357,10 @@ def create_component_validator(config: ComponentConfig):
 
         fragments = state.get("component_fragments", {}).get(config.component_type)
         if config.is_list:
-            fragments = fragments if isinstance(fragments, list) else [fragments] if isinstance(fragments, dict) else []
+            if isinstance(fragments, dict):
+                fragments = [fragments]
+            elif not isinstance(fragments, list):
+                fragments = []
         else:
             fragments = [fragments] if isinstance(fragments, dict) else []
 
@@ -415,7 +397,12 @@ def create_component_validator(config: ComponentConfig):
         # 专用工具复检仍失败时，禁止把原始错误分片继续送入 merge。后续设计
         # 配额校验会把缺失构件交给回调重试，避免无效几何流到前端编译器。
         deliverable = validated if validation_passed else []
-        value = deliverable if config.is_list else (deliverable[0] if deliverable else None)
+        if config.is_list:
+            value = deliverable
+        elif deliverable:
+            value = deliverable[0]
+        else:
+            value = None
         diag = {
                 "label": config.label,
                 "fragment_count": len(deliverable),
@@ -432,3 +419,82 @@ def create_component_validator(config: ComponentConfig):
     return validator
 
 
+def _component_design_context(state):
+    """收集骨架、空间不变量和本轮未落实的图纸缺口。"""
+    skeleton_summary = state.get("skeleton_summary", "")
+    spatial_invariants = state.get("spatial_invariants", {})
+    if spatial_invariants:
+        skeleton_summary = (
+            f"{skeleton_summary}\n\n【确定性空间不变量（必须遵守，不得自行改写）】\n"
+            f"{json.dumps(spatial_invariants, ensure_ascii=False, default=str)}"
+        )
+    design_brief = state.get("design_brief")  # ← 骨架设计清单
+
+    # 图纸级缺口摘要（用户指令 2026-09-29）：编译报告的 uncompiled/defects，
+    # 让模型知道整张图纸还缺什么；条目自身的缺口在 plan_item.blueprint_gap。
+    gaps = state.get("blueprint_gaps")
+    if isinstance(gaps, dict) and gaps:
+        skeleton_summary = (
+            f"{skeleton_summary}\n\n【图纸缺口摘要（确定性编译报告，供参考）】\n"
+            f"{json.dumps(gaps, ensure_ascii=False, default=str)}"
+        )
+    return skeleton_summary, design_brief
+
+
+async def _load_component_rules(config, state, user_message):
+    """加载当前构件的契约与定位规则，保留检索失败的回退诊断。"""
+    from app.agent.runtime import agent_runtime
+
+    rag_t0 = _time.time()
+    selected_query = plan_knowledge_query(user_message, state.get("architecture_plan"))
+    queries = [
+        SpecQuery(
+            selected_query, {"doc_type": "component", "entity_type": config.entity_type}
+        ),
+        SpecQuery(
+            f"{user_message}\n{config.label}构件参数与位置规则：{config.component_type} 的宿主、局部坐标、字段与边界",
+            {"doc_type": "component", "entity_type": config.entity_type},
+        ),
+    ]
+    for extra_query in config.rag_extra_queries:
+        queries.append(
+            SpecQuery(
+                extra_query,
+                {"doc_type": "component", "entity_type": config.entity_type},
+            )
+        )
+
+    rag_error = None
+    rag_result = None
+    try:
+        rag_result = await asyncio.to_thread(
+            agent_runtime.spec_loader.load_many_result, queries, per_query=2
+        )
+        spec_text = rag_result.text
+    except Exception as exc:
+        spec_text = ""
+        rag_error = str(exc)
+        logger.warning(
+            f"[{config.component_type}_gen] RAG 检索失败，继续使用骨架约束: {exc}"
+        )
+    rag_ms = int((_time.time() - rag_t0) * 1000)
+    rag_chars = len(spec_text)
+    rag_hits = (
+        []
+        if rag_error
+        else [
+            {
+                "source": hit.metadata.get("source", "?"),
+                "heading": hit.metadata.get("heading", "?"),
+                "doc_type": hit.metadata.get("doc_type", "?"),
+                "entity_type": hit.metadata.get("entity_type", "?"),
+            }
+            for hit in rag_result.hits
+        ]
+    )
+    return spec_text, {
+        "error": rag_error,
+        "hits": rag_hits,
+        "ms": rag_ms,
+        "chars": rag_chars,
+    }

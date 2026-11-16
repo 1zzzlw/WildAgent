@@ -136,13 +136,22 @@ def prepare_rag_llm_call(llm: Any, messages: Any) -> dict[str, Any]:
         metadata = (var_child_runnable_config.get() or {}).get("metadata") or {}
         if metadata.get("langgraph_node"):
             context["stage"] = metadata["langgraph_node"]
-    return {"call_id": uuid4().hex, "messages_ref": digest, "messages_sha256": digest,
-            "input_chars": len(raw_encoded), "input_bytes": len(raw_encoded.encode("utf-8")),
-            "input_message_count": len(rows), "model_config": _safe_model_config(llm),
-            "index_signatures": sorted({query["index_signature"] for retrieval in trace.retrievals
-                                        for query in retrieval.get("queries", [])
-                                        if query.get("index_signature")}),
-            **_public_trace_value(context)}
+    index_signatures = set()
+    for retrieval in trace.retrievals:
+        for query in retrieval.get("queries", []):
+            if query.get("index_signature"):
+                index_signatures.add(query["index_signature"])
+    return {
+        "call_id": uuid4().hex,
+        "messages_ref": digest,
+        "messages_sha256": digest,
+        "input_chars": len(raw_encoded),
+        "input_bytes": len(raw_encoded.encode("utf-8")),
+        "input_message_count": len(rows),
+        "model_config": _safe_model_config(llm),
+        "index_signatures": sorted(index_signatures),
+        **_public_trace_value(context),
+    }
 
 
 def _runtime_snapshot() -> dict[str, Any]:
@@ -404,9 +413,14 @@ def rag_trace_scope(
             try:
                 payload = trace.to_dict()
                 payload.pop("llm_inputs", None)
-                payload["llm_calls"] = [{k: v for k, v in call.items()
-                                         if k not in {"response_content", "reasoning_content"}}
-                                        for call in payload["llm_calls"]]
+                public_calls = []
+                for call in payload["llm_calls"]:
+                    public_call = {}
+                    for key, value in call.items():
+                        if key not in {"response_content", "reasoning_content"}:
+                            public_call[key] = value
+                    public_calls.append(public_call)
+                payload["llm_calls"] = public_calls
                 payload["trace_file"] = str(path) if path else None
                 payload["persistence_error"] = persistence_error
                 logger.info(

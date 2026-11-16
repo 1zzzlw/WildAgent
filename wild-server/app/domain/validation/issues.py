@@ -154,16 +154,24 @@ def validation_issues_from_results(
                 if validator == "validate_design_brief"
                 else None
             )
-            mentioned = list(dict.fromkeys(i.strip() for m in _ENTITY_MARKER.finditer(line)
-                                           for i in m.group(1).split(",") if i.strip() in entities))
+            mentioned = []
+            for match in _ENTITY_MARKER.finditer(line):
+                for raw_id in match.group(1).split(","):
+                    mentioned_id = raw_id.strip()
+                    if mentioned_id in entities:
+                        mentioned.append(mentioned_id)
+            mentioned = list(dict.fromkeys(mentioned))
             # 门窗重叠消息中的父墙只是定位上下文；把它当作冲突实体会重做主体及所有依附构件。
             if "上重叠" in line:
                 parent_wall = _PARENT_WALL_MARKER.search(line)
                 if parent_wall:
                     mentioned = [i for i in mentioned if i != parent_wall.group(1)]
-            marker_id = facade_match.group(1) if facade_match else (
-                mentioned[0] if mentioned else None
-            )
+            if facade_match:
+                marker_id = facade_match.group(1)
+            elif mentioned:
+                marker_id = mentioned[0]
+            else:
+                marker_id = None
             entity_id = marker_id if marker_id in entities else None
             entity = entities.get(entity_id or "", {})
             message = line[:800]
@@ -224,8 +232,10 @@ def repair_feedback(issues: Iterable[dict], blueprint: dict, *, markers=(), reco
     entities = _entity_index(blueprint)
     markers = {marker["id"]: marker for marker in markers}
     records = records or {}
-    owners = {entity_id: marker_id for marker_id, record in records.items()
-              for entity_id in record.get("entity_ids", [])}
+    owners = {}
+    for current_marker_id, record in records.items():
+        for entity_id in record.get("entity_ids", []):
+            owners[entity_id] = current_marker_id
     feedback, targets, marker_ids = [], set(), set()
     for original in issues:
         issue = deepcopy(original)
@@ -236,11 +246,28 @@ def repair_feedback(issues: Iterable[dict], blueprint: dict, *, markers=(), reco
         if issue.get("marker_id"):
             owned.add(issue["marker_id"])
         if not ids:
-            ids.update(i for marker_id in owned for i in records.get(marker_id, {}).get("entity_ids", []))
+            for current_marker_id in owned:
+                for current_entity_id in records.get(current_marker_id, {}).get(
+                    "entity_ids", []
+                ):
+                    ids.add(current_entity_id)
         if "expected" not in issue or issue["expected"] is None:
-            issue["expected"] = {i: {key: deepcopy(value) for key, value in markers[i].get("design", {}).items()
-                                    if key in {"size", "placement", "floor_connections", "form", "massing", "volume"}}
-                                 for i in sorted(owned) if i in markers}
+            issue["expected"] = {}
+            for marker_id in sorted(owned):
+                if marker_id not in markers:
+                    continue
+                expected_design = {}
+                for key, value in markers[marker_id].get("design", {}).items():
+                    if key in {
+                        "size",
+                        "placement",
+                        "floor_connections",
+                        "form",
+                        "massing",
+                        "volume",
+                    }:
+                        expected_design[key] = deepcopy(value)
+                issue["expected"][marker_id] = expected_design
         if ("actual" not in issue or issue["actual"] is None
                 or isinstance(issue["actual"], dict) and set(issue["actual"]) == {"entity_ids"}):
             issue["actual"] = {"entities": [deepcopy(entities[i]) for i in sorted(ids) if i in entities]}

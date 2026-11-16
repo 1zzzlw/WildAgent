@@ -98,6 +98,18 @@ class CompileResult:
         elements = geometry.get("elements", []) or []
         components = geometry.get("components", []) or []
         overrides = self.stats.get("instance_overrides") or {}
+        ignored_fields = []
+        for kind, keys in (overrides.get("form_ignored") or {}).items():
+            for key in keys:
+                ignored_fields.append(f"{kind}.{key}")
+        rejected_fields = []
+        for kind, items in (overrides.get("form_rejections") or {}).items():
+            for key, reason in sorted(items.items()):
+                rejected_fields.append(f"{kind}.{key}: {reason}")
+        unverified_fields = []
+        for kind, keys in (overrides.get("form_unverified") or {}).items():
+            for key in keys:
+                unverified_fields.append(f"{kind}.{key}")
         return {
             "mode": self.mode,
             "ok": self.ok,
@@ -112,7 +124,9 @@ class CompileResult:
             # 若这里再不报，"只标记不阻断"就退化成"不标记也不阻断"。
             #  - dropped：宿主解析不到、连兜底模板都没有，整条丢弃；
             #  - host_fallback：宿主没按原意配到，退用了第 N 条派生结果（错位）。
-            "normalization_changes": list(self.stats.get("normalization_changes") or []),
+            "normalization_changes": list(
+                self.stats.get("normalization_changes") or []
+            ),
             "instance_size_changes": list(overrides.get("size_changes") or []),
             "material_regions": list(self.stats.get("material_regions") or []),
             "instance_dropped": list(overrides.get("dropped") or []),
@@ -124,21 +138,9 @@ class CompileResult:
             #    （要区分原因就看 rejected）；
             #  - rejected：键认得、但**值**不满足引擎字段契约（如 `profile` 给了一个名字）；
             #  - unverified：值和键都落了，可**引擎 schema 里没有这个字段**（静默失效）。
-            "instance_form_ignored": [
-                f"{kind}.{key}"
-                for kind, keys in (overrides.get("form_ignored") or {}).items()
-                for key in keys
-            ],
-            "instance_form_rejected": [
-                f"{kind}.{key}: {reason}"
-                for kind, items in (overrides.get("form_rejections") or {}).items()
-                for key, reason in sorted(items.items())
-            ],
-            "instance_form_unverified": [
-                f"{kind}.{key}"
-                for kind, keys in (overrides.get("form_unverified") or {}).items()
-                for key in keys
-            ],
+            "instance_form_ignored": ignored_fields,
+            "instance_form_rejected": rejected_fields,
+            "instance_form_unverified": unverified_fields,
             # P4：实例清单索引 → 产出实体 id 的唯一映射。履约验收（P4）靠它把
             # "/decisions/components/3/host = main_L2_roof" 判成"真挂上去了"还是
             # "退到了别处"；没有它只能 needs_review。**投影不出来 = 履约层永远判不了**。

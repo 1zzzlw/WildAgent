@@ -158,19 +158,35 @@ def collect_stair_placement_issues(blueprint: dict) -> list[dict[str, object]]:
 
         stair_id = str(stair.get("id") or "?")
         if not endpoint_supported(start, start_y):
-            issues.append({
-                "code": "stair_start_outside_floor",
-                "message": (f"楼梯 {stair_id} 起点不在 {start_y:g}m 楼板或平台范围内；端点={start}，净宽={half_width*2:g}m，"
-                            f"承托范围={[r for y, regions in floor_levels if abs(y-start_y)<=0.25 for r in regions]}" + support_feedback),
-                "entity_ids": (stair_id,),
-            })
+            start_regions = []
+            for floor_y, regions in floor_levels:
+                if abs(floor_y - start_y) <= 0.25:
+                    start_regions.extend(regions)
+            issues.append(
+                {
+                    "code": "stair_start_outside_floor",
+                    "message": (
+                        f"楼梯 {stair_id} 起点不在 {start_y:g}m 楼板或平台范围内；端点={start}，净宽={half_width * 2:g}m，"
+                        f"承托范围={start_regions}" + support_feedback
+                    ),
+                    "entity_ids": (stair_id,),
+                }
+            )
         if not endpoint_supported(end, end_y):
-            issues.append({
-                "code": "stair_end_outside_floor",
-                "message": (f"楼梯 {stair_id} 终点不在 {end_y:g}m 楼板或平台范围内；端点={end}，净宽={half_width*2:g}m，"
-                            f"承托范围={[r for y, regions in floor_levels if abs(y-end_y)<=0.25 for r in regions]}" + support_feedback),
-                "entity_ids": (stair_id,),
-            })
+            end_regions = []
+            for floor_y, regions in floor_levels:
+                if abs(floor_y - end_y) <= 0.25:
+                    end_regions.extend(regions)
+            issues.append(
+                {
+                    "code": "stair_end_outside_floor",
+                    "message": (
+                        f"楼梯 {stair_id} 终点不在 {end_y:g}m 楼板或平台范围内；端点={end}，净宽={half_width * 2:g}m，"
+                        f"承托范围={end_regions}" + support_feedback
+                    ),
+                    "entity_ids": (stair_id,),
+                }
+            )
         valid_stairs.append((stair, start, end))
 
     valid_stairs.sort(key=lambda item: float(item[1][1]))
@@ -491,13 +507,14 @@ def _wall_centerline_key(wall: dict, precision: int = 3) -> tuple | None:
 def _infer_story_height(elements: list[dict]) -> float:
     """从楼板标高和已有墙高中推断常用层高；信息不足时使用 3m。"""
     candidates: list[float] = []
-    floor_levels = sorted({
-        float(coord[1])
-        for element in elements
-        if element.get("type") == "floor"
-        for coord in (element.get("from"), element.get("to"))
-        if _is_finite_vector3(coord)
-    })
+    floor_heights = set()
+    for element in elements:
+        if element.get("type") != "floor":
+            continue
+        for coordinate in (element.get("from"), element.get("to")):
+            if _is_finite_vector3(coordinate):
+                floor_heights.add(float(coordinate[1]))
+    floor_levels = sorted(floor_heights)
     candidates.extend(
         upper - lower
         for lower, upper in zip(floor_levels, floor_levels[1:])
@@ -521,13 +538,17 @@ def _infer_story_height(elements: list[dict]) -> float:
 
 def _infer_wall_top(elements: list[dict], bottom: float) -> float:
     """优先对齐上一层楼板；顶层墙则沿用推断出的常用层高。"""
-    upper_floors = sorted({
-        float(coord[1])
-        for element in elements
-        if element.get("type") == "floor"
-        for coord in (element.get("from"), element.get("to"))
-        if _is_finite_vector3(coord) and 0.1 < float(coord[1]) - bottom <= 50.0
-    })
+    upper_heights = set()
+    for element in elements:
+        if element.get("type") != "floor":
+            continue
+        for coordinate in (element.get("from"), element.get("to")):
+            if (
+                _is_finite_vector3(coordinate)
+                and 0.1 < float(coordinate[1]) - bottom <= 50.0
+            ):
+                upper_heights.add(float(coordinate[1]))
+    upper_floors = sorted(upper_heights)
     return upper_floors[0] if upper_floors else bottom + _infer_story_height(elements)
 
 
@@ -1118,9 +1139,15 @@ def get_roof_support_bounds(
         }
     min_x, max_x = min(all_x), max(all_x)
     min_z, max_z = min(all_z), max(all_z)
-    support_kind = ("wall" if any(w.get("type") == "wall" for w in support_walls) else "beam") if support_walls else (
-        "column" if support_columns else "wall"
-    )
+    if support_walls:
+        if any((w.get("type") == "wall" for w in support_walls)):
+            support_kind = "wall"
+        else:
+            support_kind = "beam"
+    elif support_columns:
+        support_kind = "column"
+    else:
+        support_kind = "wall"
     return {
         "min_x": min_x, "max_x": max_x,
         "min_z": min_z, "max_z": max_z,
@@ -1945,41 +1972,70 @@ def validate_element_required_fields(blueprint: dict) -> str:
     参数 blueprint: 完整的 Blueprint dict
     """
     REQUIRED = {
-        "wall":      ["from", "to", "thickness"],
-        "floor":     ["from", "thickness"],
-        "column":    ["base", "height", "bottomRadius", "topRadius", "style"],
-        "beam":      ["from", "to", "crossSection", "width", "height"],
-        "roof":      ["roofType", "span", "depth", "height", "thickness"],
-        "opening":   ["parentWall", "from", "width", "height", "style"],
-        "stair":     ["from", "to", "width"],
+        "wall": ["from", "to", "thickness"],
+        "floor": ["from", "thickness"],
+        "column": ["base", "height", "bottomRadius", "topRadius", "style"],
+        "beam": ["from", "to", "crossSection", "width", "height"],
+        "roof": ["roofType", "span", "depth", "height", "thickness"],
+        "opening": ["parentWall", "from", "width", "height", "style"],
+        "stair": ["from", "to", "width"],
         "furniture": ["subtype", "position", "dimensions"],
         "dense_brick": ["resolution", "origin", "data"],
-        "body":      ["height", "build", "headShape", "armLength", "legLength", "cloakLength", "hoodUp"],
+        "body": [
+            "height",
+            "build",
+            "headShape",
+            "armLength",
+            "legLength",
+            "cloakLength",
+            "hoodUp",
+        ],
         "primitive": ["shape"],
     }
 
     # 合法枚举值
-    VALID_FURNITURE_SUBTYPES = {"table", "chair", "sofa", "bookshelf", "bed", "wardrobe", "nightstand", "tv_cabinet", "lamp", "tile"}
+    VALID_FURNITURE_SUBTYPES = {
+        "table",
+        "chair",
+        "sofa",
+        "bookshelf",
+        "bed",
+        "wardrobe",
+        "nightstand",
+        "tv_cabinet",
+        "lamp",
+        "tile",
+    }
     VALID_PRIMITIVE_SHAPES = {"box", "sphere", "cylinder", "profile_sweep"}
 
     # 蓝图顶层只允许这些 key
     VALID_ROOT_KEYS = {"meta", "geometry", "materials", "assets", "behaviors", "editor"}
     # geometry 内部只允许这些 key
-    VALID_GEOMETRY_KEYS = {"elements", "components", "templates", "instances", "placements"}
+    VALID_GEOMETRY_KEYS = {
+        "elements",
+        "components",
+        "templates",
+        "instances",
+        "placements",
+    }
 
     issues: list[str] = []
 
     # === 检查根级别多余的 key ===
     extra_root = set(blueprint.keys()) - VALID_ROOT_KEYS
     if extra_root:
-        issues.append(f"❌ 蓝图根级别出现非法字段: {extra_root}。只允许: {VALID_ROOT_KEYS}")
+        issues.append(
+            f"❌ 蓝图根级别出现非法字段: {extra_root}。只允许: {VALID_ROOT_KEYS}"
+        )
 
     # === 检查 geometry 内部多余的 key ===
     geo = blueprint.get("geometry", {})
     if isinstance(geo, dict):
         extra_geo = set(geo.keys()) - VALID_GEOMETRY_KEYS
         if extra_geo:
-            issues.append(f"❌ geometry 内部出现非法字段: {extra_geo}。只允许: {VALID_GEOMETRY_KEYS}")
+            issues.append(
+                f"❌ geometry 内部出现非法字段: {extra_geo}。只允许: {VALID_GEOMETRY_KEYS}"
+            )
 
     elements = _get_elements(blueprint)
     components = geo.get("components", []) if isinstance(geo, dict) else []
@@ -1989,88 +2045,9 @@ def validate_element_required_fields(blueprint: dict) -> str:
         return "\n".join(issues)
 
     for el in elements:
-        etype = el.get("type", "")
-        eid = el.get("id", "?")
-        required = REQUIRED.get(etype, [])
-        if not required:
-            issues.append(f"❌ [{eid}] 未知构件类型 '{etype}'")
-            continue
-        for field in required:
-            if field not in el or el[field] is None:
-                issues.append(f"❌ [{eid}] (type={etype}) 缺少必填字段 '{field}'")
-
-        # furniture 特殊检查
-        if etype == "furniture":
-            # subtype 合法性
-            subtype = el.get("subtype", "")
-            if subtype and subtype not in VALID_FURNITURE_SUBTYPES:
-                issues.append(
-                    f"❌ [{eid}] furniture subtype='{subtype}' 无效。"
-                    f"合法值: {VALID_FURNITURE_SUBTYPES}"
-                )
-            # dimensions 结构化检查
-            if "dimensions" in el:
-                dims = el["dimensions"]
-                if isinstance(dims, dict):
-                    for dfield in ["width", "depth", "height"]:
-                        if dfield not in dims or dims[dfield] is None:
-                            issues.append(
-                                f"❌ [{eid}] (type=furniture) dimensions 缺少 '{dfield}'"
-                            )
-                else:
-                    issues.append(
-                        f"❌ [{eid}] (type=furniture) dimensions 必须是对象，实际为 {type(dims).__name__}"
-                    )
-
-        # rotation 类型检查（所有带 rotation 的基础构件共用）。
-        # rotation 是弧度制 vec3；标量（如 90）会让 wild-core 构建器抛
-        # "rotation is not iterable"，整个构件从场景消失——必须在交付前拦下。
-        if "rotation" in el and not _is_finite_vector3(el["rotation"]):
-            issues.append(
-                f"❌ [{eid}] (type={etype}) rotation 必须是弧度制三维数组 "
-                f"[rx, ry, rz]（朝向写 [0, 弧度, 0]），"
-                f"实际为 {el['rotation']!r}；不要写度数标量"
-            )
-
-        if etype == "floor":
-            shape = el.get("shape", "rect")
-            if shape == "circle":
-                if "radius" not in el:
-                    issues.append(f"❌ [{eid}] 圆形 floor 缺少 radius")
-            elif "to" not in el:
-                issues.append(f"❌ [{eid}] 矩形 floor 缺少 to")
-
-        if etype == "primitive":
-            shape = el.get("shape", "")
-            if shape and shape not in VALID_PRIMITIVE_SHAPES:
-                issues.append(
-                    f"❌ [{eid}] primitive shape='{shape}' 无效。"
-                    f"合法值: {VALID_PRIMITIVE_SHAPES}"
-                )
-            if shape == "box":
-                dimensions = el.get("dimensions")
-                valid_dimensions = (
-                    _is_finite_vector3(dimensions)
-                    and all(value > 0 for value in dimensions)
-                )
-                if not valid_dimensions:
-                    issues.append(
-                        f"❌ [{eid}] primitive box 的 dimensions 必须是 "
-                        "[width, height, depth] 三个正有限数字"
-                    )
-            if shape == "sphere" and "radius" not in el:
-                issues.append(f"❌ [{eid}] primitive sphere 缺少 radius")
-            if shape == "cylinder":
-                if "height" not in el:
-                    issues.append(f"❌ [{eid}] primitive cylinder 缺少 height")
-                if "radius" not in el and not (
-                    "radiusTop" in el and "radiusBottom" in el
-                ):
-                    issues.append(
-                        f"❌ [{eid}] primitive cylinder 需要 radius，或同时提供 radiusTop/radiusBottom"
-                    )
-            if shape == "profile_sweep" and "path" not in el:
-                issues.append(f"❌ [{eid}] primitive profile_sweep 缺少 path")
+        _validate_element_fields(
+            el, REQUIRED, VALID_FURNITURE_SUBTYPES, VALID_PRIMITIVE_SHAPES, issues
+        )
 
     component_required = {
         "door": ["parentWall", "from", "width", "height", "interaction"],
@@ -2086,81 +2063,7 @@ def validate_element_required_fields(blueprint: dict) -> str:
         "elevator": ["position", "dimensions", "floorHeight", "floorCount"],
     }
     for component in components:
-        if not isinstance(component, dict):
-            issues.append("❌ geometry.components 中的项目必须是对象")
-            continue
-        component_id = component.get("id", "?")
-        component_type = component.get("type", "")
-        required = component_required.get(component_type)
-        if required is None:
-            issues.append(f"❌ [{component_id}] 未知组合构件类型 '{component_type}'")
-            continue
-        for field in required:
-            if field not in component or component[field] is None:
-                issues.append(
-                    f"❌ [{component_id}] (component={component_type}) 缺少必填字段 '{field}'"
-                )
-        if component_type in {"door", "window", "canopy", "balcony", "bay_window"}:
-            if not _is_finite_vector3(component.get("from")):
-                issues.append(f"❌ [{component_id}] from 必须是三维有限坐标")
-            numeric_fields = [
-                field for field in required
-                if field not in {"parentWall", "from", "interaction"}
-            ]
-            for field in numeric_fields:
-                value = component.get(field)
-                if not isinstance(value, (int, float)) or isinstance(value, bool) or value <= 0:
-                    issues.append(f"❌ [{component_id}] {field} 必须是正数")
-        elif component_type in {"railing", "cornice"}:
-            path = component.get("path")
-            if (
-                not isinstance(path, list)
-                or len(path) < 2
-                or not all(_is_finite_vector3(point) for point in path)
-            ):
-                issues.append(f"❌ [{component_id}] path 至少需要两个三维有限坐标")
-        elif component_type == "ramp":
-            for field in ("from", "to"):
-                if not _is_finite_vector3(component.get(field)):
-                    issues.append(f"❌ [{component_id}] {field} 必须是三维有限坐标")
-            for field in ("width", "thickness"):
-                value = component.get(field)
-                if not isinstance(value, (int, float)) or isinstance(value, bool) or value <= 0:
-                    issues.append(f"❌ [{component_id}] {field} 必须是正数")
-        elif component_type == "elevator":
-            if not _is_finite_vector3(component.get("position")):
-                issues.append(f"❌ [{component_id}] position 必须是三维有限坐标")
-            dims = component.get("dimensions")
-            if (
-                not isinstance(dims, dict)
-                or not isinstance(dims.get("width"), (int, float))
-                or not isinstance(dims.get("depth"), (int, float))
-                or not isinstance(dims.get("height"), (int, float))
-                or any(isinstance(v, bool) for v in dims.values() if isinstance(v, (int, float)))
-                or min(dims.get("width", 0), dims.get("depth", 0), dims.get("height", 0)) <= 0
-            ):
-                issues.append(f"❌ [{component_id}] dimensions 必须是 {{width, depth, height}} 且均为正数")
-            for field in ("floorHeight", "floorCount"):
-                value = component.get(field)
-                if not isinstance(value, (int, float)) or isinstance(value, bool) or value <= 0:
-                    issues.append(f"❌ [{component_id}] {field} 必须是正数")
-            initial_floor = component.get("initialFloor")
-            if initial_floor is not None and (
-                not isinstance(initial_floor, int)
-                or isinstance(initial_floor, bool)
-                or initial_floor < 0
-                or (isinstance(component.get("floorCount"), int) and initial_floor >= component["floorCount"])
-            ):
-                issues.append(f"❌ [{component_id}] initialFloor 必须落在 [0, floorCount) 内")
-        elif component_type in {"chimney", "light"}:
-            if not _is_finite_vector3(component.get("position")):
-                issues.append(f"❌ [{component_id}] position 必须是三维有限坐标")
-            for field in required:
-                if field == "position":
-                    continue
-                value = component.get(field)
-                if not isinstance(value, (int, float)) or isinstance(value, bool) or value <= 0:
-                    issues.append(f"❌ [{component_id}] {field} 必须是正数")
+        _validate_component_fields(component, component_required, issues)
 
     if not issues:
         types_found = set(el.get("type", "?") for el in elements)
@@ -2170,6 +2073,7 @@ def validate_element_required_fields(blueprint: dict) -> str:
             f"的必填字段完整（基础类型: {types_found}，组合类型: {component_types}）"
         )
     return "\n".join(issues)
+
 
 def fix_opening_coords(blueprint: dict) -> str:
     """
@@ -2620,7 +2524,12 @@ def validate_model_quality(blueprint: dict) -> str:
         start, end = wall.get("from"), wall.get("to")
         if not _is_finite_vector3(start) or not _is_finite_vector3(end):
             continue
-        axis = 0 if abs(end[2]-start[2]) < 1e-6 else 2 if abs(end[0]-start[0]) < 1e-6 else None
+        if abs(end[2] - start[2]) < 1e-06:
+            axis = 0
+        elif abs(end[0] - start[0]) < 1e-06:
+            axis = 2
+        else:
+            axis = None
         if axis is None:
             continue
         normal = 2-axis
@@ -2657,16 +2566,35 @@ def validate_model_quality(blueprint: dict) -> str:
                   and _is_finite_vector3(member.get("rotation", [0, 0, 0])) and not any(member.get("rotation", [0, 0, 0]))):
                 p, size = member.get("position"), member.get("dimensions")
                 if _is_finite_vector3(p) and _is_finite_vector3(size):
-                    bounds = [value for i in range(3) for value in (p[i]-size[i]/2, p[i]+size[i]/2)]
+                    bounds = []
+                    for coordinate_index in range(3):
+                        bounds.extend(
+                            (
+                                p[coordinate_index] - size[coordinate_index] / 2,
+                                p[coordinate_index] + size[coordinate_index] / 2,
+                            )
+                        )
             if bounds is None:
                 continue
             left, right = max(min(start[axis], end[axis]), bounds[axis*2]), min(max(start[axis], end[axis]), bounds[axis*2+1])
             low, high = max(bottom, bounds[2]), min(top, bounds[3])
-            if (right-left > 0.05 and high-low > 0.05
-                    and any(abs(w-bounds[normal*2+j]) < 0.001 for w in wall_faces for j in (0, 1))):
+            has_coplanar_face = False
+            if right - left > 0.05 and high - low > 0.05:
+                for wall_face in wall_faces:
+                    for face_index in (0, 1):
+                        if abs(wall_face - bounds[normal * 2 + face_index]) < 0.001:
+                            has_coplanar_face = True
+                            break
+                    if has_coplanar_face:
+                        break
+            if has_coplanar_face:
                 # 门窗洞内没有墙面；按矩形洞口并集核对，保留墙垛处的冲突。
                 if member.get("type") != "wall" and holes:
-                    xs = sorted({left, right, *(max(left, min(right, x)) for h in holes for x in h[:2])})
+                    x_coordinates = {left, right}
+                    for hole in holes:
+                        for boundary_x in hole[:2]:
+                            x_coordinates.add(max(left, min(right, boundary_x)))
+                    xs = sorted(x_coordinates)
                     covered = 0
                     for a, b in zip(xs, xs[1:]):
                         intervals = sorted((max(low, h[2]), min(high, h[3])) for h in holes
@@ -2886,8 +2814,24 @@ def _hip_roof_beam_penetrations(elements: list[dict]) -> list[str]:
         rx = math.atan2(-dy, dz) if math.hypot(dy, dz) > 1e-9 else 0
         width_axis = [math.cos(ry), math.sin(rx)*math.sin(ry), -math.cos(rx)*math.sin(ry)]
         height_axis = [0, math.cos(rx), math.sin(rx)]
-        corners = [[p[i]+sw*beam["width"]/2*width_axis[i]+sh*beam["height"]/2*height_axis[i]
-                    for i in range(3)] for p in (a, b) for sw in (-1, 1) for sh in (-1, 1)]
+        corners = []
+        for current_point in (a, b):
+            for width_sign in (-1, 1):
+                for height_sign in (-1, 1):
+                    corner = []
+                    for coordinate_index in range(3):
+                        corner.append(
+                            current_point[coordinate_index]
+                            + width_sign
+                            * beam["width"]
+                            / 2
+                            * width_axis[coordinate_index]
+                            + height_sign
+                            * beam["height"]
+                            / 2
+                            * height_axis[coordinate_index]
+                        )
+                    corners.append(corner)
         for roof in roofs:
             cx, base, cz = roof["position"]
             hw, hd = roof["span"]/2, roof["depth"]/2
@@ -3054,8 +2998,12 @@ def validate_collision(blueprint: dict) -> str:
     # 底面/顶面标高再取最近；furniture 的 position[1] 是家具底部，站在行走面（楼板顶面）
     # 上，只对顶面。合并后避免把"站在叠层台基顶上的柱"（底 Y = 某层顶面）误判悬空。
     support_levels = sorted({round(v, 6) for v in (*floor_base_ys, *floor_top_ys)})
-    unsupported_starts = {i for issue in collect_stair_placement_issues(blueprint)
-                          if issue["code"] == "stair_start_outside_floor" for i in issue["entity_ids"]}
+    unsupported_starts = set()
+    for issue in collect_stair_placement_issues(blueprint):
+        if issue["code"] != "stair_start_outside_floor":
+            continue
+        for entity_id in issue["entity_ids"]:
+            unsupported_starts.add(entity_id)
     for t, get_bottom_y in FLOATING_TYPES.items():
         for el in by_type.get(t, []):
             if t == "stair" and el.get("id") not in unsupported_starts:
@@ -4435,3 +4383,200 @@ def fix_primitive_elevations(blueprint: dict) -> str:
         f"最低点 {lowest:.3f} → 0.000（{'悬空' if gap > 0 else '穿入'} {abs(gap):.3f}m；"
         f"共 {len(targets)} 个零件，零件相对关系不变）"
     )
+
+
+def _validate_element_fields(
+    element, required_fields, valid_furniture_subtypes, valid_primitive_shapes, issues
+):
+    """检查单个基础实体的必填字段、几何形状和旋转协议。"""
+    element_type = element.get("type", "")
+    element_id = element.get("id", "?")
+    required = required_fields.get(element_type, [])
+    if not required:
+        issues.append(f"❌ [{element_id}] 未知构件类型 '{element_type}'")
+        return
+    for field in required:
+        if field not in element or element[field] is None:
+            issues.append(
+                f"❌ [{element_id}] (type={element_type}) 缺少必填字段 '{field}'"
+            )
+
+    # furniture 特殊检查
+    if element_type == "furniture":
+        # subtype 合法性
+        subtype = element.get("subtype", "")
+        if subtype and subtype not in valid_furniture_subtypes:
+            issues.append(
+                f"❌ [{element_id}] furniture subtype='{subtype}' 无效。"
+                f"合法值: {valid_furniture_subtypes}"
+            )
+        # dimensions 结构化检查
+        if "dimensions" in element:
+            dims = element["dimensions"]
+            if isinstance(dims, dict):
+                for dfield in ["width", "depth", "height"]:
+                    if dfield not in dims or dims[dfield] is None:
+                        issues.append(
+                            f"❌ [{element_id}] (type=furniture) dimensions 缺少 '{dfield}'"
+                        )
+            else:
+                issues.append(
+                    f"❌ [{element_id}] (type=furniture) dimensions 必须是对象，实际为 {type(dims).__name__}"
+                )
+
+    # rotation 类型检查（所有带 rotation 的基础构件共用）。
+    # rotation 是弧度制 vec3；标量（如 90）会让 wild-core 构建器抛
+    # "rotation is not iterable"，整个构件从场景消失——必须在交付前拦下。
+    if "rotation" in element and not _is_finite_vector3(element["rotation"]):
+        issues.append(
+            f"❌ [{element_id}] (type={element_type}) rotation 必须是弧度制三维数组 "
+            f"[rx, ry, rz]（朝向写 [0, 弧度, 0]），"
+            f"实际为 {element['rotation']!r}；不要写度数标量"
+        )
+
+    if element_type == "floor":
+        shape = element.get("shape", "rect")
+        if shape == "circle":
+            if "radius" not in element:
+                issues.append(f"❌ [{element_id}] 圆形 floor 缺少 radius")
+        elif "to" not in element:
+            issues.append(f"❌ [{element_id}] 矩形 floor 缺少 to")
+
+    if element_type == "primitive":
+        shape = element.get("shape", "")
+        if shape and shape not in valid_primitive_shapes:
+            issues.append(
+                f"❌ [{element_id}] primitive shape='{shape}' 无效。"
+                f"合法值: {valid_primitive_shapes}"
+            )
+        if shape == "box":
+            dimensions = element.get("dimensions")
+            valid_dimensions = _is_finite_vector3(dimensions) and all(
+                value > 0 for value in dimensions
+            )
+            if not valid_dimensions:
+                issues.append(
+                    f"❌ [{element_id}] primitive box 的 dimensions 必须是 "
+                    "[width, height, depth] 三个正有限数字"
+                )
+        if shape == "sphere" and "radius" not in element:
+            issues.append(f"❌ [{element_id}] primitive sphere 缺少 radius")
+        if shape == "cylinder":
+            if "height" not in element:
+                issues.append(f"❌ [{element_id}] primitive cylinder 缺少 height")
+            if "radius" not in element and not (
+                "radiusTop" in element and "radiusBottom" in element
+            ):
+                issues.append(
+                    f"❌ [{element_id}] primitive cylinder 需要 radius，或同时提供 radiusTop/radiusBottom"
+                )
+        if shape == "profile_sweep" and "path" not in element:
+            issues.append(f"❌ [{element_id}] primitive profile_sweep 缺少 path")
+
+
+def _validate_component_fields(component, component_required, issues):
+    """检查单个组合构件的必填参数、坐标和尺寸。"""
+    if not isinstance(component, dict):
+        issues.append("❌ geometry.components 中的项目必须是对象")
+        return
+    component_id = component.get("id", "?")
+    component_type = component.get("type", "")
+    required = component_required.get(component_type)
+    if required is None:
+        issues.append(f"❌ [{component_id}] 未知组合构件类型 '{component_type}'")
+        return
+    for field in required:
+        if field not in component or component[field] is None:
+            issues.append(
+                f"❌ [{component_id}] (component={component_type}) 缺少必填字段 '{field}'"
+            )
+    if component_type in {"door", "window", "canopy", "balcony", "bay_window"}:
+        if not _is_finite_vector3(component.get("from")):
+            issues.append(f"❌ [{component_id}] from 必须是三维有限坐标")
+        numeric_fields = [
+            field
+            for field in required
+            if field not in {"parentWall", "from", "interaction"}
+        ]
+        for field in numeric_fields:
+            value = component.get(field)
+            if (
+                not isinstance(value, (int, float))
+                or isinstance(value, bool)
+                or value <= 0
+            ):
+                issues.append(f"❌ [{component_id}] {field} 必须是正数")
+    elif component_type in {"railing", "cornice"}:
+        path = component.get("path")
+        if (
+            not isinstance(path, list)
+            or len(path) < 2
+            or not all(_is_finite_vector3(point) for point in path)
+        ):
+            issues.append(f"❌ [{component_id}] path 至少需要两个三维有限坐标")
+    elif component_type == "ramp":
+        for field in ("from", "to"):
+            if not _is_finite_vector3(component.get(field)):
+                issues.append(f"❌ [{component_id}] {field} 必须是三维有限坐标")
+        for field in ("width", "thickness"):
+            value = component.get(field)
+            if (
+                not isinstance(value, (int, float))
+                or isinstance(value, bool)
+                or value <= 0
+            ):
+                issues.append(f"❌ [{component_id}] {field} 必须是正数")
+    elif component_type == "elevator":
+        if not _is_finite_vector3(component.get("position")):
+            issues.append(f"❌ [{component_id}] position 必须是三维有限坐标")
+        dims = component.get("dimensions")
+        if (
+            not isinstance(dims, dict)
+            or not isinstance(dims.get("width"), (int, float))
+            or not isinstance(dims.get("depth"), (int, float))
+            or not isinstance(dims.get("height"), (int, float))
+            or any(
+                isinstance(v, bool)
+                for v in dims.values()
+                if isinstance(v, (int, float))
+            )
+            or min(dims.get("width", 0), dims.get("depth", 0), dims.get("height", 0))
+            <= 0
+        ):
+            issues.append(
+                f"❌ [{component_id}] dimensions 必须是 {{width, depth, height}} 且均为正数"
+            )
+        for field in ("floorHeight", "floorCount"):
+            value = component.get(field)
+            if (
+                not isinstance(value, (int, float))
+                or isinstance(value, bool)
+                or value <= 0
+            ):
+                issues.append(f"❌ [{component_id}] {field} 必须是正数")
+        initial_floor = component.get("initialFloor")
+        if initial_floor is not None and (
+            not isinstance(initial_floor, int)
+            or isinstance(initial_floor, bool)
+            or initial_floor < 0
+            or (
+                isinstance(component.get("floorCount"), int)
+                and initial_floor >= component["floorCount"]
+            )
+        ):
+            issues.append(
+                f"❌ [{component_id}] initialFloor 必须落在 [0, floorCount) 内"
+            )
+    elif component_type in {"chimney", "light"}:
+        if not _is_finite_vector3(component.get("position")):
+            issues.append(f"❌ [{component_id}] position 必须是三维有限坐标")
+        for field in required:
+            if field == "position":
+                continue
+            value = component.get(field)
+            if (
+                not isinstance(value, (int, float))
+                or isinstance(value, bool)
+                or value <= 0
+            ):
+                issues.append(f"❌ [{component_id}] {field} 必须是正数")

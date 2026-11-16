@@ -11,21 +11,38 @@ def construction_spec(design):
 
 def check_opening_bounds(spec, opening, wall):
     a, b = wall["from"], wall["to"]
-    length = hypot(b[0]-a[0], b[2]-a[2])
+    length = hypot(b[0] - a[0], b[2] - a[2])
+    wall_bottom = min(a[1], b[1])
+    wall_top = max(a[1], b[1])
     start, bottom, _ = opening["from"]
     width, height = opening["width"], opening["height"]
     if "surround" in spec:
-        w = spec["surround"]["width"]
-        lower = bottom-w if opening["type"] == "window" else bottom
-        if start-w < -0.001 or start+width+w > length+0.001 or lower < min(a[1], b[1])-0.001 or bottom+height+w > max(a[1], b[1])+0.001:
-            raise ValueError(f"门窗套超出墙边界：沿墙 [{start-w:g},{start+width+w:g}]、竖向 [{lower:g},{bottom+height+w:g}]；墙长 {length:g}、标高 [{min(a[1],b[1]):g},{max(a[1],b[1]):g}]")
+        surround_width = spec["surround"]["width"]
+        left = start - surround_width
+        right = start + width + surround_width
+        lower = bottom - surround_width if opening["type"] == "window" else bottom
+        upper = bottom + height + surround_width
+        if (
+            left < -0.001
+            or right > length + 0.001
+            or lower < wall_bottom - 0.001
+            or upper > wall_top + 0.001
+        ):
+            raise ValueError(
+                f"门窗套超出墙边界：沿墙 [{left:g},{right:g}]、竖向 [{lower:g},{upper:g}]；"
+                f"墙长 {length:g}、标高 [{wall_bottom:g},{wall_top:g}]"
+            )
     if spec["system"] == "entrance":
         canopy = spec["canopy"]
-        left = start+(width-canopy["width"])/2
-        top = bottom+height+canopy["clearance"]+canopy["thickness"]
-        if left < -0.001 or left+canopy["width"] > length+0.001 or top > max(a[1], b[1])+0.001:
-            raise ValueError(f"入口顶板超出墙边界：沿墙 [{left:g},{left+canopy['width']:g}]、板顶 {top:g}；墙长 {length:g}、墙顶 {max(a[1],b[1]):g}")
-        if "posts" in canopy and canopy["posts"]["baseY"] > bottom+0.001:
+        left = start + (width - canopy["width"]) / 2
+        right = left + canopy["width"]
+        top = bottom + height + canopy["clearance"] + canopy["thickness"]
+        if left < -0.001 or right > length + 0.001 or top > wall_top + 0.001:
+            raise ValueError(
+                f"入口顶板超出墙边界：沿墙 [{left:g},{right:g}]、板顶 {top:g}；"
+                f"墙长 {length:g}、墙顶 {wall_top:g}"
+            )
+        if "posts" in canopy and canopy["posts"]["baseY"] > bottom + 0.001:
             raise ValueError(f"入口柱底 {canopy['posts']['baseY']:g} 高于门底 {bottom:g}，需要明确承托标高")
 
 
@@ -34,107 +51,91 @@ def validate_construction(design):
     if spec is None:
         return
 
-    def fields(value, required, optional=()):
-        if not isinstance(value, dict):
-            raise ValueError("form.construction 及其参数组必须是对象；不选用的可选参数组应省略")
-        missing, extra = set(required)-value.keys(), value.keys()-set(required)-set(optional)
-        if missing or extra:
-            raise ValueError(f"form.construction 字段错误：缺少 {sorted(missing)}；未定义 {sorted(extra)}")
-
-    def positive(value, name):
-        if type(value) not in (int, float) or not isfinite(value) or value <= 0:
-            raise ValueError(f"form.construction.{name} 必须为有限正数")
-
-    def material(value):
-        if not isinstance(value, str) or not value.strip():
-            raise ValueError("构造材料必须为明确的材质角色或 ID")
-
     size = design.get("size") or {}
     system = spec.get("system") if isinstance(spec, dict) else None
     if system == "layered_band":
-        fields(spec, {"system", "axis", "layers"})
-        if design["type"] != "cornice" or spec["axis"] not in {"x", "z"}:
-            raise ValueError("layered_band 用于 cornice，axis 为 x 或 z；size 始终为世界 X/Y/Z 尺度")
-        for key in ("width", "height", "depth"):
-            positive(size.get(key), "size."+key)
-        position = (design.get("placement") or {}).get("position")
-        if not isinstance(position, list) or len(position) != 3 or any(type(v) not in (int, float) or not isfinite(v) for v in position):
-            raise ValueError("layered_band 需要 placement.position 世界中心")
-        layers = spec["layers"]
-        if not isinstance(layers, list) or not 2 <= len(layers) <= 8:
-            raise ValueError("layered_band.layers 需要 2 至 8 层，从下到上排列")
-        for layer in layers:
-            fields(layer, {"fraction", "depth_ratio", "material"})
-            positive(layer["fraction"], "fraction")
-            positive(layer["depth_ratio"], "depth_ratio")
-            material(layer["material"])
-        if abs(sum(l["fraction"] for l in layers)-1) > 1e-6 or abs(max(l["depth_ratio"] for l in layers)-1) > 1e-6:
-            raise ValueError("各层 fraction 之和须为 1，depth_ratio 最大值须为 1，保持图纸整体尺寸")
+        _validate_layered_band(design, spec)
         return
-    if system not in {"framed_opening", "entrance"} or design["type"] not in {"window", "door"}:
-        raise ValueError("未知或不适用的构造系统；仅支持 cornice.layered_band、门窗 framed_opening 和 door.entrance")
+    if system not in {"framed_opening", "entrance"} or design["type"] not in {
+        "window",
+        "door",
+    }:
+        raise ValueError(
+            "未知或不适用的构造系统；仅支持 cornice.layered_band、门窗 framed_opening 和 door.entrance"
+        )
     kind = design["type"]
     if system == "entrance" and kind != "door":
         raise ValueError("entrance 仅用于门，门洞尺寸与位置保持原图纸")
-    glazing = {"glassDepth", "glassMaterial", "verticalMullions", "horizontalMullions", "mullionWidth"}
+    glazing = {
+        "glassDepth",
+        "glassMaterial",
+        "verticalMullions",
+        "horizontalMullions",
+        "mullionWidth",
+    }
     leaf = {"leafDepth", "leafMaterial", "interaction"}
-    fields(spec, {"system", "frameWidth", "frameDepth", "frameMaterial"} | (glazing if kind == "window" else leaf)
-           | ({"canopy"} if system == "entrance" else set()), {"surround"})
+    _construction_fields(
+        spec,
+        {"system", "frameWidth", "frameDepth", "frameMaterial"}
+        | (glazing if kind == "window" else leaf)
+        | ({"canopy"} if system == "entrance" else set()),
+        {"surround"},
+    )
     for key in ("width", "height"):
-        positive(size.get(key), "size."+key)
-    for key in ("frameWidth", "frameDepth", "glassDepth" if kind == "window" else "leafDepth"):
-        positive(spec[key], key)
-    material(spec["frameMaterial"])
-    material(spec["glassMaterial" if kind == "window" else "leafMaterial"])
+        _positive_construction_value(size.get(key), "size." + key)
+    for key in (
+        "frameWidth",
+        "frameDepth",
+        "glassDepth" if kind == "window" else "leafDepth",
+    ):
+        _positive_construction_value(spec[key], key)
+    _construction_material(spec["frameMaterial"])
+    _construction_material(
+        spec["glassMaterial" if kind == "window" else "leafMaterial"]
+    )
     if kind == "door":
         from app.domain.components.capability import load_engine_schema
         from app.domain.components.capability import capability_surface
         from jsonschema import Draft202012Validator
+
         schema = load_engine_schema()
         field = capability_surface()["door"]["schema"]["properties"]["interaction"]
-        errors = list(Draft202012Validator({**field, "$defs": schema["$defs"]}).iter_errors(spec["interaction"]))
+        errors = list(
+            Draft202012Validator({**field, "$defs": schema["$defs"]}).iter_errors(
+                spec["interaction"]
+            )
+        )
         if errors:
-            raise ValueError("form.construction.interaction："+errors[0].message)
-    if 2*spec["frameWidth"] >= min(size["width"], size["height"]) or spec.get("glassDepth", spec.get("leafDepth")) > spec["frameDepth"]:
+            raise ValueError("form.construction.interaction：" + errors[0].message)
+    if (
+        2 * spec["frameWidth"] >= min(size["width"], size["height"])
+        or spec.get("glassDepth", spec.get("leafDepth")) > spec["frameDepth"]
+    ):
         raise ValueError("框宽须保留洞口净空，玻璃/门扇厚度不能超过框深")
     if kind == "window":
-        positive(spec["mullionWidth"], "mullionWidth")
-        for key, extent in (("verticalMullions", "width"), ("horizontalMullions", "height")):
+        _positive_construction_value(spec["mullionWidth"], "mullionWidth")
+        for key, extent in (
+            ("verticalMullions", "width"),
+            ("horizontalMullions", "height"),
+        ):
             if type(spec[key]) is not int or not 0 <= spec[key] <= 16:
                 raise ValueError(f"{key} 必须是 0 至 16 的整数")
-            if 2*spec["frameWidth"]+spec[key]*spec["mullionWidth"] >= size[extent]:
+            if (
+                2 * spec["frameWidth"] + spec[key] * spec["mullionWidth"]
+                >= size[extent]
+            ):
                 raise ValueError(f"{key} 分格占满洞口，没有玻璃净空")
     if "surround" in spec:
         surround = spec["surround"]
-        fields(surround, {"width", "depth", "embed", "material"})
-        positive(surround["width"], "surround.width")
-        positive(surround["depth"], "surround.depth")
-        positive(surround["embed"], "surround.embed")
+        _construction_fields(surround, {"width", "depth", "embed", "material"})
+        _positive_construction_value(surround["width"], "surround.width")
+        _positive_construction_value(surround["depth"], "surround.depth")
+        _positive_construction_value(surround["embed"], "surround.embed")
         if surround["embed"] >= surround["depth"]:
             raise ValueError("门窗套嵌入深度必须小于总厚度，保留外露层次")
-        material(surround["material"])
+        _construction_material(surround["material"])
     if system == "entrance":
-        canopy = spec["canopy"]
-        fields(canopy, {"width", "depth", "thickness", "clearance", "material", "soffit"}, {"posts"})
-        for key in ("width", "depth", "thickness", "clearance"):
-            positive(canopy[key], "canopy."+key)
-        material(canopy["material"])
-        fields(canopy["soffit"], {"thickness", "embed", "material"})
-        positive(canopy["soffit"]["thickness"], "soffit.thickness")
-        positive(canopy["soffit"]["embed"], "soffit.embed")
-        material(canopy["soffit"]["material"])
-        surround_width = spec.get("surround", {}).get("width", 0)
-        if canopy["width"] < size["width"]+2*surround_width or canopy["clearance"] <= canopy["soffit"]["thickness"]+surround_width:
-            raise ValueError("入口顶板须覆盖门套宽度，板底与门顶净距须容纳檐底和上门套")
-        if "posts" in canopy:
-            posts = canopy["posts"]
-            fields(posts, {"width", "baseY", "material"})
-            positive(posts["width"], "posts.width")
-            if type(posts["baseY"]) not in (int, float) or not isfinite(posts["baseY"]):
-                raise ValueError("posts.baseY 必须是明确的有限承托标高")
-            material(posts["material"])
-            if 2*posts["width"] >= canopy["width"]-size["width"]-2*surround_width or posts["width"] >= canopy["depth"]:
-                raise ValueError("入口两侧支柱不能侵占门洞/门套净宽，且须位于顶板范围内")
+        _validate_entrance_canopy(spec, size)
 
 
 def construct_system(marker, blueprint):
@@ -148,7 +149,11 @@ def construct_system(marker, blueprint):
     elements, components = [], []
 
     def mat(name):
-        return name if name in blueprint.get("materials", {}) else materials.get(name, name)
+        return (
+            name
+            if name in blueprint.get("materials", {})
+            else materials.get(name, name)
+        )
 
     def box(suffix, position, dimensions, material, rotation=None):
         item = {"id": mid+"_"+suffix, "type": "primitive", "shape": "box", "position": position,
@@ -249,7 +254,10 @@ def construction_review(blueprint, entities, marker):
         expected = construct_system(marker, blueprint)
     except (ValueError, KeyError, TypeError) as exc:
         return {"status": "needs_review", "checked": [], "unverified": [], "errors": [str(exc)]}
-    wanted = {e["id"]: e for items in expected["geometry"].values() for e in items}
+    wanted = {}
+    for items in expected["geometry"].values():
+        for entity in items:
+            wanted[entity["id"]] = entity
     actual = {e["id"]: e for e in entities}
     errors = []
     for entity_id in sorted(wanted.keys() | actual.keys()):
@@ -274,3 +282,101 @@ SYSTEM_PROTOCOL = """
    embed 为门窗套或檐底向墙内嵌入的正深度，须小于墙厚；门窗套 embed 还须小于 depth，外露厚度为 depth-embed。檐底向墙内延伸 embed，外边仍对齐顶板。
 所有示例数值仅解释字段，由本次设计决定比例、材料和层次。材质填已声明角色或具体 ID；上述系统不能混入未定义字段，不用的可选参数组省略，不写 null；framed_opening 不含 canopy，需要雨棚须明确选择 entrance。不能用于替换不兼容的特殊造型。
 """
+
+
+def _construction_fields(value, required, optional=()):
+    """校验构造参数组的必填字段和未定义字段。"""
+    if not isinstance(value, dict):
+        raise ValueError(
+            "form.construction 及其参数组必须是对象；不选用的可选参数组应省略"
+        )
+    missing, extra = (
+        set(required) - value.keys(),
+        value.keys() - set(required) - set(optional),
+    )
+    if missing or extra:
+        raise ValueError(
+            f"form.construction 字段错误：缺少 {sorted(missing)}；未定义 {sorted(extra)}"
+        )
+
+
+def _positive_construction_value(value, name):
+    """拒绝布尔值、非有限值和非正构造尺寸。"""
+    if type(value) not in (int, float) or not isfinite(value) or value <= 0:
+        raise ValueError(f"form.construction.{name} 必须为有限正数")
+
+
+def _construction_material(value):
+    """构造材质必须明确引用材质角色或 ID。"""
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError("构造材料必须为明确的材质角色或 ID")
+
+
+def _validate_layered_band(design, spec):
+    """检查分层线脚的世界尺寸、层数和比例守恒。"""
+    size = design.get("size") or {}
+    _construction_fields(spec, {"system", "axis", "layers"})
+    if design["type"] != "cornice" or spec["axis"] not in {"x", "z"}:
+        raise ValueError(
+            "layered_band 用于 cornice，axis 为 x 或 z；size 始终为世界 X/Y/Z 尺度"
+        )
+    for key in ("width", "height", "depth"):
+        _positive_construction_value(size.get(key), "size." + key)
+    position = (design.get("placement") or {}).get("position")
+    if (
+        not isinstance(position, list)
+        or len(position) != 3
+        or any(type(v) not in (int, float) or not isfinite(v) for v in position)
+    ):
+        raise ValueError("layered_band 需要 placement.position 世界中心")
+    layers = spec["layers"]
+    if not isinstance(layers, list) or not 2 <= len(layers) <= 8:
+        raise ValueError("layered_band.layers 需要 2 至 8 层，从下到上排列")
+    for layer in layers:
+        _construction_fields(layer, {"fraction", "depth_ratio", "material"})
+        _positive_construction_value(layer["fraction"], "fraction")
+        _positive_construction_value(layer["depth_ratio"], "depth_ratio")
+        _construction_material(layer["material"])
+    if (
+        abs(sum(l["fraction"] for l in layers) - 1) > 1e-6
+        or abs(max(l["depth_ratio"] for l in layers) - 1) > 1e-6
+    ):
+        raise ValueError(
+            "各层 fraction 之和须为 1，depth_ratio 最大值须为 1，保持图纸整体尺寸"
+        )
+    return
+
+
+def _validate_entrance_canopy(spec, size):
+    """核对入口顶板、檐底和支柱的净空与承托约束。"""
+    canopy = spec["canopy"]
+    _construction_fields(
+        canopy,
+        {"width", "depth", "thickness", "clearance", "material", "soffit"},
+        {"posts"},
+    )
+    for key in ("width", "depth", "thickness", "clearance"):
+        _positive_construction_value(canopy[key], "canopy." + key)
+    _construction_material(canopy["material"])
+    _construction_fields(canopy["soffit"], {"thickness", "embed", "material"})
+    _positive_construction_value(canopy["soffit"]["thickness"], "soffit.thickness")
+    _positive_construction_value(canopy["soffit"]["embed"], "soffit.embed")
+    _construction_material(canopy["soffit"]["material"])
+    surround_width = spec.get("surround", {}).get("width", 0)
+    if (
+        canopy["width"] < size["width"] + 2 * surround_width
+        or canopy["clearance"] <= canopy["soffit"]["thickness"] + surround_width
+    ):
+        raise ValueError("入口顶板须覆盖门套宽度，板底与门顶净距须容纳檐底和上门套")
+    if "posts" in canopy:
+        posts = canopy["posts"]
+        _construction_fields(posts, {"width", "baseY", "material"})
+        _positive_construction_value(posts["width"], "posts.width")
+        if type(posts["baseY"]) not in (int, float) or not isfinite(posts["baseY"]):
+            raise ValueError("posts.baseY 必须是明确的有限承托标高")
+        _construction_material(posts["material"])
+        if (
+            2 * posts["width"] >= canopy["width"] - size["width"] - 2 * surround_width
+            or posts["width"] >= canopy["depth"]
+        ):
+            raise ValueError("入口两侧支柱不能侵占门洞/门套净宽，且须位于顶板范围内")

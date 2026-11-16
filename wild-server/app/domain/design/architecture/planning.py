@@ -163,10 +163,14 @@ def normalize_architecture_plan(
     if not isinstance(raw, dict):
         raise ValueError("建筑方案必须是完整 JSON 对象，不能使用默认建筑代替")
     source = raw
-    complexity = deepcopy(complexity_profile or source.get("complexity") or resolve_complexity_profile())
+    complexity = deepcopy(
+        complexity_profile or source.get("complexity") or resolve_complexity_profile()
+    )
     profile_id = str(source.get("profile") or "custom")
     requested_required = source.get("required_components")
-    explicit_base = list(requested_required) if isinstance(requested_required, list) else None
+    explicit_base = (
+        list(requested_required) if isinstance(requested_required, list) else None
+    )
     curtain_wall = bool(source.get("curtain_wall"))
     massing_raw = source.get("massing")
     if not isinstance(massing_raw, dict):
@@ -193,107 +197,59 @@ def normalize_architecture_plan(
     from app.domain.design.contracts import MassingDecision
 
     massing = {**massing_raw, "shape": resolved_shape}
-    for key, requested in (("width", requested_width), ("depth", requested_depth), ("floors", requested_floors)):
+    for key, requested in (
+        ("width", requested_width),
+        ("depth", requested_depth),
+        ("floors", requested_floors),
+    ):
         if requested is not None:
             massing[key] = requested
     massing.setdefault("modeled_floors", massing.get("floors"))
     massing["representation_mode"] = (
-        "full" if massing.get("modeled_floors") == massing.get("floors") else "schematic"
+        "full"
+        if massing.get("modeled_floors") == massing.get("floors")
+        else "schematic"
     )
-    massing = MassingDecision.model_validate(massing).model_dump(mode="json", exclude_none=True)
+    massing = MassingDecision.model_validate(massing).model_dump(
+        mode="json", exclude_none=True
+    )
     if massing["shape"] not in _SHAPE_ENUM:
-        _note(normalize_notes, f"massing.shape：{massing['shape']!r} 不在形状枚举内，按仅标签语义保留")
+        _note(
+            normalize_notes,
+            f"massing.shape：{massing['shape']!r} 不在形状枚举内，按仅标签语义保留",
+        )
     modeled_floors = int(massing["modeled_floors"])
     volumes = _normalize_volumes(source.get("volumes"), massing)
     structural_grid = _normalize_structural_grid(source.get("structural_grid"))
-    raw_detail_packages = source.get("detail_packages")
-    allowed_detail_packages = set(_DETAIL_COMPONENT_QUOTAS)
-    # 用户点名的细部包是本次方案的硬需求：`_default_detail_packages` 只由显式关键词
-    # 产生（不含默认套餐），所以"模型没写"就是"用户没要"，反过来"用户要了"就必须留下。
-    # 模型可以补充，但**不能删除**——实测"生成一个别墅，里面要有家具"会被规划模型以
-    # 「家具属于室内设计，不在建筑方案职责内」为由把 detail_packages 写成 `[]`，
-    # 照单全收后配额与 required_components 一起消失，最终表现成"要了却一件都没生成"。
-    requested_detail_packages = [
-        str(item).lower() for item in _default_detail_packages(user_message, modeled_floors)
-        if str(item).lower() in allowed_detail_packages
-    ]
-    if isinstance(raw_detail_packages, list):
-        detail_packages = [
-            str(item).lower() for item in raw_detail_packages if isinstance(item, str)
-        ]
-    else:
-        detail_packages = []
-    # 保留显式细部选择；数量边界沿用 DesignDocument 的 20 项。
-    detail_packages = list(dict.fromkeys([
-        *requested_detail_packages,
-        *detail_packages,
-    ]))
-    if modeled_floors < 2:
-        # 单层建筑没有垂直交通需求（KB《电梯》能力边界明确写"不要生成"）；
-        # 这是需求侧的无效项，与模型是否写了它无关，所以在配额之前就剔除。
-        detail_packages = [item for item in detail_packages if item != "elevator"]
-    detail_packages = detail_packages[:20]
+    detail_packages = _normalize_detail_packages(source, user_message, modeled_floors)
 
-    facade_source = source.get("facades") if isinstance(source.get("facades"), dict) else {}
-    facades: dict[str, dict[str, Any]] = {}
-    from app.domain.design.contracts import FacadeDecision
-
-    for face in _FACES:
-        item = facade_source.get(face)
-        required = ("bays", "ground_pattern", "upper_pattern")
-        if not isinstance(item, dict) or any(key not in item for key in required):
-            raise ValueError(f"/facades/{face}：必须提供 bays、ground_pattern 和 upper_pattern，不能使用默认门窗分格")
-        if not all(isinstance(item[key], list) for key in ("ground_pattern", "upper_pattern")):
-            raise ValueError(f"/facades/{face}：门窗分格必须是数组")
-        bays = int(item["bays"])
-        facades[face] = FacadeDecision.model_validate({
-            **item,
-            "ground_pattern": _normalize_pattern(item["ground_pattern"], bays, []),
-            "upper_pattern": _normalize_pattern(item["upper_pattern"], bays, [], allowed_types=_OPENING_TYPES - {"door"}),
-        }).model_dump(mode="json", exclude_none=True)
+    facades = _normalize_facades(source)
 
     roof_input = source.get("roof")
     # A single-item wrapper can be migrated without inventing a different roof.
-    if isinstance(roof_input, list) and len(roof_input) == 1 and isinstance(roof_input[0], dict):
+    if (
+        isinstance(roof_input, list)
+        and len(roof_input) == 1
+        and isinstance(roof_input[0], dict)
+    ):
         roof_input = roof_input[0]
     from app.domain.design.contracts import RoofDecision
 
-    roof = RoofDecision.model_validate(roof_input).model_dump(mode="json", exclude_none=True)
+    roof = RoofDecision.model_validate(roof_input).model_dump(
+        mode="json", exclude_none=True
+    )
     roof_type = roof["type"]
     opening_counts = _facade_opening_counts(facades, modeled_floors)
     if explicit_base is not None:
         base_components_effective = list(explicit_base)
     else:
-        base_components_effective = [kind for kind, count in opening_counts.items() if count > 0]
+        base_components_effective = [
+            kind for kind, count in opening_counts.items() if count > 0
+        ]
         if str(roof_type).lower() not in {"none", "open"}:
             base_components_effective.append("roof")
     entrance_required = opening_counts["door"] > 0
-    quotas: dict[str, dict[str, Any]] = {}
-    unsupported_component_types: set[str] = set(source.get("unsupported_component_types") or [])
-    raw_quotas = source.get("component_quota", {})
-    if not isinstance(raw_quotas, dict):
-        raise ValueError("component_quota 必须是对象；新图纸不输出配额，数量由程序从构件标记派生")
-    for component_type, limits in raw_quotas.items():
-        if not isinstance(limits, dict):
-            raise ValueError(f"component_quota.{component_type} 必须是包含 min/max 的对象，实际 {limits!r}；"
-                             "新图纸不输出配额，数量由程序从构件标记派生")
-        component_type = str(component_type)
-        # 开放集通道（用户决策 2026-09-29：删除构件白名单闸）：配额点名的任何类型
-        # 都放行进入下游——已注册的走既有派生/模型通道，未注册的由 plan 条目用
-        # 通用配置尝试（字段契约靠知识库检索），校验与修复环兜底。
-        normalized_limits = deepcopy(limits)
-        # 配额上下限不再夹取到 32（用户决策 2026-09-29，删除上限白名单）：
-        # 模型可以自由表达密集窗格、通高柱廊等大规模数量；上限只是参考值，
-        # 下限才是设计要求。只使用 ComponentQuota 的协议边界及 max>=min 一致性。
-        for bound in ("min", "max"):
-            if bound in limits:
-                try:
-                    normalized_limits[bound] = min(10000, max(0, int(limits[bound])))
-                except (TypeError, ValueError, OverflowError):
-                    normalized_limits[bound] = int(quotas.get(component_type, {}).get(bound, 0))
-        if isinstance(normalized_limits.get("min"), int) and isinstance(normalized_limits.get("max"), int):
-            normalized_limits["max"] = max(normalized_limits["min"], normalized_limits["max"])
-        quotas[component_type] = normalized_limits
+    quotas, unsupported_component_types = _normalize_component_quotas(source)
     if massing["representation_mode"] == "full":
         opening_counts = _facade_opening_counts(facades, modeled_floors)
         for opening_type in ("door", "window"):
@@ -310,9 +266,17 @@ def normalize_architecture_plan(
                 "max": planned_count,
                 "note": "由逐层立面 pattern 解析，槽位与组件一一对应",
             }
-    if str(roof["type"]).lower() in {"none", "open"} and explicit_base and "roof" in explicit_base:
-        raise ValueError("屋顶设计明确为 none/open，却在 required_components 中要求 roof")
-    roof_required = "roof" in base_components_effective and str(roof["type"]).lower() not in {"none", "open"}
+    if (
+        str(roof["type"]).lower() in {"none", "open"}
+        and explicit_base
+        and "roof" in explicit_base
+    ):
+        raise ValueError(
+            "屋顶设计明确为 none/open，却在 required_components 中要求 roof"
+        )
+    roof_required = "roof" in base_components_effective and str(
+        roof["type"]
+    ).lower() not in {"none", "open"}
     quotas["roof"] = {
         **quotas.get("roof", {}),
         "min": 1 if roof_required else 0,
@@ -323,7 +287,9 @@ def normalize_architecture_plan(
         if component_type == "balcony" and modeled_floors < 2:
             continue
         if component_type in _DETAIL_COMPONENT_QUOTAS:
-            quotas.setdefault(component_type, deepcopy(_DETAIL_COMPONENT_QUOTAS[component_type]))
+            quotas.setdefault(
+                component_type, deepcopy(_DETAIL_COMPONENT_QUOTAS[component_type])
+            )
     balcony_access_count = requested_balcony_access_count if modeled_floors >= 2 else 0
     balcony_width = requested_balcony_width
     if balcony_access_count:
@@ -344,25 +310,206 @@ def normalize_architecture_plan(
 
     if "component_quota" not in source:
         instances = source.get("components") or []
-        counts = Counter(item["type"] for item in instances if isinstance(item, dict) and item.get("type"))
+        counts = Counter(
+            item["type"]
+            for item in instances
+            if isinstance(item, dict) and item.get("type")
+        )
         for component_type, count in counts.items():
             if component_type not in {"door", "window", "roof"}:
                 if component_type == "balcony" and balcony_access_count:
                     continue
-                quotas[component_type] = {"min": count, "max": count, "note": "由显式构件标记派生"}
+                quotas[component_type] = {
+                    "min": count,
+                    "max": count,
+                    "note": "由显式构件标记派生",
+                }
 
+    required_components = _required_components(
+        source, quotas, detail_packages, base_components_effective
+    )
+
+    circulation = _normalize_circulation(source, modeled_floors, detail_packages)
+
+    rationale = source.get("design_rationale")
+    if not isinstance(rationale, list):
+        rationale = []
+
+    # §3.4: 保留构件实例清单
+    components = source.get("components")
+    if not isinstance(components, list):
+        components = []
+
+    result = {
+        "schema_version": "1.0",
+        "profile": profile_id,
+        "concept": str(source.get("concept") or _concept_from_request(user_message))[
+            :240
+        ],
+        "massing": massing,
+        "volumes": volumes,
+        "structural_grid": structural_grid,
+        "circulation": circulation,
+        "detail_packages": detail_packages,
+        "facades": facades,
+        "roof": roof,
+        "component_quota": quotas,
+        "components": components,
+        "curtain_wall": curtain_wall,
+        "balcony_access_count": balcony_access_count,
+        "balcony_width": balcony_width,
+        "required_components": list(dict.fromkeys(required_components)),
+        "unsupported_component_types": sorted(unsupported_component_types),
+        "design_rationale": [str(item) for item in rationale[:12]],
+        "design_intent": deepcopy(source.get("design_intent")),
+    }
+
+    # §3.4 / P5-C：区域与构件材质绑定。**归一化不解释它**（角色闭集在材质方案那边，
+    # 这里硬校验必然误拒），只做形状过滤后透传；认不出形状的条目丢掉即可 ——
+    # 绑定写错由编译器记缺陷，不阻断。
+    _copy_material_regions(source, result)
+
+    _record_plan_normalization(source, result, input_source, normalization_changes)
+    if "design_constraints" in source:
+        result["design_constraints"] = deepcopy(source["design_constraints"])
+    if "complexity" in source:
+        result["complexity"] = deepcopy(source["complexity"])
+    return result
+
+
+def _normalize_detail_packages(source, user_message, modeled_floors):
+    """合并明确的细部选择，并处理单层建筑的适用边界。"""
+    raw_detail_packages = source.get("detail_packages")
+    allowed_detail_packages = set(_DETAIL_COMPONENT_QUOTAS)
+    # 用户点名的细部包是本次方案的硬需求：`_default_detail_packages` 只由显式关键词
+    # 产生（不含默认套餐），所以"模型没写"就是"用户没要"，反过来"用户要了"就必须留下。
+    # 模型可以补充，但**不能删除**——实测"生成一个别墅，里面要有家具"会被规划模型以
+    # 「家具属于室内设计，不在建筑方案职责内」为由把 detail_packages 写成 `[]`，
+    # 照单全收后配额与 required_components 一起消失，最终表现成"要了却一件都没生成"。
+    requested_detail_packages = [
+        str(item).lower()
+        for item in _default_detail_packages(user_message, modeled_floors)
+        if str(item).lower() in allowed_detail_packages
+    ]
+    if isinstance(raw_detail_packages, list):
+        detail_packages = [
+            str(item).lower() for item in raw_detail_packages if isinstance(item, str)
+        ]
+    else:
+        detail_packages = []
+    # 保留显式细部选择；数量边界沿用 DesignDocument 的 20 项。
+    detail_packages = list(
+        dict.fromkeys(
+            [
+                *requested_detail_packages,
+                *detail_packages,
+            ]
+        )
+    )
+    if modeled_floors < 2:
+        # 单层建筑没有垂直交通需求（KB《电梯》能力边界明确写"不要生成"）；
+        # 这是需求侧的无效项，与模型是否写了它无关，所以在配额之前就剔除。
+        detail_packages = [item for item in detail_packages if item != "elevator"]
+    detail_packages = detail_packages[:20]
+    return detail_packages
+
+
+def _normalize_facades(source):
+    """校验四个立面的字段与分格，不补造设计决定。"""
+    facade_source = (
+        source.get("facades") if isinstance(source.get("facades"), dict) else {}
+    )
+    facades: dict[str, dict[str, Any]] = {}
+    from app.domain.design.contracts import FacadeDecision
+
+    for face in _FACES:
+        item = facade_source.get(face)
+        required = ("bays", "ground_pattern", "upper_pattern")
+        if not isinstance(item, dict) or any(key not in item for key in required):
+            raise ValueError(
+                f"/facades/{face}：必须提供 bays、ground_pattern 和 upper_pattern，不能使用默认门窗分格"
+            )
+        if not all(
+            isinstance(item[key], list) for key in ("ground_pattern", "upper_pattern")
+        ):
+            raise ValueError(f"/facades/{face}：门窗分格必须是数组")
+        bays = int(item["bays"])
+        facades[face] = FacadeDecision.model_validate(
+            {
+                **item,
+                "ground_pattern": _normalize_pattern(item["ground_pattern"], bays, []),
+                "upper_pattern": _normalize_pattern(
+                    item["upper_pattern"],
+                    bays,
+                    [],
+                    allowed_types=_OPENING_TYPES - {"door"},
+                ),
+            }
+        ).model_dump(mode="json", exclude_none=True)
+    return facades
+
+
+def _normalize_component_quotas(source):
+    """读取显式配额和不支持构件的记录。"""
+    quotas: dict[str, dict[str, Any]] = {}
+    unsupported_component_types: set[str] = set(
+        source.get("unsupported_component_types") or []
+    )
+    raw_quotas = source.get("component_quota", {})
+    if not isinstance(raw_quotas, dict):
+        raise ValueError(
+            "component_quota 必须是对象；新图纸不输出配额，数量由程序从构件标记派生"
+        )
+    for component_type, limits in raw_quotas.items():
+        if not isinstance(limits, dict):
+            raise ValueError(
+                f"component_quota.{component_type} 必须是包含 min/max 的对象，实际 {limits!r}；"
+                "新图纸不输出配额，数量由程序从构件标记派生"
+            )
+        component_type = str(component_type)
+        # 开放集通道（用户决策 2026-09-29：删除构件白名单闸）：配额点名的任何类型
+        # 都放行进入下游——已注册的走既有派生/模型通道，未注册的由 plan 条目用
+        # 通用配置尝试（字段契约靠知识库检索），校验与修复环兜底。
+        normalized_limits = deepcopy(limits)
+        # 配额上下限不再夹取到 32（用户决策 2026-09-29，删除上限白名单）：
+        # 模型可以自由表达密集窗格、通高柱廊等大规模数量；上限只是参考值，
+        # 下限才是设计要求。只使用 ComponentQuota 的协议边界及 max>=min 一致性。
+        for bound in ("min", "max"):
+            if bound in limits:
+                try:
+                    normalized_limits[bound] = min(10000, max(0, int(limits[bound])))
+                except (TypeError, ValueError, OverflowError):
+                    normalized_limits[bound] = int(
+                        quotas.get(component_type, {}).get(bound, 0)
+                    )
+        if isinstance(normalized_limits.get("min"), int) and isinstance(
+            normalized_limits.get("max"), int
+        ):
+            normalized_limits["max"] = max(
+                normalized_limits["min"], normalized_limits["max"]
+            )
+        quotas[component_type] = normalized_limits
+    return quotas, unsupported_component_types
+
+
+def _required_components(source, quotas, detail_packages, base_components_effective):
+    """按显式选择、细部包和配额收集本次必需构件。"""
     required = source.get("required_components")
     if not isinstance(required, list):
         required = [
             *base_components_effective,
-            *(item["type"] for item in source.get("components") or []
-              if isinstance(item, dict) and item.get("type")),
+            *(
+                item["type"]
+                for item in source.get("components") or []
+                if isinstance(item, dict) and item.get("type")
+            ),
         ]
     # 开放集通道（2026-09-29）：不再按注册表白名单过滤——模型点名的类型照常进入
     # required_components，未注册类型由 plan 条目用通用配置尝试。保留的过滤只有
     # 一条纪律：细部包类型必须已被 complexity 批准（与注册表无关）。
     required_components = [
-        str(item).lower() for item in required
+        str(item).lower()
+        for item in required
         if (
             str(item).lower() not in _DETAIL_COMPONENT_QUOTAS
             or str(item).lower() in detail_packages
@@ -390,18 +537,26 @@ def normalize_architecture_plan(
         ):
             required_components.append(component_type)
     required_components = [
-        component_type for component_type in required_components
+        component_type
+        for component_type in required_components
         if quotas.get(component_type, {}).get("max", 1) != 0
     ]
+    return required_components
 
-    circulation_source = source.get("circulation") if isinstance(source.get("circulation"), dict) else {}
-    default_vertical_strategy = (
-        "none" if modeled_floors <= 1
-        # 核心筒化按**层数**（物理疏散需求）触发，与建筑类型无关——
-        # 选档白名单删除后，高层规则的正确落点是楼层阈值而不是类型词表。
-        else "core_and_stair" if modeled_floors >= 8
-        else "stair"
+
+def _normalize_circulation(source, modeled_floors, detail_packages):
+    """按层数和已选设备规范化竖向交通策略。"""
+    circulation_source = (
+        source.get("circulation") if isinstance(source.get("circulation"), dict) else {}
     )
+    # 核心筒化按**层数**（物理疏散需求）触发，与建筑类型无关——
+    # 选档白名单删除后，高层规则的正确落点是楼层阈值而不是类型词表。
+    if modeled_floors <= 1:
+        default_vertical_strategy = "none"
+    elif modeled_floors >= 8:
+        default_vertical_strategy = "core_and_stair"
+    else:
+        default_vertical_strategy = "stair"
     vertical_strategy = str(
         circulation_source.get("vertical_strategy") or default_vertical_strategy
     ).lower()
@@ -419,42 +574,16 @@ def normalize_architecture_plan(
         # 只能悬在建筑里；这里把策略升级到配套的核心筒，而不是让下游去猜。
         vertical_strategy = "core_and_stair"
     circulation = {"vertical_strategy": vertical_strategy}
+    return circulation
 
-    rationale = source.get("design_rationale")
-    if not isinstance(rationale, list):
-        rationale = []
-    
-    # §3.4: 保留构件实例清单
-    components = source.get("components")
-    if not isinstance(components, list):
-        components = []
-    
-    result = {
-        "schema_version": "1.0",
-        "profile": profile_id,
-        "concept": str(source.get("concept") or _concept_from_request(user_message))[:240],
-        "massing": massing,
-        "volumes": volumes,
-        "structural_grid": structural_grid,
-        "circulation": circulation,
-        "detail_packages": detail_packages,
-        "facades": facades,
-        "roof": roof,
-        "component_quota": quotas,
-        "components": components,
-        "curtain_wall": curtain_wall,
-        "balcony_access_count": balcony_access_count,
-        "balcony_width": balcony_width,
-        "required_components": list(dict.fromkeys(required_components)),
-        "unsupported_component_types": sorted(unsupported_component_types),
-        "design_rationale": [str(item) for item in rationale[:12]],
-        "design_intent": deepcopy(source.get("design_intent")),
-    }
 
-    # §3.4 / P5-C：区域与构件材质绑定。**归一化不解释它**（角色闭集在材质方案那边，
-    # 这里硬校验必然误拒），只做形状过滤后透传；认不出形状的条目丢掉即可 ——
-    # 绑定写错由编译器记缺陷，不阻断。
-    raw_regions = (source.get("materials") or {}).get("regions") if isinstance(source.get("materials"), dict) else None
+def _copy_material_regions(source, result):
+    """过滤材质区域的条目形状并保留可追溯意图。"""
+    raw_regions = (
+        (source.get("materials") or {}).get("regions")
+        if isinstance(source.get("materials"), dict)
+        else None
+    )
     if not isinstance(raw_regions, list):
         raw_regions = source.get("material_regions") or []
     regions = [
@@ -469,18 +598,22 @@ def normalize_architecture_plan(
     if regions or "materials" in source or "material_regions" in source:
         result["materials"] = {"regions": regions}
 
+
+def _record_plan_normalization(source, result, input_source, normalization_changes):
+    """记录归一化变化并同步可核对的决策说明。"""
     from app.domain.design.normalization import plan_changes
     from app.domain.design.normalization import decision_summary
+
     changes = plan_changes(source, result, source=input_source)
     if normalization_changes is not None:
         normalization_changes.extend(changes)
     semantic = any(c["semantic_change"] for c in changes)
-    rationale = [text for text in result["design_rationale"] if not text.startswith("[决策事实]")]
+    rationale = [
+        text for text in result["design_rationale"] if not text.startswith("[决策事实]")
+    ]
     if semantic:
-        rationale = [text if text.startswith("[待核对]") else "[待核对] " + text for text in rationale]
+        rationale = [
+            text if text.startswith("[待核对]") else "[待核对] " + text
+            for text in rationale
+        ]
     result["design_rationale"] = [decision_summary(result), *rationale[:11]]
-    if "design_constraints" in source:
-        result["design_constraints"] = deepcopy(source["design_constraints"])
-    if "complexity" in source:
-        result["complexity"] = deepcopy(source["complexity"])
-    return result

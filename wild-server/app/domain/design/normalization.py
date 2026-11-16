@@ -50,15 +50,31 @@ def field_changes(before: Any, after: Any, *, path: str = "", rule: str,
         # Keep lists atomic: insertion/reordering must not be misreported as field edits.
         protocol = (old_exists and new_exists and isinstance(old, str)
                     and isinstance(new, str) and old.strip().lower() == new)
-        category = "default" if not old_exists else "protocol" if protocol else "semantic_change"
-        changes.append({"path": target, "before": deepcopy(old), "after": deepcopy(new),
-            "before_exists": old_exists, "after_exists": new_exists,
-            "rule": rule, "category": category, "input_source": source if old_exists else "missing",
-            "output_source": "default" if not old_exists else "program",
-            "semantic_change": category == "semantic_change",
-            "reason": "缺失字段补值" if not old_exists else "等价文本格式规范化" if protocol else
-                      "显式值被改写或丢弃，不能视为等价修复",
-            "constraint_ids": []})
+        if not old_exists:
+            category = "default"
+            reason = "缺失字段补值"
+        elif protocol:
+            category = "protocol"
+            reason = "等价文本格式规范化"
+        else:
+            category = "semantic_change"
+            reason = "显式值被改写或丢弃，不能视为等价修复"
+        changes.append(
+            {
+                "path": target,
+                "before": deepcopy(old),
+                "after": deepcopy(new),
+                "before_exists": old_exists,
+                "after_exists": new_exists,
+                "rule": rule,
+                "category": category,
+                "input_source": source if old_exists else "missing",
+                "output_source": "default" if not old_exists else "program",
+                "semantic_change": category == "semantic_change",
+                "reason": reason,
+                "constraint_ids": [],
+            }
+        )
 
     visit(before, after, path)
     return changes

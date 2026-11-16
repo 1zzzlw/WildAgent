@@ -124,7 +124,11 @@ def _skip_keywords(words: list[str]) -> list[str]:
     这里机械展开，宁可多几个词也不要漏。
     """
 
-    return [f"{prefix}{word}" for word in words for prefix in ("不要", "没有", "不需要")]
+    result = []
+    for word in words:
+        for prefix in ("不要", "没有", "不需要"):
+            result.append(f"{prefix}{word}")
+    return result
 
 
 def recipe_component_configs() -> list[ComponentConfig]:

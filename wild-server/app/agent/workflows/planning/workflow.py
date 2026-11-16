@@ -297,8 +297,12 @@ async def execute_node(state: dict[str, Any]) -> dict[str, Any]:
         summary = (_item_updates.get("component_diagnostics", {}).get(item.id) or {}).get("implementation_summary")
         if item.params.get("design_markers") and summary:
             plan.item(item.id).params["implementation_summary"] = summary
-        calls = (sum(entry.get("model_calls", 0) for entry in trace) if item.params.get("design_markers")
-                 else (1 + _model_tool_rounds(trace)) if item.op in _MODEL_OPS else 0)
+        if item.params.get("design_markers"):
+            calls = sum((entry.get("model_calls", 0) for entry in trace))
+        elif item.op in _MODEL_OPS:
+            calls = 1 + _model_tool_rounds(trace)
+        else:
+            calls = 0
         model_calls += calls
         tool_trace[item.id] = trace
         item_results.append(

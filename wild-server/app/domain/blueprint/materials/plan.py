@@ -379,12 +379,25 @@ def resolve_material_plan(
         surface = resolve_surface(surface_id, role) if not asset and not procedural else None
         defaults = (asset or {}).get("defaults") or {}
         material_class = str(classification.get("materialClass") or (surface or {}).get("surfaceFamily") or "other")
+        if asset:
+            requested_color = defaults.get("baseColorTint")
+            requested_roughness = defaults.get("roughness")
+        elif recipe:
+            requested_color = recipe.get("baseColor")
+            requested_roughness = recipe.get("roughness")
+        else:
+            requested_color = requested.get(
+                "baseColor", (surface or {}).get("baseColor")
+            )
+            requested_roughness = requested.get(
+                "roughness", (surface or {}).get("roughness")
+            )
         base_color = _safe_color(
-            defaults.get("baseColorTint") if asset else recipe.get("baseColor") if recipe else requested.get("baseColor", (surface or {}).get("baseColor")),
+            requested_color,
             [1.0, 1.0, 1.0] if asset else fallback["baseColor"],
         )
         roughness = _unit(
-            defaults.get("roughness") if asset else recipe.get("roughness") if recipe else requested.get("roughness", (surface or {}).get("roughness")),
+            requested_roughness,
             fallback["roughness"],
         )
         metallic = _unit(
@@ -503,7 +516,12 @@ def material_region_field(role: str, target_type: str) -> str | None:
     capability = capability_query(target_type)
     fields = (capability.get("capability") or {}).get("fields") or {}
     field = {"frame": "frameMaterial", "door": "leafMaterial", "glass": "glassMaterial"}.get(role)
-    return field if field in fields else "material" if "material" in fields else None
+    if field in fields:
+        return field
+    elif "material" in fields:
+        return "material"
+    else:
+        return None
 
 
 def apply_material_regions(

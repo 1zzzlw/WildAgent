@@ -48,8 +48,13 @@ def project_drawing(document: DesignDocument) -> ResolvedDesign:
     if layout_issues:
         raise ValueError("；".join(layout_issues))
     geometry = design_geometry_context(d.model_dump(mode="json"))
-    levels = [ResolvedLevel(**{key: level[key] for key in ("index", "base_y", "top_y")})
-              for level in geometry["levels"]]
+    levels = []
+    for level in geometry["levels"]:
+        levels.append(
+            ResolvedLevel(
+                index=level["index"], base_y=level["base_y"], top_y=level["top_y"]
+            )
+        )
     walls, frames = [], {}
     for volume_index, v in enumerate(d.volumes):
         corners = {"front": ([v.x, v.z], [v.x+v.width, v.z]),
@@ -124,9 +129,15 @@ def project_drawing(document: DesignDocument) -> ResolvedDesign:
         rooms, partitions = layout.get("rooms") or [], layout.get("walls") or []
         if len(rooms) > 1 and not partitions:
             warnings.append(f"第 {layout.get('floor', '?')} 层有多个房间标签但没有内墙；请确认是否为开放式布局。")
-        if partitions and not any(c.host in {w.get("id") for w in partitions}
-                                  and (c.type == "opening" or resolve_component_name(c.type)["entity_type"] == "door")
-                                  for c in d.components):
+        partition_ids = {wall.get("id") for wall in partitions}
+        if partitions and not any(
+            c.host in partition_ids
+            and (
+                c.type == "opening"
+                or resolve_component_name(c.type)["entity_type"] == "door"
+            )
+            for c in d.components
+        ):
             warnings.append(f"第 {layout.get('floor', '?')} 层有内墙但没有附着其上的通行开口；请核对实际动线。")
     return ResolvedDesign(
         design_id=document.design_id, design_revision=document.revision,

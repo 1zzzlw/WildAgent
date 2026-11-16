@@ -462,8 +462,14 @@ def _normalize_floor_coordinates(elements: list) -> None:
     wall_bounds: tuple[int | float, int | float, int | float, int | float] | None = None
     wall_levels: list[int | float] = []
     if walls:
-        xs = [coordinate for start, end in walls for coordinate in (start[0], end[0])]
-        zs = [coordinate for start, end in walls for coordinate in (start[2], end[2])]
+        xs = []
+        for current_start, current_end in walls:
+            for current_coordinate in (current_start[0], current_end[0]):
+                xs.append(current_coordinate)
+        zs = []
+        for current_start, current_end in walls:
+            for current_coordinate in (current_start[2], current_end[2]):
+                zs.append(current_coordinate)
         min_x, max_x = min(xs), max(xs)
         min_z, max_z = min(zs), max(zs)
         if max_x - min_x >= 0.1 and max_z - min_z >= 0.1:
@@ -658,6 +664,144 @@ def validate_blueprint_schema(
                 issues.append("`meta.name` 缺失")
 
     # ---------- 几何容器与构件基本身份 ----------
+    _validate_geometry_schema(blueprint, issues, allow_empty_geometry)
+
+    # ---------- PBR 资产清单 ----------
+    assets = _validate_asset_catalog(blueprint, issues)
+
+    # ---------- 材质结构与颜色通道 ----------
+    _validate_material_catalog(blueprint, assets, issues)
+
+    return issues
+
+
+# ---------- 标题 ----------
+
+
+def compact_blueprint_title(name: str, max_len: int = 16) -> str:
+    """把描述性 meta.name 压缩为适合会话列表和文件名的短标题。"""
+    normalized = re.sub(r"\s+", "", str(name or "")).strip()
+    if not normalized:
+        return "未命名建筑"
+    first_clause = next(
+        (part for part in re.split(r"[：:，,；;。\n]", normalized) if part),
+        normalized,
+    )
+    return (
+        first_clause if len(first_clause) <= max_len else first_clause[:max_len] + "…"
+    )
+
+
+def _validate_component_schema(
+    component, elements, component_required, component_allowed, issues
+):
+    """检查单个组合构件的字段、坐标和宿主厚度关系。"""
+    if not isinstance(component, dict):
+        issues.append("geometry.components 中的每一项都必须是对象")
+        return
+    component_id = component.get("id", "?")
+    component_type = component.get("type")
+    if not component.get("id"):
+        issues.append("组合构件缺少非空 'id' 字段")
+    if component_type not in component_required:
+        issues.append(
+            f"组合构件 {component_id}.type 必须是 {'/'.join(component_required)}"
+        )
+        return
+    unknown_fields = sorted(set(component) - component_allowed[component_type])
+    if unknown_fields:
+        issues.append(f"组合构件 {component_id} 包含不支持的字段: {unknown_fields}")
+    for field in component_required[component_type]:
+        if field not in component:
+            issues.append(f"组合构件 {component_id} 缺少字段 '{field}'")
+    if component_type in {"door", "window", "canopy", "balcony", "bay_window"}:
+        if not _is_finite_vector3(component.get("from")):
+            issues.append(f"组合构件 {component_id}.from 必须是三维有限数组")
+        positive_fields = {
+            "door": ("width", "height"),
+            "window": ("width", "height"),
+            "canopy": ("width", "depth", "thickness"),
+            "balcony": ("width", "depth", "slabThickness"),
+            "bay_window": ("width", "height", "projectionDepth"),
+        }[component_type]
+        for field in positive_fields:
+            if not _is_positive_finite_number(component.get(field)):
+                issues.append(f"组合构件 {component_id}.{field} 必须是正有限数字")
+        optional_positive_fields = {
+            "door": ("frameDepth", "leafDepth"),
+            "window": ("frameDepth", "glassDepth"),
+            "canopy": (),
+            "balcony": (),
+            "bay_window": ("frameDepth",),
+        }[component_type]
+        for field in optional_positive_fields:
+            if field in component and not _is_positive_finite_number(
+                component.get(field)
+            ):
+                issues.append(f"组合构件 {component_id}.{field} 必须是正有限数字")
+        if component_type in {"door", "window"}:
+            wall = next(
+                (
+                    el
+                    for el in elements
+                    if isinstance(el, dict)
+                    and el.get("id") == component.get("parentWall")
+                ),
+                {},
+            )
+            frame_depth = component.get("frameDepth", wall.get("thickness"))
+            if _is_positive_finite_number(frame_depth):
+                panel_field = "leafDepth" if component_type == "door" else "glassDepth"
+                panel_depth = component.get(
+                    panel_field,
+                    min(0.04 if component_type == "door" else 0.012, frame_depth),
+                )
+                if (
+                    _is_positive_finite_number(panel_depth)
+                    and panel_depth > frame_depth + 1e-9
+                ):
+                    issues.append(
+                        f"组合构件 {component_id}.{panel_field}={panel_depth} 不能大于 frameDepth={frame_depth}；按门扇/玻璃与框料关系修订"
+                    )
+    elif component_type in {"railing", "cornice"}:
+        path_points = component.get("path")
+        if (
+            not isinstance(path_points, list)
+            or len(path_points) < 2
+            or not all(_is_finite_vector3(point) for point in path_points)
+        ):
+            issues.append(f"组合构件 {component_id}.path 至少需要两个三维有限坐标")
+        if component_type == "railing" and not _is_positive_finite_number(
+            component.get("height")
+        ):
+            issues.append(f"组合构件 {component_id}.height 必须是正有限数字")
+    elif component_type == "ramp":
+        for field in ("from", "to"):
+            if not _is_finite_vector3(component.get(field)):
+                issues.append(f"组合构件 {component_id}.{field} 必须是三维有限数组")
+        for field in ("width", "thickness"):
+            if not _is_positive_finite_number(component.get(field)):
+                issues.append(f"组合构件 {component_id}.{field} 必须是正有限数字")
+    elif component_type in {"chimney", "light"}:
+        if not _is_finite_vector3(component.get("position")):
+            issues.append(f"组合构件 {component_id}.position 必须是三维有限数组")
+        required_numbers = (
+            ("width", "depth", "height") if component_type == "chimney" else ()
+        )
+        for field in required_numbers:
+            if not _is_positive_finite_number(component.get(field)):
+                issues.append(f"组合构件 {component_id}.{field} 必须是正有限数字")
+        if component_type == "light":
+            if component.get("fixtureType", "bulb") not in {"bulb", "table_lamp"}:
+                issues.append(
+                    f"组合构件 {component_id}.fixtureType 必须是 bulb/table_lamp"
+                )
+            if component.get("lightType", "point") not in {"point", "spot"}:
+                issues.append(f"组合构件 {component_id}.lightType 必须是 point/spot")
+
+
+def _validate_geometry_schema(blueprint, issues, allow_empty_geometry):
+    """检查几何容器和共享 ID 命名空间，再逐个检查元素与构件。"""
     if "geometry" not in blueprint:
         issues.append("缺少顶层字段 'geometry'")
     else:
@@ -706,9 +850,8 @@ def validate_blueprint_schema(
                         "[width, height, depth] 三个正有限数字"
                     )
                 for coordinate_field in ("from", "to"):
-                    if (
-                        coordinate_field in el
-                        and not _is_finite_vector3(el[coordinate_field])
+                    if coordinate_field in el and not _is_finite_vector3(
+                        el[coordinate_field]
                     ):
                         issues.append(
                             f"{element_id}.{coordinate_field} 必须是包含 3 个有限数字的数组"
@@ -721,101 +864,32 @@ def validate_blueprint_schema(
                 "canopy": ("parentWall", "from", "width", "depth", "thickness"),
                 "balcony": ("parentWall", "from", "width", "depth", "slabThickness"),
                 "ramp": ("from", "to", "width", "thickness"),
-                "bay_window": ("parentWall", "from", "width", "height", "projectionDepth"),
+                "bay_window": (
+                    "parentWall",
+                    "from",
+                    "width",
+                    "height",
+                    "projectionDepth",
+                ),
                 "cornice": ("path", "profile"),
                 "chimney": ("position", "width", "depth", "height"),
                 "light": ("position",),
                 "elevator": ("position", "dimensions", "floorHeight", "floorCount"),
             }
             from app.domain.blueprint.normalizer import get_component_allowed_fields
-            component_allowed = {kind: get_component_allowed_fields(kind)[0] for kind in component_required}
-            for component in components:
-                if not isinstance(component, dict):
-                    issues.append("geometry.components 中的每一项都必须是对象")
-                    continue
-                component_id = component.get("id", "?")
-                component_type = component.get("type")
-                if not component.get("id"):
-                    issues.append("组合构件缺少非空 'id' 字段")
-                if component_type not in component_required:
-                    issues.append(
-                        f"组合构件 {component_id}.type 必须是 "
-                        f"{'/'.join(component_required)}"
-                    )
-                    continue
-                unknown_fields = sorted(
-                    set(component) - component_allowed[component_type]
-                )
-                if unknown_fields:
-                    issues.append(
-                        f"组合构件 {component_id} 包含不支持的字段: {unknown_fields}"
-                    )
-                for field in component_required[component_type]:
-                    if field not in component:
-                        issues.append(f"组合构件 {component_id} 缺少字段 '{field}'")
-                if component_type in {"door", "window", "canopy", "balcony", "bay_window"}:
-                    if not _is_finite_vector3(component.get("from")):
-                        issues.append(f"组合构件 {component_id}.from 必须是三维有限数组")
-                    positive_fields = {
-                        "door": ("width", "height"),
-                        "window": ("width", "height"),
-                        "canopy": ("width", "depth", "thickness"),
-                        "balcony": ("width", "depth", "slabThickness"),
-                        "bay_window": ("width", "height", "projectionDepth"),
-                    }[component_type]
-                    for field in positive_fields:
-                        if not _is_positive_finite_number(component.get(field)):
-                            issues.append(f"组合构件 {component_id}.{field} 必须是正有限数字")
-                    optional_positive_fields = {
-                        "door": ("frameDepth", "leafDepth"),
-                        "window": ("frameDepth", "glassDepth"),
-                        "canopy": (),
-                        "balcony": (),
-                        "bay_window": ("frameDepth",),
-                    }[component_type]
-                    for field in optional_positive_fields:
-                        if field in component and not _is_positive_finite_number(component.get(field)):
-                            issues.append(f"组合构件 {component_id}.{field} 必须是正有限数字")
-                    if component_type in {"door", "window"}:
-                        wall = next((el for el in elements if isinstance(el, dict)
-                                     and el.get("id") == component.get("parentWall")), {})
-                        frame_depth = component.get("frameDepth", wall.get("thickness"))
-                        if _is_positive_finite_number(frame_depth):
-                            panel_field = "leafDepth" if component_type == "door" else "glassDepth"
-                            panel_depth = component.get(panel_field, min(0.04 if component_type == "door" else 0.012, frame_depth))
-                            if _is_positive_finite_number(panel_depth) and panel_depth > frame_depth + 1e-9:
-                                issues.append(f"组合构件 {component_id}.{panel_field}={panel_depth} 不能大于 frameDepth={frame_depth}；按门扇/玻璃与框料关系修订")
-                elif component_type in {"railing", "cornice"}:
-                    path_points = component.get("path")
-                    if (
-                        not isinstance(path_points, list)
-                        or len(path_points) < 2
-                        or not all(_is_finite_vector3(point) for point in path_points)
-                    ):
-                        issues.append(f"组合构件 {component_id}.path 至少需要两个三维有限坐标")
-                    if component_type == "railing" and not _is_positive_finite_number(component.get("height")):
-                        issues.append(f"组合构件 {component_id}.height 必须是正有限数字")
-                elif component_type == "ramp":
-                    for field in ("from", "to"):
-                        if not _is_finite_vector3(component.get(field)):
-                            issues.append(f"组合构件 {component_id}.{field} 必须是三维有限数组")
-                    for field in ("width", "thickness"):
-                        if not _is_positive_finite_number(component.get(field)):
-                            issues.append(f"组合构件 {component_id}.{field} 必须是正有限数字")
-                elif component_type in {"chimney", "light"}:
-                    if not _is_finite_vector3(component.get("position")):
-                        issues.append(f"组合构件 {component_id}.position 必须是三维有限数组")
-                    required_numbers = ("width", "depth", "height") if component_type == "chimney" else ()
-                    for field in required_numbers:
-                        if not _is_positive_finite_number(component.get(field)):
-                            issues.append(f"组合构件 {component_id}.{field} 必须是正有限数字")
-                    if component_type == "light":
-                        if component.get("fixtureType", "bulb") not in {"bulb", "table_lamp"}:
-                            issues.append(f"组合构件 {component_id}.fixtureType 必须是 bulb/table_lamp")
-                        if component.get("lightType", "point") not in {"point", "spot"}:
-                            issues.append(f"组合构件 {component_id}.lightType 必须是 point/spot")
 
-    # ---------- PBR 资产清单 ----------
+            component_allowed = {
+                kind: get_component_allowed_fields(kind)[0]
+                for kind in component_required
+            }
+            for component in components:
+                _validate_component_schema(
+                    component, elements, component_required, component_allowed, issues
+                )
+
+
+def _validate_asset_catalog(blueprint, issues):
+    """检查 PBR 资产清单，并返回可用于材质引用检查的资产对象。"""
     assets = blueprint.get("assets", {})
     if not isinstance(assets, dict):
         issues.append("'assets' 必须是对象")
@@ -838,7 +912,10 @@ def validate_blueprint_schema(
                 or re.fullmatch(r"sha256:[0-9a-f]{64}", content_hash) is None
             ):
                 issues.append(f"{path}.contentHash 格式无效")
-            if not isinstance(asset.get("license"), str) or not asset["license"].strip():
+            if (
+                not isinstance(asset.get("license"), str)
+                or not asset["license"].strip()
+            ):
                 issues.append(f"{path}.license 不能为空")
             maps = asset.get("maps")
             if not isinstance(maps, dict):
@@ -861,8 +938,11 @@ def validate_blueprint_schema(
                         f"{image_path}.colorSpace 必须是 "
                         f"{_PBR_CHANNEL_COLOR_SPACES[channel]}"
                     )
+    return assets
 
-    # ---------- 材质结构与颜色通道 ----------
+
+def _validate_material_catalog(blueprint, assets, issues):
+    """检查材质数值、物理玻璃参数和纹理资产引用。"""
     materials = blueprint.get("materials", {})
     if not isinstance(materials, dict):
         issues.append("'materials' 必须是对象")
@@ -885,12 +965,16 @@ def validate_blueprint_schema(
                 )
             )
             if not valid_base_color:
-                issues.append(
-                    f"材质 '{name}'.baseColor 必须是 3 个 0–1 数值"
-                )
+                issues.append(f"材质 '{name}'.baseColor 必须是 3 个 0–1 数值")
             for field in (
-                "roughness", "metallic", "albedo", "opacity", "transmission",
-                "clearcoat", "clearcoatRoughness", "sheen",
+                "roughness",
+                "metallic",
+                "albedo",
+                "opacity",
+                "transmission",
+                "clearcoat",
+                "clearcoatRoughness",
+                "sheen",
             ):
                 value = material.get(field)
                 if value is not None and (
@@ -902,7 +986,10 @@ def validate_blueprint_schema(
                     issues.append(f"材质 '{name}'.{field} 必须是 0–1 有限数字")
             material_class = material.get("materialClass")
             if material_class is not None and material_class not in {
-                "standard", "glass", "clearcoat", "fabric",
+                "standard",
+                "glass",
+                "clearcoat",
+                "fabric",
             }:
                 issues.append(
                     f"材质 '{name}'.materialClass 必须是 standard/glass/clearcoat/fabric"
@@ -927,7 +1014,10 @@ def validate_blueprint_schema(
                 ):
                     issues.append(f"材质 '{name}'.{field} 必须是非负有限数字")
             if material_class == "glass":
-                if not isinstance(material.get("transmission"), (int, float)) or material.get("transmission", 0) <= 0:
+                if (
+                    not isinstance(material.get("transmission"), (int, float))
+                    or material.get("transmission", 0) <= 0
+                ):
                     issues.append(f"材质 '{name}' 的物理玻璃必须提供 transmission > 0")
                 if material.get("opacity", 1) != 1:
                     issues.append(f"材质 '{name}' 的物理玻璃 opacity 必须为 1 或省略")
@@ -939,25 +1029,3 @@ def validate_blueprint_schema(
                     f"材质 '{name}'.textureSet 引用了不存在的资产: {texture_set}"
                 )
             issues.extend(_validate_procedural_material(name, material))
-
-    return issues
-
-
-# ---------- 标题 ----------
-
-def compact_blueprint_title(name: str, max_len: int = 16) -> str:
-    """把描述性 meta.name 压缩为适合会话列表和文件名的短标题。"""
-    normalized = re.sub(r"\s+", "", str(name or "")).strip()
-    if not normalized:
-        return "未命名建筑"
-    first_clause = next(
-        (part for part in re.split(r"[：:，,；;。\n]", normalized) if part),
-        normalized,
-    )
-    return first_clause if len(first_clause) <= max_len else first_clause[:max_len] + "…"
-
-
-
-
-
-

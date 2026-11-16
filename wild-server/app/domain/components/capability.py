@@ -133,13 +133,16 @@ def _capability_from_definition(
         if isinstance(spec, dict)
     }
     optional = sorted(name for name in fields if name not in required)
+    if entity_kind == "element" or (config and config.is_element):
+        target = "elements"
+    else:
+        target = "components"
     return {
         "type": type_name,
         "entity_kind": entity_kind,
         "implemented": bool(config.implemented) if config else True,
         # 写进 elements 还是 components —— 设计层选错会被校验器直接拒。
-        "target": ("elements" if entity_kind == "element"
-                   else "elements" if config and config.is_element else "components"),
+        "target": target,
         "required": required,
         "optional": optional,
         "fields": fields,

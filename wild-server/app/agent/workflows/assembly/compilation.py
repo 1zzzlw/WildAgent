@@ -7,8 +7,11 @@ from app.agent.state import GenerationState
 def _repair_scope_errors(original, candidate, feedback):
     """补丁只能改变失败实体及其资源；新增实体必须归属已定位的图纸标记。"""
     def entities(blueprint):
-        return {e["id"]: e for bucket in ("elements", "components")
-                for e in blueprint.get("geometry", {}).get(bucket, [])}
+        result = {}
+        for bucket in ("elements", "components"):
+            for entity in blueprint.get("geometry", {}).get(bucket, []):
+                result[entity["id"]] = entity
+        return result
 
     before, after = entities(original), entities(candidate)
     allowed = set(feedback["entity_ids"])
@@ -26,7 +29,12 @@ def _repair_scope_errors(original, candidate, feedback):
 
     from app.domain.blueprint.editing import _MATERIAL_REFERENCE_FIELDS
     def references(blueprint, selected):
-        materials = {e[key] for e in selected for key in _MATERIAL_REFERENCE_FIELDS if isinstance(e.get(key), str)}
+        materials = set()
+        for entity in selected:
+            for key in _MATERIAL_REFERENCE_FIELDS:
+                if not isinstance(entity.get(key), str):
+                    continue
+                materials.add(entity[key])
         assets = {value["textureSet"] for name, value in blueprint.get("materials", {}).items()
                   if name in materials and isinstance(value.get("textureSet"), str)}
         return {"materials": materials, "assets": assets}
@@ -49,13 +57,19 @@ def _assemble_with_relations(document, state):
 
     blueprint, missing = assemble_marker_results(document, state)
     records = deepcopy(implementation_records(state))
-    original = {e["id"]: e for bucket in ("elements", "components") for e in blueprint["geometry"][bucket]}
+    original = {}
+    for geometry_bucket in ("elements", "components"):
+        for current_entity in blueprint["geometry"][geometry_bucket]:
+            original[current_entity["id"]] = current_entity
     # 先核对模型原片段，编译派生不能掩盖未经校验的改写。
     if any(blueprint_fingerprint([original[i] for i in r["entity_ids"]]) != r.get("entity_fingerprint")
            for r in records.values() if r.get("status") == "implemented"):
         return blueprint, missing, records
     changed = cut_stair_openings(blueprint)
-    actual = {e["id"]: e for bucket in ("elements", "components") for e in blueprint["geometry"][bucket]}
+    actual = {}
+    for geometry_bucket in ("elements", "components"):
+        for current_entity in blueprint["geometry"][geometry_bucket]:
+            actual[current_entity["id"]] = current_entity
     replacements = {i: [i] if i in actual else [] for i in changed}
     for entity_id in actual:
         if entity_id in original:
@@ -69,7 +83,11 @@ def _assemble_with_relations(document, state):
             continue
         record["assembly_changes"] = [{"rule": "compiler.stair_openings", "floor_ids": floors,
             "source_entity_ids": ids, "source_entity_fingerprint": record["entity_fingerprint"]}]
-        record["entity_ids"] = [part for i in ids for part in replacements.get(i, [i])]
+        updated_items = []
+        for current_entity_id in ids:
+            for part in replacements.get(current_entity_id, [current_entity_id]):
+                updated_items.append(part)
+        record["entity_ids"] = updated_items
         record["entity_fingerprint"] = blueprint_fingerprint([actual[i] for i in record["entity_ids"]])
     from app.domain.components.names import resolve_component_name
     for marker in (state.get("resolved_design") or {}).get("component_markers", []):
@@ -177,25 +195,48 @@ async def compile_node(state: GenerationState) -> dict:
             schema = load_engine_schema()
             if schema is None:
                 raise ValueError("WILD Schema 不可用，保留修复前蓝图")
-            markers = {e["id"]: {"type": e["type"]} for bucket in ("elements", "components")
-                       for e in geometry.get(bucket, [])}
+            markers = {}
+            for geometry_bucket in ("elements", "components"):
+                for entity in geometry.get(geometry_bucket, []):
+                    markers[entity["id"]] = {"type": entity["type"]}
             protocol = _output_protocol(schema, markers, "", {})
+            failed_implementations = {}
+            for diagnostic in (state.get("component_diagnostics") or {}).values():
+                for marker_id, failed_row in (
+                    diagnostic.get("failed_implementations") or {}
+                ).items():
+                    failed_implementations[marker_id] = failed_row
             messages = [
                 {"role": "system", "content": build_patch_system_prompt(protocol)},
-                {"role": "user", "content": (
-                    "修复本次编译错误，只返回 ScenePatch。仅修改错误相关片段，保留已有实体 ID 和正确几何；"
-                    "不能通过删除实体、改变建筑形制或忽略图纸尺寸消除错误。缺失构件仅按本次图纸补充。"
-                    "repair_feedback.entity_ids 是允许修改的实体范围；其余实体及其共享材质、资产只读。"
-                    "新增实体使用 repair_feedback.marker_ids 中对应标记ID作为前缀，纳入该标记复验。"
-                    "数值先计算，返回完整 JSON。只有这一次修复机会，不重新生成整栋建筑。\n"
-                    + json.dumps({"errors": errors, "repair_feedback": feedback, "blueprint": blueprint,
-                                  "design_document": state.get("design_document"),
-                                  "failed_implementations": {marker: row
-                                      for diag in (state.get("component_diagnostics") or {}).values()
-                                      for marker, row in (diag.get("failed_implementations") or {}).items()},
-                                  "references": list(dict.fromkeys(diag["references"]
-                                      for diag in (state.get("component_diagnostics") or {}).values()
-                                      if diag.get("references")))}, ensure_ascii=False))},
+                {
+                    "role": "user",
+                    "content": (
+                        "修复本次编译错误，只返回 ScenePatch。仅修改错误相关片段，保留已有实体 ID 和正确几何；"
+                        "不能通过删除实体、改变建筑形制或忽略图纸尺寸消除错误。缺失构件仅按本次图纸补充。"
+                        "repair_feedback.entity_ids 是允许修改的实体范围；其余实体及其共享材质、资产只读。"
+                        "新增实体使用 repair_feedback.marker_ids 中对应标记ID作为前缀，纳入该标记复验。"
+                        "数值先计算，返回完整 JSON。只有这一次修复机会，不重新生成整栋建筑。\n"
+                        + json.dumps(
+                            {
+                                "errors": errors,
+                                "repair_feedback": feedback,
+                                "blueprint": blueprint,
+                                "design_document": state.get("design_document"),
+                                "failed_implementations": failed_implementations,
+                                "references": list(
+                                    dict.fromkeys(
+                                        diag["references"]
+                                        for diag in (
+                                            state.get("component_diagnostics") or {}
+                                        ).values()
+                                        if diag.get("references")
+                                    )
+                                ),
+                            },
+                            ensure_ascii=False,
+                        )
+                    ),
+                },
             ]
             repair["model_calls"] = 1
             new_model_calls = 1
@@ -211,10 +252,14 @@ async def compile_node(state: GenerationState) -> dict:
             scope_errors = _repair_scope_errors(blueprint, candidate, feedback)
             if scope_errors:
                 raise ValueError("；".join(scope_errors))
-            original_entities = {e["id"]: e for bucket in ("elements", "components")
-                                 for e in geometry.get(bucket, [])}
-            actual = {e["id"]: e for bucket in ("elements", "components")
-                      for e in candidate["geometry"].get(bucket, [])}
+            original_entities = {}
+            for geometry_bucket in ("elements", "components"):
+                for entity in geometry.get(geometry_bucket, []):
+                    original_entities[entity["id"]] = entity
+            actual = {}
+            for geometry_bucket in ("elements", "components"):
+                for entity in candidate["geometry"].get(geometry_bucket, []):
+                    actual[entity["id"]] = entity
             candidate_brief = deepcopy(brief)
             # 修改后的实体重新接受完整几何与设计关系校验，不能沿用旧指纹冒充通过。
             new_owners = {}

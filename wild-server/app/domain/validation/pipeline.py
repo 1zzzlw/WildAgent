@@ -58,7 +58,9 @@ def _severity_from_text(output: str) -> tuple[bool, bool]:
     return ("❌" in output, "⚠️" in output)
 
 
-def run_validation_pipeline(blueprint: dict, *, log_steps: bool = True, auto_fix: bool = True) -> list[PipelineStepResult]:
+def run_validation_pipeline(
+    blueprint: dict, *, log_steps: bool = True, auto_fix: bool = True
+) -> list[PipelineStepResult]:
     """按固定顺序执行所有校验 + 自动修正步骤，返回每步结果。
 
     ``log_steps``：交付路径要保持逐步骤日志（线上排查靠它）；编译期复用这条流水线
@@ -72,27 +74,41 @@ def run_validation_pipeline(blueprint: dict, *, log_steps: bool = True, auto_fix
         """执行校验工具，把文本标记转换成统一的步骤状态。"""
         output = _run_tool(tool_fn, bp)
         has_error, has_warning = _severity_from_text(output)
-        r = PipelineStepResult(step=step, name=name, output=output,
-                               has_error=has_error, has_warning=has_warning)
+        r = PipelineStepResult(
+            step=step,
+            name=name,
+            output=output,
+            has_error=has_error,
+            has_warning=has_warning,
+        )
         results.append(r)
         if log_steps:
-            logger.info(
-                f"[Pipeline Step {step}] {name}: "
-                f"{'❌ ERROR' if has_error else '⚠️ WARN' if has_warning else '✅ OK'}"
-            )
+            if has_error:
+                severity = "❌ ERROR"
+            elif has_warning:
+                severity = "⚠️ WARN"
+            else:
+                severity = "✅ OK"
+            logger.info(f"[Pipeline Step {step}] {name}: {severity}")
         return r
 
     def skip_step(step: int, name: str, reason: str) -> PipelineStepResult:
         """记录因上游条件不满足而未执行的步骤，保持流水线可追踪。"""
-        r = PipelineStepResult(step=step, name=name,
-                               output=f"⏭️  跳过（{reason}）",
-                               has_error=False, has_warning=False)
+        r = PipelineStepResult(
+            step=step,
+            name=name,
+            output=f"⏭️  跳过（{reason}）",
+            has_error=False,
+            has_warning=False,
+        )
         if auto_fix or not name.startswith("fix_"):
             results.append(r)
         return r
 
     # ── Step 1: 顶层结构 ──
-    r1 = run_step(1, "validate_blueprint_structure", validate_blueprint_structure, blueprint)
+    r1 = run_step(
+        1, "validate_blueprint_structure", validate_blueprint_structure, blueprint
+    )
     if r1.has_error:
         for s, n in [
             (2, "validate_element_required_fields"),
@@ -115,32 +131,55 @@ def run_validation_pipeline(blueprint: dict, *, log_steps: bool = True, auto_fix
         return results
 
     # ── Step 2: 必填字段 ──
-    r2 = run_step(2, "validate_element_required_fields", validate_element_required_fields, blueprint)
+    r2 = run_step(
+        2,
+        "validate_element_required_fields",
+        validate_element_required_fields,
+        blueprint,
+    )
 
     # ── Step 3: 引用完整性 ──
-    r3 = run_step(3, "validate_reference_integrity", validate_reference_integrity, blueprint)
+    r3 = run_step(
+        3, "validate_reference_integrity", validate_reference_integrity, blueprint
+    )
     if auto_fix and r3.has_error:
         fix_output = _run_tool(fix_material_references, blueprint)
         fix_error, fix_warning = _severity_from_text(fix_output)
-        results.append(PipelineStepResult(
-            step="3b", name="fix_material_references", output=fix_output,
-            has_error=fix_error, has_warning=fix_warning,
-        ))
+        results.append(
+            PipelineStepResult(
+                step="3b",
+                name="fix_material_references",
+                output=fix_output,
+                has_error=fix_error,
+                has_warning=fix_warning,
+            )
+        )
         reference_output = _run_tool(validate_reference_integrity, blueprint)
         recheck_error, recheck_warning = _severity_from_text(reference_output)
-        results.append(PipelineStepResult(
-            step="3c", name="validate_reference_integrity [recheck]", output=reference_output,
-            has_error=recheck_error, has_warning=recheck_warning,
-        ))
+        results.append(
+            PipelineStepResult(
+                step="3c",
+                name="validate_reference_integrity [recheck]",
+                output=reference_output,
+                has_error=recheck_error,
+                has_warning=recheck_warning,
+            )
+        )
 
     if r2.has_error:
         for s, n in [
-            (4, "validate_opening_coords"), ("4b", "validate_opening_fit"),
-            (5, "validate_wall_junctions"), (6, "validate_stair_alignment"),
-            (7, "validate_roof_coverage"), ("7b", "validate_element_dimensions"),
-            (8, "fix_opening_coords"), ("8b", "fix_opening_fit"),
-            ("8c", "fix_stair_alignment"), ("8d", "fix_element_dimensions"),
-            ("8e", "fix_roof_coverage"), ("8f", "fix_wall_junctions"),
+            (4, "validate_opening_coords"),
+            ("4b", "validate_opening_fit"),
+            (5, "validate_wall_junctions"),
+            (6, "validate_stair_alignment"),
+            (7, "validate_roof_coverage"),
+            ("7b", "validate_element_dimensions"),
+            (8, "fix_opening_coords"),
+            ("8b", "fix_opening_fit"),
+            ("8c", "fix_stair_alignment"),
+            ("8d", "fix_element_dimensions"),
+            ("8e", "fix_roof_coverage"),
+            ("8f", "fix_wall_junctions"),
             (9, "validate_collision"),
         ]:
             skip_step(s, n, "Step 2 必填字段校验未通过")
@@ -157,112 +196,100 @@ def run_validation_pipeline(blueprint: dict, *, log_steps: bool = True, auto_fix
     # ── Step 7: 屋顶覆盖 ──
     r7 = run_step(7, "validate_roof_coverage", validate_roof_coverage, blueprint)
     # ── Step 7b: 构件尺寸 ──
-    r7b = run_step("7b", "validate_element_dimensions", validate_element_dimensions, blueprint)
+    r7b = run_step(
+        "7b", "validate_element_dimensions", validate_element_dimensions, blueprint
+    )
     # ── Step 7c: 重复骨架质量门禁 ──
     run_step("7c", "validate_model_quality", validate_model_quality, blueprint)
     # ── Step 7d: 贯通构件逐层收进门禁 ──
-    run_step("7d", "validate_stacked_member_containment", validate_stacked_member_containment, blueprint)
+    run_step(
+        "7d",
+        "validate_stacked_member_containment",
+        validate_stacked_member_containment,
+        blueprint,
+    )
     # ── Step 7e: 墙顶 - 屋顶反向覆盖（多体量漏屋顶）──
     # 只报 ⚠️，不参与 8e 的 fix_roof_coverage（修不了"少一块屋顶"，
     # 补屋顶是生成侧的事），也不进 _final_errors，因此不阻断交付。
     run_step("7e", "validate_roof_top_coverage", validate_roof_top_coverage, blueprint)
 
     # ── Step 8: 自动修正门窗坐标 ──
-    if auto_fix and (r4.has_warning or r4.has_error or r4b.has_error or r4b.has_warning):
-        fix_out = _run_tool(fix_opening_coords, blueprint)
-        results.append(PipelineStepResult(
-            step=8, name="fix_opening_coords", output=fix_out,
-            has_error="❌" in fix_out, has_warning="⚠️" in fix_out,
-        ))
-        for chk_fn, chk_name in [
-            (validate_opening_coords, "validate_opening_coords [recheck]"),
-            (validate_opening_fit, "validate_opening_fit [recheck]"),
-        ]:
-            out = _run_tool(chk_fn, blueprint)
-            results.append(PipelineStepResult(
-                step=8, name=chk_name, output=out,
-                has_error="❌" in out, has_warning="⚠️" in out,
-            ))
+    if auto_fix and (
+        r4.has_warning or r4.has_error or r4b.has_error or r4b.has_warning
+    ):
+        _run_fix_and_rechecks(
+            blueprint,
+            results,
+            8,
+            ("fix_opening_coords", fix_opening_coords),
+            [
+                ("validate_opening_coords [recheck]", validate_opening_coords),
+                ("validate_opening_fit [recheck]", validate_opening_fit),
+            ],
+        )
     else:
         skip_step(8, "fix_opening_coords", "Step 4/4b 门窗坐标无问题")
 
     # ── Step 8b: 自动修正开口越界 ──
     if auto_fix and r4b.has_error:
-        fix_out = _run_tool(fix_opening_fit, blueprint)
-        results.append(PipelineStepResult(
-            step="8b", name="fix_opening_fit", output=fix_out,
-            has_error="❌" in fix_out, has_warning="⚠️" in fix_out,
-        ))
-        recheck_out = _run_tool(validate_opening_fit, blueprint)
-        results.append(PipelineStepResult(
-            step="8b", name="validate_opening_fit [recheck]", output=recheck_out,
-            has_error="❌" in recheck_out, has_warning="⚠️" in recheck_out,
-        ))
+        _run_fix_and_rechecks(
+            blueprint,
+            results,
+            "8b",
+            ("fix_opening_fit", fix_opening_fit),
+            [("validate_opening_fit [recheck]", validate_opening_fit)],
+        )
     else:
         skip_step("8b", "fix_opening_fit", "Step 4b 开口越界无严重问题")
 
     # ── Step 8c: 自动修正楼梯对齐 ──
     if auto_fix and (r6.has_warning or r6.has_error):
-        fix_out = _run_tool(fix_stair_alignment, blueprint)
-        results.append(PipelineStepResult(
-            step="8c", name="fix_stair_alignment", output=fix_out,
-            has_error="❌" in fix_out, has_warning="⚠️" in fix_out,
-        ))
-        recheck_out = _run_tool(validate_stair_alignment, blueprint)
-        results.append(PipelineStepResult(
-            step="8c", name="validate_stair_alignment [recheck]", output=recheck_out,
-            has_error="❌" in recheck_out, has_warning="⚠️" in recheck_out,
-        ))
+        _run_fix_and_rechecks(
+            blueprint,
+            results,
+            "8c",
+            ("fix_stair_alignment", fix_stair_alignment),
+            [("validate_stair_alignment [recheck]", validate_stair_alignment)],
+        )
     else:
         skip_step("8c", "fix_stair_alignment", "Step 6 楼梯对齐无问题")
 
     # ── Step 8d: 自动修正构件尺寸 ──
     if auto_fix and r7b.has_error:
-        fix_out = _run_tool(fix_element_dimensions, blueprint)
-        results.append(PipelineStepResult(
-            step="8d", name="fix_element_dimensions", output=fix_out,
-            has_error="❌" in fix_out, has_warning="⚠️" in fix_out,
-        ))
-        recheck_out = _run_tool(validate_element_dimensions, blueprint)
-        results.append(PipelineStepResult(
-            step="8d", name="validate_element_dimensions [recheck]", output=recheck_out,
-            has_error="❌" in recheck_out, has_warning="⚠️" in recheck_out,
-        ))
+        _run_fix_and_rechecks(
+            blueprint,
+            results,
+            "8d",
+            ("fix_element_dimensions", fix_element_dimensions),
+            [("validate_element_dimensions [recheck]", validate_element_dimensions)],
+        )
     else:
         skip_step("8d", "fix_element_dimensions", "Step 7b 构件尺寸无严重异常")
 
     # ── Step 8e: 自动修正屋顶覆盖 ──
     if auto_fix and (r7.has_error or r7.has_warning):
-        fix_out = _run_tool(fix_roof_coverage, blueprint)
-        results.append(PipelineStepResult(
-            step="8e", name="fix_roof_coverage", output=fix_out,
-            has_error="❌" in fix_out, has_warning="⚠️" in fix_out,
-        ))
-        recheck_out = _run_tool(validate_roof_coverage, blueprint)
-        results.append(PipelineStepResult(
-            step="8e", name="validate_roof_coverage [recheck]", output=recheck_out,
-            has_error="❌" in recheck_out, has_warning="⚠️" in recheck_out,
-        ))
+        _run_fix_and_rechecks(
+            blueprint,
+            results,
+            "8e",
+            ("fix_roof_coverage", fix_roof_coverage),
+            [("validate_roof_coverage [recheck]", validate_roof_coverage)],
+        )
     else:
         skip_step("8e", "fix_roof_coverage", "Step 7 屋顶覆盖无问题")
 
     # ── Step 8f: 自动对齐墙体端点 ──
     if auto_fix and (r5.has_warning or r5.has_error):
-        fix_out = _run_tool(fix_wall_junctions, blueprint)
-        results.append(PipelineStepResult(
-            step="8f", name="fix_wall_junctions", output=fix_out,
-            has_error="❌" in fix_out, has_warning="⚠️" in fix_out,
-        ))
-        recheck_out = _run_tool(validate_wall_junctions, blueprint)
-        results.append(PipelineStepResult(
-            step="8f", name="validate_wall_junctions [recheck]", output=recheck_out,
-            has_error="❌" in recheck_out, has_warning="⚠️" in recheck_out,
-        ))
-        quality_out = _run_tool(validate_model_quality, blueprint)
-        results.append(PipelineStepResult(
-            step="8f", name="validate_model_quality [recheck]", output=quality_out,
-            has_error="❌" in quality_out, has_warning="⚠️" in quality_out,
-        ))
+        _run_fix_and_rechecks(
+            blueprint,
+            results,
+            "8f",
+            ("fix_wall_junctions", fix_wall_junctions),
+            [
+                ("validate_wall_junctions [recheck]", validate_wall_junctions),
+                ("validate_model_quality [recheck]", validate_model_quality),
+            ],
+        )
     else:
         skip_step("8f", "fix_wall_junctions", "Step 5 墙体端点无问题")
 
@@ -271,22 +298,50 @@ def run_validation_pipeline(blueprint: dict, *, log_steps: bool = True, auto_fix
 
     # ── Step 9b: 自动修正竖向构件高程（悬空/穿入地板）──
     if auto_fix and (r9.has_warning or r9.has_error):
-        fix_out = _run_tool(fix_element_elevations, blueprint)
-        results.append(PipelineStepResult(
-            step="9b", name="fix_element_elevations", output=fix_out,
-            has_error="❌" in fix_out, has_warning="⚠️" in fix_out,
-        ))
-        recheck_out = _run_tool(validate_collision, blueprint)
-        results.append(PipelineStepResult(
-            step="9b", name="validate_collision [recheck]", output=recheck_out,
-            has_error="❌" in recheck_out, has_warning="⚠️" in recheck_out,
-        ))
+        _run_fix_and_rechecks(
+            blueprint,
+            results,
+            "9b",
+            ("fix_element_elevations", fix_element_elevations),
+            [("validate_collision [recheck]", validate_collision)],
+        )
     else:
         skip_step("9b", "fix_element_elevations", "Step 9 碰撞检测无问题")
 
     # ── Step 10: 组件专用校验兜底 ──
     # gen→val 已执行一次，这里针对合并、配额裁剪和自动修正后的最终蓝图复检，
     # 防止合法引用但超出父墙范围的组件流到前端编译器。
+    _validate_component_placements(blueprint, results, run_step, auto_fix)
+
+    if auto_fix:
+        # 后面的修复也可能改变前面已检查的宿主/尺寸，完整复查实际最终产物。
+        for result in run_validation_pipeline(
+            blueprint, log_steps=log_steps, auto_fix=False
+        ):
+            if result.name.startswith("validate_"):
+                result.name += " [recheck]"
+                results.append(result)
+    return results
+
+
+def _run_fix_and_rechecks(blueprint, results, step, fix, checks):
+    """执行一个已有修复工具及其复检，保留步骤名称、顺序和状态标记。"""
+    fix_name, fix_tool = fix
+    for name, tool in [(fix_name, fix_tool), *checks]:
+        output = _run_tool(tool, blueprint)
+        results.append(
+            PipelineStepResult(
+                step=step,
+                name=name,
+                output=output,
+                has_error="❌" in output,
+                has_warning="⚠️" in output,
+            )
+        )
+
+
+def _validate_component_placements(blueprint, results, run_step, auto_fix):
+    """按实际构件类型运行专用校验及必要的修复复检。"""
     from app.domain.validation.components import COMPONENT_TOOLS
     from app.domain.validation.components import fix_component
     from app.domain.validation.components import validate_component
@@ -299,7 +354,7 @@ def run_validation_pipeline(blueprint: dict, *, log_steps: bool = True, auto_fix
         ]
         if isinstance(item, dict) and item.get("type")
     }
-    
+
     component_types = sorted((entity_types & set(COMPONENT_TOOLS)) - {"roof"})
     for index, component_type in enumerate(component_types, start=1):
         validator_name = f"validate_{component_type}_placement"
@@ -313,27 +368,23 @@ def run_validation_pipeline(blueprint: dict, *, log_steps: bool = True, auto_fix
             continue
         fix_output = fix_component(component_type, blueprint)
         fix_error, fix_warning = _severity_from_text(fix_output)
-        results.append(PipelineStepResult(
-            step=f"10.{index}",
-            name=f"fix_{component_type}_placement",
-            output=fix_output,
-            has_error=fix_error,
-            has_warning=fix_warning,
-        ))
+        results.append(
+            PipelineStepResult(
+                step=f"10.{index}",
+                name=f"fix_{component_type}_placement",
+                output=fix_output,
+                has_error=fix_error,
+                has_warning=fix_warning,
+            )
+        )
         recheck_output = validate_component(component_type, blueprint)
         recheck_error, recheck_warning = _severity_from_text(recheck_output)
-        results.append(PipelineStepResult(
-            step=f"10.{index}",
-            name=f"{validator_name} [recheck]",
-            output=recheck_output,
-            has_error=recheck_error,
-            has_warning=recheck_warning,
-        ))
-
-    if auto_fix:
-        # 后面的修复也可能改变前面已检查的宿主/尺寸，完整复查实际最终产物。
-        for result in run_validation_pipeline(blueprint, log_steps=log_steps, auto_fix=False):
-            if result.name.startswith("validate_"):
-                result.name += " [recheck]"
-                results.append(result)
-    return results
+        results.append(
+            PipelineStepResult(
+                step=f"10.{index}",
+                name=f"{validator_name} [recheck]",
+                output=recheck_output,
+                has_error=recheck_error,
+                has_warning=recheck_warning,
+            )
+        )

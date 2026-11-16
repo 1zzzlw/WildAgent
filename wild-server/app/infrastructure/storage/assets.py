@@ -365,11 +365,10 @@ class LocalAssetStorage:
 
     def resolve_file(self, asset_id: str, filename: str) -> Path:
         self._validate_asset_id(asset_id)
-        allowed_names = {
-            f"{channel}{extension}"
-            for channel in CHANNELS
-            for extension in (".png", ".jpg", ".webp")
-        }
+        allowed_names = set()
+        for channel in CHANNELS:
+            for extension in (".png", ".jpg", ".webp"):
+                allowed_names.add(f"{channel}{extension}")
         if filename not in allowed_names:
             raise AssetStorageError("不允许访问该资产文件")
         path = (self.root_dir / asset_id / filename).resolve()

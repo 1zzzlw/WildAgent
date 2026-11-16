@@ -169,11 +169,16 @@ def curve_points(start: list[float], end: list[float], curve: object) -> list[Po
                 return []
             ux, uz = (bx - sx) / length, (bz - sz) / length
             rise = float(item.get("rise") or 0.0)
-            generated = [
-                (sx + ux * length * ratio - uz * rise * math.sin(math.pi * ratio),
-                 sz + uz * length * ratio + ux * rise * math.sin(math.pi * ratio))
-                for ratio in (index / count for index in range(count + 1))
-            ]
+            generated = []
+            for index in range(count + 1):
+                ratio = index / count
+                sine = math.sin(math.pi * ratio)
+                generated.append(
+                    (
+                        sx + ux * length * ratio - uz * rise * sine,
+                        sz + uz * length * ratio + ux * rise * sine,
+                    )
+                )
         else:
             generated = [
                 (sx + (bx - sx) * index / count, sz + (bz - sz) * index / count)

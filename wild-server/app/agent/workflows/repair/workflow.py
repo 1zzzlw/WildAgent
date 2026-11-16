@@ -36,16 +36,27 @@ async def callback_node(state: GenerationState) -> dict:
     7. 只有完整通过且保持已履约项时提交；其余候选回滚
     """
     source_blueprint = state.get("merged_blueprint") or {}
-    before = evaluate_candidate(source_blueprint, design_document=state.get("design_document"),
-                                design_brief=state.get("design_brief"), source="callback_before")
+    before = evaluate_candidate(
+        source_blueprint,
+        design_document=state.get("design_document"),
+        design_brief=state.get("design_brief"),
+        source="callback_before",
+    )
     prior_audit = state.get("repair_audit") or {}
     source_fingerprint = blueprint_fingerprint(source_blueprint)
     if before["approved_design_errors"]:
-        return {"repair_audit": {"accepted": False, "stop_reason": "design_revision_required",
+        return {
+            "repair_audit": {
+                "accepted": False,
+                "stop_reason": "design_revision_required",
                 "source_fingerprint": source_fingerprint,
-                "reason": "批准版本本身几何无效，局部改值不能同时满足几何与批准门禁；请修订后重新审核"}}
-    if (prior_audit.get("source_fingerprint") == source_fingerprint
-            and prior_audit.get("accepted") is False):
+                "reason": "批准版本本身几何无效，局部改值不能同时满足几何与批准门禁；请修订后重新审核",
+            }
+        }
+    if (
+        prior_audit.get("source_fingerprint") == source_fingerprint
+        and prior_audit.get("accepted") is False
+    ):
         return {"repair_audit": {**prior_audit, "stop_reason": "repeated_candidate"}}
     failed_components = state.get("failed_components", [])
     if not failed_components:
@@ -55,21 +66,9 @@ async def callback_node(state: GenerationState) -> dict:
     # ── 0. per-component 重试过滤 ──
     max_retries = state.get("max_retries", 3)
     comp_retries = dict(state.get("component_retry_counts", {}))
-    retryable: list[dict] = []
-    skipped_exhausted: list[str] = []
-
-    for fc in failed_components:
-        comp_id = fc.get("component_id", "")
-        current = comp_retries.get(comp_id, 0)
-        if current >= max_retries:
-            skipped_exhausted.append(comp_id)
-            logger.warning(f"[callback_node] {comp_id} 已达 per-component 重试上限 ({current}/{max_retries}), 跳过")
-        else:
-            comp_retries[comp_id] = current + 1
-            retryable.append(fc)
-
-    if skipped_exhausted:
-        logger.info(f"[callback_node] 跳过 {len(skipped_exhausted)} 个耗尽重试的组件: {skipped_exhausted}")
+    retryable, skipped_exhausted = _select_retryable_components(
+        failed_components, comp_retries, max_retries
+    )
 
     if not retryable:
         logger.info("[callback_node] 所有失败组件均已耗尽重试")
@@ -78,7 +77,9 @@ async def callback_node(state: GenerationState) -> dict:
             "component_retry_counts": comp_retries,
         }
 
-    logger.info(f"[callback_node] 开始修正 {len(retryable)} 个失败组件 (已跳过 {len(skipped_exhausted)} 个)")
+    logger.info(
+        f"[callback_node] 开始修正 {len(retryable)} 个失败组件 (已跳过 {len(skipped_exhausted)} 个)"
+    )
 
     skeleton_summary = state.get("skeleton_summary", "")
     skeleton_blueprint = state.get("skeleton_blueprint", {})
@@ -87,58 +88,11 @@ async def callback_node(state: GenerationState) -> dict:
     on_reasoning_delta = get_reasoning_callback()
 
     # ── 1. 精准 RAG + 工具数据（按失败组件类型检索）──
-    from app.agent.runtime import agent_runtime
-
-    failed_types = list({fc.get("component_type", "") for fc in retryable})
-    queries = []
-    for ftype in failed_types:
-        if ftype:
-            queries.append(SpecQuery(
-                f"{ftype} component specification rules",
-                {"entity_type": ftype}
-            ))
-
-    if not queries:
-        queries = [SpecQuery("component rules specification", {})]
-
-    try:
-        spec_text = agent_runtime.spec_loader.load_many(queries, per_query=2)
-    except Exception as exc:
-        spec_text = ""
-        logger.warning(f"[callback_node] RAG 检索失败，继续使用校验上下文: {exc}")
-    logger.info(f"[callback_node] RAG 上下文: {len(spec_text)} 字符")
+    spec_text = await _load_repair_reference(retryable)
 
     # ── 2. 运行组件工具，获取空间约束数据 ──
     # 为每个可重试的失败组件构建临时 blueprint 并跑 validate 工具
-    enriched_failed = []
-    for fc in retryable:
-        enriched = dict(fc)  # 拷贝原始失败信息
-        comp_type = fc.get("component_type", "")
-
-        # 尝试运行组件校验工具获取精确空间数据
-        tool_context = ""
-        try:
-            from app.domain.validation.components import validate_component
-
-            # 宿主校验依赖同墙门窗，必须使用当前完整场景；校验器只读其副本。
-            from copy import deepcopy
-            temp_bp = deepcopy(state.get("merged_blueprint") or skeleton_blueprint)
-            geometry = temp_bp.get("geometry") or {}
-            entities = [*geometry.get("elements", []), *geometry.get("components", [])]
-            target = next((item for item in entities if item.get("id") == fc.get("component_id")),
-                          fc.get("current_params") or {})
-            host = target.get("parentWall") or target.get("parentRoof") or target.get("parentFloor")
-            enriched["context_entities"] = [item for item in entities
-                if item.get("id") == host or (host and item.get("parentWall") == host
-                    and item.get("type") in {"door", "window", "bay_window"})]
-            tool_context = validate_component(comp_type, temp_bp)
-            if tool_context:
-                logger.info(f"[callback_node] 工具数据 ({comp_type}): {len(tool_context)} 字符")
-        except Exception as e:
-            logger.warning(f"[callback_node] 工具调用失败 ({comp_type}): {e}")
-
-        enriched["tool_data"] = tool_context
-        enriched_failed.append(enriched)
+    enriched_failed = _enrich_repair_failures(state, retryable, skeleton_blueprint)
 
     # ── 3. 构建 callback prompt ──
     system_prompt = build_callback_prompt(
@@ -162,7 +116,7 @@ async def callback_node(state: GenerationState) -> dict:
 
     reply_text = ""
     reasoning = ""
-    
+
     try:
         llm = create_llm(enable_thinking=False, streaming=False)
         llm_result = await invoke_llm(llm, messages)
@@ -204,21 +158,7 @@ async def callback_node(state: GenerationState) -> dict:
             },
         }
 
-    allowed_ids = {
-        item.get("component_id") for item in enriched_failed
-        if item.get("component_id") and not item.get("is_design_target")
-    }
-    related_ids = {
-        related_id
-        for item in enriched_failed
-        for related_id in item.get("related_entity_ids", [])
-        if related_id
-    }
-    allowed_ids.update(related_ids)
-    allowed_add_types = {
-        item.get("component_type") for item in enriched_failed
-        if item.get("is_design_target") and item.get("component_type")
-    }
+    allowed_ids, allowed_add_types, related_ids = _repair_action_scope(enriched_failed)
     candidate, action_reports = execute_repair_actions(
         state.get("merged_blueprint", {}),
         repair_actions,
@@ -227,7 +167,8 @@ async def callback_node(state: GenerationState) -> dict:
         allowed_remove_ids=related_ids,
     )
     changed_ids = {
-        report["entity_id"] for report in action_reports
+        report["entity_id"]
+        for report in action_reports
         if report.get("success") and report.get("entity_id")
     }
     if not changed_ids:
@@ -252,7 +193,8 @@ async def callback_node(state: GenerationState) -> dict:
     if on_reasoning_delta:
         succeeded = [
             f"{report.get('tool')}({report.get('entity_id')})"
-            for report in action_reports if report.get("success")
+            for report in action_reports
+            if report.get("success")
         ]
         rejected = sum(1 for report in action_reports if not report.get("success"))
         await on_reasoning_delta(
@@ -264,16 +206,9 @@ async def callback_node(state: GenerationState) -> dict:
         )
 
     # before/after 使用完全相同的批准版本与完整只读门禁。
-    after = evaluate_candidate(candidate, design_document=state.get("design_document"),
-                               design_brief=state.get("design_brief"), source="callback")
-    before_issues, after_issues = before["issues"], after["issues"]
-    progress = compare_issue_sets(before_issues, after_issues)
-    introduced_issues = progress["introduced_issues"]
-    before_satisfied = set((before["fulfillment"] or {}).get("satisfied_ids") or [])
-    after_satisfied = set((after["fulfillment"] or {}).get("satisfied_ids") or [])
-    progress["accepted"] = (progress["accepted"] and not after_issues and not after["errors"]
-                            and before_satisfied <= after_satisfied
-                            and blueprint_fingerprint(candidate) != source_fingerprint)
+    after, before_issues, after_issues, progress, introduced_issues = (
+        _evaluate_repair_progress(state, candidate, before, source_fingerprint)
+    )
 
     if not progress["accepted"]:
         logger.warning(
@@ -340,3 +275,146 @@ async def callback_node(state: GenerationState) -> dict:
     }
 
 
+def _select_retryable_components(failed_components, comp_retries, max_retries):
+    """按现有目标重试次数筛选可修复构件。"""
+    retryable: list[dict] = []
+    skipped_exhausted: list[str] = []
+
+    for fc in failed_components:
+        comp_id = fc.get("component_id", "")
+        current = comp_retries.get(comp_id, 0)
+        if current >= max_retries:
+            skipped_exhausted.append(comp_id)
+            logger.warning(
+                f"[callback_node] {comp_id} 已达 per-component 重试上限 ({current}/{max_retries}), 跳过"
+            )
+        else:
+            comp_retries[comp_id] = current + 1
+            retryable.append(fc)
+
+    if skipped_exhausted:
+        logger.info(
+            f"[callback_node] 跳过 {len(skipped_exhausted)} 个耗尽重试的组件: {skipped_exhausted}"
+        )
+    return retryable, skipped_exhausted
+
+
+async def _load_repair_reference(retryable):
+    """加载当前失败构件的已有修订资料。"""
+    from app.agent.runtime import agent_runtime
+
+    failed_types = list({fc.get("component_type", "") for fc in retryable})
+    queries = []
+    for ftype in failed_types:
+        if ftype:
+            queries.append(
+                SpecQuery(
+                    f"{ftype} component specification rules", {"entity_type": ftype}
+                )
+            )
+
+    if not queries:
+        queries = [SpecQuery("component rules specification", {})]
+
+    try:
+        spec_text = agent_runtime.spec_loader.load_many(queries, per_query=2)
+    except Exception as exc:
+        spec_text = ""
+        logger.warning(f"[callback_node] RAG 检索失败，继续使用校验上下文: {exc}")
+    logger.info(f"[callback_node] RAG 上下文: {len(spec_text)} 字符")
+    return spec_text
+
+
+def _enrich_repair_failures(state, retryable, skeleton_blueprint):
+    """使用完整场景的副本补充宿主和空间校验数据。"""
+    enriched_failed = []
+    for fc in retryable:
+        enriched = dict(fc)  # 拷贝原始失败信息
+        comp_type = fc.get("component_type", "")
+
+        # 尝试运行组件校验工具获取精确空间数据
+        tool_context = ""
+        try:
+            from app.domain.validation.components import validate_component
+
+            # 宿主校验依赖同墙门窗，必须使用当前完整场景；校验器只读其副本。
+            from copy import deepcopy
+
+            temp_bp = deepcopy(state.get("merged_blueprint") or skeleton_blueprint)
+            geometry = temp_bp.get("geometry") or {}
+            entities = [*geometry.get("elements", []), *geometry.get("components", [])]
+            target = next(
+                (item for item in entities if item.get("id") == fc.get("component_id")),
+                fc.get("current_params") or {},
+            )
+            host = (
+                target.get("parentWall")
+                or target.get("parentRoof")
+                or target.get("parentFloor")
+            )
+            enriched["context_entities"] = [
+                item
+                for item in entities
+                if item.get("id") == host
+                or (
+                    host
+                    and item.get("parentWall") == host
+                    and item.get("type") in {"door", "window", "bay_window"}
+                )
+            ]
+            tool_context = validate_component(comp_type, temp_bp)
+            if tool_context:
+                logger.info(
+                    f"[callback_node] 工具数据 ({comp_type}): {len(tool_context)} 字符"
+                )
+        except Exception as e:
+            logger.warning(f"[callback_node] 工具调用失败 ({comp_type}): {e}")
+
+        enriched["tool_data"] = tool_context
+        enriched_failed.append(enriched)
+    return enriched_failed
+
+
+def _repair_action_scope(enriched_failed):
+    """从明确的失败实体和关联对象计算本轮允许修订的范围。"""
+    allowed_ids = {
+        item.get("component_id")
+        for item in enriched_failed
+        if item.get("component_id") and not item.get("is_design_target")
+    }
+    related_ids = set()
+    for current_item in enriched_failed:
+        for related_id in current_item.get("related_entity_ids", []):
+            if not related_id:
+                continue
+            related_ids.add(related_id)
+    allowed_ids.update(related_ids)
+    allowed_add_types = {
+        item.get("component_type")
+        for item in enriched_failed
+        if item.get("is_design_target") and item.get("component_type")
+    }
+    return allowed_ids, allowed_add_types, related_ids
+
+
+def _evaluate_repair_progress(state, candidate, before, source_fingerprint):
+    """复验完整候选，核对错误关闭、履约保留和产物变化。"""
+    after = evaluate_candidate(
+        candidate,
+        design_document=state.get("design_document"),
+        design_brief=state.get("design_brief"),
+        source="callback",
+    )
+    before_issues, after_issues = before["issues"], after["issues"]
+    progress = compare_issue_sets(before_issues, after_issues)
+    introduced_issues = progress["introduced_issues"]
+    before_satisfied = set((before["fulfillment"] or {}).get("satisfied_ids") or [])
+    after_satisfied = set((after["fulfillment"] or {}).get("satisfied_ids") or [])
+    progress["accepted"] = (
+        progress["accepted"]
+        and not after_issues
+        and not after["errors"]
+        and before_satisfied <= after_satisfied
+        and blueprint_fingerprint(candidate) != source_fingerprint
+    )
+    return after, before_issues, after_issues, progress, introduced_issues

@@ -31,12 +31,12 @@ def deduplicate_balcony_representations(blueprint: dict) -> dict:
         for item in elements
         if isinstance(item, dict) and item.get("type") == "wall" and item.get("id")
     }
-    wall_points = [
-        point
-        for wall in walls.values()
-        for point in (wall.get("from"), wall.get("to"))
-        if is_finite_vec3(point)
-    ]
+    wall_points = []
+    for wall in walls.values():
+        for current_point in (wall.get("from"), wall.get("to")):
+            if not is_finite_vec3(current_point):
+                continue
+            wall_points.append(current_point)
     if not wall_points:
         return {"removed_floor_ids": [], "removed_railing_count": 0}
 
