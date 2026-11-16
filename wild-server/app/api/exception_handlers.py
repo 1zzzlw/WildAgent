@@ -3,6 +3,7 @@ from redis.exceptions import RedisError
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.infrastructure.persistence.repositories.errors import AccessDenied
+from app.infrastructure.persistence.repositories.errors import AccountUnavailable, BlueprintLocked, OperationConflict, QuotaExceeded
 from app.application.errors import ApplicationError
 
 ERROR_STATUS = {"invalid_input": 400, "unauthenticated": 401, "forbidden": 403,
@@ -27,8 +28,21 @@ async def ownership_error_handler(request, exc):
     return JSONResponse(status_code=404, content={"detail": "资料不存在"})
 
 
+async def permission_error_handler(request, exc):
+    status = 403
+    if isinstance(exc, BlueprintLocked):
+        status = 423
+    elif isinstance(exc, QuotaExceeded):
+        status = 429
+    elif isinstance(exc, OperationConflict):
+        status = 409
+    return JSONResponse(status_code=status, content={"detail": str(exc)})
+
+
 def install_exception_handlers(app):
     app.add_exception_handler(ApplicationError, application_error_handler)
     app.add_exception_handler(SQLAlchemyError, storage_error_handler)
     app.add_exception_handler(RedisError, storage_error_handler)
     app.add_exception_handler(AccessDenied, ownership_error_handler)
+    for error in (AccountUnavailable, BlueprintLocked, QuotaExceeded, OperationConflict):
+        app.add_exception_handler(error, permission_error_handler)

@@ -14,6 +14,7 @@ from app.api.websocket.heartbeat import WebSocketHeartbeat
 from app.api.dependencies import current_user
 from app.application.access import check_session
 from app.application.errors import ApplicationError
+from app.infrastructure.persistence.repositories.activity import record_activity
 from app.infrastructure.persistence.repositories.conversations import conversations
 from app.application.generation.requests import _prepare_server_request
 from app.api.websocket.presenter import send_event as _send_event
@@ -149,6 +150,11 @@ async def agent_websocket(ws: WebSocket):
             elif msg_type == "user_message":
                 # 进入后台任务或持久化队列前，由服务端覆盖身份并脱敏输入。
                 data = _prepare_server_request(data, access_context)
+                data["_server_user_id"] = user["id"]
+                await asyncio.to_thread(record_activity, user["id"], "ai.request",
+                                       session_id=data.get("session_id"), request_id=data.get("request_id"),
+                                       key="ai.request:" + str(data.get("request_id")),
+                                       details={"message": data.get("message", "")[:12000]})
                 job, created = await generation_job_service.start_job(data, ws)
                 if not created:
                     await generation_job_service.resume_or_replay(

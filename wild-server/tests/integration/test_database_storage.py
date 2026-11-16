@@ -97,14 +97,14 @@ def test_wrong_code_has_attempt_limit_and_confirmation_is_enforced(signup):
     assert accounts.find("designer@example.com") is None
 
 
-def test_identity_is_database_managed_and_does_not_change_functions(signup, storage):
+def test_identity_is_database_managed_and_controls_admin_permissions(signup, storage):
     client, sent, _ = signup
     code = request_code(client, sent)
     assert client.post("/api/auth/register", json={**registration(code), "identity": 2}).status_code == 422
     result = client.post("/api/auth/register", json=registration(code))
     assert result.status_code == 201
     assert result.json()["identity"] == 1
-    assert client.get("/api/config/test").status_code == 200
+    assert client.get("/api/config/test").status_code == 403
     assert client.post("/api/auth/login", json={"username":"设计师", "password":"Wild-test-123"}).status_code == 422
     with storage.begin() as conn:
         conn.execute(users.update().where(users.c.email == "designer@example.com").values(identity=2))
@@ -112,7 +112,7 @@ def test_identity_is_database_managed_and_does_not_change_functions(signup, stor
     assert client.get("/api/config/test").status_code == 200
     with storage.begin() as conn:
         conn.execute(users.update().where(users.c.email == "designer@example.com").values(identity=1))
-    assert client.get("/api/config/test").status_code == 200
+    assert client.get("/api/config/test").status_code == 403
 
 
 def test_expired_code_and_smtp_failure_are_not_successful(signup, monkeypatch):

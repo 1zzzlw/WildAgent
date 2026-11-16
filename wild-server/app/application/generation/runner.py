@@ -35,6 +35,8 @@ async def run_generation(sink, payload: dict, resume: bool = False) -> None:
 
 
 async def execute_graph(ws: EventSink, data: dict, *, resume: bool = False):
+    from app.infrastructure.persistence.repositories.errors import AccountUnavailable, BlueprintLocked, OperationConflict, QuotaExceeded
+
     run = GenerationExecution(sink=ws, data=data)
     from app.agent.state import merge_state_mapping
 
@@ -52,6 +54,14 @@ async def execute_graph(ws: EventSink, data: dict, *, resume: bool = False):
     event_stream = None
 
     try:
+        if data.get("_server_user_id"):
+            from app.infrastructure.persistence.repositories.accounts import accounts
+            from app.application.access import check_session_writable
+
+            account = await asyncio.to_thread(accounts.get, data["_server_user_id"])
+            if not account or account["status"] != "active":
+                raise AccountUnavailable("账号已被停用，生成任务不能继续")
+            await asyncio.to_thread(check_session_writable, run.session_id, account)
         await generation_job_service.initialize()
         run.graph = get_graph(
             enable_callback=True, checkpointer=generation_job_service.checkpointer
@@ -76,6 +86,13 @@ async def execute_graph(ws: EventSink, data: dict, *, resume: bool = False):
 
         await consume_graph_events(run, event_stream)
 
+    except (AccountUnavailable, BlueprintLocked, OperationConflict, QuotaExceeded) as exc:
+        await _send_event(ws, {
+            "type": "error", "request_id": run.request_id, "session_id": run.session_id,
+            "code": "quota_exhausted" if isinstance(exc, QuotaExceeded) else "permission_denied",
+            "error": str(exc),
+        })
+        return
     except Exception as e:
         logger.exception(f"[{run.request_id}] LangGraph 异常: {e}")
         if "classifier" in run.node_starts:
@@ -303,7 +320,8 @@ def _initialize_graph_context(run):
         run.initial_state["max_retries"],
     )
     run.graph_config = {
-        "configurable": {"thread_id": f"generation:{run.request_id}"},
+        "configurable": {"thread_id": f"generation:{run.request_id}",
+                         "account_id": run.data.get("_server_user_id")},
         "recursion_limit": recursion_limit,
     }
     run.all_diags: dict[str, dict] = {}

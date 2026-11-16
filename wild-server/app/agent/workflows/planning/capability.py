@@ -15,7 +15,7 @@
 - **发散需求**（调度层面）：用户想加的东西系统支持，只是这次计划里没有——
   那由 ``replanner`` 追加条目解决，不是能力缺失。
 
-⚠️ 2026-09-23 移除 `furniture` 条目：它当时写着"引擎没有家具构件"，但引擎有
+ 2026-09-23 移除 `furniture` 条目：它当时写着"引擎没有家具构件"，但引擎有
 （`wild-core/src/primitive/geometry/furniture.ts` 十个子类型）、schema 合法、
 `spatial_tools` 有专门校验，缺的只是生成侧注册。这是一条**误判**，
 已被 `audit_capability_parity.py` 的 ⑥ 项抓出。旧的错误声明比没有更糟：
@@ -61,8 +61,15 @@ CAPABILITY_GAPS: tuple[CapabilityGap, ...] = (
         # 这不是"家具做不到"——家具能做（见文件头 2026-09-23 的说明），
         # 缺的是"哪一间房"这件事。
         terms=(
-            "房间位置", "房间布局", "功能分区平面", "内部隔墙", "房间分隔", "户型图",
-            "房间里", "房间内", "室内",
+            "房间位置",
+            "房间布局",
+            "功能分区平面",
+            "内部隔墙",
+            "房间分隔",
+            "户型图",
+            "房间里",
+            "房间内",
+            "室内",
         ),
         target="architecture.floor_plan",
         notice="当前不设计室内房间位置、房间布局与内部隔墙，本次不会给出房间平面。",
@@ -81,7 +88,12 @@ CAPABILITY_GAPS: tuple[CapabilityGap, ...] = (
 #: 交付媒介与系统产物不一致：不产出二维平面图，但体量与立面会以图纸 SVG 呈现。
 #: 这类表述**不算能力缺失**（图的语义都在），只记一条提示，不阻断、不判死。
 PRESENTATION_MEDIUM_TERMS: tuple[str, ...] = (
-    "平面草图", "平面图", "二维平面", "2d 平面", "2d平面", "剖面图",
+    "平面草图",
+    "平面图",
+    "二维平面",
+    "2d 平面",
+    "2d平面",
+    "剖面图",
 )
 
 
@@ -137,7 +149,12 @@ def capability_notes(user_message: str) -> list[dict[str, Any]]:
     """给 state/前端用的能力缺口说明（与条目同源，避免两处各写一份话术）。"""
 
     return [
-        {"id": gap.id, "label": gap.label, "notice": gap.notice, "fallback": gap.fallback}
+        {
+            "id": gap.id,
+            "label": gap.label,
+            "notice": gap.notice,
+            "fallback": gap.fallback,
+        }
         for gap in detect_capability_gaps(user_message)
     ]
 

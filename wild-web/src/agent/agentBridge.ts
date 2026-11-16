@@ -41,6 +41,7 @@
  */
 
 import { useAgentStore } from '../stores/agentStore'
+import { ElMessage } from 'element-plus'
 import { useSceneStore } from '../stores/sceneStore'
 import { useSelectionStore } from '../stores/selectionStore'
 import { useAuthStore } from '../stores/authStore'
@@ -463,6 +464,9 @@ export class AgentBridge {
   private handleMessage(message: AgentMessage) {
     const agentStore = useAgentStore()
     const presenceStore = usePresenceStore()
+    if (['agent_reply', 'error', 'blueprint_generated', 'patch_proposal'].includes(message.type)) {
+      void useAuthStore().refresh().catch(() => {})
+    }
 
     switch (message.type) {
       case 'generation_resumed':
@@ -867,7 +871,7 @@ export class AgentBridge {
 
       agentStore.setBlueprintLoaded(filename)
       const reconstructed = await sceneStore.loadBlueprint(
-        typedBlueprint, name, sceneStore.document?.revision)
+        typedBlueprint, name)
       if (!reconstructed) {
         const entity = sceneStore.reconstructed
         const reconstructionErrors = entity?.diagnostics.filter(item => item.level === 'error') || []
@@ -938,9 +942,10 @@ export class AgentBridge {
   /** 同步当前 Blueprint 到后端（PUT 覆盖写入，日期子目录格式） */
   async syncBlueprintToBackend(
     blueprint: Record<string, unknown>,
-    target?: { sessionId: string; revision: number },
+    target?: { sessionId: string; revision: number; operationId?: string; label?: string; baseRevision?: number },
   ): Promise<boolean> {
     if (!useAuthStore().canEdit) return false
+    const accountId = useAuthStore().user?.id
     const agentStore = useAgentStore()
     const sceneStore = useSceneStore()
     const sessionId = target?.sessionId || agentStore.currentSessionId
@@ -960,14 +965,25 @@ export class AgentBridge {
       const relPath = session?.filename || buildSceneRelPath(sessionId, payload)
       const response = await fetch(`${baseUrl}/api/scenes/${relPath}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(target?.operationId ? { 'X-Operation-Id': target.operationId } : {}),
+          ...(target?.label ? { 'X-Operation-Label': encodeURIComponent(target.label.slice(0, 200)) } : {}),
+          ...(target?.baseRevision !== undefined ? { 'X-Base-Revision': String(target.baseRevision) } : {}),
+        },
         body: JSON.stringify(payload),
       })
       if (!response.ok) {
-        console.error('[AgentBridge] 同步蓝图失败:', response.status)
+        const failure = await response.json().catch(() => ({}))
+        ElMessage.error(typeof failure.detail === 'string' ? failure.detail : '保存失败，请稍后重试')
+        if (response.status === 423 && session) session.locked = true
+        void useAuthStore().refresh().catch(() => {})
         return false
       }
       if (session) session.filename = relPath
+      const saved = await response.json()
+      if (accountId && saved.usage) useAuthStore().updateUsage(accountId, saved.usage)
+      else void useAuthStore().refresh().catch(() => {})
       return true
     } catch (err) {
       console.error('[AgentBridge] 同步蓝图异常:', err)
@@ -1008,6 +1024,9 @@ export class AgentBridge {
   /** 删除会话记录、设计与关联蓝图；未保存的草稿同样使用会话接口。 */
   async deleteSession(sessionId: string): Promise<{ ok: boolean; error?: string }> {
     if (!useAuthStore().canEdit) return { ok: false, error: '请使用账号密码登录后操作' }
+    const target = useAgentStore().sessions.find(item => item.session_id === sessionId)
+    if (target?.locked) return { ok: false, error: '蓝图已锁定，请先由管理员解锁' }
+    if (target?.filename && !useAuthStore().isAdmin) return { ok: false, error: '删除蓝图需要管理员权限' }
     try {
       // 完成已有持久化请求后再删除，避免迟到的 Turn 写入重新创建会话。
       await Promise.all([this.turnSyncQueues.get(sessionId), this.messageSyncQueues.get(sessionId)])
@@ -1028,7 +1047,7 @@ export class AgentBridge {
   }
 
   /** 获取当前账号可访问的会话列表。 */
-  async fetchSessionList(): Promise<Array<{ session_id?: string; filename?: string; name: string; elements_count: number; updated_at: number; created_at?: number; components_count?: number; message_count?: number; status?: string; building_type?: string }> | null> {
+  async fetchSessionList(): Promise<Array<{ session_id?: string; filename?: string; name: string; elements_count: number; updated_at: number; created_at?: number; components_count?: number; message_count?: number; status?: string; building_type?: string; locked?: boolean }> | null> {
     try {
       const baseUrl = this.httpBaseUrl
 

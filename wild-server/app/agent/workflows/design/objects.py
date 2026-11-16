@@ -41,7 +41,9 @@ def _furniture_spec(spec_loader) -> str:
     """预取家具构件契约。检索命中为空时返回空串，由确定性兜底顶上。"""
 
     queries = [
-        SpecQuery("家具参数契约", {"doc_type": "component", "entity_type": "furniture"}),
+        SpecQuery(
+            "家具参数契约", {"doc_type": "component", "entity_type": "furniture"}
+        ),
         SpecQuery(
             "家具 桌子 椅子 尺寸 摆位 朝向",
             {"doc_type": "component", "topic": "parameters"},
@@ -68,8 +70,7 @@ async def object_planner(state: GenerationState) -> dict:
     if on_reasoning_delta:
         await on_reasoning_delta(
             "object_design",
-            "\n### 物件方案\n"
-            + "正在确定物件种类、尺寸与摆位...\n",
+            "\n### 物件方案\n" + "正在确定物件种类、尺寸与摆位...\n",
         )
 
     spec_text = _furniture_spec(agent_runtime.spec_loader)
@@ -89,7 +90,9 @@ async def object_planner(state: GenerationState) -> dict:
     llm_chars = 0
     try:
         llm_started = _time.time()
-        llm = create_llm(enable_thinking=state.get("thinking_mode") is True, streaming=False)
+        llm = create_llm(
+            enable_thinking=state.get("thinking_mode") is True, streaming=False
+        )
         llm_result = await invoke_llm(
             llm,
             [
@@ -113,7 +116,7 @@ async def object_planner(state: GenerationState) -> dict:
                 object_hint="包含 objects 数组的物件方案 JSON 对象",
                 extra_instruction=(
                     "- 顶层必须直接包含 kind、concept、objects、design_rationale；\n"
-                    "- kind 必须为 \"object\"；objects 每项必须含 subtype/count/width/depth/height；\n"
+                    '- kind 必须为 "object"；objects 每项必须含 subtype/count/width/depth/height；\n'
                     "- 不要输出 massing、volumes、facades、roof 中的任何字段。"
                 ),
             )

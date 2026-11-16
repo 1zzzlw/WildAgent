@@ -91,8 +91,12 @@ class ConversationRepository:
             conn.execute(insert(table), records)
 
     def write(self, session_id: str, data: dict, owner_id: str | None = None) -> None:
+        from app.infrastructure.persistence.repositories.locks import assert_session_unlocked
+
         with database.engine.begin() as conn:
             current = ensure_session(conn, session_id, owner_id)
+            if any(key in data for key in ("name", "building_type", "filename")):
+                assert_session_unlocked(conn, session_id)
             meta = {key: value for key, value in data.items() if key not in {
                 "messages", "turns", "session_id", "owner_id", "created_at", "updated_at"}}
             conn.execute(update(sessions).where(sessions.c.session_id == session_id).values(
@@ -118,7 +122,10 @@ class ConversationRepository:
             return len(existing)
 
     def delete(self, session_id: str) -> None:
+        from app.infrastructure.persistence.repositories.locks import assert_session_unlocked
+
         with database.engine.begin() as conn:
+            assert_session_unlocked(conn, session_id)
             conn.execute(delete(sessions).where(sessions.c.session_id == session_id))
 
 

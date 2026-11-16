@@ -46,14 +46,22 @@ def _concept_from_request(user_message: str) -> str:
     命名成同一句话）。只剥请求动词与量词前缀，主体原样保留。
     """
     text = str(user_message or "").strip()
-    text = re.sub(r"^(?:请|帮我|给我|麻烦|帮忙)?(?:生成|创建|设计|搭建|做|做个|做一|画|绘制|来|要|想要)", "", text)
+    text = re.sub(
+        r"^(?:请|帮我|给我|麻烦|帮忙)?(?:生成|创建|设计|搭建|做|做个|做一|画|绘制|来|要|想要)",
+        "",
+        text,
+    )
     text = re.sub(r"^(?:一个|一座|一间|一栋|一幢|个|座)", "", text)
     text = text.strip("，。,. 、！!？?")
     return (text or "建筑方案")[:24]
 
 
 def _normalize_pattern(
-    value: object, bays: int, fallback: list[str], *, allowed_types: set[str] | None = None,
+    value: object,
+    bays: int,
+    fallback: list[str],
+    *,
+    allowed_types: set[str] | None = None,
 ) -> list[str]:
     """把一面的 pattern 压成 ``bays`` 个**合法开口 token**。
 
@@ -113,27 +121,65 @@ def _normalize_volumes(
 
     volumes = []
     if not 1 <= len(raw) <= 8:
-        raise DesignCoordinateConflict([{"path": "/decisions/volumes", "value": raw,
-            "conflict_path": "VolumeDecision", "reason": "体量数量必须为 1 到 8，不能丢弃显式条目"}])
+        raise DesignCoordinateConflict(
+            [
+                {
+                    "path": "/decisions/volumes",
+                    "value": raw,
+                    "conflict_path": "VolumeDecision",
+                    "reason": "体量数量必须为 1 到 8，不能丢弃显式条目",
+                }
+            ]
+        )
     for index, item in enumerate(raw):
         if not isinstance(item, dict):
-            raise DesignCoordinateConflict([{"path": f"/decisions/volumes/{index}", "value": item,
-                "conflict_path": "VolumeDecision", "reason": "体量必须是对象"}])
+            raise DesignCoordinateConflict(
+                [
+                    {
+                        "path": f"/decisions/volumes/{index}",
+                        "value": item,
+                        "conflict_path": "VolumeDecision",
+                        "reason": "体量必须是对象",
+                    }
+                ]
+            )
         try:
             volumes.append(VolumeDecision.model_validate(item).model_dump(mode="json"))
         except ValueError as exc:
-            raise DesignCoordinateConflict([{"path": f"/decisions/volumes/{index}", "value": item,
-                "conflict_path": "VolumeDecision", "reason": str(exc)}]) from exc
+            raise DesignCoordinateConflict(
+                [
+                    {
+                        "path": f"/decisions/volumes/{index}",
+                        "value": item,
+                        "conflict_path": "VolumeDecision",
+                        "reason": str(exc),
+                    }
+                ]
+            ) from exc
     conflicts = volume_conflicts(volumes, massing)
     if len({v["id"] for v in volumes}) != len(volumes):
-        conflicts.append({"path": "/decisions/volumes", "value": raw,
-                          "conflict_path": "volumes.id", "reason": "体量 ID 重复"})
-    missing = [level for level in range(1, modeled_floors+1)
-               if not any(v["start_floor"] <= level <= v["end_floor"] for v in volumes)]
+        conflicts.append(
+            {
+                "path": "/decisions/volumes",
+                "value": raw,
+                "conflict_path": "volumes.id",
+                "reason": "体量 ID 重复",
+            }
+        )
+    missing = [
+        level
+        for level in range(1, modeled_floors + 1)
+        if not any(v["start_floor"] <= level <= v["end_floor"] for v in volumes)
+    ]
     if missing:
-        conflicts.append({"path": "/decisions/volumes", "value": raw,
-                          "conflict_path": "/decisions/massing/modeled_floors",
-                          "reason": f"楼层 {missing} 缺少体量，必须显式修订楼层覆盖"})
+        conflicts.append(
+            {
+                "path": "/decisions/volumes",
+                "value": raw,
+                "conflict_path": "/decisions/massing/modeled_floors",
+                "reason": f"楼层 {missing} 缺少体量，必须显式修订楼层覆盖",
+            }
+        )
     if conflicts:
         raise DesignCoordinateConflict(conflicts)
     return volumes

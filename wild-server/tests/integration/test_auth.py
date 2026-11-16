@@ -43,7 +43,7 @@ def client(storage):
 
 
 @pytest.mark.parametrize("username", ["zlw", "lxw", "mf"])
-def test_email_accounts_share_the_same_editor_functions(client, username):
+def test_email_accounts_can_edit_but_only_admin_can_configure(client, username):
     http, writes = client
     response = http.post("/api/auth/login", json={"email": username + "@example.com", "password": "123456"})
     assert response.status_code == 200
@@ -54,7 +54,7 @@ def test_email_accounts_share_the_same_editor_functions(client, username):
     assert "123456" not in response.headers["set-cookie"]
     assert http.get("/api/auth/session").json() == response.json()
     assert http.put("/api/scenes/test.wild").status_code == 200
-    assert http.get("/api/config/llm").status_code == 200
+    assert http.get("/api/config/llm").status_code == (200 if username == "zlw" else 403)
     assert dependencies.can_edit(SimpleNamespace(cookies=dict(http.cookies)))
 
 

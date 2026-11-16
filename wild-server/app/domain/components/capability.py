@@ -12,7 +12,7 @@
 - ``generation/component/registry.py::COMPONENT_REGISTRY`` —— 哪些类型已实现、
   写进 elements 还是 components、额外规则文本。
 
-🔴 **不在这里建第二份字段白名单。** 曾经想这么干（列一张"引擎支持哪些字段"的表），
+**不在这里建第二份字段白名单。** 曾经想这么干（列一张"引擎支持哪些字段"的表），
 那必然与schema 漂移；本模块的字段部分全部实时从 schema 读，测试里有一条守卫专门
 钉住"schema 加字段 → 查询面自动跟着变"。
 
@@ -56,7 +56,9 @@ def load_engine_schema(*, refresh: bool = False) -> dict[str, Any] | None:
         try:
             with open(SCHEMA_PATH, encoding="utf-8") as handle:
                 data = json.load(handle)
-                if not isinstance(data, dict) or not isinstance(data.get("$defs"), dict):
+                if not isinstance(data, dict) or not isinstance(
+                    data.get("$defs"), dict
+                ):
                     raise ValueError("schema 根或 $defs 不是对象")
         except (OSError, ValueError) as exc:
             _schema_cache = None
@@ -109,8 +111,11 @@ def _field_summary(name: str, spec: dict[str, Any]) -> dict[str, Any]:
         out["ref"] = ref.rsplit("/", 1)[-1]
     one_of = spec.get("oneOf")
     if isinstance(one_of, list):
-        refs = [item["$ref"].rsplit("/", 1)[-1] for item in one_of
-                if isinstance(item, dict) and isinstance(item.get("$ref"), str)]
+        refs = [
+            item["$ref"].rsplit("/", 1)[-1]
+            for item in one_of
+            if isinstance(item, dict) and isinstance(item.get("$ref"), str)
+        ]
         if refs:
             out["oneOfRefs"] = refs
     if isinstance(spec.get("description"), str) and spec["description"]:
@@ -119,7 +124,9 @@ def _field_summary(name: str, spec: dict[str, Any]) -> dict[str, Any]:
 
 
 def _capability_from_definition(
-    entity_kind: str, definition: dict[str, Any], definition_name: str,
+    entity_kind: str,
+    definition: dict[str, Any],
+    definition_name: str,
 ) -> dict[str, Any] | None:
     type_name = _type_of(definition)
     if not type_name:
@@ -196,7 +203,10 @@ def _collect(*, refresh: bool = False) -> dict[str, dict[str, Any]] | None:
         return None
     defs = schema.get("$defs") or {}
     out: dict[str, dict[str, Any]] = {}
-    for entity_kind, union in (("element", "geometryElement"), ("component", "componentSpec")):
+    for entity_kind, union in (
+        ("element", "geometryElement"),
+        ("component", "componentSpec"),
+    ):
         for ref in (defs.get(union) or {}).get("oneOf", []):
             name = str(ref.get("$ref") or "").rsplit("/", 1)[-1]
             definition = defs.get(name)
@@ -205,7 +215,9 @@ def _collect(*, refresh: bool = False) -> dict[str, dict[str, Any]] | None:
             capability = _capability_from_definition(entity_kind, definition, name)
             if capability:
                 capability["schema"] = definition
-                capability["generation_registered"] = capability["type"] in COMPONENT_REGISTRY
+                capability["generation_registered"] = (
+                    capability["type"] in COMPONENT_REGISTRY
+                )
                 out[capability["type"]] = capability
     return out
 
@@ -335,8 +347,10 @@ def capability_brief(
         lines.append(f"  必填：{'、'.join(cap['required']) or '无'}")
     optional = cap["optional"]
     if optional:
-        shown = "、".join(optional) if full or len(optional) <= max_optional else (
-            "、".join(optional[:max_optional]) + f"…（共 {len(optional)} 个）"
+        shown = (
+            "、".join(optional)
+            if full or len(optional) <= max_optional
+            else ("、".join(optional[:max_optional]) + f"…（共 {len(optional)} 个）")
         )
         lines.append(f"  可选设计参数：{shown}")
     if cap["coord_semantics"]:

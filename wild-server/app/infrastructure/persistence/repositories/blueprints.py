@@ -11,9 +11,15 @@ from app.infrastructure.persistence.repositories.conversations import ensure_ses
 from app.infrastructure.persistence.repositories.conversations import now_ms
 from app.infrastructure.persistence.repositories.conversations import visible_to
 from app.infrastructure.persistence.repositories.errors import AccessDenied
+from app.infrastructure.persistence.repositories.errors import OperationConflict
+from app.infrastructure.persistence.repositories.activity import append_audit, charge_usage, event_id, fingerprint, lock_account
+from app.infrastructure.persistence.repositories.blueprint_changes import content_fingerprint, describe_changes
+from app.infrastructure.persistence.repositories.locks import assert_row_unlocked, assert_session_unlocked
+from app.infrastructure.persistence.schema import audit_logs
+from app.infrastructure.persistence.repositories.ai_edits import is_verified_ai_edit
 
 SUMMARY_COLUMNS = [blueprints.c[key] for key in (
-    "filename", "session_id", "name", "elements_count", "components_count", "created_at", "updated_at")]
+    "filename", "session_id", "name", "elements_count", "components_count", "locked", "locked_at", "created_at", "updated_at")]
 
 
 def validate_filename(filename: str) -> str:
@@ -63,7 +69,9 @@ class BlueprintRepository:
             return result
 
     def save(self, filename: str, blueprint: dict, *, session_id: str | None = None,
-             owner_id: str | None = None, timestamp: int | None = None) -> str:
+             owner_id: str | None = None, timestamp: int | None = None,
+             actor_id: str | None = None, operation_id: str | None = None,
+             label: str = "保存蓝图", base_revision: int | None = None) -> str:
         validate_filename(filename)
         session_id = session_id or session_for_filename(filename)
         now = timestamp if timestamp is not None else now_ms()
@@ -73,12 +81,20 @@ class BlueprintRepository:
                      components_count=len(geometry.get("components") or []),
                      blueprint_json=blueprint, updated_at=now)
         with database.engine.begin() as conn:
+            actor = lock_account(conn, actor_id) if actor_id else None
             if session_id:
                 owner_id = ensure_session(conn, session_id, owner_id)["owner_id"]
-            current = conn.execute(select(blueprints.c.filename, blueprints.c.owner_id).where(
-                blueprints.c.filename == filename).with_for_update()).first()
+                assert_session_unlocked(conn, session_id)
+            current = conn.execute(select(blueprints).where(
+                blueprints.c.filename == filename).with_for_update()).mappings().first()
+            current = dict(current) if current else None
+            assert_row_unlocked(current)
+            if actor:
+                if not self._authorize_save(conn, actor, filename, blueprint, current, session_id,
+                                            operation_id, label, base_revision):
+                    return filename
             if current:
-                if owner_id is not None and current.owner_id not in {None, owner_id}:
+                if owner_id is not None and current["owner_id"] not in {None, owner_id}:
                     raise AccessDenied("资料不存在")
                 conn.execute(update(blueprints).where(blueprints.c.filename == filename).values(**value))
             else:
@@ -86,9 +102,45 @@ class BlueprintRepository:
                              owner_id=owner_id, created_at=now, **value))
         return filename
 
+    @staticmethod
+    def _authorize_save(conn, actor, filename, blueprint, current, session_id,
+                        operation_id, label, base_revision):
+        if current and actor["identity"] != 2 and current["owner_id"] not in {None, actor["id"]}:
+            raise AccessDenied("资料不存在")
+        payload_hash = fingerprint(blueprint)
+        if operation_id:
+            previous = conn.execute(select(audit_logs).where(
+                audit_logs.c.id == event_id(actor["id"], "blueprint.edit:" + operation_id))).mappings().first()
+            if previous:
+                if previous["resource"] != filename or previous["details"].get("fingerprint") != payload_hash:
+                    raise OperationConflict("操作标识已用于其他内容，请刷新蓝图后重试")
+                return False
+        before = current["blueprint_json"] if current else {}
+        changed = content_fingerprint(before) != content_fingerprint(blueprint)
+        if changed and current and base_revision is not None:
+            revision = (before.get("editor") or {}).get("revision", 1)
+            if revision != base_revision:
+                raise OperationConflict("蓝图已被其他操作更新，请重新加载后再修改")
+        ai_edit = changed and is_verified_ai_edit(conn, actor, session_id, operation_id, before, blueprint)
+        if changed and not ai_edit:
+            charge_usage(conn, actor, "operations")
+        details = {"label": label[:200], "fingerprint": payload_hash,
+                   "charged": changed and not ai_edit, "source": "ai" if ai_edit else "user",
+                   **describe_changes(before, blueprint)}
+        action = "blueprint.edit" if changed else "blueprint.save"
+        if ai_edit:
+            action = "blueprint.ai_apply"
+        append_audit(conn, actor, action,
+                     resource=filename, session_id=session_id, details=details,
+                     key="blueprint.edit:" + operation_id if operation_id else None)
+        return True
+
     def delete(self, filename: str) -> bool:
         validate_filename(filename)
         with database.engine.begin() as conn:
+            row = conn.execute(select(blueprints).where(blueprints.c.filename == filename)
+                               .with_for_update()).mappings().first()
+            assert_row_unlocked(dict(row) if row else None)
             return bool(conn.execute(delete(blueprints).where(blueprints.c.filename == filename)).rowcount)
 
 

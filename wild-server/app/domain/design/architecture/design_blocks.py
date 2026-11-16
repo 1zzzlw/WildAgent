@@ -1,4 +1,5 @@
 """设计字段归属，仅供局部修订定位，不调度独立模型调用。"""
+
 from dataclasses import dataclass
 
 
@@ -9,7 +10,9 @@ class DesignBlock:
 
 
 DESIGN_BLOCKS = (
-    DesignBlock("intent", ("concept", "design_intent", "design_constraints", "design_rationale")),
+    DesignBlock(
+        "intent", ("concept", "design_intent", "design_constraints", "design_rationale")
+    ),
     DesignBlock("massing", ("massing", "volumes")),
     DesignBlock("structure", ("structural_grid", "circulation")),
     DesignBlock("facade", ("facades", "curtain_wall")),
@@ -27,4 +30,9 @@ def block_of_field(field):
 
 
 def block_of_design_field(field):
-    return block_of_field(field.removeprefix("/decisions/").removeprefix("decisions.").split("/")[0].split(".")[0])
+    return block_of_field(
+        field.removeprefix("/decisions/")
+        .removeprefix("decisions.")
+        .split("/")[0]
+        .split(".")[0]
+    )

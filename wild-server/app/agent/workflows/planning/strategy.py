@@ -52,7 +52,9 @@ def capability_catalog() -> list[dict]:
 
 def _quota(state: dict[str, Any]) -> dict:
     design_brief = state.get("design_brief")
-    if isinstance(design_brief, dict) and isinstance(design_brief.get("component_quota"), dict):
+    if isinstance(design_brief, dict) and isinstance(
+        design_brief.get("component_quota"), dict
+    ):
         return design_brief["component_quota"]
     return {}
 
@@ -125,7 +127,9 @@ def normalize_kinds(
     return _sanitize_parallel_groups(kept)
 
 
-def _sanitize_parallel_groups(entries: list[PlanKindStrategy]) -> list[PlanKindStrategy]:
+def _sanitize_parallel_groups(
+    entries: list[PlanKindStrategy],
+) -> list[PlanKindStrategy]:
     """只保留至少两个、且不存在显式依赖关系的并发组。"""
 
     configs = {config.component_type: config for config in get_implemented_components()}
@@ -141,8 +145,7 @@ def _sanitize_parallel_groups(entries: list[PlanKindStrategy]) -> list[PlanKindS
             continue
         # 开放集：未注册类型没有注册依赖声明，按"无依赖"处理（generic 配置生成）。
         if any(
-            member.kind in configs
-            and set(configs[member.kind].dependencies) & kinds
+            member.kind in configs and set(configs[member.kind].dependencies) & kinds
             for member in members
         ):
             continue
@@ -167,7 +170,9 @@ def deterministic_strategy(state: dict[str, Any]) -> PlanStrategy:
         _quota(state),
     )
     if not kinds:
-        kinds = resolve_component_suggestions([], state.get("user_message", ""), _quota(state))
+        kinds = resolve_component_suggestions(
+            [], state.get("user_message", ""), _quota(state)
+        )
     return PlanStrategy(
         kinds=[PlanKindStrategy(kind=kind, reason="骨架建议") for kind in kinds],
         source="deterministic",
@@ -189,7 +194,9 @@ def parse_strategy(raw: Any, state: dict[str, Any]) -> PlanStrategy | None:
     level = raw.get("detail_level")
     return PlanStrategy(
         kinds=kinds,
-        detail_level=level if isinstance(level, str) and level in _DETAIL_LEVELS else None,
+        detail_level=(
+            level if isinstance(level, str) and level in _DETAIL_LEVELS else None
+        ),
         notes=str(raw.get("notes") or "")[:500],
         source="llm",
     )
@@ -215,8 +222,12 @@ async def request_plan_strategy(
     catalog = capability_catalog()
     if not catalog:
         strategy = PlanStrategy(source="deterministic", notes="无可派发能力")
-        return strategy, {"catalog_count": 0, "used_fallback": True,
-                          "fallback_reason": "无可派发能力", "total_ms": 0}
+        return strategy, {
+            "catalog_count": 0,
+            "used_fallback": True,
+            "fallback_reason": "无可派发能力",
+            "total_ms": 0,
+        }
 
     # 设计清单（槽位/配额）
     design_brief = state.get("design_brief")
@@ -239,7 +250,7 @@ async def request_plan_strategy(
         ),
         compile_gaps=compile_gap_summary(state) or None,
     )
-    
+
     messages = [
         {"role": "system", "content": prompt},
         {
@@ -272,8 +283,7 @@ async def request_plan_strategy(
                 llm_result.content,
                 object_hint="包含 kinds 数组的策略 JSON 对象",
                 extra_instruction=(
-                    "- 顶层必须直接包含 kinds 数组；\n"
-                    "- kind 只能取能力清单里的值。"
+                    "- 顶层必须直接包含 kinds 数组；\n" "- kind 只能取能力清单里的值。"
                 ),
             )
             token_usage = merge_token_usage(
@@ -310,7 +320,9 @@ async def request_plan_strategy(
         )
         strategy = deterministic_strategy(state)
         strategy.source = "fallback"
-        logger.info(f"[plan] 使用确定性策略（{fallback_reason}）：{[k.kind for k in strategy.kinds]}")
+        logger.info(
+            f"[plan] 使用确定性策略（{fallback_reason}）：{[k.kind for k in strategy.kinds]}"
+        )
 
     diag = {
         "catalog_count": len(catalog),

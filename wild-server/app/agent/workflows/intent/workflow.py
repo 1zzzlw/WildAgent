@@ -2,7 +2,8 @@
 意图分类节点入口。
 """
 
-from __future__ import annotations
+import asyncio
+from langchain_core.runnables import RunnableConfig
 
 from app.domain.design.architecture import resolve_complexity_profile
 from app.domain.blueprint.query import has_scene_content
@@ -10,7 +11,7 @@ from app.domain.blueprint.query import has_scene_content
 from app.agent.workflows.intent.classify import classify_intent_decision
 
 
-async def classifier_node(state: dict) -> dict:
+async def classifier_node(state: dict, config: RunnableConfig | None = None) -> dict:
     """意图分类：判断用户想生成什么目标、修改场景还是知识问答。"""
 
     decision = await classify_intent_decision(
@@ -20,9 +21,22 @@ async def classifier_node(state: dict) -> dict:
         workflow_state=str(state.get("workflow_state") or "idle"),
         selection=state.get("selection"),
     )
-    detail_level = resolve_complexity_profile(
-        state.get("detail_level", "minimal")
-    )["level"]
+    account_id = (config or {}).get("configurable", {}).get("account_id")
+    if account_id:
+        from app.infrastructure.persistence.repositories.activity import (
+            charge_ai_request,
+        )
+
+        await asyncio.to_thread(
+            charge_ai_request,
+            account_id,
+            state["request_id"],
+            state["session_id"],
+            decision.intent,
+        )
+    detail_level = resolve_complexity_profile(state.get("detail_level", "minimal"))[
+        "level"
+    ]
     result = {
         "detail_level": detail_level,
         "thinking_mode": state.get("thinking_mode") is True,

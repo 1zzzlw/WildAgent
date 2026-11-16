@@ -29,6 +29,16 @@ def workspace(tmp_path, monkeypatch, storage):
     install_exception_handlers(app)
     app.include_router(scenes.router)
     app.include_router(sessions.router)
+    from app.application.accounts import hash_password
+    from app.infrastructure.persistence.repositories.accounts import accounts
+    from app.infrastructure.persistence.schema import users
+    administrator = accounts.create('editor-test-admin', 'editor-test-admin@example.com', hash_password('editor-test-password'))
+    with storage.begin() as conn:
+        conn.execute(users.update().where(users.c.id == administrator['id']).values(identity=2))
+    @app.middleware("http")
+    async def administrator_context(request, call_next):
+        request.state.user = {"id": administrator['id'], "role": "editor", "identity": 2}
+        return await call_next(request)
     return app, scenes_dir, jobs
 
 
@@ -49,7 +59,8 @@ def test_save_replace_list_reload(workspace):
             assert (await client.get(path)).json() == changed
             rows = (await client.get('/api/sessions')).json()
             assert rows[0]['filename'] == '2026-10-22/session_101_import.wild'
-            assert len(blueprint_repository.list(None)) == 1
+            owner_id = blueprint_repository.get('2026-10-22/session_101_import.wild')['owner_id']
+            assert len(blueprint_repository.list(owner_id)) == 1
             assert not list(directory.rglob('*.wild'))
         await jobs.shutdown()
     asyncio.run(run())

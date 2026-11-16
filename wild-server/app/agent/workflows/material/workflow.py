@@ -36,7 +36,9 @@ async def material_planner(state: GenerationState) -> dict:
     manifests = asset_storage.list_manifests()
     catalog = compact_asset_catalog(manifests)
     procedural_materials_enabled = state.get("procedural_materials_enabled") is True
-    procedural_catalog = compact_procedural_catalog() if procedural_materials_enabled else []
+    procedural_catalog = (
+        compact_procedural_catalog() if procedural_materials_enabled else []
+    )
     raw_plan = None
     prompt = ""
     error = None
@@ -63,9 +65,16 @@ async def material_planner(state: GenerationState) -> dict:
     )
     if isinstance(design_document, dict):
         intent = (design_document.get("decisions") or {}).get("materials") or {}
-        if intent.get("regions") or intent.get("keywords") or state.get("design_material_refresh") is True:
+        if (
+            intent.get("regions")
+            or intent.get("keywords")
+            or state.get("design_material_refresh") is True
+        ):
             needs_design, design_reason = True, "设计文档包含显式材质意图或要求刷新"
-    if existing_material_plan is not None and state.get("design_material_refresh") is False:
+    if (
+        existing_material_plan is not None
+        and state.get("design_material_refresh") is False
+    ):
         raw_plan = existing_material_plan
         skipped_llm = True
         #: 复用上一版 = 本轮**没有**重新做设计决策（没产生新的设计输出）。
@@ -129,9 +138,13 @@ async def material_planner(state: GenerationState) -> dict:
     else:
         skipped_llm = True
         design_decided = False
-        logger.info(f"[material_plan] 不需要材质设计决策（{design_reason}），用确定性材质方案")
+        logger.info(
+            f"[material_plan] 不需要材质设计决策（{design_reason}），用确定性材质方案"
+        )
     if design_decided and error:
-        logger.warning(f"[material_plan] 需要材质设计但模型失败，本次意图未实现：{error}")
+        logger.warning(
+            f"[material_plan] 需要材质设计但模型失败，本次意图未实现：{error}"
+        )
 
     plan = resolve_material_plan(
         raw_plan,
@@ -147,28 +160,36 @@ async def material_planner(state: GenerationState) -> dict:
     unrealized_roles: list[str] = []
     if not design_decided:
         unrealized_roles = named_material_roles(
-            str(state.get("user_message") or ""), role_specs,
+            str(state.get("user_message") or ""),
+            role_specs,
         )
     resolved_design = state.get("resolved_design")
     if isinstance(design_document, dict):
-        from app.infrastructure.persistence.repositories.designs import design_repository
+        from app.infrastructure.persistence.repositories.designs import (
+            design_repository,
+        )
         from app.domain.design.resolver import attach_material_plan
         from app.domain.design.resolver import architecture_plan_from_document
 
         updated_document = attach_material_plan(design_document, plan)
-        updated_document, _ = await asyncio.to_thread(design_repository.save, updated_document)
+        updated_document, _ = await asyncio.to_thread(
+            design_repository.save, updated_document
+        )
         updated_document, resolved_design = await asyncio.to_thread(
-            design_repository.approve, updated_document.session_id, updated_document.revision)
+            design_repository.approve,
+            updated_document.session_id,
+            updated_document.revision,
+        )
         design_document = updated_document.model_dump(mode="json")
         architecture_plan = architecture_plan_from_document(updated_document)
     if callback:
-        selected = [
-            item for item in plan["roles"] if item.get("assetId")
-        ]
+        selected = [item for item in plan["roles"] if item.get("assetId")]
         procedural_selected = [
             item for item in plan["roles"] if item.get("proceduralPresetId")
         ]
-        surface_selected = [item for item in plan["roles"] if item.get("surfacePresetId")]
+        surface_selected = [
+            item for item in plan["roles"] if item.get("surfacePresetId")
+        ]
         await callback(
             "material_plan",
             f"材质方案已确定：{plan['concept']}；匹配 {len(selected)} 个 PBR 资产，"
@@ -198,12 +219,15 @@ async def material_planner(state: GenerationState) -> dict:
             "selected_procedural_count": sum(
                 1 for item in plan["roles"] if item.get("proceduralPresetId")
             ),
-            "selected_surface_count": sum(1 for item in plan["roles"] if item.get("surfacePresetId")),
+            "selected_surface_count": sum(
+                1 for item in plan["roles"] if item.get("surfacePresetId")
+            ),
             "procedural_materials_enabled": procedural_materials_enabled,
             "rejected_asset_ids": plan["rejectedAssetIds"],
             "rejected_procedural_preset_ids": plan["rejectedProceduralPresetIds"],
             "used_fallback": raw_plan is None,
-            "reused_previous": existing_material_plan is not None and state.get("design_material_refresh") is False,
+            "reused_previous": existing_material_plan is not None
+            and state.get("design_material_refresh") is False,
             "skipped_llm": skipped_llm,
             "recovery": recovery_diag,
             "error": error,

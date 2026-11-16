@@ -76,8 +76,12 @@ def build_execution_context(state: dict[str, Any], item: PlanItem) -> dict[str, 
     skeleton = state.get("skeleton_blueprint")
     materials = skeleton.get("materials") if isinstance(skeleton, dict) else None
     level = (
-        state.get("design_document", {}).get("decisions", {}).get("complexity", {}).get("level")
-        or state.get("detail_level") or resolve_detail_level(state)
+        state.get("design_document", {})
+        .get("decisions", {})
+        .get("complexity", {})
+        .get("level")
+        or state.get("detail_level")
+        or resolve_detail_level(state)
     )
 
     return {
@@ -109,7 +113,11 @@ def build_execution_context(state: dict[str, Any], item: PlanItem) -> dict[str, 
 
 def _fragment_count(fragments: Any, config: ComponentConfig) -> int:
     if config.is_list:
-        return len([entry for entry in fragments if entry]) if isinstance(fragments, list) else 0
+        return (
+            len([entry for entry in fragments if entry])
+            if isinstance(fragments, list)
+            else 0
+        )
     return 1 if isinstance(fragments, dict) else 0
 
 
@@ -176,7 +184,9 @@ def _generation_failure_evidence(
     rejected = int(validated.get("rejected_fragment_count") or 0)
     if rejected:
         detail = str(validated.get("validation_details", {}).get("recheck") or "")
-        return f"{item.label}：产出片段经确定性校验后被拒绝 {rejected} 个" + (f"；{detail[:500]}" if detail else "")
+        return f"{item.label}：产出片段经确定性校验后被拒绝 {rejected} 个" + (
+            f"；{detail[:500]}" if detail else ""
+        )
     generated_count = int(generated.get("fragment_count") or 0)
     if generated_count == 0:
         return f"{item.label}：模型输出中没有满足 type 与必填字段契约的合法片段"
@@ -211,10 +221,15 @@ async def run_generate(state: dict[str, Any], item: PlanItem) -> HandlerResult:
     terminal = _model_error(diagnostics)
     if terminal is not None:
         return (
-            {"terminal_model_error": {**terminal, "item_id": item.id},
-             "error": terminal.get("user_message", "模型服务故障"),
-             "status": "failed"},
-            "aborted", [], terminal.get("user_message", ""), _trace_entries(diagnostics),
+            {
+                "terminal_model_error": {**terminal, "item_id": item.id},
+                "error": terminal.get("user_message", "模型服务故障"),
+                "status": "failed",
+            },
+            "aborted",
+            [],
+            terminal.get("user_message", ""),
+            _trace_entries(diagnostics),
         )
 
     checked = await _validator_for(config)({**context, **generated})
@@ -241,8 +256,11 @@ async def run_generate(state: dict[str, Any], item: PlanItem) -> HandlerResult:
         if isinstance(entry, dict) and entry.get("id")
     ]
     return (
-        updates, "succeeded", artifact_ids,
-        f"{item.label}：产出 {produced} 个片段", _trace_entries(diagnostics),
+        updates,
+        "succeeded",
+        artifact_ids,
+        f"{item.label}：产出 {produced} 个片段",
+        _trace_entries(diagnostics),
     )
 
 
@@ -262,8 +280,15 @@ async def run_merge(state: dict[str, Any], item: PlanItem) -> HandlerResult:
     updates = {key: value for key, value in result.items() if key != "status"}
     if result.get("error"):
         return (
-            {**updates, "error": result["error"], "status": result.get("status", "failed")},
-            "failed", [], str(result["error"]), [],
+            {
+                **updates,
+                "error": result["error"],
+                "status": result.get("status", "failed"),
+            },
+            "failed",
+            [],
+            str(result["error"]),
+            [],
         )
 
     blueprint = result.get("merged_blueprint") or {}
@@ -285,7 +310,10 @@ async def run_merge(state: dict[str, Any], item: PlanItem) -> HandlerResult:
         else f"{item.label}：{len(elements)} 个结构元素 + {len(components)} 个构件"
     )
     return (
-        updates, "succeeded", artifact_ids, evidence,
+        updates,
+        "succeeded",
+        artifact_ids,
+        evidence,
         [{"tool": "merge_fragments", "ok": True, "chars": 0, "mode": "deterministic"}],
     )
 
@@ -296,16 +324,37 @@ def run_validate(state: dict[str, Any], item: PlanItem) -> HandlerResult:
     blueprint = state.get("merged_blueprint") or {}
     if not blueprint:
         return {}, "failed", [], "没有可校验的蓝图", []
-    evaluated = evaluate_candidate(blueprint, design_document=state.get("design_document"),
-                                   design_brief=state.get("design_brief"), source="plan_validate")
+    evaluated = evaluate_candidate(
+        blueprint,
+        design_document=state.get("design_document"),
+        design_brief=state.get("design_brief"),
+        source="plan_validate",
+    )
     snapshot = evaluated["snapshot"]
-    updates = {"validation_results": snapshot["results"], "validation_snapshot": snapshot,
-               "validation_issues": evaluated["issues"], "validation_error_count": snapshot["error_count"],
-               "validation_warning_count": snapshot["warning_count"]}
+    updates = {
+        "validation_results": snapshot["results"],
+        "validation_snapshot": snapshot,
+        "validation_issues": evaluated["issues"],
+        "validation_error_count": snapshot["error_count"],
+        "validation_warning_count": snapshot["warning_count"],
+    }
     evidence = f"{item.label}：完整门禁 {snapshot['error_count']} 个错误"
-    trace = [{"tool": r.name, "ok": not r.has_error, "chars": len(r.output), "mode": "deterministic"}
-             for r in evaluated["results"]]
-    return updates, ("failed" if evaluated["errors"] else "succeeded"), [], evidence, trace
+    trace = [
+        {
+            "tool": r.name,
+            "ok": not r.has_error,
+            "chars": len(r.output),
+            "mode": "deterministic",
+        }
+        for r in evaluated["results"]
+    ]
+    return (
+        updates,
+        ("failed" if evaluated["errors"] else "succeeded"),
+        [],
+        evidence,
+        trace,
+    )
 
 
 def run_fix(state: dict[str, Any], item: PlanItem) -> HandlerResult:
@@ -317,37 +366,83 @@ def run_fix(state: dict[str, Any], item: PlanItem) -> HandlerResult:
     original = state.get("merged_blueprint")
     if not original:
         return {}, "failed", [], "没有可修复的蓝图", []
-    kwargs = {"design_document": state.get("design_document"), "design_brief": state.get("design_brief")}
+    kwargs = {
+        "design_document": state.get("design_document"),
+        "design_brief": state.get("design_brief"),
+    }
     before = evaluate_candidate(original, **kwargs)
     if not before["errors"]:
         fulfillment = before.get("fulfillment") or {}
         if any(fulfillment.get(key) for key in ("open", "needs_review", "unsupported")):
-            return {"design_fulfillment": fulfillment}, "succeeded", [], \
-                "几何校验通过，无脚本可修复错误；设计未落实及待核对项仍保留，不能据此声称设计完整", []
+            return (
+                {"design_fulfillment": fulfillment},
+                "succeeded",
+                [],
+                "几何校验通过，无脚本可修复错误；设计未落实及待核对项仍保留，不能据此声称设计完整",
+                [],
+            )
         return {}, "succeeded", [], "几何校验通过，无脚本可修复错误", []
     if before["approved_design_errors"]:
-        return {"repair_audit": {"accepted": False, "stop_reason": "design_revision_required"}}, \
-            "failed", [], "批准设计自身无效，需要修订并重新审核", []
+        return (
+            {
+                "repair_audit": {
+                    "accepted": False,
+                    "stop_reason": "design_revision_required",
+                }
+            },
+            "failed",
+            [],
+            "批准设计自身无效，需要修订并重新审核",
+            [],
+        )
     candidate = deepcopy(original)
     applied = apply_fixes(candidate, before["errors"])
     after = evaluate_candidate(candidate, source="plan_fix", **kwargs)
-    trace = [{"tool": name, "ok": success, "chars": 0, "mode": "deterministic"} for name, success in applied]
+    trace = [
+        {"tool": name, "ok": success, "chars": 0, "mode": "deterministic"}
+        for name, success in applied
+    ]
     preserved = set((before["fulfillment"] or {}).get("satisfied_ids") or []) <= set(
-        (after["fulfillment"] or {}).get("satisfied_ids") or [])
+        (after["fulfillment"] or {}).get("satisfied_ids") or []
+    )
     if after["errors"] or not preserved or candidate == original:
-        return {}, "failed", [], f"完整验收未通过，脚本候选已回滚；仍有 {len(after['errors'])} 个错误", trace
+        return (
+            {},
+            "failed",
+            [],
+            f"完整验收未通过，脚本候选已回滚；仍有 {len(after['errors'])} 个错误",
+            trace,
+        )
     from app.domain.design.relations import entity_index
+
     old_entities, new_entities = entity_index(original), entity_index(candidate)
-    ids = {entity_id for entity_id in old_entities.keys() | new_entities.keys()
-           if old_entities.get(entity_id) != new_entities.get(entity_id)}
+    ids = {
+        entity_id
+        for entity_id in old_entities.keys() | new_entities.keys()
+        if old_entities.get(entity_id) != new_entities.get(entity_id)
+    }
     updates = state_updates_from_candidate(state, candidate, ids)
     updates["validation_snapshot"] = after["snapshot"]
-    updates.update(validation_results=after["snapshot"]["results"], validation_issues=after["issues"],
-                   validation_error_count=0, validation_warning_count=after["snapshot"]["warning_count"],
-                   design_fulfillment=after["fulfillment"], final_blueprint=candidate)
-    updates["repair_audit"] = {"accepted": True, "before_issue_count": len(before["issues"]),
-                               "after_issue_count": 0}
-    return updates, "succeeded", [], "脚本候选几何校验通过且保留已兑现设计项，已提交；其余设计履约以报告为准", trace
+    updates.update(
+        validation_results=after["snapshot"]["results"],
+        validation_issues=after["issues"],
+        validation_error_count=0,
+        validation_warning_count=after["snapshot"]["warning_count"],
+        design_fulfillment=after["fulfillment"],
+        final_blueprint=candidate,
+    )
+    updates["repair_audit"] = {
+        "accepted": True,
+        "before_issue_count": len(before["issues"]),
+        "after_issue_count": 0,
+    }
+    return (
+        updates,
+        "succeeded",
+        [],
+        "脚本候选几何校验通过且保留已兑现设计项，已提交；其余设计履约以报告为准",
+        trace,
+    )
 
 
 async def run_repair(state: dict[str, Any], item: PlanItem) -> HandlerResult:
@@ -362,11 +457,27 @@ async def run_repair(state: dict[str, Any], item: PlanItem) -> HandlerResult:
     repaired = await callback_node({**state, **validated})
     accepted = bool((repaired.get("repair_audit") or {}).get("accepted"))
     reports = (repaired.get("repair_audit") or {}).get("actions") or []
-    trace.extend({"tool": r.get("tool", "repair_action"), "ok": bool(r.get("success")),
-                  "chars": 0, "mode": "model_whitelist"} for r in reports)
+    trace.extend(
+        {
+            "tool": r.get("tool", "repair_action"),
+            "ok": bool(r.get("success")),
+            "chars": 0,
+            "mode": "model_whitelist",
+        }
+        for r in reports
+    )
     updates = {**validated, **repaired}
-    return updates, ("succeeded" if accepted else "failed"), [], (
-        "修复候选通过当前校验，已提交；设计履约以报告为准" if accepted else "修复未通过当前校验，保留原产物"), trace
+    return (
+        updates,
+        ("succeeded" if accepted else "failed"),
+        [],
+        (
+            "修复候选通过当前校验，已提交；设计履约以报告为准"
+            if accepted
+            else "修复未通过当前校验，保留原产物"
+        ),
+        trace,
+    )
 
 
 #: op → 处理器。新增 op 必须同时补进这里与 §2.3 的闭集，否则条目会以 failed 收场。

@@ -6,6 +6,8 @@ from app.infrastructure.persistence.repositories.conversations import conversati
 
 
 def check_owner(owner_id: str | None, user: dict | None) -> None:
+    if (user or {}).get("identity") == 2:
+        return
     if owner_id is not None and (user or {}).get("id") != owner_id:
         raise ApplicationError('not_found', "资料不存在")
 
@@ -23,3 +25,18 @@ def check_blueprint(filename: str, user: dict | None) -> None:
     sid = session_for_filename(filename)
     if sid:
         check_session(sid, user)
+
+
+def require_admin(user: dict | None) -> dict:
+    if not user or user.get("role") != "editor" or user.get("identity") != 2:
+        raise ApplicationError("forbidden", "此操作需要管理员权限")
+    return user
+
+
+def check_session_writable(session_id: str, user: dict | None) -> None:
+    from app.infrastructure.persistence.database import database
+    from app.infrastructure.persistence.repositories.locks import assert_session_unlocked
+
+    check_session(session_id, user)
+    with database.engine.begin() as connection:
+        assert_session_unlocked(connection, session_id)

@@ -45,6 +45,7 @@
               </span>
               <span class="session-meta">
                 <span>{{ statusLabel(session.status) }}</span>
+                <span v-if="session.locked">已锁定</span>
                 <span v-if="session.elements_count || session.components_count">{{ session.elements_count || 0 }} 个元素</span>
                 <span>{{ formatRelativeTime(session.updated_at) }}</span>
               </span>
@@ -55,8 +56,8 @@
             <button type="button" class="menu-trigger" :aria-label="`管理会话：${session.name || '新建筑'}`">···</button>
             <template #dropdown>
               <el-dropdown-menu>
-                <el-dropdown-item @click="renameSession(session)">重命名</el-dropdown-item>
-                <el-dropdown-item @click="$emit('delete', session.session_id)"
+                <el-dropdown-item :disabled="session.locked" @click="renameSession(session)">重命名</el-dropdown-item>
+                <el-dropdown-item v-if="!session.filename || auth.isAdmin" :disabled="session.locked" @click="$emit('delete', session.session_id)"
                   class="danger-item">删除</el-dropdown-item>
               </el-dropdown-menu>
             </template>

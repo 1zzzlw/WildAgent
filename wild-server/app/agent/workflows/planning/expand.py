@@ -109,8 +109,7 @@ def compile_gap_summary(state: dict[str, Any]) -> dict[str, Any]:
     if form_ignored:
         gaps["instance_form_ignored"] = form_ignored
     defects = [
-        defect for defect in (report.get("defects") or [])
-        if isinstance(defect, dict)
+        defect for defect in (report.get("defects") or []) if isinstance(defect, dict)
     ]
     if defects:
         gaps["defect_count"] = len(defects)
@@ -132,7 +131,11 @@ def _requested_kinds(state: dict[str, Any]) -> list[str]:
 
     plan = state.get("architecture_plan")
     design_brief = state.get("design_brief")
-    quota = design_brief.get("component_quota", {}) if isinstance(design_brief, dict) else {}
+    quota = (
+        design_brief.get("component_quota", {})
+        if isinstance(design_brief, dict)
+        else {}
+    )
     # 物件场景必须显式告诉归一器"这里没有基础组件"：否则"一条建议都没有"会落到
     # 门/窗/屋顶这个建筑默认值上，一个物件场景凭空长出三扇门和一个屋顶。
     # 判据复用 `is_object_plan`，与方案层、材质层同源，不在这里另判一次。
@@ -186,10 +189,17 @@ def instance_requirements(state: dict, kind: str) -> list[dict]:
         if instance.get("type") != kind:
             continue
         mapped = next((row for row in entries if row.get("index") == index), {})
-        requirements.append({"design_field": f"/decisions/components/{index}",
-            "instance_id": instance.get("id"), "entity_id": instance.get("id") or mapped.get("entity_id"),
-            "type": kind, "host": instance.get("host"), "relation": instance.get("relation"),
-            "mapping_outcome": mapped.get("outcome", "unknown")})
+        requirements.append(
+            {
+                "design_field": f"/decisions/components/{index}",
+                "instance_id": instance.get("id"),
+                "entity_id": instance.get("id") or mapped.get("entity_id"),
+                "type": kind,
+                "host": instance.get("host"),
+                "relation": instance.get("relation"),
+                "mapping_outcome": mapped.get("outcome", "unknown"),
+            }
+        )
     return requirements
 
 
@@ -217,10 +227,19 @@ def _drop_produced(
         requirements = instance_requirements(state, entry.kind)
         from app.domain.design.relations import entity_index
         from app.domain.design.relations import evaluate_support
+
         actual = entity_index(state.get("skeleton_blueprint") or {})
-        satisfied = all(r["entity_id"] in actual and (not r["relation"] or
-            evaluate_support(state.get("skeleton_blueprint") or {}, r["entity_id"], r["relation"])["status"] == "satisfied")
-            for r in requirements)
+        satisfied = all(
+            r["entity_id"] in actual
+            and (
+                not r["relation"]
+                or evaluate_support(
+                    state.get("skeleton_blueprint") or {}, r["entity_id"], r["relation"]
+                )["status"]
+                == "satisfied"
+            )
+            for r in requirements
+        )
         if entry.kind in produced and satisfied:
             dropped.append(entry.kind)
         else:
@@ -531,13 +550,23 @@ def expand_design_markers(state: dict) -> PlanDocument:
     from app.domain.design.markers import IMPLEMENTATION_STAGES
     from app.domain.design.markers import implementation_records
     from app.domain.design.markers import implementation_complete
+
     markers = (state.get("resolved_design") or {}).get("component_markers") or []
     records = implementation_records(state)
-    level = state.get("design_document", {}).get("decisions", {}).get("complexity", {}).get("level", "simple")
+    level = (
+        state.get("design_document", {})
+        .get("decisions", {})
+        .get("complexity", {})
+        .get("level", "simple")
+    )
     pending = {m["id"]: m for m in markers}
     owners, items = {}, []
     while pending:
-        ready = [m for m in pending.values() if set(m.get("depends_on") or []).issubset(owners)]
+        ready = [
+            m
+            for m in pending.values()
+            if set(m.get("depends_on") or []).issubset(owners)
+        ]
         if not ready:
             # 互相依附的设计共同交给模型实现，不在设计期按图算法拒绝。
             groups = {"assembly": list(pending.values())}
@@ -546,7 +575,11 @@ def expand_design_markers(state: dict) -> PlanDocument:
             for marker in ready:
                 naming = resolve_component_name(marker["type"])
                 kind = naming["kind"]
-                if level == "minimal" and naming["entity_type"] in {"door", "window", "light"}:
+                if level == "minimal" and naming["entity_type"] in {
+                    "door",
+                    "window",
+                    "light",
+                }:
                     kind = naming["entity_type"]
                 groups.setdefault(kind, []).append(marker)
         batches = []
@@ -564,7 +597,14 @@ def expand_design_markers(state: dict) -> PlanDocument:
             label = naming["label"]
             if not naming["entity_type"] and kind not in {"building_body", "assembly"}:
                 labels = [m.get("design", {}).get("name") for m in rows]
-                label = next((name.strip() for name in labels if isinstance(name, str) and name.strip()), label)
+                label = next(
+                    (
+                        name.strip()
+                        for name in labels
+                        if isinstance(name, str) and name.strip()
+                    ),
+                    label,
+                )
             parallel = kind not in {"building_body", "assembly"}
             dependency_tasks = set()
             for marker in rows:
@@ -596,9 +636,15 @@ def expand_design_markers(state: dict) -> PlanDocument:
                 owners[marker["id"]] = task_id
                 pending.pop(marker["id"])
     # 一次生成、两次局部修订和一次装配修订。
-    return new_plan(items, detail_level=level,
-                    budget={"iterations": len(markers)*(len(IMPLEMENTATION_STAGES)+1)+2,
-                            "llm_calls": len(markers)*(len(IMPLEMENTATION_STAGES)+1), "max_items": len(items)})
+    return new_plan(
+        items,
+        detail_level=level,
+        budget={
+            "iterations": len(markers) * (len(IMPLEMENTATION_STAGES) + 1) + 2,
+            "llm_calls": len(markers) * (len(IMPLEMENTATION_STAGES) + 1),
+            "max_items": len(items),
+        },
+    )
 
 
 def _index_compile_gaps(blueprint_gaps):

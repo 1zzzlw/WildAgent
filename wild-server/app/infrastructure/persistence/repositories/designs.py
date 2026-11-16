@@ -12,6 +12,7 @@ from app.infrastructure.persistence.database import database
 from app.infrastructure.persistence.schema import designs
 from app.infrastructure.persistence.repositories.conversations import ensure_session
 from app.infrastructure.persistence.repositories.conversations import now_ms
+from app.infrastructure.persistence.repositories.locks import assert_session_unlocked
 
 from app.domain.design.contracts import DesignDocument
 from app.domain.design.contracts import DesignPatch
@@ -50,6 +51,7 @@ class DesignRepository:
         resolved = resolve_design(doc)
         with self.database.engine.begin() as conn:
             ensure_session(conn, doc.session_id)
+            assert_session_unlocked(conn, doc.session_id)
             latest = conn.execute(select(designs.c.revision).where(designs.c.session_id == doc.session_id)
                                   .order_by(designs.c.revision.desc()).limit(1).with_for_update()).scalar()
             if expected_revision is not None and latest != expected_revision:
@@ -90,6 +92,7 @@ class DesignRepository:
     def delete(self, session_id: str) -> None:
         self._safe_session_id(session_id)
         with self.database.engine.begin() as conn:
+            assert_session_unlocked(conn, session_id)
             conn.execute(delete(designs).where(designs.c.session_id == session_id))
 
     def apply_patch(self, session_id: str, patch: DesignPatch | dict[str, Any]) -> tuple[DesignDocument, dict[str, Any]]:

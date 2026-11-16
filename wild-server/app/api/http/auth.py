@@ -10,6 +10,7 @@ from app.api.schemas.auth import RegisterInput
 from app.api.dependencies import _editor
 from app.api.dependencies import _start_session
 from app.api.dependencies import current_user
+from app.infrastructure.persistence.repositories.activity import record_activity
 
 
 router = APIRouter(prefix="/api/auth", tags=["登录"])
@@ -18,6 +19,7 @@ router = APIRouter(prefix="/api/auth", tags=["登录"])
 @router.post("/login")
 def login(body: LoginInput, request: Request, response: Response):
     user = authenticate(str(body.email), body.password, request.client.host if request.client else "unknown")
+    record_activity(user["id"], "auth.login")
     return _start_session(request, response, user)
 
 
@@ -29,6 +31,7 @@ def email_code(body: EmailCodeInput, request: Request):
 @router.post("/register", status_code=201)
 def register(body: RegisterInput, request: Request, response: Response):
     account = register_account(body.username, str(body.email).lower(), body.password, body.code)
+    record_activity(account["id"], "auth.register")
     return _start_session(request, response, _editor(account))
 
 
@@ -45,6 +48,9 @@ def session(request: Request, response: Response):
 
 @router.post("/logout")
 def logout(request: Request, response: Response):
+    user = current_user(request)
+    if user and user.get("id"):
+        record_activity(user["id"], "auth.logout")
     token = request.cookies.get(COOKIE_NAME, "")
     close_session(token)
     response.delete_cookie(COOKIE_NAME)

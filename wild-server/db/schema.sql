@@ -1,7 +1,8 @@
 -- WildAgent 完整建表 SQL：业务表 + LangGraph 检查点表。
 -- 在远程 MySQL 8.0.19+ 中先创建并选中目标数据库（例如 wild_agent），再手动导入。
 -- 初始化脚本保留已有数据；已有旧版表请对照字段结构手工更新。
--- users.identity：1 普通用户，2 管理员；当前两种身份功能一致，注册固定为 1。
+-- users.identity：1 普通用户，2 管理员；注册固定为 1，管理员不受使用次数限制。
+-- 已有数据库升级请先执行 migrations/20261116_admin_management.sql。
 
 SET NAMES utf8mb4;
 
@@ -27,6 +28,12 @@ CREATE TABLE IF NOT EXISTS users (
 	password_hash VARCHAR(256) NOT NULL, 
 	status VARCHAR(16) NOT NULL, 
 	created_at BIGINT NOT NULL, 
+	operations_remaining INTEGER NOT NULL DEFAULT 1000,
+	modifications_remaining INTEGER NOT NULL DEFAULT 200,
+	generations_remaining INTEGER NOT NULL DEFAULT 20,
+	operations_used INTEGER NOT NULL DEFAULT 0,
+	modifications_used INTEGER NOT NULL DEFAULT 0,
+	generations_used INTEGER NOT NULL DEFAULT 0,
 	PRIMARY KEY (id), 
 	CONSTRAINT ck_users_identity CHECK (identity IN (1, 2)), 
 	UNIQUE (email)
@@ -70,6 +77,9 @@ CREATE TABLE IF NOT EXISTS blueprints (
 	elements_count INTEGER NOT NULL, 
 	components_count INTEGER NOT NULL, 
 	blueprint_json JSON NOT NULL, 
+	locked BOOLEAN NOT NULL DEFAULT FALSE,
+	locked_at BIGINT,
+	locked_by VARCHAR(36),
 	created_at BIGINT NOT NULL, 
 	updated_at BIGINT NOT NULL, 
 	PRIMARY KEY (filename), 
@@ -154,3 +164,17 @@ CREATE TABLE IF NOT EXISTS checkpoint_writes (
 INSERT IGNORE INTO checkpoint_migrations (v) VALUES
     (0),(1),(2),(3),(4),(5),(6),(7),(8),(9),(10),
     (11),(12),(13),(14),(15),(16),(17),(18),(19),(20),(21);
+
+CREATE TABLE IF NOT EXISTS audit_logs (
+    id VARCHAR(64) NOT NULL PRIMARY KEY,
+    actor_id VARCHAR(36) NOT NULL,
+    actor_name VARCHAR(64) NOT NULL,
+    action VARCHAR(64) NOT NULL,
+    resource VARCHAR(255) NOT NULL DEFAULT '',
+    session_id VARCHAR(128) NULL,
+    request_id VARCHAR(128) NULL,
+    details JSON NOT NULL,
+    created_at BIGINT NOT NULL,
+    INDEX ix_audit_actor_created (actor_id, created_at),
+    INDEX ix_audit_action_created (action, created_at)
+) ENGINE=InnoDB CHARSET=utf8mb4 COLLATE utf8mb4_bin;

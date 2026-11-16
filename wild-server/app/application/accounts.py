@@ -7,6 +7,7 @@ from redis.exceptions import LockError
 from sqlalchemy.exc import IntegrityError
 from app.infrastructure.redis.connection import cache
 from app.infrastructure.persistence.repositories.accounts import accounts
+from app.infrastructure.persistence.repositories.activity import public_usage
 from app.infrastructure.mail.messages import build_registration_email
 from app.infrastructure.mail.sender import MailDeliveryError, send_message
 from config import config
@@ -31,7 +32,8 @@ def verify_password(password: str, encoded: str) -> bool:
 
 def public_account(account: dict) -> dict:
     return {"id": account["id"], "username": account["username"], "email": account["email"],
-            "identity": account["identity"], "role": "editor"}
+            "identity": account["identity"], "role": "editor", "is_admin": account["identity"] == 2,
+            "usage": public_usage(account)}
 
 
 def authenticate(email: str, password: str, client_ip: str) -> dict:

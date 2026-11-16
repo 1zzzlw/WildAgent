@@ -15,8 +15,10 @@ from app.domain.design.architecture.profile import _fallback_volumes
 
 
 def _volume_for_face(
-    volumes: list[dict[str, Any]], side: str,
-    start: tuple[float, float], end: tuple[float, float],
+    volumes: list[dict[str, Any]],
+    side: str,
+    start: tuple[float, float],
+    end: tuple[float, float],
 ) -> dict[str, Any] | None:
     """找到承载一段体量外立面的体量；共线边按覆盖范围最小者归属。"""
     candidates = []
@@ -25,22 +27,38 @@ def _volume_for_face(
         x1, z1 = x0 + float(volume["width"]), z0 + float(volume["depth"])
         if side in {"front", "back"}:
             constant = z0 if side == "front" else z1
-            matches = (abs(start[1] - constant) < 1e-5 and abs(end[1] - constant) < 1e-5
-                       and x0 - 1e-5 <= min(start[0], end[0])
-                       and max(start[0], end[0]) <= x1 + 1e-5)
+            matches = (
+                abs(start[1] - constant) < 1e-5
+                and abs(end[1] - constant) < 1e-5
+                and x0 - 1e-5 <= min(start[0], end[0])
+                and max(start[0], end[0]) <= x1 + 1e-5
+            )
         else:
             constant = x0 if side == "left" else x1
-            matches = (abs(start[0] - constant) < 1e-5 and abs(end[0] - constant) < 1e-5
-                       and z0 - 1e-5 <= min(start[1], end[1])
-                       and max(start[1], end[1]) <= z1 + 1e-5)
+            matches = (
+                abs(start[0] - constant) < 1e-5
+                and abs(end[0] - constant) < 1e-5
+                and z0 - 1e-5 <= min(start[1], end[1])
+                and max(start[1], end[1]) <= z1 + 1e-5
+            )
         if matches:
             candidates.append(volume)
-    return min(candidates, key=lambda item: (float(item["width"]) * float(item["depth"]),
-                                              str(item.get("id") or ""))) if candidates else None
+    return (
+        min(
+            candidates,
+            key=lambda item: (
+                float(item["width"]) * float(item["depth"]),
+                str(item.get("id") or ""),
+            ),
+        )
+        if candidates
+        else None
+    )
 
 
-def _effective_facade(facades: dict[str, Any], volume: dict[str, Any] | None,
-                      side: str) -> dict[str, Any]:
+def _effective_facade(
+    facades: dict[str, Any], volume: dict[str, Any] | None, side: str
+) -> dict[str, Any]:
     shared = (facades or {}).get(side) or {}
     local = ((volume or {}).get("facades") or {}).get(side) or {}
     return {**shared, **local}
@@ -82,13 +100,19 @@ def _resolve_floor_plate_plan(
 
     for level in range(1, modeled_floors + 1):
         current = [
-            volume for volume in volumes
+            volume
+            for volume in volumes
             if int(volume["start_floor"]) <= level <= int(volume["end_floor"])
         ]
-        supporting = [] if level == 1 else [
-            volume for volume in volumes
-            if int(volume["start_floor"]) <= level - 1 <= int(volume["end_floor"])
-        ]
+        supporting = (
+            []
+            if level == 1
+            else [
+                volume
+                for volume in volumes
+                if int(volume["start_floor"]) <= level - 1 <= int(volume["end_floor"])
+            ]
+        )
         candidates = [*supporting, *current]
         if not candidates:
             continue
@@ -108,18 +132,21 @@ def _resolve_floor_plate_plan(
             selected.append((volume, footprint))
 
         for volume, footprint in selected:
-            plates.append({
-                "level": level,
-                "elevation": round((level - 1) * floor_height, 3),
-                "volume_id": str(volume["id"]),
-                "bounds": footprint,
-            })
+            plates.append(
+                {
+                    "level": level,
+                    "elevation": round((level - 1) * floor_height, 3),
+                    "volume_id": str(volume["id"]),
+                    "bounds": footprint,
+                }
+            )
     return plates
 
 
 def _resolve_union_wall_segments(
     volumes: list[dict[str, Any]],
-    *, split_by_volume: bool = False,
+    *,
+    split_by_volume: bool = False,
 ) -> list[dict[str, Any]]:
     """把同层正交矩形体量编译成联合外轮廓，去掉共享边和被覆盖的内部边。"""
     rectangles = [
@@ -150,11 +177,17 @@ def _resolve_union_wall_segments(
                 occupied.add((x_index, z_index))
 
     raw_segments: list[tuple[str, float, float, float, str]] = []
+
     def add_segment(side: str, constant: float, start: float, end: float) -> None:
-        points = ((start, constant), (end, constant)) if side in {"front", "back"} else (
-            (constant, start), (constant, end))
+        points = (
+            ((start, constant), (end, constant))
+            if side in {"front", "back"}
+            else ((constant, start), (constant, end))
+        )
         owner = _volume_for_face(volumes, side, *points) if split_by_volume else None
-        raw_segments.append((side, constant, start, end, str(owner.get("id")) if owner else ""))
+        raw_segments.append(
+            (side, constant, start, end, str(owner.get("id")) if owner else "")
+        )
 
     for x_index, z_index in occupied:
         x0, x1 = xs[x_index], xs[x_index + 1]
@@ -170,12 +203,16 @@ def _resolve_union_wall_segments(
 
     merged: list[tuple[str, float, float, float, str]] = []
     for side in ("front", "right", "back", "left"):
-        groups = sorted({(segment[1], segment[4]) for segment in raw_segments if segment[0] == side})
+        groups = sorted(
+            {(segment[1], segment[4]) for segment in raw_segments if segment[0] == side}
+        )
         for constant, owner in groups:
             intervals = sorted(
                 (segment[2], segment[3])
                 for segment in raw_segments
-                if segment[0] == side and abs(segment[1] - constant) <= 1e-6 and segment[4] == owner
+                if segment[0] == side
+                and abs(segment[1] - constant) <= 1e-6
+                and segment[4] == owner
             )
             if not intervals:
                 continue
@@ -198,8 +235,14 @@ def _resolve_union_wall_segments(
             start_point, end_point = (constant, end), (constant, start)
         else:
             start_point, end_point = (constant, start), (constant, end)
-        segments.append({"side": side, "from": start_point, "to": end_point,
-                         **({"volume": owner} if owner else {})})
+        segments.append(
+            {
+                "side": side,
+                "from": start_point,
+                "to": end_point,
+                **({"volume": owner} if owner else {}),
+            }
+        )
     return segments
 
 
@@ -220,17 +263,21 @@ def _schematic_volume_ranges(
     resolved: list[dict[str, Any]] = []
     for volume in volumes:
         start = max(1, min(modeled_floors, int(volume.get("start_floor", 1))))
-        end = max(start, min(modeled_floors, int(volume.get("end_floor", modeled_floors))))
+        end = max(
+            start, min(modeled_floors, int(volume.get("end_floor", modeled_floors)))
+        )
         semantic_start = math.floor((start - 1) * semantic_floors / modeled_floors) + 1
         semantic_end = max(
             semantic_start,
             math.floor(end * semantic_floors / modeled_floors),
         )
-        resolved.append({
-            **volume,
-            "semantic_start_floor": semantic_start,
-            "semantic_end_floor": min(semantic_floors, semantic_end),
-        })
+        resolved.append(
+            {
+                **volume,
+                "semantic_start_floor": semantic_start,
+                "semantic_end_floor": min(semantic_floors, semantic_end),
+            }
+        )
     return resolved
 
 
@@ -240,18 +287,23 @@ def _schematic_volume_zones(
     modeled_floors: int,
 ) -> list[dict[str, Any]]:
     mapped = _schematic_volume_ranges(volumes, semantic_floors, modeled_floors)
-    boundaries = sorted({
-        1,
-        semantic_floors + 1,
-        *(int(volume["semantic_start_floor"]) for volume in mapped),
-        *(int(volume["semantic_end_floor"]) + 1 for volume in mapped),
-    })
+    boundaries = sorted(
+        {
+            1,
+            semantic_floors + 1,
+            *(int(volume["semantic_start_floor"]) for volume in mapped),
+            *(int(volume["semantic_end_floor"]) + 1 for volume in mapped),
+        }
+    )
     zones: list[dict[str, Any]] = []
     for start, next_start in zip(boundaries, boundaries[1:]):
         end = next_start - 1
         active = [
-            volume for volume in mapped
-            if int(volume["semantic_start_floor"]) <= start <= int(volume["semantic_end_floor"])
+            volume
+            for volume in mapped
+            if int(volume["semantic_start_floor"])
+            <= start
+            <= int(volume["semantic_end_floor"])
         ]
         if active:
             zones.append({"start_floor": start, "end_floor": end, "volumes": active})
@@ -273,8 +325,10 @@ def _append_curtain_wall_grid(
     """在连续玻璃外壳外侧生成轻量竖梃与逐层横梃，不再靠六条窗带冒充幕墙。"""
 
     normals = {
-        "front": (0.0, -0.14), "back": (0.0, 0.14),
-        "left": (-0.14, 0.0), "right": (0.14, 0.0),
+        "front": (0.0, -0.14),
+        "back": (0.0, 0.14),
+        "left": (-0.14, 0.0),
+        "right": (0.14, 0.0),
     }
     for segment_index, segment in enumerate(wall_segments, start=1):
         side = str(segment["side"])
@@ -288,26 +342,34 @@ def _append_curtain_wall_grid(
             ratio = bay / bays
             x = ax + (bx - ax) * ratio
             z = az + (bz - az) * ratio
-            elements.append({
-                "type": "beam",
-                "id": f"curtain_mullion_v_{zone_index}_{segment_index}_{bay}",
-                "from": [round(x, 3), round(base_y, 3), round(z, 3)],
-                "to": [round(x, 3), round(top_y, 3), round(z, 3)],
-                "crossSection": "rect", "width": 0.08, "height": 0.1,
-                "material": "metal",
-            })
+            elements.append(
+                {
+                    "type": "beam",
+                    "id": f"curtain_mullion_v_{zone_index}_{segment_index}_{bay}",
+                    "from": [round(x, 3), round(base_y, 3), round(z, 3)],
+                    "to": [round(x, 3), round(top_y, 3), round(z, 3)],
+                    "crossSection": "rect",
+                    "width": 0.08,
+                    "height": 0.1,
+                    "material": "metal",
+                }
+            )
         # 每个语义楼层的顶边都需要一道横梃。坐标必须相对当前分区的 base_y
         # 计算，不能假定整栋建筑从 0m 起步；分区顶边同时作为封边。
         for story in range(start_floor, end_floor + 1):
             y = base_y + (story - start_floor + 1) * floor_height
-            elements.append({
-                "type": "beam",
-                "id": f"curtain_mullion_h_{zone_index}_{segment_index}_{story}",
-                "from": [round(ax, 3), round(y, 3), round(az, 3)],
-                "to": [round(bx, 3), round(y, 3), round(bz, 3)],
-                "crossSection": "rect", "width": 0.08, "height": 0.1,
-                "material": "metal",
-            })
+            elements.append(
+                {
+                    "type": "beam",
+                    "id": f"curtain_mullion_h_{zone_index}_{segment_index}_{story}",
+                    "from": [round(ax, 3), round(y, 3), round(az, 3)],
+                    "to": [round(bx, 3), round(y, 3), round(bz, 3)],
+                    "crossSection": "rect",
+                    "width": 0.08,
+                    "height": 0.1,
+                    "material": "metal",
+                }
+            )
 
 
 def evaluate_skeleton_complexity(
@@ -316,7 +378,8 @@ def evaluate_skeleton_complexity(
 ) -> dict[str, Any]:
     """评估骨架是否兑现方案中的结构数量和体量层次目标。"""
     elements = [
-        item for item in blueprint.get("geometry", {}).get("elements", [])
+        item
+        for item in blueprint.get("geometry", {}).get("elements", [])
         if isinstance(item, dict)
     ]
     counts: dict[str, int] = {}
@@ -334,26 +397,64 @@ def evaluate_skeleton_complexity(
         if element_type == "floor":
             start = element.get("from")
             end = element.get("to")
-            if isinstance(start, list) and isinstance(end, list) and len(start) == 3 and len(end) == 3:
-                floor_footprints.add(tuple(round(float(value), 2) for value in (
-                    start[0], start[2], end[0], end[2],
-                )))
-                floor_layouts.add(tuple(round(float(value), 2) for value in (
-                    start[1], start[0], start[2], end[0], end[2],
-                )))
+            if (
+                isinstance(start, list)
+                and isinstance(end, list)
+                and len(start) == 3
+                and len(end) == 3
+            ):
+                floor_footprints.add(
+                    tuple(
+                        round(float(value), 2)
+                        for value in (
+                            start[0],
+                            start[2],
+                            end[0],
+                            end[2],
+                        )
+                    )
+                )
+                floor_layouts.add(
+                    tuple(
+                        round(float(value), 2)
+                        for value in (
+                            start[1],
+                            start[0],
+                            start[2],
+                            end[0],
+                            end[2],
+                        )
+                    )
+                )
         elif element_type == "wall":
             start = element.get("from")
             end = element.get("to")
-            if isinstance(start, list) and isinstance(end, list) and len(start) == 3 and len(end) == 3:
-                if math.hypot(float(end[0]) - float(start[0]), float(end[2]) - float(start[2])) <= 0.01:
+            if (
+                isinstance(start, list)
+                and isinstance(end, list)
+                and len(start) == 3
+                and len(end) == 3
+            ):
+                if (
+                    math.hypot(
+                        float(end[0]) - float(start[0]), float(end[2]) - float(start[2])
+                    )
+                    <= 0.01
+                ):
                     degenerate_wall_ids.append(str(element.get("id", "?")))
-                vertical_range = tuple(sorted((round(float(start[1]), 2), round(float(end[1]), 2))))
+                vertical_range = tuple(
+                    sorted((round(float(start[1]), 2), round(float(end[1]), 2)))
+                )
                 wall_groups.setdefault(vertical_range, []).append(element)
                 wall_base_levels.add(vertical_range[0])
-                horizontal_endpoints = tuple(sorted((
-                    (round(float(start[0]), 2), round(float(start[2]), 2)),
-                    (round(float(end[0]), 2), round(float(end[2]), 2)),
-                )))
+                horizontal_endpoints = tuple(
+                    sorted(
+                        (
+                            (round(float(start[0]), 2), round(float(start[2]), 2)),
+                            (round(float(end[0]), 2), round(float(end[2]), 2)),
+                        )
+                    )
+                )
                 wall_key = (horizontal_endpoints, vertical_range)
                 if wall_key in wall_keys:
                     duplicate_wall_count += 1
@@ -372,9 +473,15 @@ def evaluate_skeleton_complexity(
                         float(element.get("depth", 0)) / 2,
                         0.01,
                     )
-                    columns.append((
-                        float(base[0]), float(base[1]), float(base[2]), height, radius,
-                    ))
+                    columns.append(
+                        (
+                            float(base[0]),
+                            float(base[1]),
+                            float(base[2]),
+                            height,
+                            radius,
+                        )
+                    )
                 except (TypeError, ValueError):
                     pass
 
@@ -424,9 +531,17 @@ def evaluate_skeleton_complexity(
             for current_wall in connected_walls:
                 for current_point in (current_wall["from"][2], current_wall["to"][2]):
                     zs.append(float(current_point))
-            volume_footprints.add(tuple(round(value, 2) for value in (
-                min(xs), min(zs), max(xs), max(zs),
-            )))
+            volume_footprints.add(
+                tuple(
+                    round(value, 2)
+                    for value in (
+                        min(xs),
+                        min(zs),
+                        max(xs),
+                        max(zs),
+                    )
+                )
+            )
 
     # 联合外轮廓会把相接矩形编译成一个连通墙组；凹多边形仍代表多个体量层次，
     # 不能再依赖旧的“重复矩形墙圈数量”来证明复杂度。
@@ -437,10 +552,15 @@ def evaluate_skeleton_complexity(
     )
     overlapping_column_count = 0
     for index, first in enumerate(columns):
-        for second in columns[index + 1:]:
-            vertical_overlap = min(first[1] + first[3], second[1] + second[3]) - max(first[1], second[1])
+        for second in columns[index + 1 :]:
+            vertical_overlap = min(first[1] + first[3], second[1] + second[3]) - max(
+                first[1], second[1]
+            )
             horizontal_distance = math.hypot(first[0] - second[0], first[2] - second[2])
-            if vertical_overlap > 0.05 and horizontal_distance < first[4] + second[4] - 0.02:
+            if (
+                vertical_overlap > 0.05
+                and horizontal_distance < first[4] + second[4] - 0.02
+            ):
                 overlapping_column_count += 1
 
     complexity = plan.get("complexity", {}) if isinstance(plan, dict) else {}
@@ -456,21 +576,28 @@ def evaluate_skeleton_complexity(
     schematic = str(massing.get("representation_mode") or "full") == "schematic"
     floor_height = float(massing.get("floor_height", 3.2))
     plan_volumes = [
-        volume for volume in plan.get("volumes", [])
-        if isinstance(volume, dict)
+        volume for volume in plan.get("volumes", []) if isinstance(volume, dict)
     ]
     modeled_floors = int(massing.get("modeled_floors", massing.get("floors", 1)))
     geometry = blueprint.get("geometry", {}) if isinstance(blueprint, dict) else {}
     templates = geometry.get("templates", {}) if isinstance(geometry, dict) else {}
     stair_template_ids = {
         str(template_id)
-        for template_id, template in (templates.items() if isinstance(templates, dict) else [])
+        for template_id, template in (
+            templates.items() if isinstance(templates, dict) else []
+        )
         if isinstance(template, dict) and template.get("type") == "stair"
     }
-    stair_instance_count = sum(
-        1 for instance in geometry.get("instances", [])
-        if isinstance(instance, dict) and str(instance.get("ref") or "") in stair_template_ids
-    ) if isinstance(geometry, dict) and isinstance(geometry.get("instances"), list) else 0
+    stair_instance_count = (
+        sum(
+            1
+            for instance in geometry.get("instances", [])
+            if isinstance(instance, dict)
+            and str(instance.get("ref") or "") in stair_template_ids
+        )
+        if isinstance(geometry, dict) and isinstance(geometry.get("instances"), list)
+        else 0
+    )
     has_stair = counts.get("stair", 0) > 0 or stair_instance_count > 0
     has_core = any(
         isinstance(element, dict)
@@ -483,24 +610,49 @@ def evaluate_skeleton_complexity(
     )
     circulation_valid = (
         modeled_floors <= 1
-        or vertical_strategy == "stair" and has_stair
-        or vertical_strategy == "core_and_stair" and has_stair and has_core
+        or vertical_strategy == "stair"
+        and has_stair
+        or vertical_strategy == "core_and_stair"
+        and has_stair
+        and has_core
     )
     expected_plates = {
-        "geometry": {"elements": [
-            {"id": f"expected_floor_{index}", "type": "floor",
-             "from": [plate["bounds"][0], plate["elevation"], plate["bounds"][1]],
-             "to": [plate["bounds"][2], plate["elevation"], plate["bounds"][3]],
-             "thickness": 0.2}
-            for index, plate in enumerate(_resolve_floor_plate_plan(plan_volumes, modeled_floors, floor_height))
-        ] + [element for element in elements if element.get("type") == "stair"]}
+        "geometry": {
+            "elements": [
+                {
+                    "id": f"expected_floor_{index}",
+                    "type": "floor",
+                    "from": [
+                        plate["bounds"][0],
+                        plate["elevation"],
+                        plate["bounds"][1],
+                    ],
+                    "to": [plate["bounds"][2], plate["elevation"], plate["bounds"][3]],
+                    "thickness": 0.2,
+                }
+                for index, plate in enumerate(
+                    _resolve_floor_plate_plan(
+                        plan_volumes, modeled_floors, floor_height
+                    )
+                )
+            ]
+            + [element for element in elements if element.get("type") == "stair"]
+        }
     }
     cut_stair_openings(expected_plates)
     expected_floor_layouts = {
-        tuple(round(value, 2) for value in (
-            plate["from"][1], plate["from"][0], plate["from"][2], plate["to"][0], plate["to"][2],
-        ))
-        for plate in expected_plates["geometry"]["elements"] if plate["type"] == "floor"
+        tuple(
+            round(value, 2)
+            for value in (
+                plate["from"][1],
+                plate["from"][0],
+                plate["from"][2],
+                plate["to"][0],
+                plate["to"][2],
+            )
+        )
+        for plate in expected_plates["geometry"]["elements"]
+        if plate["type"] == "floor"
     }
     expected_wall_base_levels = {
         round(level * floor_height, 2) for level in range(modeled_floors)
@@ -509,13 +661,14 @@ def evaluate_skeleton_complexity(
         "structural_element_target": structural_count >= target,
         "volume_footprint_target": resolved_volume_footprint_count >= volume_target,
         "volume_plan_conformance": (
-            True if schematic
+            True
+            if schematic
             else (not expected_floor_layouts or floor_layouts == expected_floor_layouts)
         ),
-        "structural_type_diversity": len([value for value in counts.values() if value]) >= 3,
+        "structural_type_diversity": len([value for value in counts.values() if value])
+        >= 3,
         "storey_wall_levels": (
-            True if schematic
-            else expected_wall_base_levels.issubset(wall_base_levels)
+            True if schematic else expected_wall_base_levels.issubset(wall_base_levels)
         ),
         "vertical_circulation": circulation_valid,
         "duplicate_wall_free": duplicate_wall_count == 0,
@@ -590,22 +743,28 @@ def _resolve_vertical_transport_layout(
     stair_run = min(max(1.2, float(floor_height) * 1.65), available - 0.4)
     if stair_run < 1.2:
         return None
-    lead = (long_span - (_ELEVATOR_SHAFT_DEPTH + _VERTICAL_TRANSPORT_GAP + stair_run)) / 2
+    lead = (
+        long_span - (_ELEVATOR_SHAFT_DEPTH + _VERTICAL_TRANSPORT_GAP + stair_run)
+    ) / 2
     stair_width = min(float(stair_width), short_span - 0.4)
 
     if long_axis_z:
         short_center = (rx0 + rx1) / 2
         core = [
-            short_center - shaft_width / 2, rz0 + lead,
-            short_center + shaft_width / 2, rz0 + lead + _ELEVATOR_SHAFT_DEPTH,
+            short_center - shaft_width / 2,
+            rz0 + lead,
+            short_center + shaft_width / 2,
+            rz0 + lead + _ELEVATOR_SHAFT_DEPTH,
         ]
         stair_start = [short_center, core[3] + _VERTICAL_TRANSPORT_GAP]
         stair_end = [short_center, stair_start[1] + stair_run]
     else:
         short_center = (rz0 + rz1) / 2
         core = [
-            rx0 + lead, short_center - shaft_width / 2,
-            rx0 + lead + _ELEVATOR_SHAFT_DEPTH, short_center + shaft_width / 2,
+            rx0 + lead,
+            short_center - shaft_width / 2,
+            rx0 + lead + _ELEVATOR_SHAFT_DEPTH,
+            short_center + shaft_width / 2,
         ]
         stair_start = [core[2] + _VERTICAL_TRANSPORT_GAP, short_center]
         stair_end = [stair_start[0] + stair_run, short_center]
@@ -689,27 +848,35 @@ def _append_vertical_core(
         level_offsets = [] if level == 0 else door_offsets
         level_suffix = f"{level + 1}" if doors_per_floor > 1 else ""
         for side, start_x, start_z, end_x, end_z in core_runs:
-            wall_id = f"wall_core_{side}_{level_suffix}" if doors_per_floor > 1 else f"wall_core_{side}"
+            wall_id = (
+                f"wall_core_{side}_{level_suffix}"
+                if doors_per_floor > 1
+                else f"wall_core_{side}"
+            )
             wall = {
-                "type": "wall", "id": wall_id,
+                "type": "wall",
+                "id": wall_id,
                 "from": [start_x, round(base_y, 3), start_z],
                 "to": [end_x, round(top_y, 3), end_z],
-                "thickness": 0.2, "material": "concrete",
+                "thickness": 0.2,
+                "material": "concrete",
             }
             if side == door_wall_side and level_offsets:
                 # 候梯墙逐层切出电梯门洞（用 opening 组件表达，
                 # 由 wild-core resolver 在渲染时从墙上真实挖洞）。
                 for door_index, offset in enumerate(level_offsets, start=1):
-                    elements.append({
-                        "type": "opening",
-                        "id": f"elevator_door_{level + 1}_{door_index}",
-                        "parentWall": wall_id,
-                        "from": [offset, round(base_y, 3), 0],
-                        "width": door_width,
-                        "height": door_height,
-                        "style": "rectangular",
-                        "depth": 0.2,
-                    })
+                    elements.append(
+                        {
+                            "type": "opening",
+                            "id": f"elevator_door_{level + 1}_{door_index}",
+                            "parentWall": wall_id,
+                            "from": [offset, round(base_y, 3), 0],
+                            "width": door_width,
+                            "height": door_height,
+                            "style": "rectangular",
+                            "depth": 0.2,
+                        }
+                    )
             elements.append(wall)
 
 
@@ -722,8 +889,10 @@ def _cut_core_shaft_openings(blueprint: dict[str, Any], floor_height: float) -> 
     """
     elements = blueprint.get("geometry", {}).get("elements", [])
     core_walls = [
-        element for element in elements
-        if element.get("type") == "wall" and str(element.get("id") or "").startswith("wall_core_")
+        element
+        for element in elements
+        if element.get("type") == "wall"
+        and str(element.get("id") or "").startswith("wall_core_")
     ]
     if not core_walls:
         return

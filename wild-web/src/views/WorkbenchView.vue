@@ -2,6 +2,7 @@
   <LoginGate v-if="!auth.user || !editorReady" :checking="!auth.initialized" />
   <div v-else :class="['wild-editor', { 'viewport-focused': ui.viewportFocused, 'reduce-motion': !ui.animationsEnabled }]" @click.capture="handleClickSound">
     <EditorTopBar v-show="!ui.viewportFocused" />
+    <UsageStatus v-show="!ui.viewportFocused" />
     <div class="editor-main">
       <LeftPanel v-show="!ui.viewportFocused" />
       <main ref="viewportRef" class="viewport-container" aria-label="建筑渲染视口">
@@ -30,6 +31,7 @@ import { useWorkspaceStore } from '../stores/workspaceStore'
 import { useRenderPanelStore } from '../stores/renderPanelStore'
 import { playUISound } from '../utils/uiSound'
 import EditorTopBar from '../components/layout/EditorTopBar.vue'
+import UsageStatus from '../components/layout/UsageStatus.vue'
 import LeftPanel from '../components/layout/LeftPanel.vue'
 import CanvasViewport from '../components/viewport/CanvasViewport.vue'
 import ViewportToolDock from '../components/viewport/ViewportToolDock.vue'
@@ -82,10 +84,11 @@ async function handleKeydown(event: KeyboardEvent) {
   if (modifier && event.key.toLowerCase() === 'b') { event.preventDefault(); ui.panelOpen = !ui.panelOpen; return }
   if (modifier && ['z', 'y'].includes(event.key.toLowerCase())) {
     event.preventDefault()
-    if (!auth.canEdit) return
+    if (!scene.canModifyManually) return
     const redo = event.key.toLowerCase() === 'y' || event.shiftKey
+    const previousIndex = history.currentIndex
     const entry = redo ? history.redo() : history.undo()
-    if (entry) await scene.restoreBlueprint(redo ? entry.after : entry.before)
+    if (entry && !await scene.restoreBlueprint(redo ? entry.after : entry.before)) history.currentIndex = previousIndex
     return
   }
   if (event.altKey && /^[1-7]$/.test(event.key)) { event.preventDefault(); ui.openPanel(PANEL_IDS[Number(event.key)-1]!); return }

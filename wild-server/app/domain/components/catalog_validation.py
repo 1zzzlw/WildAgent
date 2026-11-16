@@ -7,11 +7,8 @@ import json
 from pathlib import Path
 from typing import Any
 
-
 MAX_ITEM_PARTS = 512
-ENGINE_SCHEMA_PATH = (
-    SERVER_ROOT / "storage" / "knowledge_base" / "schema.json"
-)
+ENGINE_SCHEMA_PATH = SERVER_ROOT / "storage" / "knowledge_base" / "schema.json"
 
 
 def inspect_item_asset(blueprint: Any) -> list[str]:
@@ -76,7 +73,9 @@ def inspect_item_asset(blueprint: Any) -> list[str]:
         issues.append("assets 必须是对象")
         assets = {}
     if blueprint.get("materialLibraries"):
-        issues.append("materialLibraries 暂不能随物品实例导入；请把材质定义写入 materials")
+        issues.append(
+            "materialLibraries 暂不能随物品实例导入；请把材质定义写入 materials"
+        )
     if materials is not None and not isinstance(materials, dict):
         issues.append("materials 必须是对象")
     elif isinstance(elements, list):

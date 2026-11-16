@@ -440,6 +440,7 @@ export interface SessionInfo {
   session_id: string
   /** 后端文件相对路径，如 "2026-08-02/session_xxx_名称.wild"，新格式含日期目录 */
   filename?: string
+  locked?: boolean
   name: string           // 从 blueprint.meta.name 提取
   building_type?: string // 建筑类型（如 "chinese_courtyard", "modern_house"）
   created_at: number

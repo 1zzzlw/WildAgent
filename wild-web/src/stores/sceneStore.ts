@@ -30,6 +30,9 @@ import { buildGeometryRelationIndex } from 'wild-core/relationships'
 import { reconstructScene } from '../renderer/reconstructionClient'
 import { clearTextureLoadRecords } from '../renderer/textureLoadMonitor'
 import { useAuthStore } from './authStore'
+import { useAgentStore } from './agentStore'
+import { ElMessage } from 'element-plus'
+import { agentBridge } from '../agent/agentBridge'
 
 function compactSceneName(name: string): string {
   const firstClause = String(name).trim().replace(/\s+/g, ' ').split(/[：:，,；;。]/, 1)[0]?.trim() || '未命名建筑'
@@ -43,6 +46,13 @@ export const useSceneStore = defineStore('scene', () => {
   const reconstructed = shallowRef<ReconstructedEntity | null>(null)
   const validationIssues = ref<ValidationIssue[]>([])
   const isReconstructing = ref(false)
+  const isCommitting = ref(false)
+  const isLocked = computed(() => {
+    const agent = useAgentStore()
+    return Boolean(agent.sessions.find(item => item.session_id === agent.currentSessionId)?.locked)
+  })
+  const canModify = computed(() => useAuthStore().canEdit && !isLocked.value && !isCommitting.value)
+  const canModifyManually = computed(() => canModify.value && useAuthStore().hasQuota('operations'))
   let reconstructionRequest = 0
   const relationIndex = computed(() => buildGeometryRelationIndex(document.value?.blueprint.geometry || {}))
   function reconcileSelection() { useSelectionStore().retainSelection(new Set(relationIndex.value.items.keys())) }
@@ -93,7 +103,10 @@ export const useSceneStore = defineStore('scene', () => {
   }
 
   async function applyPatch(patch: ScenePatch, historyGroup?: string): Promise<boolean> {
-    if (!useAuthStore().canEdit) return false
+    if (!canModify.value) {
+      if (isLocked.value) ElMessage.warning('蓝图已锁定，请先由管理员解锁')
+      return false
+    }
     if (!document.value) {
       console.error('无场景文档，无法应用 patch')
       return false
@@ -108,6 +121,8 @@ export const useSceneStore = defineStore('scene', () => {
       return false
     }
 
+    isCommitting.value = true
+    const targetDocument = document.value
     try {
       const before = deepClone(document.value.blueprint)
       // 应用到副本
@@ -117,11 +132,14 @@ export const useSceneStore = defineStore('scene', () => {
 
       // 校验
       validate(newBlueprint)
+      if (!await persistEdit(newBlueprint, patch.patch_id, patch.summary || '修改场景')) return false
+      if (document.value !== targetDocument) return false
       // 草稿已有错误也允许继续修改；重建问题保留在诊断中，不撤销用户编辑。
       document.value.blueprint = newBlueprint
       reconcileSelection()
       document.value.revision++
-      document.value.dirty = true
+      document.value.dirty = false
+      document.value.savedAt = Date.now()
 
       useHistoryStore().push({
         label: patch.summary || '修改场景',
@@ -136,22 +154,49 @@ export const useSceneStore = defineStore('scene', () => {
     } catch (error) {
       console.error('应用 patch 失败', error)
       return false
+    } finally {
+      isCommitting.value = false
     }
   }
 
   /** 恢复历史快照，不再次写入历史记录。 */
   async function restoreBlueprint(bp: Blueprint): Promise<boolean> {
-    if (!useAuthStore().canEdit) return false
+    if (!canModifyManually.value) return false
     if (!document.value) return false
     const normalizedBlueprint = normalizeBlueprintInput(deepClone(bp)) as Blueprint
+    const targetDocument = document.value
     validate(normalizedBlueprint)
 
-    document.value.blueprint = normalizedBlueprint
-    reconcileSelection()
-    document.value.revision++
-    document.value.dirty = true
-    await reconstruct()
-    return true
+    isCommitting.value = true
+    try {
+      if (!await persistEdit(normalizedBlueprint, crypto.randomUUID(), '撤销或重做编辑')) return false
+      if (document.value !== targetDocument) return false
+      document.value.blueprint = normalizedBlueprint
+      reconcileSelection()
+      document.value.revision++
+      document.value.dirty = false
+      document.value.savedAt = Date.now()
+      await reconstruct()
+      return true
+    } finally { isCommitting.value = false }
+  }
+
+  async function persistEdit(blueprint: Blueprint, operationId: string, label: string): Promise<boolean> {
+    const agent = useAgentStore()
+    if (!document.value) return false
+    const targetDocument = document.value
+    if (!agent.currentSessionId) agent.switchToSession(agent.createSession(document.value.name))
+    const sessionId = agent.currentSessionId
+    const saved = await agentBridge.syncBlueprintToBackend(blueprint as unknown as Record<string, unknown>, {
+      sessionId, revision: document.value.revision + 1, baseRevision: document.value.revision, operationId, label,
+    })
+    if (saved) {
+      agent.updateSessionInfo(sessionId, blueprint.meta.name || targetDocument.name,
+        (blueprint.geometry.elements?.length || 0) + (blueprint.geometry.components?.length || 0),
+        blueprint.geometry.components?.length || 0)
+      agent.setSessionSaved(sessionId)
+    }
+    return saved
   }
 
   async function reconstruct(): Promise<boolean> {
@@ -207,6 +252,10 @@ export const useSceneStore = defineStore('scene', () => {
     reconstructed,
     validationIssues,
     isReconstructing,
+    isCommitting,
+    isLocked,
+    canModify,
+    canModifyManually,
     createEmptyDocument,
     loadBlueprint,
     applyPatch,

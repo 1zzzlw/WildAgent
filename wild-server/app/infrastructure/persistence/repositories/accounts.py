@@ -15,7 +15,8 @@ class AccountRepository:
 
     def get(self, user_id: str) -> dict | None:
         with database.engine.connect() as conn:
-            row = conn.execute(select(users.c.id, users.c.username, users.c.email, users.c.identity, users.c.status)
+            columns = [column for column in users.c if column.name != "password_hash"]
+            row = conn.execute(select(*columns)
                                .where(users.c.id == user_id)).mappings().first()
             return dict(row) if row else None
 
@@ -29,6 +30,7 @@ class AccountRepository:
                      status="active", created_at=int(time() * 1000))
         with database.engine.begin() as conn:
             conn.execute(insert(users).values(**value))
+            value = dict(conn.execute(select(users).where(users.c.id == value["id"])).mappings().one())
         return value
 
 

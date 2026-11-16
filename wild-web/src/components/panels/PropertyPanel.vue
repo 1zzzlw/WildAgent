@@ -561,9 +561,9 @@
           <div class="section-title">招牌文字</div>
           <div class="property-row">
             <label>文字</label>
-            <el-input :model-value="selectedPrimitive.label?.text || ''" aria-label="招牌文字" maxlength="256"
+            <el-input v-model="labelTextDraft" aria-label="招牌文字" maxlength="256"
               placeholder="输入建筑名称；清空移除文字" @focus="beginLabelEdit" @blur="labelEditGroup = undefined"
-              @input="changeLabelText" />
+              @change="changeLabelText" />
           </div>
           <div class="interaction-hint">文字位于构件正面，随构件移动、旋转，并保存在 WILD 文件中。</div>
         </div>
@@ -982,16 +982,25 @@ function handleFurniturePatch(changes: Record<string, unknown>, summary: string)
 
 let labelEditGroup: string | undefined
 let labelEditSequence = 0
+const labelTextDraft = ref('')
+watch(() => [selectedPrimitive.value?.id, selectedPrimitive.value?.label?.text],
+  () => { labelTextDraft.value = selectedPrimitive.value?.label?.text || '' }, { immediate: true })
 function beginLabelEdit() {
   labelEditGroup = `label:${sceneStore.document?.id}:${selectedPrimitive.value?.id}:${++labelEditSequence}`
 }
-function changeLabelText(text: string) {
+async function changeLabelText(text: string) {
   if (!selectedPrimitive.value || !sceneStore.document) return
+  if (text === (selectedPrimitive.value.label?.text || '')) return
   if (!labelEditGroup) beginLabelEdit()
   const label = text.trim() ? { ...selectedPrimitive.value.label, text } : undefined
   const patch = createPatch(sceneStore.document.revision,
     [{ op: 'update_element', id: selectedPrimitive.value.id, changes: { label } }], 'user', false, '修改招牌文字')
-  void sceneStore.applyPatch(patch, labelEditGroup)
+  const documentId = sceneStore.document.id
+  const entityId = selectedPrimitive.value.id
+  if (!await sceneStore.applyPatch(patch, labelEditGroup)
+    && sceneStore.document?.id === documentId && selectedPrimitive.value?.id === entityId) {
+    labelTextDraft.value = selectedPrimitive.value.label?.text || ''
+  }
 }
 
 function togglePrimitiveLight(enabled: string | number | boolean) {

@@ -31,12 +31,14 @@ class Database:
         self.check()
         inspector = inspect(self.engine)
         missing = set(metadata.tables) - set(inspector.get_table_names())
+        if missing == {"audit_logs"}:
+            raise RuntimeError("请先在现有数据库执行 db/migrations/20261116_admin_management.sql，再启动服务")
         if missing:
             raise RuntimeError("业务数据表未初始化，请先在目标 MySQL 手动导入 db/schema.sql")
         for name, table in metadata.tables.items():
             actual = {column["name"] for column in inspector.get_columns(name)}
             if set(table.c.keys()) - actual:
-                raise RuntimeError("业务表字段与代码不一致，请对照 db/schema.sql 手动更新已有表结构")
+                raise RuntimeError("业务表字段与代码不一致；已有数据库请执行 db/migrations/20261116_admin_management.sql，其他版本对照 db/schema.sql 更新")
 
     def close(self) -> None:
         if self._engine is not None:

@@ -21,7 +21,12 @@ from app.domain.design.architecture.skeleton import _volume_for_face
 def _wall_descriptor(wall: dict[str, Any]) -> dict[str, Any] | None:
     start = wall.get("from")
     end = wall.get("to")
-    if not isinstance(start, list) or not isinstance(end, list) or len(start) != 3 or len(end) != 3:
+    if (
+        not isinstance(start, list)
+        or not isinstance(end, list)
+        or len(start) != 3
+        or len(end) != 3
+    ):
         return None
     try:
         values = [float(value) for value in (*start, *end)]
@@ -33,9 +38,14 @@ def _wall_descriptor(wall: dict[str, Any]) -> dict[str, Any] | None:
     if length < 0.5 or height < 0.5:
         return None
     return {
-        "id": wall.get("id"), "x": (x1 + x2) / 2, "z": (z1 + z2) / 2,
-        "start": (x1, z1), "end": (x2, z2),
-        "base_y": min(y1, y2), "height": height, "length": length,
+        "id": wall.get("id"),
+        "x": (x1 + x2) / 2,
+        "z": (z1 + z2) / 2,
+        "start": (x1, z1),
+        "end": (x2, z2),
+        "base_y": min(y1, y2),
+        "height": height,
+        "length": length,
         "axis": "x" if abs(x2 - x1) >= abs(z2 - z1) else "z",
     }
 
@@ -52,7 +62,9 @@ def _expand_schematic_facade_storeys(
     """
     if realization.get("representation_mode") != "schematic":
         return walls
-    semantic_floors = max(1, int(realization.get("floors") or realization.get("modeled_floors") or 1))
+    semantic_floors = max(
+        1, int(realization.get("floors") or realization.get("modeled_floors") or 1)
+    )
     represented_floors = max(
         1,
         min(semantic_floors, int(realization.get("modeled_floors") or semantic_floors)),
@@ -77,12 +89,14 @@ def _expand_schematic_facade_storeys(
             ratio = index / (wall_represented - 1) if wall_represented > 1 else 0.0
             base_offset = last_base_offset * ratio
             story_index = round(first_story + ratio * (wall_story_count - 1))
-            expanded.append({
-                **wall,
-                "base_y": round(wall["base_y"] + base_offset, 3),
-                "height": min(floor_height, wall["height"] - base_offset),
-                "story_index": story_index,
-            })
+            expanded.append(
+                {
+                    **wall,
+                    "base_y": round(wall["base_y"] + base_offset, 3),
+                    "height": min(floor_height, wall["height"] - base_offset),
+                    "story_index": story_index,
+                }
+            )
     return expanded
 
 
@@ -158,7 +172,9 @@ def _apply_opening_form(item: dict[str, Any], form: str, seed: str) -> None:
     item["interaction"] = interaction
 
 
-def _default_entrance_dimensions(slot_id: str, wall_height: float) -> tuple[float, float]:
+def _default_entrance_dimensions(
+    slot_id: str, wall_height: float
+) -> tuple[float, float]:
     width = 0.9 + _stable_unit_interval(f"{slot_id}:width") * 0.25
     height = 2.1 + _stable_unit_interval(f"{slot_id}:height") * 0.25
     return round(width, 3), round(min(height, wall_height - 0.25), 3)
@@ -173,16 +189,16 @@ def _evenly_spaced_opening_slots(
         return []
     if len(slots) <= limit:
         return slots
-    ordered = sorted(slots, key=lambda slot: (
-        float(slot.get("from", [0.0, 0.0, 0.0])[1]),
-        {"front": 0, "back": 1, "left": 2, "right": 3}.get(slot.get("facing"), 4),
-        int(slot.get("bay") or 0),
-        str(slot.get("id") or ""),
-    ))
-    required = [
-        slot for slot in ordered
-        if slot.get("role") == "balcony_access"
-    ]
+    ordered = sorted(
+        slots,
+        key=lambda slot: (
+            float(slot.get("from", [0.0, 0.0, 0.0])[1]),
+            {"front": 0, "back": 1, "left": 2, "right": 3}.get(slot.get("facing"), 4),
+            int(slot.get("bay") or 0),
+            str(slot.get("id") or ""),
+        ),
+    )
+    required = [slot for slot in ordered if slot.get("role") == "balcony_access"]
     if len(required) >= limit:
         return required[:limit]
     optional = [slot for slot in ordered if slot not in required]
@@ -234,7 +250,9 @@ def _roof_overrides_by_volume(roof: dict[str, Any]) -> dict[str, dict[str, Any]]
     return table
 
 
-def _planned_roof_slots(plan: dict[str, Any], realization: dict[str, Any]) -> list[dict[str, Any]]:
+def _planned_roof_slots(
+    plan: dict[str, Any], realization: dict[str, Any]
+) -> list[dict[str, Any]]:
     """为未被上层覆盖的独立体量生成屋面槽位。
 
     支持可分段的屋型，以及单体量的显式覆盖。非分段屋型组合保持既有
@@ -245,18 +263,32 @@ def _planned_roof_slots(plan: dict[str, Any], realization: dict[str, Any]) -> li
     modeled_floors = int(realization.get("modeled_floors") or 1)
     floor_height = float(realization.get("floor_height") or 3.2)
     all_volumes = [v for v in realization.get("volumes", []) if isinstance(v, dict)]
+
     def covered_above(volume):
         top = min(modeled_floors, int(volume.get("end_floor", 1)))
         return any(
             int(other.get("start_floor", 1)) > top
             and int(other.get("start_floor", 1)) <= modeled_floors
-            and min(float(volume["x"]) + float(volume["width"]), float(other["x"]) + float(other["width"])) > max(float(volume["x"]), float(other["x"])) + 1e-6
-            and min(float(volume["z"]) + float(volume["depth"]), float(other["z"]) + float(other["depth"])) > max(float(volume["z"]), float(other["z"])) + 1e-6
-            for other in all_volumes if other is not volume
+            and min(
+                float(volume["x"]) + float(volume["width"]),
+                float(other["x"]) + float(other["width"]),
+            )
+            > max(float(volume["x"]), float(other["x"])) + 1e-6
+            and min(
+                float(volume["z"]) + float(volume["depth"]),
+                float(other["z"]) + float(other["depth"]),
+            )
+            > max(float(volume["z"]), float(other["z"])) + 1e-6
+            for other in all_volumes
+            if other is not volume
         )
+
     # 独立低层侧翼也有屋面；被上层覆盖的体量不能用整块屋面穿过上层。
-    volumes = [v for v in all_volumes if int(v.get("start_floor", 1)) <= modeled_floors
-               and not covered_above(v)]
+    volumes = [
+        v
+        for v in all_volumes
+        if int(v.get("start_floor", 1)) <= modeled_floors and not covered_above(v)
+    ]
     if not volumes or (len(all_volumes) < 2 and not overrides):
         return []
 
@@ -270,7 +302,8 @@ def _planned_roof_slots(plan: dict[str, Any], realization: dict[str, Any]) -> li
             continue
         try:
             volume_overhang = max(
-                0.0, min(2.0, float(override.get("overhang", roof.get("overhang", 0.35)))),
+                0.0,
+                min(2.0, float(override.get("overhang", roof.get("overhang", 0.35)))),
             )
         except (TypeError, ValueError):
             volume_overhang = max(0.0, min(2.0, float(roof.get("overhang", 0.35))))
@@ -295,42 +328,69 @@ def _planned_roof_slots(plan: dict[str, Any], realization: dict[str, Any]) -> li
             if other == rectangle:
                 continue
             ox0, oz0, ox1, oz1 = other
-            if edge == "left" and abs(ox1 - x0) <= 1e-6 and min(z1, oz1) - max(z0, oz0) > 1e-6:
+            if (
+                edge == "left"
+                and abs(ox1 - x0) <= 1e-6
+                and min(z1, oz1) - max(z0, oz0) > 1e-6
+            ):
                 return True
-            if edge == "right" and abs(ox0 - x1) <= 1e-6 and min(z1, oz1) - max(z0, oz0) > 1e-6:
+            if (
+                edge == "right"
+                and abs(ox0 - x1) <= 1e-6
+                and min(z1, oz1) - max(z0, oz0) > 1e-6
+            ):
                 return True
-            if edge == "front" and abs(oz1 - z0) <= 1e-6 and min(x1, ox1) - max(x0, ox0) > 1e-6:
+            if (
+                edge == "front"
+                and abs(oz1 - z0) <= 1e-6
+                and min(x1, ox1) - max(x0, ox0) > 1e-6
+            ):
                 return True
-            if edge == "back" and abs(oz0 - z1) <= 1e-6 and min(x1, ox1) - max(x0, ox0) > 1e-6:
+            if (
+                edge == "back"
+                and abs(oz0 - z1) <= 1e-6
+                and min(x1, ox1) - max(x0, ox0) > 1e-6
+            ):
                 return True
         return False
 
     slots: list[dict[str, Any]] = []
     for index, (rectangle, (volume, volume_id, roof_type, overhang)) in enumerate(
-        zip(rectangles, resolved), start=1,
+        zip(rectangles, resolved),
+        start=1,
     ):
         x0, z0, x1, z1 = rectangle
         roof_x0 = x0 if has_adjacent(rectangle, "left") else x0 - overhang
         roof_x1 = x1 if has_adjacent(rectangle, "right") else x1 + overhang
         roof_z0 = z0 if has_adjacent(rectangle, "front") else z0 - overhang
         roof_z1 = z1 if has_adjacent(rectangle, "back") else z1 + overhang
-        slots.append({
-            "id": f"roof:{volume.get('id') or index}",
-            "position": [
-                round((roof_x0 + roof_x1) / 2, 3),
-                round(min(modeled_floors, int(volume.get("end_floor", modeled_floors))) * floor_height, 3),
-                round((roof_z0 + roof_z1) / 2, 3),
-            ],
-            "span": round(roof_x1 - roof_x0, 3),
-            "depth": round(roof_z1 - roof_z0, 3),
-            # 🔴 P5-A：逐体量的形态与体量 id 随槽位一起下发。缺了它们
-            # `conform_roofs_to_slots` 只能把一个模板盖到所有槽位上 ——
-            # 那正是"主楼坡顶 + 侧翼平顶"退化成整栋同一种屋型的通道。
-            "roofType": roof_type,
-            "overhang": overhang,
-            "volume": volume_id,
-            "override_conflict": overrides.get(volume_id, {}).get("override_conflict", False),
-        })
+        slots.append(
+            {
+                "id": f"roof:{volume.get('id') or index}",
+                "position": [
+                    round((roof_x0 + roof_x1) / 2, 3),
+                    round(
+                        min(
+                            modeled_floors, int(volume.get("end_floor", modeled_floors))
+                        )
+                        * floor_height,
+                        3,
+                    ),
+                    round((roof_z0 + roof_z1) / 2, 3),
+                ],
+                "span": round(roof_x1 - roof_x0, 3),
+                "depth": round(roof_z1 - roof_z0, 3),
+                # 🔴 P5-A：逐体量的形态与体量 id 随槽位一起下发。缺了它们
+                # `conform_roofs_to_slots` 只能把一个模板盖到所有槽位上 ——
+                # 那正是"主楼坡顶 + 侧翼平顶"退化成整栋同一种屋型的通道。
+                "roofType": roof_type,
+                "overhang": overhang,
+                "volume": volume_id,
+                "override_conflict": overrides.get(volume_id, {}).get(
+                    "override_conflict", False
+                ),
+            }
+        )
     return slots
 
 
@@ -345,8 +405,7 @@ def _planned_terrace_railing_slots(
         modeled_floors = max(1, int(realization.get("modeled_floors") or 1))
         floor_height = max(0.1, float(realization.get("floor_height") or 3.2))
         raw_volumes = [
-            item for item in realization.get("volumes", [])
-            if isinstance(item, dict)
+            item for item in realization.get("volumes", []) if isinstance(item, dict)
         ]
         volumes = (
             _schematic_volume_ranges(raw_volumes, semantic_floors, modeled_floors)
@@ -368,7 +427,8 @@ def _planned_terrace_railing_slots(
             x1 = x0 + float(lower["width"])
             z1 = z0 + float(lower["depth"])
             uppers = [
-                item for item in volumes
+                item
+                for item in volumes
                 if int(item["semantic_start_floor"]) == lower_end + 1
                 and float(item["x"]) > x0 + 0.1
                 and float(item["z"]) > z0 + 0.1
@@ -378,21 +438,25 @@ def _planned_terrace_railing_slots(
             if not uppers:
                 continue
             y = round(lower_end * floor_height + 0.2, 3)
-            slots.append({
-                "id": f"railing:podium_terrace:{lower.get('id') or 'base'}",
-                "path": [
-                    [round(x0, 3), y, round(z0, 3)],
-                    [round(x1, 3), y, round(z0, 3)],
-                    [round(x1, 3), y, round(z1, 3)],
-                    [round(x0, 3), y, round(z1, 3)],
-                    [round(x0, 3), y, round(z0, 3)],
-                ],
-                "height": 1.1,
-            })
+            slots.append(
+                {
+                    "id": f"railing:podium_terrace:{lower.get('id') or 'base'}",
+                    "path": [
+                        [round(x0, 3), y, round(z0, 3)],
+                        [round(x1, 3), y, round(z0, 3)],
+                        [round(x1, 3), y, round(z1, 3)],
+                        [round(x0, 3), y, round(z1, 3)],
+                        [round(x0, 3), y, round(z0, 3)],
+                    ],
+                    "height": 1.1,
+                }
+            )
         return slots
     if realization.get("shape") != "u_shape":
         return []
-    access_slots = [slot for slot in opening_slots if slot.get("role") == "balcony_access"]
+    access_slots = [
+        slot for slot in opening_slots if slot.get("role") == "balcony_access"
+    ]
     if len(access_slots) < 2:
         return []
     walls = {
@@ -405,16 +469,23 @@ def _planned_terrace_railing_slots(
         wall = walls.get(slot.get("wall_id"))
         start = wall.get("from") if isinstance(wall, dict) else None
         end = wall.get("to") if isinstance(wall, dict) else None
-        if not isinstance(start, list) or not isinstance(end, list) or len(start) != 3 or len(end) != 3:
+        if (
+            not isinstance(start, list)
+            or not isinstance(end, list)
+            or len(start) != 3
+            or len(end) != 3
+        ):
             continue
         if abs(float(start[2]) - float(end[2])) > 1e-6:
             continue
-        ranges.append((
-            min(float(start[0]), float(end[0])),
-            max(float(start[0]), float(end[0])),
-            float(start[2]),
-            float(slot.get("from", [0, 0, 0])[1]),
-        ))
+        ranges.append(
+            (
+                min(float(start[0]), float(end[0])),
+                max(float(start[0]), float(end[0])),
+                float(start[2]),
+                float(slot.get("from", [0, 0, 0])[1]),
+            )
+        )
     ranges.sort()
     if len(ranges) < 2:
         return []
@@ -423,15 +494,28 @@ def _planned_terrace_railing_slots(
         return []
     slab_thickness = 0.2
     for floor in blueprint.get("geometry", {}).get("elements", []):
-        start = floor.get("from") if isinstance(floor, dict) and floor.get("type") == "floor" else None
-        if isinstance(start, list) and len(start) == 3 and abs(float(start[1]) - left[3]) <= 0.05:
+        start = (
+            floor.get("from")
+            if isinstance(floor, dict) and floor.get("type") == "floor"
+            else None
+        )
+        if (
+            isinstance(start, list)
+            and len(start) == 3
+            and abs(float(start[1]) - left[3]) <= 0.05
+        ):
             slab_thickness = max(slab_thickness, float(floor.get("thickness") or 0.0))
     y = round(left[3] + slab_thickness, 3)
-    return [{
-        "id": "railing:upper_terrace_front",
-        "path": [[round(left[1], 3), y, round(left[2], 3)], [round(right[0], 3), y, round(right[2], 3)]],
-        "height": 1.1,
-    }]
+    return [
+        {
+            "id": "railing:upper_terrace_front",
+            "path": [
+                [round(left[1], 3), y, round(left[2], 3)],
+                [round(right[0], 3), y, round(right[2], 3)],
+            ],
+            "height": 1.1,
+        }
+    ]
 
 
 def _derived_balcony_slots(
@@ -460,7 +544,8 @@ def _derived_balcony_slots(
         opening_width = float(opening["width"])
         target_width = (
             float(requested_width)
-            if isinstance(requested_width, (int, float)) and not isinstance(requested_width, bool)
+            if isinstance(requested_width, (int, float))
+            and not isinstance(requested_width, bool)
             else max(2.4, min(3.2, opening_width + 1.2))
         )
         width = min(wall_length, max(opening_width, target_width))
@@ -479,15 +564,22 @@ def _derived_balcony_slots(
             abs(center - wall_length / 2),
             str(opening.get("id") or ""),
         )
-        candidates.append((rank, {
-            "id": str(opening["id"]).replace(":window:", ":balcony:"),
-            "wall_id": opening["wall_id"],
-            "from": [round(left, 3), round(float(wall["base_y"]), 3), 0.0],
-            "width": round(width, 3),
-            "opening_slot_id": opening["id"],
-        }))
+        candidates.append(
+            (
+                rank,
+                {
+                    "id": str(opening["id"]).replace(":window:", ":balcony:"),
+                    "wall_id": opening["wall_id"],
+                    "from": [round(left, 3), round(float(wall["base_y"]), 3), 0.0],
+                    "width": round(width, 3),
+                    "opening_slot_id": opening["id"],
+                },
+            )
+        )
 
-    ordered = [candidate for _, candidate in sorted(candidates, key=lambda item: item[0])]
+    ordered = [
+        candidate for _, candidate in sorted(candidates, key=lambda item: item[0])
+    ]
     selected: list[dict[str, Any]] = []
     used_walls: set[str] = set()
     for candidate in ordered:
@@ -846,12 +938,19 @@ def conform_openings_to_slots(
     materials: dict[str, Any] | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, int]]:
     """把模型门窗吸附到槽位，并补足设计下限；凸窗优先占用普通窗槽位。"""
-    if not isinstance(design_brief, dict) or not isinstance(design_brief.get("opening_slots"), list):
+    if not isinstance(design_brief, dict) or not isinstance(
+        design_brief.get("opening_slots"), list
+    ):
         return components, {"snapped": 0, "synthesized": 0, "pruned": 0}
     material_names = list((materials or {}).keys())
     default_material = material_names[0] if material_names else "default"
     glass_material = next(
-        (name for name, value in (materials or {}).items() if "glass" in name.lower() or (isinstance(value, dict) and value.get("opacity", 1) < 0.99)),
+        (
+            name
+            for name, value in (materials or {}).items()
+            if "glass" in name.lower()
+            or (isinstance(value, dict) and value.get("opacity", 1) < 0.99)
+        ),
         default_material,
     )
     fallback_frame_material = next(
@@ -859,15 +958,24 @@ def conform_openings_to_slots(
         default_material,
     )
     frame_material = next(
-        (name for name in material_names if any(word in name.lower() for word in ("frame", "metal"))),
+        (
+            name
+            for name in material_names
+            if any(word in name.lower() for word in ("frame", "metal"))
+        ),
         fallback_frame_material,
     )
     leaf_material = next(
-        (name for name in material_names if any(word in name.lower() for word in ("wood", "door", "accent"))),
+        (
+            name
+            for name in material_names
+            if any(word in name.lower() for word in ("wood", "door", "accent"))
+        ),
         frame_material,
     )
     non_openings = [
-        item for item in components
+        item
+        for item in components
         if item.get("type") not in {"door", "window", "bay_window"}
     ]
     result_openings: list[dict[str, Any]] = []
@@ -890,11 +998,14 @@ def conform_openings_to_slots(
     # 凸窗本质上也是父墙洞口。先让它占用最近的普通窗槽位，后续普通窗只能
     # 使用剩余槽位，从源头避免独立节点生成的凸窗和门窗在合并后重复切洞。
     window_slots = [
-        slot for slot in all_slots
+        slot
+        for slot in all_slots
         if isinstance(slot, dict) and slot.get("type") == "window"
     ]
     used_window_slots: set[str] = set()
-    bay_windows = [deepcopy(item) for item in components if item.get("type") == "bay_window"]
+    bay_windows = [
+        deepcopy(item) for item in components if item.get("type") == "bay_window"
+    ]
     bay_limits = (
         quotas.get("bay_window", {})
         if isinstance(quotas.get("bay_window"), dict)
@@ -906,29 +1017,35 @@ def conform_openings_to_slots(
     )
     missing_bay_windows = max(0, bay_minimum - len(bay_windows))
     for index in range(missing_bay_windows):
-        bay_windows.append({
-            "id": f"bay_window_planned_{len(bay_windows) + 1:02d}",
-            "type": "bay_window",
-            "projectionDepth": 0.8,
-            "frameWidth": 0.08,
-            "frameDepth": 0.12,
-            "frameMaterial": frame_material,
-            "glassMaterial": glass_material,
-        })
+        bay_windows.append(
+            {
+                "id": f"bay_window_planned_{len(bay_windows) + 1:02d}",
+                "type": "bay_window",
+                "projectionDepth": 0.8,
+                "frameWidth": 0.08,
+                "frameDepth": 0.12,
+                "frameMaterial": frame_material,
+                "glassMaterial": glass_material,
+            }
+        )
     stats["synthesized"] += missing_bay_windows
     for bay_window in bay_windows:
-        available = [slot for slot in window_slots if slot["id"] not in used_window_slots]
+        available = [
+            slot for slot in window_slots if slot["id"] not in used_window_slots
+        ]
         if not available:
             stats["pruned"] += 1
             continue
         original_from = bay_window.get("from", [0, 0, 0])
         original_center = (
             float(original_from[0]) + float(bay_window.get("width", 0)) / 2
-            if isinstance(original_from, list) and original_from else 0.0
+            if isinstance(original_from, list) and original_from
+            else 0.0
         )
         original_y = (
             float(original_from[1])
-            if isinstance(original_from, list) and len(original_from) > 1 else 0.0
+            if isinstance(original_from, list) and len(original_from) > 1
+            else 0.0
         )
 
         def bay_slot_rank(slot: dict[str, Any]) -> tuple[int, float, float, str]:
@@ -936,7 +1053,11 @@ def conform_openings_to_slots(
             return (
                 0 if slot.get("wall_id") == bay_window.get("parentWall") else 1,
                 abs(float(slot_from[1]) - original_y),
-                abs(float(slot_from[0]) + float(slot.get("width", 0)) / 2 - original_center),
+                abs(
+                    float(slot_from[0])
+                    + float(slot.get("width", 0)) / 2
+                    - original_center
+                ),
                 str(slot.get("id", "")),
             )
 
@@ -950,19 +1071,29 @@ def conform_openings_to_slots(
         stats["snapped"] += 1
 
     for opening_type in ("door", "window"):
-        items = [deepcopy(item) for item in components if item.get("type") == opening_type]
+        items = [
+            deepcopy(item) for item in components if item.get("type") == opening_type
+        ]
         slots = [
-            slot for slot in all_slots
+            slot
+            for slot in all_slots
             if isinstance(slot, dict)
             and slot.get("type") == opening_type
             and (opening_type != "window" or slot["id"] not in used_window_slots)
         ]
-        limits = quotas.get(opening_type, {}) if isinstance(quotas.get(opening_type), dict) else {}
+        limits = (
+            quotas.get(opening_type, {})
+            if isinstance(quotas.get(opening_type), dict)
+            else {}
+        )
         bay_count = (
             sum(1 for item in result_openings if item.get("type") == "bay_window")
-            if opening_type == "window" else 0
+            if opening_type == "window"
+            else 0
         )
-        maximum = min(len(slots), max(0, int(limits.get("max", len(slots))) - bay_count))
+        maximum = min(
+            len(slots), max(0, int(limits.get("max", len(slots))) - bay_count)
+        )
         slots = _evenly_spaced_opening_slots(slots, maximum)
         maximum = len(slots)
         minimum = min(maximum, max(0, int(limits.get("min", 0)) - bay_count))
@@ -973,20 +1104,37 @@ def conform_openings_to_slots(
         ordered_items: list[tuple[dict[str, Any], dict[str, Any]]] = []
         for item in items:
             # 已编译实例可能排在列表末尾；保留其原槽位，不因列表重排交换同墙形态。
-            preferred = next((
-                slot for slot in slots
-                if slot["id"] not in used_slots
-                and slot["wall_id"] == item.get("parentWall")
-                and slot.get("from") == item.get("from")
-            ), None)
-            preferred = preferred or next((slot for slot in slots if slot["id"] not in used_slots and slot["wall_id"] == item.get("parentWall")), None)
-            slot = preferred or next((slot for slot in slots if slot["id"] not in used_slots), None)
+            preferred = next(
+                (
+                    slot
+                    for slot in slots
+                    if slot["id"] not in used_slots
+                    and slot["wall_id"] == item.get("parentWall")
+                    and slot.get("from") == item.get("from")
+                ),
+                None,
+            )
+            preferred = preferred or next(
+                (
+                    slot
+                    for slot in slots
+                    if slot["id"] not in used_slots
+                    and slot["wall_id"] == item.get("parentWall")
+                ),
+                None,
+            )
+            slot = preferred or next(
+                (slot for slot in slots if slot["id"] not in used_slots), None
+            )
             if not slot:
                 break
             used_slots.add(slot["id"])
             ordered_items.append((item, slot))
         while len(ordered_items) < minimum:
-            slot = next((candidate for candidate in slots if candidate["id"] not in used_slots), None)
+            slot = next(
+                (candidate for candidate in slots if candidate["id"] not in used_slots),
+                None,
+            )
             if not slot:
                 break
             used_slots.add(slot["id"])
@@ -996,18 +1144,26 @@ def conform_openings_to_slots(
                 item = {
                     "id": (
                         f"door_balcony_access_{index:02d}"
-                        if is_balcony_access else f"door_planned_{index:02d}"
+                        if is_balcony_access
+                        else f"door_planned_{index:02d}"
                     ),
                     "type": "door",
-                    "interaction": {"mode": "swing", "hingeSide": "left", "openAngle": 90},
-                    "frameMaterial": frame_material, "leafMaterial": leaf_material,
+                    "interaction": {
+                        "mode": "swing",
+                        "hingeSide": "left",
+                        "openAngle": 90,
+                    },
+                    "frameMaterial": frame_material,
+                    "leafMaterial": leaf_material,
                 }
             else:
                 item = {
-                    "id": f"window_planned_{index:02d}", "type": "window",
+                    "id": f"window_planned_{index:02d}",
+                    "type": "window",
                     "verticalMullions": int(slot.get("vertical_mullions", 1)),
                     "horizontalMullions": int(slot.get("horizontal_mullions", 0)),
-                    "frameMaterial": frame_material, "glassMaterial": glass_material,
+                    "frameMaterial": frame_material,
+                    "glassMaterial": glass_material,
                 }
             ordered_items.append((item, slot))
             stats["synthesized"] += 1
@@ -1030,11 +1186,14 @@ def conform_openings_to_slots(
                 item.setdefault("frameWidth", round(0.065 + variant * 0.025, 3))
                 item.setdefault("frameMaterial", frame_material)
                 item.setdefault("leafMaterial", leaf_material)
-                item.setdefault("interaction", {
-                    "mode": "swing",
-                    "hingeSide": "left" if variant < 0.5 else "right",
-                    "openAngle": 90,
-                })
+                item.setdefault(
+                    "interaction",
+                    {
+                        "mode": "swing",
+                        "hingeSide": "left" if variant < 0.5 else "right",
+                        "openAngle": 90,
+                    },
+                )
             #  形态**排在派生默认之后**：图纸显式说了就覆盖刚 setdefault 出来的 swing，
             # 没说就一个字节不改（老行为）。门窗共用同一条规则——**不按构件类型分支**。
             if slot.get("form"):
@@ -1049,7 +1208,9 @@ def conform_balconies_to_slots(
     design_brief: dict[str, Any] | None,
 ) -> tuple[list[dict[str, Any]], dict[str, int]]:
     """把阳台与阳台门槽位一一绑定，修正挂错墙和宽度漂移。"""
-    slots = design_brief.get("balcony_slots") if isinstance(design_brief, dict) else None
+    slots = (
+        design_brief.get("balcony_slots") if isinstance(design_brief, dict) else None
+    )
     if not isinstance(slots, list) or not slots:
         return components, {"snapped": 0, "synthesized": 0, "pruned": 0}
     sources = [deepcopy(item) for item in components if item.get("type") == "balcony"]
@@ -1061,26 +1222,39 @@ def conform_balconies_to_slots(
     }
     balconies: list[dict[str, Any]] = []
     for index, slot in enumerate(slots, start=1):
-        item = sources[index - 1] if index <= len(sources) else {
-            "type": "balcony",
-            "id": f"balcony_planned_{index:02d}",
-            "depth": 1.5,
-            "slabThickness": 0.18,
-            "railingHeight": 1.1,
-            "postSpacing": 0.9,
-        }
+        item = (
+            sources[index - 1]
+            if index <= len(sources)
+            else {
+                "type": "balcony",
+                "id": f"balcony_planned_{index:02d}",
+                "depth": 1.5,
+                "slabThickness": 0.18,
+                "railingHeight": 1.1,
+                "postSpacing": 0.9,
+            }
+        )
         item["parentWall"] = slot["wall_id"]
         item["from"] = deepcopy(slot["from"])
         item["width"] = slot["width"]
         item["depth"] = round(max(0.8, min(2.5, float(item.get("depth") or 1.5))), 3)
-        item["slabThickness"] = round(max(0.12, float(item.get("slabThickness") or 0.18)), 3)
-        item["railingHeight"] = round(max(0.9, float(item.get("railingHeight") or 1.1)), 3)
+        item["slabThickness"] = round(
+            max(0.12, float(item.get("slabThickness") or 0.18)), 3
+        )
+        item["railingHeight"] = round(
+            max(0.9, float(item.get("railingHeight") or 1.1)), 3
+        )
         balconies.append(item)
     return [*non_balconies, *balconies], stats
 
 
-def _plan_winding(plan: dict[str, Any] | None, frm: list[Any], ux: float, uz: float,
-                  length: float = 0.0) -> float:
+def _plan_winding(
+    plan: dict[str, Any] | None,
+    frm: list[Any],
+    ux: float,
+    uz: float,
+    length: float = 0.0,
+) -> float:
     """比较墙两侧是否落在体量内，确定右旋法向的朝向。"""
     volumes = plan.get("volumes") if isinstance(plan, dict) else None
     if not isinstance(volumes, list) or not volumes:
@@ -1121,10 +1295,9 @@ def _entrance_anchor(
     if not isinstance(slots, list):
         return None
     door_slots = [
-        slot for slot in slots
-        if isinstance(slot, dict)
-        and slot.get("type") == "door"
-        and slot.get("wall_id")
+        slot
+        for slot in slots
+        if isinstance(slot, dict) and slot.get("type") == "door" and slot.get("wall_id")
     ]
     if not door_slots:
         return None
@@ -1139,7 +1312,8 @@ def _entrance_anchor(
     wall_id = str(entrance["wall_id"])
     wall = next(
         (
-            element for element in (blueprint or {}).get("geometry", {}).get("elements", [])
+            element
+            for element in (blueprint or {}).get("geometry", {}).get("elements", [])
             if isinstance(element, dict)
             and element.get("type") == "wall"
             and element.get("id") == wall_id
@@ -1150,8 +1324,10 @@ def _entrance_anchor(
         return None
     frm, to = wall.get("from"), wall.get("to")
     if (
-        not isinstance(frm, list) or len(frm) != 3
-        or not isinstance(to, list) or len(to) != 3
+        not isinstance(frm, list)
+        or len(frm) != 3
+        or not isinstance(to, list)
+        or len(to) != 3
     ):
         return None
     dx = float(to[0]) - float(frm[0])
@@ -1187,7 +1363,8 @@ def conform_entrance_accessories(
     components: list[dict[str, Any]],
     design_brief: dict[str, Any] | None,
     blueprint: dict[str, Any] | None,
-    *, fixed_ids: set[str] | None = None,
+    *,
+    fixed_ids: set[str] | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, int]]:
     """把入口雨棚与入口墙灯具吸附到主入口门，消除模型自由摆放导致的对不齐。
 
@@ -1209,7 +1386,9 @@ def conform_entrance_accessories(
 
         if ctype == "canopy" and comp.get("parentWall") == anchor["wall_id"]:
             width = max(0.0, float(comp.get("width") or 0.0))
-            along = max(0.0, min(anchor["along"] - width / 2.0, anchor["length"] - width))
+            along = max(
+                0.0, min(anchor["along"] - width / 2.0, anchor["length"] - width)
+            )
             comp_from = comp.get("from")
             if isinstance(comp_from, list) and len(comp_from) == 3:
                 comp["from"] = [round(along, 3), comp_from[1], comp_from[2]]
@@ -1232,10 +1411,9 @@ def conform_entrance_accessories(
                 offset = 0.35
                 along = anchor["along"]
                 if fixture_type == "bulb":
-                    along = (
-                        (float(position[0]) - anchor["origin_x"]) * anchor["run_x"]
-                        + (float(position[2]) - anchor["origin_z"]) * anchor["run_z"]
-                    )
+                    along = (float(position[0]) - anchor["origin_x"]) * anchor[
+                        "run_x"
+                    ] + (float(position[2]) - anchor["origin_z"]) * anchor["run_z"]
                     along = max(0.15, min(along, anchor["length"] - 0.15))
                 position[0] = round(
                     anchor["origin_x"]
@@ -1245,7 +1423,8 @@ def conform_entrance_accessories(
                 )
                 position[1] = (
                     round(max(anchor["door_base_y"] + 1.8, float(position[1])), 3)
-                    if fixture_type == "bulb" else 0.0
+                    if fixture_type == "bulb"
+                    else 0.0
                 )
                 position[2] = round(
                     anchor["origin_z"]
@@ -1277,10 +1456,17 @@ def conform_roofs_to_slots(
         return elements, {"split": 0, "synthesized": 0}
     roofs = [deepcopy(item) for item in elements if item.get("type") == "roof"]
     non_roofs = [item for item in elements if item.get("type") != "roof"]
-    template = roofs[0] if roofs else {
-        "type": "roof", "roofType": "flat", "height": 0,
-        "thickness": 0.25, "material": "default",
-    }
+    template = (
+        roofs[0]
+        if roofs
+        else {
+            "type": "roof",
+            "roofType": "flat",
+            "height": 0,
+            "thickness": 0.25,
+            "material": "default",
+        }
+    )
     planned: list[dict[str, Any]] = []
     for index, slot in enumerate(slots, start=1):
         item = deepcopy(template)
@@ -1303,27 +1489,38 @@ def conform_railings_to_slots(
     design_brief: dict[str, Any] | None,
 ) -> tuple[list[dict[str, Any]], dict[str, int]]:
     """补齐方案要求的退台临空栏杆，并优先替换无明确位置的超额栏杆。"""
-    slots = design_brief.get("railing_slots") if isinstance(design_brief, dict) else None
+    slots = (
+        design_brief.get("railing_slots") if isinstance(design_brief, dict) else None
+    )
     if not isinstance(slots, list) or not slots:
         return components, {"synthesized": 0, "replaced": 0}
     result = list(components)
-    maximum = int(design_brief.get("component_quota", {}).get("railing", {}).get("max", 4))
+    maximum = int(
+        design_brief.get("component_quota", {}).get("railing", {}).get("max", 4)
+    )
     stats = {"synthesized": 0, "replaced": 0}
     for index, slot in enumerate(slots, start=1):
-        if any(item.get("type") == "railing" and item.get("path") == slot.get("path") for item in result):
+        if any(
+            item.get("type") == "railing" and item.get("path") == slot.get("path")
+            for item in result
+        ):
             continue
-        railing_indices = [i for i, item in enumerate(result) if item.get("type") == "railing"]
+        railing_indices = [
+            i for i, item in enumerate(result) if item.get("type") == "railing"
+        ]
         if maximum >= 0 and len(railing_indices) >= maximum and railing_indices:
             result.pop(railing_indices[-1])
             stats["replaced"] += 1
-        result.append({
-            "type": "railing",
-            "id": f"railing_planned_{index:02d}",
-            "path": deepcopy(slot["path"]),
-            "height": float(slot.get("height") or 1.1),
-            "postSpacing": 1.0,
-            "railCount": 2,
-        })
+        result.append(
+            {
+                "type": "railing",
+                "id": f"railing_planned_{index:02d}",
+                "path": deepcopy(slot["path"]),
+                "height": float(slot.get("height") or 1.1),
+                "postSpacing": 1.0,
+                "railCount": 2,
+            }
+        )
         stats["synthesized"] += 1
     return result, stats
 

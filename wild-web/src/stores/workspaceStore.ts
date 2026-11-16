@@ -18,9 +18,10 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   async function saveScene(): Promise<boolean> {
     if (!useAuthStore().canEdit) return false
     const scene = useSceneStore()
+    if (scene.isLocked) { ElMessage.warning('蓝图已锁定，请先由管理员解锁'); return false }
     const agent = useAgentStore()
     const doc = scene.document
-    if (!doc || isSaving.value) return false
+    if (!doc || isSaving.value || scene.isCommitting) return false
     if (!agent.currentSessionId) agent.switchToSession(agent.createSession(doc.name))
     const sessionId = agent.currentSessionId
     const revision = doc.revision
@@ -29,7 +30,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     isSaving.value = true
     try {
       const saved = await agentBridge.syncBlueprintToBackend(
-        blueprint as unknown as Record<string, unknown>, { sessionId, revision },
+        blueprint as unknown as Record<string, unknown>, { sessionId, revision, baseRevision: revision, operationId: crypto.randomUUID(), label: '保存蓝图' },
       )
       if (!saved) {
         if (scene.document === doc) doc.dirty = true
@@ -100,6 +101,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       }
       const agent = useAgentStore()
       const sessionId = target?.session_id || agent.createSession(blueprint.meta.name)
+      if (target?.locked) throw new Error('蓝图已锁定，请先由管理员解锁再导入替换')
       // 先绑定原会话和文件路径，保存及后续编辑都覆盖同一条数据库记录。
       agent.switchToSession(sessionId)
       if (target) {

@@ -485,9 +485,11 @@ async def draft_design(
                 + issue
                 + "\n上一稿："
                 + json.dumps(
-                    draft
-                    if draft is not None
-                    else picked or {"unparsed_output": reply.content},
+                    (
+                        draft
+                        if draft is not None
+                        else picked or {"unparsed_output": reply.content}
+                    ),
                     ensure_ascii=False,
                 )
             )

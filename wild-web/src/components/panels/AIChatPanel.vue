@@ -596,7 +596,7 @@ async function handleApplyPatch(message: ChatMessage) {
   const ok = await sceneStore.applyPatch(patch)
   if (ok) {
     setPatchStatus(message, 'applied')
-    agentStore.addSystemMessage('✅ 已应用到当前草稿；点击顶部“保存”后才会写入服务器')
+    agentStore.addSystemMessage('✅ 修改已应用并保存到服务器')
     agentStore.confirmPatch(patch.patch_id)
   } else {
     setPatchStatus(message, 'pending')
@@ -735,6 +735,7 @@ async function restoreSessionsFromServer() {
     return {
       session_id,
       filename: filename || undefined,
+      locked: Boolean(scene.locked),
       name: scene.name,
       created_at: scene.created_at || scene.updated_at,
       updated_at: scene.updated_at,

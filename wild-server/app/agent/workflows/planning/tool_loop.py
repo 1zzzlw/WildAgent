@@ -33,7 +33,9 @@ MAX_TOOL_CALLS = 3
 TOOL_LOOP_RECURSION_LIMIT = MAX_TOOL_CALLS * 2 + 4
 
 
-def _available_tools(tools: list[Any], limits: dict[str, int], messages: list[Any]) -> list[Any]:
+def _available_tools(
+    tools: list[Any], limits: dict[str, int], messages: list[Any]
+) -> list[Any]:
     """按模型实际请求的次数撤下工具，错误和被拒绝的调用也消耗轮次。"""
     calls = []
     for message in messages:
@@ -41,7 +43,11 @@ def _available_tools(tools: list[Any], limits: dict[str, int], messages: list[An
             calls.append(current_call)
     if len(calls) >= MAX_TOOL_CALLS:
         return []
-    return [tool for tool in tools if sum(call.get("name") == tool.name for call in calls) < limits[tool.name]]
+    return [
+        tool
+        for tool in tools
+        if sum(call.get("name") == tool.name for call in calls) < limits[tool.name]
+    ]
 
 
 @dataclass
@@ -93,6 +99,7 @@ def _wrap_with_budget(tool_obj: Any, budget: _CallBudget) -> Any:
 
     updates: dict[str, Any] = {}
     if tool_obj.func is not None:
+
         @wraps(tool_obj.func)
         def _guard(*args, **kwargs):
             refusal = budget.consume(name)
@@ -102,6 +109,7 @@ def _wrap_with_budget(tool_obj: Any, budget: _CallBudget) -> Any:
 
         updates["func"] = _guard
     if tool_obj.coroutine is not None:
+
         @wraps(tool_obj.coroutine)
         async def _async_guard(*args, **kwargs):
             refusal = budget.consume(name)
@@ -149,7 +157,9 @@ def build_tool_agent(
 
     @wrap_model_call
     async def enforce_tool_budget(request, handler):
-        available = _available_tools(request.tools, limits, request.state.get("messages", []))
+        available = _available_tools(
+            request.tools, limits, request.state.get("messages", [])
+        )
         return await handler(request.override(tools=available))
 
     agent = create_agent(
@@ -167,21 +177,40 @@ def extract_trace(messages: Any, *, limit: int = 20) -> list[dict[str, Any]]:
     trace: list[dict[str, Any]] = []
     for message in messages if isinstance(messages, list) else []:
         for call in getattr(message, "tool_calls", None) or []:
-            name = call.get("name") if isinstance(call, dict) else getattr(call, "name", None)
+            name = (
+                call.get("name")
+                if isinstance(call, dict)
+                else getattr(call, "name", None)
+            )
             if name:
-                trace.append({"tool": str(name), "ok": False, "chars": 0,
-                              "args": call.get("args") if isinstance(call, dict) else None,
-                              "call_id": call.get("id") if isinstance(call, dict) else None})
+                trace.append(
+                    {
+                        "tool": str(name),
+                        "ok": False,
+                        "chars": 0,
+                        "args": call.get("args") if isinstance(call, dict) else None,
+                        "call_id": call.get("id") if isinstance(call, dict) else None,
+                    }
+                )
         role = getattr(message, "type", "")
         if role == "tool":
             name = str(getattr(message, "name", "") or "tool")
             content = str(getattr(message, "content", "") or "")
             for entry in reversed(trace):
-                if entry["tool"] == name and entry["chars"] == 0 and (
-                    not entry.get("call_id") or entry["call_id"] == getattr(message, "tool_call_id", None)
+                if (
+                    entry["tool"] == name
+                    and entry["chars"] == 0
+                    and (
+                        not entry.get("call_id")
+                        or entry["call_id"] == getattr(message, "tool_call_id", None)
+                    )
                 ):
                     entry["chars"] = len(content)
-                    entry["ok"] = getattr(message, "status", "") != "error" and not content.startswith(("❌", "error", "Error", "工具调用预算", "工具 "))
+                    entry["ok"] = getattr(
+                        message, "status", ""
+                    ) != "error" and not content.startswith(
+                        ("❌", "error", "Error", "工具调用预算", "工具 ")
+                    )
                     break
             else:
                 trace.append(
@@ -255,7 +284,9 @@ async def run_tool_loop(
     messages: list[Any] = []
     error = None
     callback = (
-        ReasoningDeltaCallback(on_reasoning_delta) if on_reasoning_delta is not None else None
+        ReasoningDeltaCallback(on_reasoning_delta)
+        if on_reasoning_delta is not None
+        else None
     )
     try:
         payload = {"messages": [{"role": "user", "content": user_message}]}
@@ -263,7 +294,9 @@ async def run_tool_loop(
         if callback is not None:
             config["callbacks"] = [callback]
         if hasattr(agent, "astream"):
-            async for snapshot in agent.astream(payload, config=config, stream_mode="values"):
+            async for snapshot in agent.astream(
+                payload, config=config, stream_mode="values"
+            ):
                 messages = snapshot.get("messages", messages)
         else:  # 兼容注入的轻量测试 Agent。
             result = await agent.ainvoke(payload, config=config)
@@ -280,13 +313,18 @@ async def run_tool_loop(
     text = ""
     # 只认最后一条消息；工具之后的空回复不能回退到此前的草稿或中间说明。
     message = messages[-1] if messages else None
-    if not error and getattr(message, "type", "") == "ai" and not getattr(message, "tool_calls", None):
+    if (
+        not error
+        and getattr(message, "type", "") == "ai"
+        and not getattr(message, "tool_calls", None)
+    ):
         text = content_as_text(getattr(message, "content", ""))
     return ToolRunResult(
         text=text,
         trace=trace,
         diag={
-            "tool_calls": len(trace), "budgets": budgets,
+            "tool_calls": len(trace),
+            "budgets": budgets,
             "token_usage": _sum_usage(messages),
             "final_response_missing": not bool(text.strip()) and not error,
             **({"error": error} if error else {}),
@@ -294,13 +332,17 @@ async def run_tool_loop(
                 "system_prompt": system_prompt,
                 "user_message": user_message,
                 "messages": [
-                    {"type": getattr(message, "type", ""),
-                     "content": getattr(message, "content", ""),
-                     "tool_calls": getattr(message, "tool_calls", None),
-                     "tool_call_id": getattr(message, "tool_call_id", None),
-                     "name": getattr(message, "name", None),
-                     "finish_reason": (getattr(message, "response_metadata", None) or {}).get("finish_reason"),
-                     "usage_metadata": getattr(message, "usage_metadata", None)}
+                    {
+                        "type": getattr(message, "type", ""),
+                        "content": getattr(message, "content", ""),
+                        "tool_calls": getattr(message, "tool_calls", None),
+                        "tool_call_id": getattr(message, "tool_call_id", None),
+                        "name": getattr(message, "name", None),
+                        "finish_reason": (
+                            getattr(message, "response_metadata", None) or {}
+                        ).get("finish_reason"),
+                        "usage_metadata": getattr(message, "usage_metadata", None),
+                    }
                     for message in messages
                 ],
             },

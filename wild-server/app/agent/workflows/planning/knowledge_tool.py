@@ -28,12 +28,17 @@ def search_knowledge_result(
 
     query = str(query or "").strip()
     if not query:
-        return {"text": "❌ 查询为空：请给出具体的字段、构件或构造问题。", "has_shape_reference": False}
+        return {
+            "text": "❌ 查询为空：请给出具体的字段、构件或构造问题。",
+            "has_shape_reference": False,
+        }
 
     if kind:
         naming = resolve_component_name(kind)
         prefix = f"{naming['kind']} {naming['label']}"
-        if (naming["entity_type"] or naming["kind"] in {"building_body", "assembly"}) and not query.startswith(prefix):
+        if (
+            naming["entity_type"] or naming["kind"] in {"building_body", "assembly"}
+        ) and not query.startswith(prefix):
             query = f"{prefix} {query}"
 
     from app.infrastructure.retrieval.loader import SpecQuery
@@ -42,32 +47,58 @@ def search_knowledge_result(
     entity_type = _entity_type_for(kind) if kind else ""
     if entity_type:
         filters["entity_type"] = entity_type
-    exact_filters = ({"doc_type": doc_type or "component", "entity_name": naming["kind"]}
-                     if kind and entity_type and naming["kind"] != entity_type else None)
+    exact_filters = (
+        {"doc_type": doc_type or "component", "entity_name": naming["kind"]}
+        if kind and entity_type and naming["kind"] != entity_type
+        else None
+    )
 
     try:
         from app.agent.runtime import agent_runtime
     except Exception as exc:  # pragma: no cover - 基建不可用时不阻断生成
         logger.warning(f"[search_knowledge] 检索不可用: {exc}")
-        return {"text": "❌ 知识库当前不可用，请基于已给约束作答。", "has_shape_reference": False}
+        return {
+            "text": "❌ 知识库当前不可用，请基于已给约束作答。",
+            "has_shape_reference": False,
+        }
 
     try:
         selected_filters = exact_filters or filters
-        result = agent_runtime.spec_loader.load_many_result([SpecQuery(query, selected_filters)], per_query=per_query, include_base=False)
-        if exact_filters and not result.text.strip() and not getattr(result, "error_type", None):
+        result = agent_runtime.spec_loader.load_many_result(
+            [SpecQuery(query, selected_filters)],
+            per_query=per_query,
+            include_base=False,
+        )
+        if (
+            exact_filters
+            and not result.text.strip()
+            and not getattr(result, "error_type", None)
+        ):
             selected_filters = filters
-            result = agent_runtime.spec_loader.load_many_result([SpecQuery(query, filters)], per_query=per_query, include_base=False)
+            result = agent_runtime.spec_loader.load_many_result(
+                [SpecQuery(query, filters)], per_query=per_query, include_base=False
+            )
         filters = selected_filters
     except Exception as exc:
         logger.warning(f"[search_knowledge] 检索失败: {exc}")
-        return {"text": "❌ 检索失败，请基于已给约束作答。", "has_shape_reference": False}
+        return {
+            "text": "❌ 检索失败，请基于已给约束作答。",
+            "has_shape_reference": False,
+        }
 
     if getattr(result, "error_type", None):
-        return {"text": f"⚠️ 检索服务调用失败（{result.error_type}），未取得参考资料；"
-                        "请依据已给字段协议和批准图纸实现，并保留检索故障，不能解释为知识库没有匹配内容。",
-                "has_shape_reference": False, "chunk_ids": [], "error_type": result.error_type}
+        return {
+            "text": f"⚠️ 检索服务调用失败（{result.error_type}），未取得参考资料；"
+            "请依据已给字段协议和批准图纸实现，并保留检索故障，不能解释为知识库没有匹配内容。",
+            "has_shape_reference": False,
+            "chunk_ids": [],
+            "error_type": result.error_type,
+        }
     if not result.text.strip():
-        return {"text": "（知识库没有检索到内容：请勿编造字段，改用已给约束并说明缺口。）", "has_shape_reference": False}
+        return {
+            "text": "（知识库没有检索到内容：请勿编造字段，改用已给约束并说明缺口。）",
+            "has_shape_reference": False,
+        }
 
     chunks = result.hits
     hits = [
@@ -81,30 +112,52 @@ def search_knowledge_result(
     selected, documents = [], []
     for hit in chunks:
         document = f"## {hit.metadata.get('source', '?')} / {hit.metadata.get('heading', '?')}\n{hit.document}"
-        if documents and len(header + "\n\n".join([*documents, document])) > MAX_RESULT_CHARS:
+        if (
+            documents
+            and len(header + "\n\n".join([*documents, document])) > MAX_RESULT_CHARS
+        ):
             break
         selected.append(hit)
         documents.append(document)
-    text = header + "\n\n".join(documents) if documents else (header + result.text)[:MAX_RESULT_CHARS]
+    text = (
+        header + "\n\n".join(documents)
+        if documents
+        else (header + result.text)[:MAX_RESULT_CHARS]
+    )
     from app.infrastructure.observability.trace import record_rag_context
+
     chunk_ids = [hit.id for hit in selected if getattr(hit, "id", None)]
-    record_rag_context(operation="search_knowledge", base_chars=len(header),
-                       retrieved_chars=sum(len(hit.document) for hit in selected),
-                       context_chars=len(text), retrieved_count=len(selected),
-                       injected_chunk_ids=chunk_ids)
+    record_rag_context(
+        operation="search_knowledge",
+        base_chars=len(header),
+        retrieved_chars=sum(len(hit.document) for hit in selected),
+        context_chars=len(text),
+        retrieved_count=len(selected),
+        injected_chunk_ids=chunk_ids,
+    )
     naming = resolve_component_name(kind) if kind else {"kind": "", "entity_type": ""}
     shape = any(
-        (hit.metadata.get("topic") == "composition"
-         and resolve_component_name(hit.metadata.get("entity_name", ""))["kind"] == naming["kind"])
-        or (naming["entity_type"] and hit.metadata.get("entity_type") == naming["entity_type"]
-            and "```json" in hit.document)
+        (
+            hit.metadata.get("topic") == "composition"
+            and resolve_component_name(hit.metadata.get("entity_name", ""))["kind"]
+            == naming["kind"]
+        )
+        or (
+            naming["entity_type"]
+            and hit.metadata.get("entity_type") == naming["entity_type"]
+            and "```json" in hit.document
+        )
         for hit in selected
     )
     return {"text": text, "has_shape_reference": bool(shape), "chunk_ids": chunk_ids}
 
 
-def search_knowledge_impl(query: str, *, kind: str = "", doc_type: str = "component", per_query: int = 2) -> str:
-    return search_knowledge_result(query, kind=kind, doc_type=doc_type, per_query=per_query)["text"]
+def search_knowledge_impl(
+    query: str, *, kind: str = "", doc_type: str = "component", per_query: int = 2
+) -> str:
+    return search_knowledge_result(
+        query, kind=kind, doc_type=doc_type, per_query=per_query
+    )["text"]
 
 
 @tool
@@ -119,4 +172,9 @@ def search_knowledge(query: str, kind: str = "") -> str:
     return search_knowledge_impl(query, kind=kind)
 
 
-__all__ = ["MAX_RESULT_CHARS", "search_knowledge", "search_knowledge_impl", "search_knowledge_result"]
+__all__ = [
+    "MAX_RESULT_CHARS",
+    "search_knowledge",
+    "search_knowledge_impl",
+    "search_knowledge_result",
+]

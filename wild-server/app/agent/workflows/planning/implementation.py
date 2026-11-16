@@ -386,9 +386,11 @@ def _accept_group(base, row, marker, *, check_size=True):
         "entity_ids": [e["id"] for e in entities],
         "entity_fingerprint": blueprint_fingerprint(entities),
         "explanation": str(row.get("explanation") or ""),
-        "verification": "needs_review"
-        if review["status"] == "needs_review"
-        else "geometry_validated",
+        "verification": (
+            "needs_review"
+            if review["status"] == "needs_review"
+            else "geometry_validated"
+        ),
         "geometry_review": review,
     }
     return candidate, entities, record
@@ -1445,9 +1447,11 @@ class _MarkerGeneration:
                 "has_shape_reference": knowledge["has_shape_reference"],
                 "injected_chunk_ids": knowledge.get("chunk_ids", []),
                 "web_required": needs_web,
-                "web_reason": "缺少当前构件的形态资料"
-                if needs_web
-                else "已有构件参考、原生形态或图纸几何信息",
+                "web_reason": (
+                    "缺少当前构件的形态资料"
+                    if needs_web
+                    else "已有构件参考、原生形态或图纸几何信息"
+                ),
             }
         )
         if needs_web:
@@ -1973,9 +1977,9 @@ class _MarkerGeneration:
             )
             if failed_candidate == previous:
                 self.stopped.add(marker_id)
-                attempt.setdefault("stop_reasons", {})[marker_id] = (
-                    "repeated_failed_candidate"
-                )
+                attempt.setdefault("stop_reasons", {})[
+                    marker_id
+                ] = "repeated_failed_candidate"
                 if self.callback:
                     await self.callback(
                         "execute:progress",
@@ -2011,14 +2015,14 @@ class _MarkerGeneration:
                     diagram_hosts=self.state.get("drawing_hosts", []),
                 )
                 if wall_changes:
-                    attempt.setdefault("shared_wall_changes", {})[marker_id] = (
-                        wall_changes
-                    )
+                    attempt.setdefault("shared_wall_changes", {})[
+                        marker_id
+                    ] = wall_changes
             row, placement_changes = place_opening_group(self.base, row, marker)
             if placement_changes:
-                attempt.setdefault("placement_changes", {})[marker_id] = (
-                    placement_changes
-                )
+                attempt.setdefault("placement_changes", {})[
+                    marker_id
+                ] = placement_changes
             row, bindings = _bind_materials(
                 self.base, row, marker, context["material_roles"]
             )

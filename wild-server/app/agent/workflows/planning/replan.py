@@ -108,7 +108,8 @@ def replan_summary(plan: PlanDocument, state: dict[str, Any]) -> dict[str, Any]:
             "depends_on": list(item.depends_on),
         }
         for item in plan.items
-        if not item.is_terminal and (item.run.state == "failed" or item.status == "blocked")
+        if not item.is_terminal
+        and (item.run.state == "failed" or item.status == "blocked")
     ]
     done = [
         {"item_id": item.id, "kind": item.kind, "label": item.label}
@@ -123,7 +124,9 @@ def replan_summary(plan: PlanDocument, state: dict[str, Any]) -> dict[str, Any]:
         "budget_iterations": (plan.budget or {}).get("iterations"),
         "problems": problems,
         "completed": done,
-        "available_kinds": [config.component_type for config in get_implemented_components()],
+        "available_kinds": [
+            config.component_type for config in get_implemented_components()
+        ],
     }
 
 
@@ -140,7 +143,11 @@ def parse_replan(raw: Any) -> ReplanDecision | None:
     return ReplanDecision(
         action=action,
         item_id=str(raw.get("item_id") or "").strip(),
-        items=[entry for entry in items if isinstance(entry, dict)] if isinstance(items, list) else [],
+        items=(
+            [entry for entry in items if isinstance(entry, dict)]
+            if isinstance(items, list)
+            else []
+        ),
         params=dict(params) if isinstance(params, dict) else {},
         reason=str(raw.get("reason") or "").strip()[:500],
         source="llm",
@@ -166,7 +173,10 @@ def deterministic_decision(plan: PlanDocument) -> ReplanDecision:
                 for entry in plan.history
                 if entry.action == "replace_item" and item.id in entry.item_ids
             )
-            if item.run.attempts >= item.run.max_attempts or replaced >= MAX_REPLACE_PER_ITEM:
+            if (
+                item.run.attempts >= item.run.max_attempts
+                or replaced >= MAX_REPLACE_PER_ITEM
+            ):
                 return ReplanDecision(
                     action="drop_item",
                     item_id=item.id,
@@ -189,7 +199,9 @@ def deterministic_decision(plan: PlanDocument) -> ReplanDecision:
                 reason="仍有一次有界调整额度，依据失败证据定向重试",
                 source="deterministic",
             )
-    return ReplanDecision(action="give_up", reason="无可处置的异常条目", source="deterministic")
+    return ReplanDecision(
+        action="give_up", reason="无可处置的异常条目", source="deterministic"
+    )
 
 
 def _replacement_count(plan: PlanDocument, item_id: str) -> int:
@@ -349,13 +361,20 @@ def apply_decision(
             if new_item:
                 fresh.append(new_item)
         if not fresh:
-            outcome["rejected"] = "没有任何合法的可追加条目（op/kind 不在闭集或能力清单内）"
+            outcome["rejected"] = (
+                "没有任何合法的可追加条目（op/kind 不在闭集或能力清单内）"
+            )
             return plan, outcome
         updated, appended = append_items(
-            plan, fresh, reason=decision.reason or "replanner 追加", max_revision=MAX_REVISION
+            plan,
+            fresh,
+            reason=decision.reason or "replanner 追加",
+            max_revision=MAX_REVISION,
         )
         if not appended:
-            outcome["rejected"] = f"追加次数已达上限 revision={plan.revision}/{MAX_REVISION}"
+            outcome["rejected"] = (
+                f"追加次数已达上限 revision={plan.revision}/{MAX_REVISION}"
+            )
             return plan, outcome
         outcome.update(applied=True, item_ids=[item.id for item in fresh])
         return updated, outcome
@@ -383,7 +402,9 @@ def apply_decision(
                     f"条目 {item.id} 已调整 {replaced} 次，禁止继续重复 replace_item"
                 )
                 return plan, outcome
-            plan = set_evidence(plan, item.id, decision.reason or "replanner 替换後重试")
+            plan = set_evidence(
+                plan, item.id, decision.reason or "replanner 替换後重试"
+            )
             if decision.params:
                 # 形态提示是"怎么做"的自由度，允许被替换；宿主机位不在 params 里，改不到。
                 updated_item = plan.item(item.id)
@@ -398,7 +419,9 @@ def apply_decision(
                     )
                     updated_item.params = params
             plan = set_status(plan, item.id, "ready")
-            plan = _rewrite_run(plan, item.id, evidence=decision.reason or "replanner 替换後重试")
+            plan = _rewrite_run(
+                plan, item.id, evidence=decision.reason or "replanner 替换後重试"
+            )
             plan.history.append(
                 PlanHistoryEntry(
                     revision=plan.revision,
@@ -411,7 +434,9 @@ def apply_decision(
             return refresh_statuses(plan), outcome
 
         target_status = "skipped" if decision.action == "drop_item" else "unsupported"
-        plan = set_status(plan, item.id, target_status, evidence=decision.reason or "replanner 判定")
+        plan = set_status(
+            plan, item.id, target_status, evidence=decision.reason or "replanner 判定"
+        )
         outcome.update(applied=True, item_ids=[item.id])
         return refresh_statuses(plan), outcome
 
@@ -469,8 +494,12 @@ async def request_replan(
     tool_error = (generated.get("tool_loop") or {}).get("error")
     if bounded.action == "replace_item" and tool_error:
         # 执行故障不能交给建筑策略模型通过减配来“修复”。仍受一次替换上限约束。
-        bounded.params = {"guidance": "保留全部已批准槽位、数量和宿主；根据已有知识输出完整结构化结果，避免重复工具查询。"}
-        bounded.reason = f"工具执行失败，保持设计约束作一次有界重试：{str(tool_error)[:300]}"
+        bounded.params = {
+            "guidance": "保留全部已批准槽位、数量和宿主；根据已有知识输出完整结构化结果，避免重复工具查询。"
+        }
+        bounded.reason = (
+            f"工具执行失败，保持设计约束作一次有界重试：{str(tool_error)[:300]}"
+        )
         diag.update(decision_source="deterministic", fallback_reason=bounded.reason)
         return bounded, diag
     if bounded.action != "replace_item":

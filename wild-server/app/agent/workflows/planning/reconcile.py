@@ -33,7 +33,9 @@ def _geometry(blueprint: Any) -> tuple[list[dict], list[dict]]:
     if not isinstance(geometry, dict):
         return [], []
     elements = [item for item in geometry.get("elements", []) if isinstance(item, dict)]
-    components = [item for item in geometry.get("components", []) if isinstance(item, dict)]
+    components = [
+        item for item in geometry.get("components", []) if isinstance(item, dict)
+    ]
     return elements, components
 
 
@@ -51,7 +53,9 @@ def _landed_count(kind: str, elements: list[dict], components: list[dict]) -> in
     return len([entry for entry in bucket if entry.get("type") == kind])
 
 
-def _slot_match(kind: str, design_brief: Any, components: list[dict]) -> tuple[int, int]:
+def _slot_match(
+    kind: str, design_brief: Any, components: list[dict]
+) -> tuple[int, int]:
     """按槽位逐项比对（门窗类构件的主要验收口径）。
 
     返回 ``(落地数, 槽位数)``；没有槽位时返回 ``(0, 0)``，由调用方回退到数量口径。
@@ -101,7 +105,9 @@ def _batch_merge_has_run(plan: PlanDocument, item: PlanItem) -> bool:
     """
 
     return any(
-        other.op == "merge" and item.id in other.depends_on and other.run.state != "idle"
+        other.op == "merge"
+        and item.id in other.depends_on
+        and other.run.state != "idle"
         for other in plan.items
     )
 
@@ -129,15 +135,29 @@ def _resolve_generate(
     if item.params.get("design_markers"):
         from app.domain.design.markers import implementation_records
         from app.domain.design.markers import implementation_complete
-        expected = {m["id"]: m for m in (state.get("resolved_design") or {}).get("component_markers", [])}
+
+        expected = {
+            m["id"]: m
+            for m in (state.get("resolved_design") or {}).get("component_markers", [])
+        }
         results = implementation_records(state)
         ids = item.target.get("marker_ids") or []
-        complete = bool(ids) and all(i in expected and implementation_complete(results.get(i)) for i in ids)
+        complete = bool(ids) and all(
+            i in expected and implementation_complete(results.get(i)) for i in ids
+        )
         if complete:
             abandoned = sum(results[i].get("status") == "abandoned" for i in ids)
-            return ("abandoned" if abandoned else "done"), f"实现流程结束：落实 {len(ids)-abandoned}，舍弃 {abandoned}", False
+            return (
+                ("abandoned" if abandoned else "done"),
+                f"实现流程结束：落实 {len(ids)-abandoned}，舍弃 {abandoned}",
+                False,
+            )
         if item.run.state == "failed":
-            return ("abandoned" if item.run.exhausted else "ready"), item.run.evidence, False
+            return (
+                ("abandoned" if item.run.exhausted else "ready"),
+                item.run.evidence,
+                False,
+            )
         if item.run.state == "succeeded":
             return "ready", "构件结果没有准确覆盖本任务标记", True
         return None, "", False
@@ -146,6 +166,7 @@ def _resolve_generate(
     if requirements:
         from app.domain.design.relations import entity_index
         from app.domain.design.relations import evaluate_support
+
         blueprint = state.get("merged_blueprint") or {}
         actual = entity_index(blueprint)
         rows, used = [], set()
@@ -158,13 +179,25 @@ def _resolve_generate(
             elif relation:
                 rows.append(evaluate_support(blueprint, entity_id, relation))
             else:
-                rows.append({"status": "satisfied" if entity and entity.get("type") == item.kind else "open",
-                             "entity_id": entity_id, "reason": "按本任务实例核对实体存在与类型"})
+                rows.append(
+                    {
+                        "status": (
+                            "satisfied"
+                            if entity and entity.get("type") == item.kind
+                            else "open"
+                        ),
+                        "entity_id": entity_id,
+                        "reason": "按本任务实例核对实体存在与类型",
+                    }
+                )
             used.add(entity_id)
         import json
+
         satisfied = sum(row["status"] == "satisfied" for row in rows)
-        evidence = (f"实例关系核对：{satisfied}/{len(rows)} 满足；"
-                    + json.dumps(rows, ensure_ascii=False))[:2000]
+        evidence = (
+            f"实例关系核对：{satisfied}/{len(rows)} 满足；"
+            + json.dumps(rows, ensure_ascii=False)
+        )[:2000]
         if all(r["status"] == "satisfied" for r in rows):
             return "done", evidence, False
         if item.run.state == "succeeded" and _final_merge_has_run(plan):
@@ -181,8 +214,13 @@ def _resolve_generate(
         fragment_items = [fragments]
     else:
         fragment_items = []
-    owned_ids = set(item.run.artifacts) or {e.get("id") for e in fragment_items if isinstance(e, dict) and e.get("id")}
-    landed = sum(e.get("id") in owned_ids and e.get("type") == item.kind for e in [*elements, *components])
+    owned_ids = set(item.run.artifacts) or {
+        e.get("id") for e in fragment_items if isinstance(e, dict) and e.get("id")
+    }
+    landed = sum(
+        e.get("id") in owned_ids and e.get("type") == item.kind
+        for e in [*elements, *components]
+    )
     matched, slots = _slot_match(item.kind, state.get("design_brief"), components)
 
     if slots:
@@ -200,9 +238,17 @@ def _resolve_generate(
             evidence = item.run.evidence
         if item.run.exhausted:
             suffix = "（重试耗尽）"
-            return "abandoned", evidence if evidence.endswith(suffix) else evidence + suffix, False
+            return (
+                "abandoned",
+                evidence if evidence.endswith(suffix) else evidence + suffix,
+                False,
+            )
         suffix = "（等待重试）"
-        return "ready", evidence if evidence.endswith(suffix) else evidence + suffix, False
+        return (
+            "ready",
+            evidence if evidence.endswith(suffix) else evidence + suffix,
+            False,
+        )
     if item.run.state == "succeeded":
         if not _batch_merge_has_run(plan, item):
             # 已产出，只等批次合并把它并进蓝图。本条不再可执行（store.poll_runnable）。
@@ -298,7 +344,9 @@ def reconcile(
     return refresh_statuses(updated), events
 
 
-def ensure_artifact_consistency(plan: PlanDocument, state: dict[str, Any]) -> PlanDocument:
+def ensure_artifact_consistency(
+    plan: PlanDocument, state: dict[str, Any]
+) -> PlanDocument:
     """出交付清单前的最后一道断言（§5.2）：
 
     把已标 ``done`` 但产物已从蓝图消失的条目重新打开——配额强制、去重、``fix_*``
@@ -314,7 +362,9 @@ def ensure_artifact_consistency(plan: PlanDocument, state: dict[str, Any]) -> Pl
     for item in plan.items:
         if item.op != "generate" or item.status != "done":
             continue
-        status, evidence, _consume = _resolve_generate(item, plan, state, elements, components)
+        status, evidence, _consume = _resolve_generate(
+            item, plan, state, elements, components
+        )
         if status != "done":
             updated = reset_for_retry(
                 updated, item.id, evidence="产物或支撑关系已失效，重新对账：" + evidence

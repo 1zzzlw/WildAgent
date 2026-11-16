@@ -97,9 +97,20 @@ def _build_registry() -> tuple[ToolSpec, ...]:
     from app.agent.tools.spatial import validate_stair_alignment
     from app.agent.tools.spatial import validate_wall_junctions
 
-    opening_scope = ("generate:door", "generate:window", "generate:bay_window", "repair")
+    opening_scope = (
+        "generate:door",
+        "generate:window",
+        "generate:bay_window",
+        "repair",
+    )
     roof_scope = ("generate:roof", "generate:chimney", "repair")
-    wall_scope = ("generate:door", "generate:window", "generate:canopy", "generate:balcony", "repair")
+    wall_scope = (
+        "generate:door",
+        "generate:window",
+        "generate:canopy",
+        "generate:balcony",
+        "repair",
+    )
     component_scope = ("generate", "repair")
 
     specs: list[ToolSpec] = [
@@ -115,36 +126,118 @@ def _build_registry() -> tuple[ToolSpec, ...]:
             notes="必须带 metadata 过滤，不得绕过 app/rag/security.py",
         ),
         # ── 校验：可以给模型自查，但关键校验由 validate 条目兜底（§4.7）──
-        tool_spec("validate_blueprint_structure", "validate", validate_blueprint_structure,
-                  read_only=True, concurrency_safe=True, applies_to=component_scope),
-        tool_spec("validate_reference_integrity", "validate", validate_reference_integrity,
-                  read_only=True, concurrency_safe=True, applies_to=component_scope),
-        tool_spec("validate_element_dimensions", "validate", validate_element_dimensions,
-                  read_only=True, concurrency_safe=True, applies_to=component_scope),
-        tool_spec("validate_element_required_fields", "validate",
-                  validate_element_required_fields, read_only=True, concurrency_safe=True,
-                  applies_to=component_scope),
-        tool_spec("validate_opening_coords", "validate", validate_opening_coords,
-                  read_only=True, concurrency_safe=True, applies_to=opening_scope),
-        tool_spec("validate_opening_fit", "validate", validate_opening_fit,
-                  read_only=True, concurrency_safe=True, applies_to=opening_scope),
-        tool_spec("validate_wall_junctions", "validate", validate_wall_junctions,
-                  read_only=True, concurrency_safe=True, applies_to=wall_scope),
-        tool_spec("validate_roof_coverage", "validate", validate_roof_coverage,
-                  read_only=True, concurrency_safe=True, applies_to=roof_scope),
-        tool_spec("validate_collision", "validate", validate_collision,
-                  read_only=True, concurrency_safe=True, applies_to=("repair",)),
-        tool_spec("validate_stair_alignment", "validate", validate_stair_alignment,
-                  read_only=True, concurrency_safe=True, applies_to=("repair",)),
+        tool_spec(
+            "validate_blueprint_structure",
+            "validate",
+            validate_blueprint_structure,
+            read_only=True,
+            concurrency_safe=True,
+            applies_to=component_scope,
+        ),
+        tool_spec(
+            "validate_reference_integrity",
+            "validate",
+            validate_reference_integrity,
+            read_only=True,
+            concurrency_safe=True,
+            applies_to=component_scope,
+        ),
+        tool_spec(
+            "validate_element_dimensions",
+            "validate",
+            validate_element_dimensions,
+            read_only=True,
+            concurrency_safe=True,
+            applies_to=component_scope,
+        ),
+        tool_spec(
+            "validate_element_required_fields",
+            "validate",
+            validate_element_required_fields,
+            read_only=True,
+            concurrency_safe=True,
+            applies_to=component_scope,
+        ),
+        tool_spec(
+            "validate_opening_coords",
+            "validate",
+            validate_opening_coords,
+            read_only=True,
+            concurrency_safe=True,
+            applies_to=opening_scope,
+        ),
+        tool_spec(
+            "validate_opening_fit",
+            "validate",
+            validate_opening_fit,
+            read_only=True,
+            concurrency_safe=True,
+            applies_to=opening_scope,
+        ),
+        tool_spec(
+            "validate_wall_junctions",
+            "validate",
+            validate_wall_junctions,
+            read_only=True,
+            concurrency_safe=True,
+            applies_to=wall_scope,
+        ),
+        tool_spec(
+            "validate_roof_coverage",
+            "validate",
+            validate_roof_coverage,
+            read_only=True,
+            concurrency_safe=True,
+            applies_to=roof_scope,
+        ),
+        tool_spec(
+            "validate_collision",
+            "validate",
+            validate_collision,
+            read_only=True,
+            concurrency_safe=True,
+            applies_to=("repair",),
+        ),
+        tool_spec(
+            "validate_stair_alignment",
+            "validate",
+            validate_stair_alignment,
+            read_only=True,
+            concurrency_safe=True,
+            applies_to=("repair",),
+        ),
         # ── 确定性修复：只给 repair 条目（generate 不该自己改既有元素）──
-        tool_spec("fix_material_references", "fix", fix_material_references, applies_to=("repair",)),
-        tool_spec("fix_opening_coords", "fix", fix_opening_coords, applies_to=("repair",)),
+        tool_spec(
+            "fix_material_references",
+            "fix",
+            fix_material_references,
+            applies_to=("repair",),
+        ),
+        tool_spec(
+            "fix_opening_coords", "fix", fix_opening_coords, applies_to=("repair",)
+        ),
         tool_spec("fix_opening_fit", "fix", fix_opening_fit, applies_to=("repair",)),
-        tool_spec("fix_wall_junctions", "fix", fix_wall_junctions, applies_to=("repair",)),
-        tool_spec("fix_stair_alignment", "fix", fix_stair_alignment, applies_to=("repair",)),
-        tool_spec("fix_element_dimensions", "fix", fix_element_dimensions, applies_to=("repair",)),
-        tool_spec("fix_element_elevations", "fix", fix_element_elevations, applies_to=("repair",)),
-        tool_spec("fix_roof_coverage", "fix", fix_roof_coverage, applies_to=("repair",)),
+        tool_spec(
+            "fix_wall_junctions", "fix", fix_wall_junctions, applies_to=("repair",)
+        ),
+        tool_spec(
+            "fix_stair_alignment", "fix", fix_stair_alignment, applies_to=("repair",)
+        ),
+        tool_spec(
+            "fix_element_dimensions",
+            "fix",
+            fix_element_dimensions,
+            applies_to=("repair",),
+        ),
+        tool_spec(
+            "fix_element_elevations",
+            "fix",
+            fix_element_elevations,
+            applies_to=("repair",),
+        ),
+        tool_spec(
+            "fix_roof_coverage", "fix", fix_roof_coverage, applies_to=("repair",)
+        ),
         # ── 定点改蓝图：白名单动作，由程序执行（§4.11 族 B）──
         tool_spec(
             "repair_actions",

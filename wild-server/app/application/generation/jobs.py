@@ -225,7 +225,7 @@ class GenerationJobService:
         return job, True
 
     async def stop_job(
-        self, subscriber: Any, *, request_id: str, session_id: str,
+        self, subscriber: Any, *, request_id: str, session_id: str, reason: str = "user_stop",
     ) -> GenerationJob:
         """先落盘停止状态，再取消执行；日志写完后才发送停止确认。"""
         await self.initialize()
@@ -235,21 +235,24 @@ class GenerationJobService:
                 job = await self.get_job(request_id)
                 if job is None or job.session_id != session_id:
                     raise ValueError("找不到当前会话的任务")
-                await self.attach(request_id, subscriber)
+                if subscriber is not None:
+                    await self.attach(request_id, subscriber)
                 event = versioned_event({
                     "type": "generation_stopped",
                     "request_id": request_id,
                     "session_id": session_id,
                     "status": "stopped",
-                    "content": "已停止，已有执行记录已保存。",
+                    "content": "账号已停用，当前任务已停止。" if reason == "account_disabled" else "已停止，已有执行记录已保存。",
+                    "stop_reason": reason,
                 })
                 if job.status not in {"running", "waiting_review"}:
-                    await subscriber.send_json({
-                        **event,
-                        "status": job.status,
-                        "content": "已有执行记录已保存。" if job.status == "stopped"
-                        else "任务已结束，已有记录已保留。",
-                    })
+                    if subscriber is not None:
+                        await subscriber.send_json({
+                            **event,
+                            "status": job.status,
+                            "content": "已有执行记录已保存。" if job.status == "stopped"
+                            else "任务已结束，已有记录已保留。",
+                        })
                     return job
                 self._stopped_requests.add(request_id)
                 await self._mark_status(request_id, "stopped", None)
@@ -261,6 +264,14 @@ class GenerationJobService:
                 await asyncio.gather(task, return_exceptions=True)
             await self.publish_event(request_id, event)
             return await self.get_job(request_id)
+
+    async def stop_account_jobs(self, user_id: str) -> None:
+        """账号停用后复用现有停止链路，取消当前及其他工作进程中的任务。"""
+        rows = await asyncio.to_thread(self.repository.active_for_account, user_id)
+        for row in rows:
+            job = self._row_to_job(row)
+            await self.stop_job(None, request_id=job.request_id, session_id=job.session_id,
+                                reason="account_disabled")
 
     async def resume_or_replay(
         self,

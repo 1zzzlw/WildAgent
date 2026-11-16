@@ -469,17 +469,29 @@ def _validate_architecture_draft(raw, state, profile_id, complexity, previous):
         )
 
     components = raw.get("components") or []
+
     if not isinstance(components, list) or any(
         not isinstance(item, dict) for item in components
     ):
         raise ValueError("components 必须是构件对象数组")
+
     if any(not item.get("id") for item in raw.get("components") or []):
         raise ValueError("每个显式构件标记必须有稳定 id；不能只写构件类型与宿主")
+
+    # 导入构件名称解析函数
     from app.domain.components.names import resolve_component_name
 
+    # 检查挂在体量上的门窗，是否给出足够的定位信息
     volume_ids = {v.get("id") for v in raw.get("volumes", []) if isinstance(v, dict)}
+    # 快速判断某个宿主是不是体量 ID
     for index, item in enumerate(components):
         placement = item.get("placement") or {}
+        # 这个构件属于门或窗
+        # 并且 host 是字符串
+        # 并且 host 引用的是一个体量
+        # 并且 placement 是字典
+        # 并且没有给出世界坐标 position
+        # 并且 face、floor 至少缺一个
         if (
             resolve_component_name(item.get("type", ""))["entity_type"]
             in {"door", "window"}
@@ -493,7 +505,10 @@ def _validate_architecture_draft(raw, state, profile_id, complexity, previous):
                 f"/components/{index}/placement：体量内门窗的沿墙定位需要 face 和 floor，"
                 "或写出世界 position；不能仅凭 offset 猜测墙面和楼层"
             )
+
+    # 收集材料冲突，组装待构造的设计方案
     material_errors = _material_role_conflicts(components)
+
     plan = {
         "profile": profile_id,
         **raw,
@@ -504,7 +519,9 @@ def _validate_architecture_draft(raw, state, profile_id, complexity, previous):
             "reason": complexity["reason"],
         },
     }
+
     try:
+        # 把普通字典构造成设计契约对象
         document = build_design_document_or_error(
             plan,
             session_id=str(

@@ -12,6 +12,7 @@
 
 每次迭代通过 on_reasoning_delta 发射思考内容，让前端能看到合并推理过程。
 """
+
 import time as _time
 from copy import deepcopy
 from loguru import logger
@@ -462,13 +463,15 @@ def _align_merge_slots(state, merged_blueprint, skeleton, design_brief):
             design_brief,
             merged_blueprint,
             # 已审核编译实体保留原布局；新增模型附属件仍走入口吸附。
-            fixed_ids={
-                item.get("id")
-                for item in (skeleton.get("geometry") or {}).get("components", [])
-            }
-            if (state.get("design_document") or {}).get("status")
-            in {"approved", "compiled"}
-            else None,
+            fixed_ids=(
+                {
+                    item.get("id")
+                    for item in (skeleton.get("geometry") or {}).get("components", [])
+                }
+                if (state.get("design_document") or {}).get("status")
+                in {"approved", "compiled"}
+                else None
+            ),
         )
         components, balcony_layout = conform_balconies_to_slots(
             components, design_brief

@@ -1,5 +1,5 @@
 """业务表数据契约，初始化 DDL 位于 db/schema.sql。时间统一为 Unix 毫秒。"""
-from sqlalchemy import (JSON, BigInteger, CheckConstraint, Column, ForeignKey, Index, Integer,
+from sqlalchemy import (JSON, BigInteger, Boolean, CheckConstraint, Column, ForeignKey, Index, Integer,
                         MetaData, SmallInteger, String, Table, Text, text)
 from sqlalchemy.dialects.mysql import LONGTEXT
 
@@ -13,6 +13,12 @@ users = Table("users", metadata,
     Column("password_hash", String(256), nullable=False),
     Column("status", String(16), nullable=False, default="active"),
     Column("created_at", BigInteger, nullable=False),
+    Column("operations_remaining", Integer, nullable=False, server_default=text("1000")),
+    Column("modifications_remaining", Integer, nullable=False, server_default=text("200")),
+    Column("generations_remaining", Integer, nullable=False, server_default=text("20")),
+    Column("operations_used", Integer, nullable=False, server_default=text("0")),
+    Column("modifications_used", Integer, nullable=False, server_default=text("0")),
+    Column("generations_used", Integer, nullable=False, server_default=text("0")),
     CheckConstraint("identity IN (1, 2)", name="ck_users_identity"), **options)
 sessions = Table("conversation_sessions", metadata,
     Column("session_id", String(128), primary_key=True),
@@ -39,10 +45,27 @@ blueprints = Table("blueprints", metadata,
     Column("elements_count", Integer, nullable=False),
     Column("components_count", Integer, nullable=False),
     Column("blueprint_json", JSON, nullable=False),
+    Column("locked", Boolean, nullable=False, server_default=text("0")),
+    Column("locked_at", BigInteger),
+    Column("locked_by", String(36)),
     Column("created_at", BigInteger, nullable=False),
     Column("updated_at", BigInteger, nullable=False), **options)
 Index("ix_blueprints_session_updated", blueprints.c.session_id, blueprints.c.updated_at)
 Index("ix_blueprints_owner_updated", blueprints.c.owner_id, blueprints.c.updated_at)
+
+audit_logs = Table("audit_logs", metadata,
+    Column("id", String(64), primary_key=True),
+    # 保留账号快照，删除账号后仍能追溯操作；不存密码、验证码或 API 密钥。
+    Column("actor_id", String(36), nullable=False),
+    Column("actor_name", String(64), nullable=False),
+    Column("action", String(64), nullable=False),
+    Column("resource", String(255), nullable=False, server_default=""),
+    Column("session_id", String(128)),
+    Column("request_id", String(128)),
+    Column("details", JSON, nullable=False),
+    Column("created_at", BigInteger, nullable=False), **options)
+Index("ix_audit_actor_created", audit_logs.c.actor_id, audit_logs.c.created_at)
+Index("ix_audit_action_created", audit_logs.c.action, audit_logs.c.created_at)
 designs = Table("design_documents", metadata,
     Column("session_id", String(128), ForeignKey("conversation_sessions.session_id", ondelete="CASCADE"), primary_key=True),
     Column("revision", Integer, primary_key=True),

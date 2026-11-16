@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 
-from sqlalchemy import delete, insert, select, update
+from sqlalchemy import JSON, delete, insert, select, type_coerce, update
 
 from app.infrastructure.persistence.database import Database
 from app.infrastructure.persistence.database import database
@@ -37,6 +37,12 @@ class JobRepository:
             return conn.execute(select(*JOB_COLUMNS).where(jobs.c.status.in_(statuses))
                                 .order_by(jobs.c.created_at)).all()
 
+    def active_for_account(self, user_id: str):
+        actor = type_coerce(jobs.c.payload_json, JSON)["_server_user_id"].as_string()
+        with self.database.engine.connect() as connection:
+            return connection.execute(select(*JOB_COLUMNS).where(
+                jobs.c.status.in_(ACTIVE), actor == user_id).order_by(jobs.c.created_at)).all()
+
     def insert(self, request_id: str, session_id: str, payload: dict):
         with self.database.engine.begin() as conn:
             conn.execute(insert(jobs).values(request_id=request_id, session_id=session_id,
@@ -45,7 +51,7 @@ class JobRepository:
 
     def append(self, request_id: str, payload: dict, terminal_status: str | None) -> int:
         with self.database.engine.begin() as conn:
-            row = conn.execute(select(jobs.c.last_event_seq, jobs.c.status).where(
+            row = conn.execute(select(jobs.c.last_event_seq, jobs.c.status, jobs.c.payload_json).where(
                 jobs.c.request_id == request_id).with_for_update()).first()
             if row is None or (row.status == "stopped" and payload.get("type") != "generation_stopped"):
                 return 0
@@ -57,7 +63,31 @@ class JobRepository:
                 changes.update(status=terminal_status, error=(payload.get("error") or payload.get("content"))
                                if terminal_status == "failed" else None)
             conn.execute(update(jobs).where(jobs.c.request_id == request_id).values(**changes))
+            self._record_result(conn, request_id, seq, json.loads(row.payload_json), payload)
             return seq
+
+    @staticmethod
+    def _record_result(conn, request_id: str, sequence: int, request: dict, payload: dict) -> None:
+        from app.infrastructure.persistence.repositories.activity import append_audit
+        from app.infrastructure.persistence.schema import users
+
+        action = payload.get("type")
+        if action not in {"agent_reply", "error", "generation_stopped", "blueprint_generated", "patch_proposal"}:
+            return
+        user_id = request.get("_server_user_id")
+        if not user_id:
+            return
+        actor = conn.execute(select(users.c.id, users.c.username).where(users.c.id == user_id)).mappings().first()
+        if not actor:
+            return
+        details = {"content": str(payload.get("content") or payload.get("error") or "")[:12000]}
+        if action == "patch_proposal":
+            patch = payload.get("patch") or {}
+            details.update(summary=patch.get("summary"), operation_count=len(patch.get("operations") or []))
+        if payload.get("filename"):
+            details["filename"] = payload["filename"]
+        append_audit(conn, dict(actor), "ai." + action, session_id=request.get("session_id"),
+                     request_id=request_id, details=details, key=f"ai.event:{request_id}:{sequence}")
 
     def mark(self, request_id: str, status: str, error: str | None):
         with self.database.engine.begin() as conn:

@@ -322,6 +322,7 @@ watch(() => [...selectionStore.selectedIds], () => {
   syncSelectionHighlights()
   syncComponentTransformControl()
 }, { flush: 'sync' })
+watch(() => sceneStore.canModifyManually, () => syncComponentTransformControl())
 watch(() => placement.request, request => {
   placementUpdate++
   placementDraft = null
@@ -1009,7 +1010,7 @@ function refreshPlacement() {
 }
 
 async function commitPlacement() {
-  if (!auth.canEdit) return
+  if (!sceneStore.canModifyManually) return
   if (!placementDraft || !placement.request || !sceneStore.document || sceneStore.isReconstructing || placementCommitting) return
   const draft = placementDraft
   const request = placement.request
@@ -1254,7 +1255,7 @@ function clearSelectionHelpers() {
 /** 原生与组合构件共用三轴移动；组合构件可显式锁定。 */
 function syncComponentTransformControl() {
   clearComponentTransformControl()
-  if (!auth.canEdit) return
+  if (!sceneStore.canModifyManually) return
   if (
     roaming.active
     || viewMode.value === 'presentation'

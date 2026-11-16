@@ -39,6 +39,7 @@ def _build_session_info(session_id: str, meta: dict, bp: dict | None) -> dict:
         "message_count": meta.get("message_count", len(meta.get("messages", []))),
         "turn_count": meta.get("turn_count", len(meta.get("turns", []))),
         "status": "saved" if bp else "draft",
+        "locked": bool(bp and bp.get("locked")),
     }
 
 
@@ -80,8 +81,13 @@ async def delete_session(session_id: str, user: dict | None):
     try:
         async with session_lock(session_id):
             await asyncio.to_thread(check_session, session_id, user)
-            await generation_job_service.delete_session_jobs(session_id)
             bp = await asyncio.to_thread(blueprint_repository.for_session, session_id)
+            if bp:
+                from app.application.access import require_admin, check_session_writable
+
+                require_admin(user)
+                await asyncio.to_thread(check_session_writable, session_id, user)
+            await generation_job_service.delete_session_jobs(session_id)
             await asyncio.to_thread(conversations.delete, session_id)
     except ValueError as exc:
         raise ApplicationError('conflict', str(exc)) from exc

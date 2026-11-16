@@ -224,7 +224,7 @@ watch(() => props.visible, async (visible) => {
     testResult.value = null
     nextTick(() => configOverlay.value?.focus())
   }
-})
+}, { immediate: true })
 
 async function loadCurrentConfig() {
   try {

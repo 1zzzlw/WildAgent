@@ -117,8 +117,6 @@ def coerce_shape_label(value: object) -> str:
     return text[:_SHAPE_LABEL_MAX]
 
 
-
-
 def _requested_floors(user_message: str) -> int | None:
     candidates = [
         max(1, int(match.group(1)))

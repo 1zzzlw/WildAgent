@@ -5,6 +5,7 @@
 参数随知识库修改而生效，无需改代码。文件缺失或解析失败时回退到内置默认值，保证
 生成链路永不因配方格式问题而崩溃。
 """
+
 from __future__ import annotations
 from app.paths import SERVER_ROOT
 
@@ -18,7 +19,11 @@ from loguru import logger
 
 _SERVER_ROOT = SERVER_ROOT
 _RECIPE_PATH = (
-    _SERVER_ROOT / "storage" / "knowledge_base" / "knowledge" / "components"
+    _SERVER_ROOT
+    / "storage"
+    / "knowledge_base"
+    / "knowledge"
+    / "components"
     / "glass-curtain-wall-assembly.md"
 )
 

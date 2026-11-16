@@ -9,7 +9,7 @@
       <button v-if="auth.canEdit" aria-label="打开 WILD" title="打开 WILD，导入后自动保存到服务器" :disabled="busy" @click="fileInput?.click()"><el-icon>
           <FolderOpened />
         </el-icon><span>打开</span></button>
-      <button v-if="auth.canEdit" class="save-button" aria-label="保存到服务器" title="保存到服务器 · Ctrl+S" :disabled="!scene.document || busy"
+      <button v-if="auth.canEdit" class="save-button" aria-label="保存到服务器" title="保存到服务器 · Ctrl+S" :disabled="!scene.document || busy || scene.isLocked"
         @click="workspace.saveScene()"><el-icon>
           <Upload />
         </el-icon><span>{{ workspace.isSaving ? '保存中' : '保存' }}</span></button>
@@ -22,10 +22,10 @@
           <Box />
         </el-icon><span>{{ render.exportingGlb ? '导出中…' : '导出 GLB' }}</span></button>
       <i v-if="auth.canEdit" class="toolbar-divider"></i>
-      <button v-if="auth.canEdit" aria-label="撤销" title="撤销 · Ctrl+Z" :disabled="!history.canUndo || busy" @click="restore(false)"><el-icon>
+      <button v-if="auth.canEdit" aria-label="撤销" title="撤销 · Ctrl+Z" :disabled="!history.canUndo || busy || !scene.canModifyManually" @click="restore(false)"><el-icon>
           <RefreshLeft />
         </el-icon></button>
-      <button v-if="auth.canEdit" aria-label="重做" title="重做 · Ctrl+Shift+Z" :disabled="!history.canRedo || busy"
+      <button v-if="auth.canEdit" aria-label="重做" title="重做 · Ctrl+Shift+Z" :disabled="!history.canRedo || busy || !scene.canModifyManually"
         @click="restore(true)"><el-icon>
           <RefreshRight />
         </el-icon></button>
@@ -43,6 +43,7 @@
         }}
       </span>
     </div>
+    <RouterLink v-if="auth.isAdmin" class="business-plan-link" to="/admin">管理后台</RouterLink>
     <RouterLink class="business-plan-link" to="/business-plan">商业计划书 ↗</RouterLink>
     <button class="theme-toggle" type="button" :aria-label="theme.isDark ? '切换为亮色主题' : '切换为暗色主题'" :title="theme.isDark ? '亮色主题' : '暗色主题'" @click="theme.toggle()">
       <el-icon><Sunny v-if="theme.isDark" /><Moon v-else /></el-icon>
@@ -73,7 +74,7 @@ const workspace = useWorkspaceStore()
 const history = useHistoryStore()
 const render = useRenderPanelStore()
 const fileInput = ref<HTMLInputElement>()
-const busy = computed(() => workspace.isSaving || workspace.isImporting)
+const busy = computed(() => workspace.isSaving || workspace.isImporting || scene.isCommitting)
 async function importFile(event: Event) {
   // 获取 wild 文件内容
   const input = event.target as HTMLInputElement
@@ -92,9 +93,10 @@ function exportFile() {
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 async function restore(redo: boolean) {
-  if (!auth.canEdit) return
+  if (!scene.canModifyManually) return
+  const previousIndex = history.currentIndex
   const entry = redo ? history.redo() : history.undo()
-  if (entry) await scene.restoreBlueprint(redo ? entry.after : entry.before)
+  if (entry && !await scene.restoreBlueprint(redo ? entry.after : entry.before)) history.currentIndex = previousIndex
 }
 async function logout() {
   if (scene.document?.dirty) {

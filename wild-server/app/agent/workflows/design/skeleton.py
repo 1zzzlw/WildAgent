@@ -4,6 +4,7 @@ Layer 0: 骨架生成节点
 输入: user_message
 输出: skeleton_blueprint, skeleton_summary, wall_bounding_box, skeleton_diag
 """
+
 import asyncio
 import time as _time
 import json
@@ -35,6 +36,7 @@ from app.domain.blueprint.parser import extract_blueprint_from_text
 from app.domain.blueprint.parser import normalize_blueprint_input
 from app.domain.blueprint.parser import validate_blueprint_schema
 
+
 async def skeleton_generator(state: GenerationState) -> dict:
     """把已批准方案确定性编译为骨架，并输出后续计划所需设计清单。"""
     t0 = _time.time()
@@ -57,9 +59,11 @@ async def skeleton_generator(state: GenerationState) -> dict:
     if deterministic_primary and on_reasoning_delta is not None:
         await on_reasoning_delta(
             "skeleton:progress",
-            "已收到批准的物件方案，正在建立物件场景骨架……\n"
-            if object_scene
-            else "已收到批准的结构化方案，正在确定性编译墙、楼板、柱梁与楼梯……\n",
+            (
+                "已收到批准的物件方案，正在建立物件场景骨架……\n"
+                if object_scene
+                else "已收到批准的结构化方案，正在确定性编译墙、楼板、柱梁与楼梯……\n"
+            ),
         )
 
     # ── 1. 仅兼容无结构化方案的旧入口；正常生成链不再二次检索和重新设计 ──

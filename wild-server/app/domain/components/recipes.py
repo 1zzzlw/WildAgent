@@ -58,7 +58,12 @@ def _describe_param(key: str, spec: dict[str, Any]) -> str:
         bounds.append(f"≥{_format_number(spec['min'])}")
     if "max" in spec:
         bounds.append(f"≤{_format_number(spec['max'])}")
-    kind = {"integer": "整数", "number": "数值", "string": "字符串", "vec3": "三维向量"}.get(spec.get("type"), "值")
+    kind = {
+        "integer": "整数",
+        "number": "数值",
+        "string": "字符串",
+        "vec3": "三维向量",
+    }.get(spec.get("type"), "值")
     default = _format_number(spec.get("default"))
     parts = [f"{label}（{key}，{kind}"]
     if bounds:
@@ -79,16 +84,24 @@ def recipe_rules(recipe: dict[str, Any]) -> str:
     lines: list[str] = []
     params = recipe.get("params") or {}
     if params:
-        lines.append("- 字段：" + "；".join(
-            _describe_param(key, spec) for key, spec in params.items()
-            if isinstance(spec, dict)
-        ))
+        lines.append(
+            "- 字段："
+            + "；".join(
+                _describe_param(key, spec)
+                for key, spec in params.items()
+                if isinstance(spec, dict)
+            )
+        )
     defaults = recipe.get("defaults") or {}
     if defaults:
-        lines.append("- 初始值：" + "；".join(
-            f"{key}={json.dumps(value, ensure_ascii=False)}"
-            for key, value in defaults.items()
-        ) + "（面板拖入时使用，可按设计覆盖）")
+        lines.append(
+            "- 初始值："
+            + "；".join(
+                f"{key}={json.dumps(value, ensure_ascii=False)}"
+                for key, value in defaults.items()
+            )
+            + "（面板拖入时使用，可按设计覆盖）"
+        )
     guards = [item for item in (recipe.get("guards") or []) if isinstance(item, dict)]
     messages = [str(item.get("message")) for item in guards if item.get("message")]
     if messages:
@@ -98,12 +111,16 @@ def recipe_rules(recipe: dict[str, Any]) -> str:
         lines.append("- 位置与运行语义：" + notes)
     elements = recipe.get("elements") or []
     if elements:
-        shapes = sorted({
-            str(item.get("shape"))
-            for item in elements
-            if isinstance(item, dict) and item.get("shape")
-        })
-        repeated = sum(1 for item in elements if isinstance(item, dict) and item.get("repeat"))
+        shapes = sorted(
+            {
+                str(item.get("shape"))
+                for item in elements
+                if isinstance(item, dict) and item.get("shape")
+            }
+        )
+        repeated = sum(
+            1 for item in elements if isinstance(item, dict) and item.get("repeat")
+        )
         summary = f"- 编译后产出 {len(elements)} 组 primitive"
         if shapes:
             summary += f"（{'/'.join(shapes)}）"
@@ -139,7 +156,9 @@ def recipe_component_configs() -> list[ComponentConfig]:
         params = recipe.get("params") or {}
         defaults = recipe.get("defaults") or {}
         material_fields = [str(item) for item in recipe.get("materialFields") or []]
-        optional = list(dict.fromkeys([*params.keys(), *defaults.keys(), *material_fields]))
+        optional = list(
+            dict.fromkeys([*params.keys(), *defaults.keys(), *material_fields])
+        )
         # 配方里 position 有默认值 → 它是必填的落点；否则（纯路径类）不强制。
         # 其余必填项由配方 `required` 显式声明 —— 不写就只是"可选"，
         # 模型可以合法地漏掉它（fan 的 controlPosition 就踩过这个坑）。

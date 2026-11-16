@@ -43,7 +43,11 @@ def _model_tool_rounds(trace: Any) -> int:
     """
 
     return len(
-        [entry for entry in trace or [] if isinstance(entry, dict) and not entry.get("mode")]
+        [
+            entry
+            for entry in trace or []
+            if isinstance(entry, dict) and not entry.get("mode")
+        ]
     )
 
 
@@ -110,15 +114,23 @@ async def _execute_one(state: dict[str, Any], item: PlanItem):
     handler = HANDLERS.get(item.op)
     handler_started = time.perf_counter()
     callback = get_reasoning_callback()
+
     async def item_callback(node, delta):
         channel = ":progress" if node.endswith(":progress") else ""
         await callback(f"plan:{item.id}{channel}", delta)
+
     token = bind_reasoning_callback(item_callback if callback else None)
     try:
         if callback:
             await item_callback("execute:progress", f"正在执行{item.label}……\n")
         if handler is None:
-            outcome = ({}, "failed", [], f"op {item.op!r} 没有执行器（见 §2.3 闭集）", [])
+            outcome = (
+                {},
+                "failed",
+                [],
+                f"op {item.op!r} 没有执行器（见 §2.3 闭集）",
+                [],
+            )
         else:
             outcome = handler(state, item)
             if inspect.isawaitable(outcome):
@@ -127,7 +139,11 @@ async def _execute_one(state: dict[str, Any], item: PlanItem):
     except Exception as exc:
         logger.error(f"[execute] {item.id} 执行异常: {exc}")
         updates, run_state, artifacts, evidence, trace = (
-            {}, "failed", [], f"执行异常: {exc}", []
+            {},
+            "failed",
+            [],
+            f"执行异常: {exc}",
+            [],
         )
     finally:
         reset_reasoning_callback(token)
@@ -149,7 +165,7 @@ async def plan_node(state: dict[str, Any]) -> dict[str, Any]:
 
     # 取当前运行时的 "思考回调"。
     callback = get_reasoning_callback()
-    
+
     if callback:
         # 必须带 `:progress` 后缀走「执行说明」通道。
         await callback("plan:progress", "正在把已批准方案拆成可执行的工作条目……\n")
@@ -159,25 +175,54 @@ async def plan_node(state: dict[str, Any]) -> dict[str, Any]:
         from app.domain.design.contracts import DesignDocument
         from app.domain.design.compilation import project_drawing
         from app.domain.design.compilation import RESOLVER_VERSION
+
         document = DesignDocument.model_validate(document_data)
         resolved = project_drawing(document)
         reviewed = state.get("resolved_design") or {}
-        if reviewed.get("resolver_version") != RESOLVER_VERSION or reviewed.get("design_hash") != resolved.design_hash:
-            return {"status": "failed", "error": "任务设计版本与已确定图纸不一致，请重新生成，已有片段仍保留。"}
+        if (
+            reviewed.get("resolver_version") != RESOLVER_VERSION
+            or reviewed.get("design_hash") != resolved.design_hash
+        ):
+            return {
+                "status": "failed",
+                "error": "任务设计版本与已确定图纸不一致，请重新生成，已有片段仍保留。",
+            }
         design_state = {**state, "resolved_design": resolved.model_dump(mode="json")}
         plan = expand_plan(design_state)
         material_plan = document.decisions.materials.resolved_plan
-        scaffold = {"meta": {"version": "1.0", "type": "building", "name": document.decisions.concept or "建筑",
-                             "designHash": resolved.design_hash, "designRevision": document.revision},
-                    "geometry": {"elements": [], "components": []}, "materials": {}, "assets": {}}
+        scaffold = {
+            "meta": {
+                "version": "1.0",
+                "type": "building",
+                "name": document.decisions.concept or "建筑",
+                "designHash": resolved.design_hash,
+                "designRevision": document.revision,
+            },
+            "geometry": {"elements": [], "components": []},
+            "materials": {},
+            "assets": {},
+        }
         if material_plan:
-            scaffold["materials"] = {r.materialId: dict(r.material) for r in material_plan.roles}
+            scaffold["materials"] = {
+                r.materialId: dict(r.material) for r in material_plan.roles
+            }
             scaffold["assets"] = dict(material_plan.resolvedAssets)
-        return {"plan": plan.model_dump(mode="json"), "plan_events": _events_for(plan),
-                "resolved_design": resolved.model_dump(mode="json"), "drawing_hosts": resolved.projection_elements,
-                "skeleton_blueprint": scaffold, "design_brief": {}, "merged_blueprint": {}, "current_item_id": None,
-                "plan_diag": {"source": "drawing_implementation", "model_calls": 0,
-                              "marker_count": len(resolved.component_markers), "total_ms": int((time.time()-started)*1000)}}
+        return {
+            "plan": plan.model_dump(mode="json"),
+            "plan_events": _events_for(plan),
+            "resolved_design": resolved.model_dump(mode="json"),
+            "drawing_hosts": resolved.projection_elements,
+            "skeleton_blueprint": scaffold,
+            "design_brief": {},
+            "merged_blueprint": {},
+            "current_item_id": None,
+            "plan_diag": {
+                "source": "drawing_implementation",
+                "model_calls": 0,
+                "marker_count": len(resolved.component_markers),
+                "total_ms": int((time.time() - started) * 1000),
+            },
+        }
 
     strategy, diag = await request_plan_strategy(state)
 
@@ -201,10 +246,12 @@ async def plan_node(state: dict[str, Any]) -> dict[str, Any]:
 
     # 取第一条当前可执行的条目（status=ready 且没成功过）。用来设定 current_item_id 这是 trace 和事件要挂载的 "当前条目"
     first = poll_runnable(plan)
-    
+
     # 策略要的 ≠ 实际派发的：产物里已有的类型会被 ``expand_plan`` 抑制掉。诊断如实记两边，
     # 否则"模型点名了门却没派门"在审计里看不出来。
-    dispatched_kinds = sorted({item.kind for item in plan.items if item.op == "generate"})
+    dispatched_kinds = sorted(
+        {item.kind for item in plan.items if item.op == "generate"}
+    )
 
     logger.info(
         f"[plan] 策略来源 {strategy.source}（要求 {len(strategy.kinds)} 类 → "
@@ -212,23 +259,31 @@ async def plan_node(state: dict[str, Any]) -> dict[str, Any]:
         f"（档位 {plan.detail_level}）：{[item.label for item in plan.items[:6]]}"
         + ("..." if stats["total"] > 6 else "")
     )
-    
+
     if callback:
         unsupported = stats["unsupported"]
         # 只播报**真的进了计划**的类型：被抑制的类型播出去等于对用户撒谎。
-        planned = [entry for entry in strategy.kinds if entry.kind in set(dispatched_kinds)]
+        planned = [
+            entry for entry in strategy.kinds if entry.kind in set(dispatched_kinds)
+        ]
         parallel_groups = {
             entry.parallel_group
             for entry in planned
             if entry.execution_mode == "parallel" and entry.parallel_group
         }
         batch_notes = [
-            f"{entry.kind}：{entry.batch_reason}" for entry in planned if entry.batch_reason
+            f"{entry.kind}：{entry.batch_reason}"
+            for entry in planned
+            if entry.batch_reason
         ]
         await callback(
             "plan:progress",
             f"计划已展开：{stats['total']} 条工作条目"
-            + (f"，{len(parallel_groups)} 个安全并发组" if parallel_groups else "，其余按依赖串行")
+            + (
+                f"，{len(parallel_groups)} 个安全并发组"
+                if parallel_groups
+                else "，其余按依赖串行"
+            )
             + (f"，其中 {unsupported} 条因能力缺失标记为不支持" if unsupported else "")
             + "。\n"
             + ("批次依据：" + "；".join(batch_notes) + "。\n" if batch_notes else ""),
@@ -277,14 +332,24 @@ async def execute_node(state: dict[str, Any]) -> dict[str, Any]:
                 "正在并发执行批次：" + "、".join(item.label for item in items) + "……\n",
             )
         else:
-            await callback("execute:progress", f"正在执行{items[0].label}（{items[0].id}）……\n")
+            await callback(
+                "execute:progress", f"正在执行{items[0].label}（{items[0].id}）……\n"
+            )
 
     results = await asyncio.gather(*(_execute_one(state, item) for item in items))
     updates = _merge_parallel_updates([result[1] for result in results])
     tool_trace = dict(state.get("tool_trace") or {})
     item_results = []
     model_calls = 0
-    for item, _item_updates, run_state, artifacts, evidence, trace, elapsed_ms in results:
+    for (
+        item,
+        _item_updates,
+        run_state,
+        artifacts,
+        evidence,
+        trace,
+        elapsed_ms,
+    ) in results:
         plan = record_result(
             plan,
             item.id,
@@ -294,7 +359,9 @@ async def execute_node(state: dict[str, Any]) -> dict[str, Any]:
             elapsed_ms=elapsed_ms,
             count_attempt=(run_state == "failed"),
         )
-        summary = (_item_updates.get("component_diagnostics", {}).get(item.id) or {}).get("implementation_summary")
+        summary = (
+            _item_updates.get("component_diagnostics", {}).get(item.id) or {}
+        ).get("implementation_summary")
         if item.params.get("design_markers") and summary:
             plan.item(item.id).params["implementation_summary"] = summary
         if item.params.get("design_markers"):
@@ -313,18 +380,25 @@ async def execute_node(state: dict[str, Any]) -> dict[str, Any]:
                 "run_state": run_state,
                 "elapsed_ms": elapsed_ms,
                 "evidence": evidence,
-                **({"implementation_summary": summary}
-                   if item.params.get("design_markers") else {}),
+                **(
+                    {"implementation_summary": summary}
+                    if item.params.get("design_markers")
+                    else {}
+                ),
             }
         )
         logger.info(f"[execute] {item.id} → {run_state}（{elapsed_ms}ms）：{evidence}")
         if callback and item.op in _MODEL_OPS:
-            await callback("execute:progress", f"{item.label}：{run_state}（{evidence}）\n")
+            await callback(
+                "execute:progress", f"{item.label}：{run_state}（{evidence}）\n"
+            )
     plan.add_llm_calls(model_calls)
 
     first = items[0]
     total_tool_calls = sum(len(result[5]) for result in results)
-    run_state = "succeeded" if all(result[2] == "succeeded" for result in results) else "mixed"
+    run_state = (
+        "succeeded" if all(result[2] == "succeeded" for result in results) else "mixed"
+    )
 
     return {
         **updates,
@@ -361,12 +435,16 @@ async def replanner_node(state: dict[str, Any]) -> dict[str, Any]:
     diag: dict[str, Any] = {"reconciled_events": len(events)}
 
     # ── 异常分支：只有 failed / 永久 blocked 时才调模型，且只能在五个动作里选 ──
-    if (not any(i.params.get("design_markers") for i in plan.items)
-            and not plan.give_up and plan_needs_replan(plan)):
+    if (
+        not any(i.params.get("design_markers") for i in plan.items)
+        and not plan.give_up
+        and plan_needs_replan(plan)
+    ):
         callback = get_reasoning_callback()
         problem = next(
             (
-                item for item in plan.items
+                item
+                for item in plan.items
                 if not item.is_terminal
                 and (
                     item.run.state == "failed"
@@ -387,7 +465,9 @@ async def replanner_node(state: dict[str, Any]) -> dict[str, Any]:
                     f"{problem.run.evidence or '未提供失败证据'}。正在选择一次有界调整……\n",
                 )
             else:
-                await callback("replanner:progress", "检测到计划结构异常，正在选择一次有界调整……\n")
+                await callback(
+                    "replanner:progress", "检测到计划结构异常，正在选择一次有界调整……\n"
+                )
         decision, replan_diag = await request_replan(plan, state)
         plan, outcome = replan(plan, state, decision)
         if replan_diag.get("model_called"):
@@ -401,9 +481,14 @@ async def replanner_node(state: dict[str, Any]) -> dict[str, Any]:
         )
         if callback:
             affected = outcome.get("item_ids") or []
-            target = "、".join(str(item_id) for item_id in affected) or decision.item_id or "整份计划"
+            target = (
+                "、".join(str(item_id) for item_id in affected)
+                or decision.item_id
+                or "整份计划"
+            )
             changes = ", ".join(
-                f"{key}={value}" for key, value in decision.params.items()
+                f"{key}={value}"
+                for key, value in decision.params.items()
                 if key in {"subtype", "guidance", "reason"}
             )
             detail = (
@@ -436,7 +521,9 @@ async def replanner_node(state: dict[str, Any]) -> dict[str, Any]:
         finalization_reason = "replanner 已停止继续生成，转入确定性收尾"
     elif plan.iterations >= int(budget.get("iterations", 5)):
         finalization_reason = f"达到计划迭代上限 {plan.iterations}"
-    elif plan.no_progress_rounds >= MAX_NO_PROGRESS_ROUNDS and not any(i.params.get("design_markers") for i in plan.items):
+    elif plan.no_progress_rounds >= MAX_NO_PROGRESS_ROUNDS and not any(
+        i.params.get("design_markers") for i in plan.items
+    ):
         finalization_reason = f"连续 {plan.no_progress_rounds} 轮无业务进展"
     elif plan.llm_budget_exhausted():
         finalization_reason = f"模型调用预算已用尽（{plan.llm_calls} 次）"
@@ -453,12 +540,23 @@ async def replanner_node(state: dict[str, Any]) -> dict[str, Any]:
     stats = terminal_stats(plan)
     stats["ended"] = stats["total"] - stats["unfinished"]
     from app.domain.design.markers import implementation_records
+
     marker_records = implementation_records(state)
     markers = (state.get("resolved_design") or {}).get("component_markers") or []
-    implementation_summary = {"implemented": sum(r.get("status") == "implemented" for r in marker_records.values()),
-                              "abandoned": sum(r.get("status") == "abandoned" for r in marker_records.values()),
-                              "total": len(markers),
-                              "design_complete": bool(markers) and all((marker_records.get(m["id"]) or {}).get("status") == "implemented" for m in markers)}
+    implementation_summary = {
+        "implemented": sum(
+            r.get("status") == "implemented" for r in marker_records.values()
+        ),
+        "abandoned": sum(
+            r.get("status") == "abandoned" for r in marker_records.values()
+        ),
+        "total": len(markers),
+        "design_complete": bool(markers)
+        and all(
+            (marker_records.get(m["id"]) or {}).get("status") == "implemented"
+            for m in markers
+        ),
+    }
     next_item = poll_runnable(plan)
     logger.info(
         f"[replanner] 第 {plan.iterations}/{budget.get('iterations', '?')} 轮，"
