@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { h, ref } from 'vue'
+import { h, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox, ElOption, ElSelect } from 'element-plus'
 import { agentBridge } from '../agent/agentBridge'
 import { useAgentStore } from './agentStore'
@@ -14,6 +14,63 @@ import { useAuthStore } from './authStore'
 export const useWorkspaceStore = defineStore('workspace', () => {
   const isSaving = ref(false)
   const isImporting = ref(false)
+  let sessionLoad: AbortController | null = null
+  watch(() => useAuthStore().user?.id, cancelSessionLoad)
+
+  function cancelSessionLoad() {
+    sessionLoad?.abort()
+    sessionLoad = null
+    const scene = useSceneStore()
+    scene.cancelReconstruction()
+    scene.isLoading = false
+  }
+
+  /** 蓝图优先显示，聊天记录独立恢复；离开会话后取消未完成的加载。 */
+  async function openSession(sessionId: string): Promise<boolean> {
+    const scene = useSceneStore()
+    if (isImporting.value || isSaving.value || scene.isCommitting) return false
+    if (scene.document?.dirty && !await saveScene()) return false
+    cancelSessionLoad()
+    const controller = new AbortController()
+    sessionLoad = controller
+    scene.isLoading = true
+    const agent = useAgentStore()
+    const accountId = useAuthStore().user?.id
+    const current = () => sessionLoad === controller && !controller.signal.aborted
+      && useAuthStore().user?.id === accountId
+
+    void agentBridge.fetchSessionMessages(sessionId, controller.signal).then(messages => {
+      if (messages && current()) agent.mergeMessagesForSession(sessionId, messages)
+    })
+    void agentBridge.fetchSessionTurns(sessionId, controller.signal).then(turns => {
+      if (turns && current()) agent.mergeTurnsForSession(sessionId, turns)
+    })
+    try {
+      const blueprint = await agentBridge.loadSessionBlueprint(sessionId, controller.signal)
+      if (!current()) return false
+      const info = agent.sessions.find(item => item.session_id === sessionId)
+      if (!blueprint && info?.status !== 'draft') {
+        ElMessage.error('无法读取会话蓝图，请稍后重试')
+        return false
+      }
+      // 蓝图成功读取后才切换，读取失败时继续保留原会话和画布。
+      agent.switchToSession(sessionId)
+      useHistoryStore().clear()
+      useSelectionStore().clearSelection()
+      const source = blueprint as unknown as Blueprint | null
+      const empty = source ? undefined : scene.createEmptyDocument()
+      await scene.loadBlueprint(source || empty!.blueprint, info?.name || empty?.name)
+      if (!current()) return false
+      scene.markSaved()
+      if (source) {
+        agent.updateSessionInfo(sessionId, info?.name || source.meta.name,
+          source.geometry.elements?.length || 0, source.geometry.components?.length || 0)
+      }
+      return true
+    } finally {
+      if (current()) scene.isLoading = false
+    }
+  }
 
   async function saveScene(): Promise<boolean> {
     if (!useAuthStore().canEdit) return false
@@ -55,6 +112,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
 
   async function newScene(): Promise<boolean> {
     if (!useAuthStore().canEdit) return false
+    cancelSessionLoad()
     const scene = useSceneStore()
     if (scene.document?.dirty && !await saveScene()) return false
     const agent = useAgentStore()
@@ -69,6 +127,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   async function importFile(file: File): Promise<boolean> {
     if (!useAuthStore().canEdit) return false
     if (isImporting.value || isSaving.value) return false
+    cancelSessionLoad()
     isImporting.value = true
     try {
       const blueprint = JSON.parse(await file.text()) as Blueprint
@@ -133,5 +192,5 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     }
   }
 
-  return { isSaving, isImporting, saveScene, newScene, importFile }
+  return { isSaving, isImporting, saveScene, newScene, importFile, openSession }
 })

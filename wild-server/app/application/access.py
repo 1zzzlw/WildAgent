@@ -19,7 +19,7 @@ def check_session(session_id: str, user: dict | None) -> None:
 
 
 def check_blueprint(filename: str, user: dict | None) -> None:
-    row = blueprint_repository.get(filename)
+    row = blueprint_repository.get_metadata(filename)
     if row:
         check_owner(row["owner_id"], user)
     sid = session_for_filename(filename)

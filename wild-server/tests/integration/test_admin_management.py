@@ -572,6 +572,61 @@ def test_disabling_account_stops_its_existing_ai_jobs(
     assert service.repository.active_for_account(seeded["designer"]["id"]) == []
 
 
+def test_scene_load_reads_body_once_and_revalidates_changed_content(management):
+    client, seeded, storage = management
+    filename = save_owned(seeded)
+    login(client, "designer")
+    body_queries = []
+
+    def record_query(_connection, _cursor, statement, _parameters, _context, _many):
+        if "blueprints.blueprint_json" in statement.lower():
+            body_queries.append(statement)
+
+    event.listen(storage, "before_cursor_execute", record_query)
+    try:
+        response = client.get("/api/scenes/" + filename)
+    finally:
+        event.remove(storage, "before_cursor_execute", record_query)
+    assert response.status_code == 200
+    assert len(body_queries) == 1
+    etag = response.headers["etag"]
+    cached = client.get("/api/scenes/" + filename, headers={"If-None-Match": etag})
+    assert cached.status_code == 304 and cached.content == b""
+    assert cached.headers["etag"] == etag
+    assert "private" in cached.headers["cache-control"]
+    weak_match = client.get(
+        "/api/scenes/" + filename,
+        headers={"If-None-Match": '"unrelated", W/' + etag},
+    )
+    assert weak_match.status_code == 304
+    timestamp = blueprint_repository.get_metadata(filename)["updated_at"]
+    blueprint_repository.save(
+        filename, scene(radius=0.8), owner_id=seeded["designer"]["id"], timestamp=timestamp
+    )
+    changed = client.get("/api/scenes/" + filename, headers={"If-None-Match": etag})
+    assert changed.status_code == 200
+    assert changed.headers["etag"] != etag
+    assert changed.json()["geometry"]["elements"][0]["radius"] == 0.8
+
+
+def test_scene_cache_never_bypasses_ownership_or_disabled_account(management):
+    client, seeded, _ = management
+    filename = save_owned(seeded)
+    login(client, "designer")
+    token = client.cookies.get("wild_session")
+    etag = client.get("/api/scenes/" + filename).headers["etag"]
+    login(client, "other")
+    response = client.get("/api/scenes/" + filename, headers={"If-None-Match": etag})
+    assert response.status_code == 404 and "etag" not in response.headers
+    login(client)
+    assert client.patch(
+        "/api/admin/users/" + seeded["designer"]["id"], json={"status": "blocked"}
+    ).status_code == 200
+    client.cookies.set("wild_session", token)
+    response = client.get("/api/scenes/" + filename, headers={"If-None-Match": etag})
+    assert response.status_code == 404 and "etag" not in response.headers
+
+
 def test_blueprint_pagination_never_reads_large_json(management):
     client, seeded, storage = management
     filenames = [f"session_large_{letter}.wild" for letter in ("a", "b", "c")]

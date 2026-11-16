@@ -1,8 +1,10 @@
 """蓝图 REST API，保持原有 .wild URL，数据统一由 MySQL 仓储持久化。"""
 
+from hashlib import sha256
 from urllib.parse import unquote
+
 from fastapi import APIRouter, Body, Header, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 import app.application.blueprints as use_cases
 
 router = APIRouter(prefix="/api/scenes", tags=["scenes"])
@@ -17,9 +19,18 @@ def list_scenes(request: Request):
 
 
 @router.get("/{filename:path}")
-def get_scene(filename: str):
+def get_scene(filename: str, request: Request):
     result = use_cases.get_scene(filename)
-    return JSONResponse(result, headers=NO_CACHE)
+    response = JSONResponse(result)
+    etag = '"' + sha256(response.body).hexdigest() + '"'
+    headers = {"Cache-Control": "private, no-cache", "ETag": etag}
+    candidates = request.headers.get("if-none-match", "").split(",")
+    for candidate in candidates:
+        candidate = candidate.strip().removeprefix("W/")
+        if candidate == etag or candidate == "*":
+            return Response(status_code=304, headers=headers)
+    response.headers.update(headers)
+    return response
 
 
 @router.put("/{filename:path}")

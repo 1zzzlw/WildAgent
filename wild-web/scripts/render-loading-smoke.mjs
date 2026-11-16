@@ -62,8 +62,11 @@ try {
       gl.readPixels(0,0,gl.drawingBufferWidth,gl.drawingBufferHeight,gl.RGBA,gl.UNSIGNED_BYTE,pixels)
       return pixels
     }
+    // 缓存命中后可能还没有自然产生首帧；先初始化阴影/反射缓冲，再比较稳定画面。
+    readPixels()
     const reusedPixels=readPixels()
     s.clearBuiltInEnvironment();s.rebuildBuiltInEnvironment()
+    readPixels()
     const recreatedPixels=readPixels()
     assert(reusedPixels.every((value,i)=>value===recreatedPixels[i]),'复用环境与重新创建的像素不一致')
     children=[...s.builtInEnvironment.children]
@@ -102,10 +105,10 @@ try {
     large.geometry.elements.push(...Array.from({length:1200},(_,i)=>({id:'stress-'+i,type:'primitive',shape:'box',position:[i%40,1,Math.floor(i/40)],dimensions:[.2+(i%11)*.01,.4,.2],material:'stone'})))
     assert(await store.loadBlueprint(large),'大场景重建失败');await nextTick()
     assert(store.reconstructed.meshes.length===1205,'大场景丢失网格')
-    const largeMeshes=[...s.sceneGroup.children],originalGeometry=s.sceneStore.reconstructed.meshes[5].geometry
+    const largeMeshes=[...s.sceneGroup.children],originalEntity=s.sceneStore.reconstructed
     await store.reconstruct();await nextTick()
     assert(largeMeshes.every((mesh,i)=>mesh===s.sceneGroup.children[i]),'大场景重建未复用网格')
-    assert(s.sceneStore.reconstructed.meshes[5].geometry!==originalGeometry,'未实际运行第二次 Worker 重建')
+    assert(s.sceneStore.reconstructed===originalEntity,'未变化的蓝图没有复用重建缓存')
     assert(s.sceneStore.reconstructed.meshes.every(mesh=>typeof mesh.renderSignature==='string'),'大场景复用键未在 Worker 计算')
     const result={meshes:worker.meshes.length,stressMeshes:store.reconstructed.meshes.length,workerGeometryExact:true,workerMaterialExact:true,rawReconstruction:true,environmentReused:true,environmentPixelsExact:true,environmentInvalidation:true,unchangedMeshesReused:true,quality:quality(),materialChangesPreserved:true}
     window.presentationTest.app.unmount()

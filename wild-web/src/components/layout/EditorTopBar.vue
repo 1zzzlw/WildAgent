@@ -43,6 +43,7 @@
         }}
       </span>
     </div>
+    <UsageStatus />
     <RouterLink v-if="auth.isAdmin" class="business-plan-link" to="/admin">管理后台</RouterLink>
     <RouterLink class="business-plan-link" to="/business-plan">商业计划书 ↗</RouterLink>
     <button class="theme-toggle" type="button" :aria-label="theme.isDark ? '切换为亮色主题' : '切换为暗色主题'" :title="theme.isDark ? '亮色主题' : '暗色主题'" @click="theme.toggle()">
@@ -63,6 +64,7 @@ import { useUIStore } from '../../stores/uiStore'
 import { useWorkspaceStore } from '../../stores/workspaceStore'
 import { useRenderPanelStore } from '../../stores/renderPanelStore'
 import OnlinePresence from '../../extensions/presence/OnlinePresence.vue'
+import UsageStatus from './UsageStatus.vue'
 import { useThemeStore } from '../../stores/themeStore'
 import { useAuthStore } from '../../stores/authStore'
 import { useAgentStore } from '../../stores/agentStore'
@@ -161,6 +163,7 @@ async function logout() {
   align-items: center;
   flex: 1;
   min-width: 0;
+  overflow: hidden;
   font-size: 12px;
   color: var(--studio-text)
 }

@@ -224,8 +224,6 @@ import {
 } from '@element-plus/icons-vue'
 import { useAgentStore } from '../../stores/agentStore'
 import { useSceneStore } from '../../stores/sceneStore'
-import { useHistoryStore } from '../../stores/historyStore'
-import { useSelectionStore } from '../../stores/selectionStore'
 import { useWorkspaceStore } from '../../stores/workspaceStore'
 import { agentBridge } from '../../agent/agentBridge'
 import SessionListPanel from './SessionListPanel.vue'
@@ -267,8 +265,6 @@ function renderMarkdown(content: string): string {
 
 const agentStore = useAgentStore()
 const sceneStore = useSceneStore()
-const historyStore = useHistoryStore()
-const selectionStore = useSelectionStore()
 const workspaceStore = useWorkspaceStore()
 const inputText = ref('')
 const messagesRef = ref<HTMLElement | null>(null)
@@ -635,36 +631,11 @@ async function handleRagFeedback(message: ChatMessage, rating: 'up' | 'down') {
 
 // ── 会话切换 ──
 async function handleSessionSwitch(sessionId: string) {
-  if (workspaceStore.isImporting || workspaceStore.isSaving) return
-  if (sessionId === agentStore.currentSessionId) return
-  if (sceneStore.document?.dirty && !await workspaceStore.saveScene()) return
+  if (sessionId === agentStore.currentSessionId && !sceneStore.isLoading) return
   resumeAutoScroll()
-  historyStore.clear()
-  selectionStore.clearSelection()
-  agentStore.switchToSession(sessionId)
-  const [serverMessages, serverTurns] = await Promise.all([
-    agentBridge.fetchSessionMessages(sessionId),
-    agentBridge.fetchSessionTurns(sessionId),
-  ])
-  if (agentStore.currentSessionId !== sessionId) return
-  if (serverMessages) agentStore.mergeMessagesForSession(sessionId, serverMessages)
-  if (serverTurns) agentStore.mergeTurnsForSession(sessionId, serverTurns)
-  const bp = await agentBridge.loadSessionBlueprint(sessionId)
-  if (agentStore.currentSessionId !== sessionId) return
-  if (bp) {
-    await sceneStore.loadBlueprint(bp as any)
-    if (agentStore.currentSessionId !== sessionId) return
-    if (!sceneStore.document?.dirty) sceneStore.markSaved()
-    const name = agentStore.sessions.find(item => item.session_id === sessionId)?.name
-      || (bp as any).meta?.name
-      || '未命名建筑'
-    const count = (bp as any).geometry?.elements?.length || 0
-    const compCount = (bp as any).geometry?.components?.length || 0
-    agentStore.updateSessionInfo(sessionId, name, count, compCount)
+  if (await workspaceStore.openSession(sessionId)) {
+    const name = agentStore.sessions.find(item => item.session_id === sessionId)?.name || '未命名建筑'
     agentStore.addSystemMessage(`✅ 已切换到: ${name}`)
-  } else {
-    const doc = sceneStore.createEmptyDocument()
-    await sceneStore.loadBlueprint(doc.blueprint, doc.name)
   }
 }
 
@@ -693,16 +664,8 @@ async function handleDeleteSession(sessionId: string) {
   const wasCurrentSession = sessionId === agentStore.currentSessionId
   agentStore.removeSession(sessionId)
   if (wasCurrentSession) {
-    historyStore.clear()
-    selectionStore.clearSelection()
-    const bp = await agentBridge.loadSessionBlueprint(agentStore.currentSessionId)
-    if (bp) {
-      await sceneStore.loadBlueprint(bp as any)
-      if (!sceneStore.document?.dirty) sceneStore.markSaved()
-    } else {
-      const doc = sceneStore.createEmptyDocument()
-      await sceneStore.loadBlueprint(doc.blueprint, doc.name)
-    }
+    sceneStore.document = null
+    await workspaceStore.openSession(agentStore.currentSessionId)
   }
   ElMessage.success('会话已删除')
 }
@@ -759,35 +722,7 @@ async function restoreSessionsFromServer() {
     ? lastId
     : serverSessions[0].session_id
 
-  agentStore.switchToSession(targetId)
-  const [serverMessages, serverTurns] = await Promise.all([
-    agentBridge.fetchSessionMessages(targetId),
-    agentBridge.fetchSessionTurns(targetId),
-  ])
-  if (agentStore.currentSessionId !== targetId) return
-  if (serverMessages) agentStore.mergeMessagesForSession(targetId, serverMessages)
-  if (serverTurns) agentStore.mergeTurnsForSession(targetId, serverTurns)
-  const bp = await agentBridge.loadSessionBlueprint(targetId)
-  if (agentStore.currentSessionId !== targetId) return
-  if (bp) {
-    await sceneStore.loadBlueprint(bp as any)
-    if (agentStore.currentSessionId !== targetId) return
-    if (!sceneStore.document?.dirty) sceneStore.markSaved()
-    const name = agentStore.sessions.find(item => item.session_id === targetId)?.name
-      || (bp as any).meta?.name
-      || '未命名建筑'
-    const count = (bp as any).geometry?.elements?.length || 0
-    const compCount = (bp as any).geometry?.components?.length || 0
-    agentStore.updateSessionInfo(targetId, name, count, compCount)
-  } else {
-    const sessionInfo = agentStore.sessions.find(item => item.session_id === targetId)
-    if (sessionInfo?.status === 'draft') {
-      const doc = sceneStore.createEmptyDocument()
-      await sceneStore.loadBlueprint(doc.blueprint, doc.name)
-    } else {
-      agentStore.addSystemMessage(`❌ 无法读取服务器会话文件`)
-    }
-  }
+  await workspaceStore.openSession(targetId)
 }
 
 function restoreFromLocalDrafts() {

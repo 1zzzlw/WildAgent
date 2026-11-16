@@ -35,6 +35,15 @@ def session_for_filename(filename: str) -> str | None:
 
 
 class BlueprintRepository:
+    def get_metadata(self, filename: str) -> dict | None:
+        validate_filename(filename)
+        with database.engine.connect() as connection:
+            statement = select(*SUMMARY_COLUMNS, blueprints.c.owner_id).where(
+                blueprints.c.filename == filename
+            )
+            row = connection.execute(statement).mappings().first()
+            return dict(row) if row else None
+
     def get(self, filename: str) -> dict | None:
         validate_filename(filename)
         with database.engine.connect() as conn:

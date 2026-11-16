@@ -21,12 +21,12 @@
         <button type="button" class="dock-close" aria-label="收起当前面板" @click="ui.panelOpen = false">×</button>
       </header>
       <div class="dock-content">
-        <SceneTree v-show="ui.activePanel === 'sceneTree'" />
-        <LibraryPanel v-if="auth.canEdit" v-show="ui.activePanel === 'library'" :inert="!scene.canModifyManually" />
-        <PropertyPanel v-if="auth.canEdit" v-show="ui.activePanel === 'properties'" :inert="!scene.canModifyManually" />
-        <ValidationPanel v-show="ui.activePanel === 'validation'" />
-        <MaterialPanel v-if="auth.canEdit" v-show="ui.activePanel === 'assets'" :inert="!scene.canModifyManually" />
-        <WorldLookPanel v-if="auth.canEdit" v-show="ui.activePanel === 'look'" :inert="!scene.canModifyManually" />
+        <SceneTree v-if="visitedPanels.has('sceneTree')" v-show="ui.activePanel === 'sceneTree'" />
+        <LibraryPanel v-if="auth.canEdit && visitedPanels.has('library')" v-show="ui.activePanel === 'library'" :inert="!scene.canModifyManually" />
+        <PropertyPanel v-if="auth.canEdit && visitedPanels.has('properties')" v-show="ui.activePanel === 'properties'" :inert="!scene.canModifyManually" />
+        <ValidationPanel v-if="visitedPanels.has('validation')" v-show="ui.activePanel === 'validation'" />
+        <MaterialPanel v-if="auth.canEdit && visitedPanels.has('assets')" v-show="ui.activePanel === 'assets'" :inert="!scene.canModifyManually" />
+        <WorldLookPanel v-if="auth.canEdit && visitedPanels.has('look')" v-show="ui.activePanel === 'look'" :inert="!scene.canModifyManually" />
         <AIChatPanel v-show="auth.canEdit && ui.activePanel === 'aiChat'" />
       </div>
       <div class="dock-status"><span class="status-dot"></span><span>{{ scene.document?.dirty ? '修改尚未保存' : '准备就绪' }}</span><span>{{ selection.selectedIds.length ? selection.selectedIds.length + ' 项已选' : 'WILD 1.0' }}</span></div>
@@ -38,7 +38,7 @@
   </aside>
 </template>
 <script setup lang="ts">
-import { computed, onBeforeUnmount } from 'vue'
+import { computed, defineAsyncComponent, onBeforeUnmount, ref, watch } from 'vue'
 import { Cpu, Share, Box, Setting, CircleCheck, Brush, Sunny, ChatDotRound, Fold, Expand, QuestionFilled } from '@element-plus/icons-vue'
 import { useUIStore, type PanelType } from '../../stores/uiStore'
 import { useSceneStore } from '../../stores/sceneStore'
@@ -46,13 +46,17 @@ import { useSelectionStore } from '../../stores/selectionStore'
 import { useAuthStore } from '../../stores/authStore'
 import EditorTools from './EditorTools.vue'
 import SceneTree from '../panels/SceneTree.vue'
-import LibraryPanel from '../panels/LibraryPanel.vue'
-import PropertyPanel from '../panels/PropertyPanel.vue'
 import ValidationPanel from '../panels/ValidationPanel.vue'
-import MaterialPanel from '../panels/MaterialPanel.vue'
-import WorldLookPanel from '../panels/WorldLookPanel.vue'
 import AIChatPanel from '../panels/AIChatPanel.vue'
+const LibraryPanel = defineAsyncComponent(() => import('../panels/LibraryPanel.vue'))
+const PropertyPanel = defineAsyncComponent(() => import('../panels/PropertyPanel.vue'))
+const MaterialPanel = defineAsyncComponent(() => import('../panels/MaterialPanel.vue'))
+const WorldLookPanel = defineAsyncComponent(() => import('../panels/WorldLookPanel.vue'))
 const ui = useUIStore()
+const visitedPanels = ref(new Set<PanelType>())
+watch([() => ui.activePanel, () => ui.panelOpen], ([panel, open]) => {
+  if (open) visitedPanels.value.add(panel)
+}, { immediate: true })
 const scene = useSceneStore()
 const selection = useSelectionStore()
 const auth = useAuthStore()

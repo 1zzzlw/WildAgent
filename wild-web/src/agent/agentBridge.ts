@@ -148,6 +148,8 @@ export class AgentBridge {
   /** 同一会话的 Turn 快照必须串行提交，避免旧的 running 覆盖新的 completed。 */
   private turnSyncQueues = new Map<string, Promise<boolean>>()
   private messageSyncQueues = new Map<string, Promise<boolean>>()
+  private blueprintCache = new Map<string, { etag: string; text: string }>()
+  private blueprintCacheAccount = ''
 
 
   constructor(url?: string) {
@@ -992,9 +994,14 @@ export class AgentBridge {
   }
 
   /** 从后端加载会话对应的蓝图 */
-  async loadSessionBlueprint(sessionId: string): Promise<Record<string, unknown> | null> {
+  async loadSessionBlueprint(sessionId: string, signal?: AbortSignal): Promise<Record<string, unknown> | null> {
     try {
       const baseUrl = this.httpBaseUrl
+      const account = useAuthStore().user?.id || 'guest'
+      if (account !== this.blueprintCacheAccount) {
+        this.blueprintCache.clear()
+        this.blueprintCacheAccount = account
+      }
       // 优先从 sessions 列表找已知的带日期路径 filename，兼容旧格式
       const agentStore = useAgentStore()
       const session = agentStore.sessions.find(s => s.session_id === sessionId)
@@ -1003,20 +1010,45 @@ export class AgentBridge {
       if (!relPath && session?.status === 'draft') return null
       if (!relPath) {
         const info = await fetch(`${baseUrl}/api/sessions/${encodeURIComponent(sessionId)}`, {
-          cache: 'no-store',
+          cache: 'no-store', signal,
         })
         if (!info.ok) return null
         const sessionInfo = await info.json()
         relPath = sessionInfo?.filename || undefined
       }
       if (!relPath) return null
-      const response = await fetch(`${baseUrl}/api/scenes/${relPath}`)
+      const cacheKey = `${baseUrl}/${relPath}`
+      const cached = this.blueprintCache.get(cacheKey)
+      const path = relPath.split('/').map(encodeURIComponent).join('/')
+      const response = await fetch(`${baseUrl}/api/scenes/${path}`, {
+        cache: 'no-store', signal,
+        headers: cached ? { 'If-None-Match': cached.etag } : undefined,
+      })
+      if (signal?.aborted || (useAuthStore().user?.id || 'guest') !== account) return null
+      if (response.status === 304 && cached) {
+        this.blueprintCache.delete(cacheKey)
+        this.blueprintCache.set(cacheKey, cached)
+        return JSON.parse(cached.text)
+      }
       if (!response.ok) {
+        if ([401, 403, 404].includes(response.status)) this.blueprintCache.delete(cacheKey)
         return null
       }
-      return await response.json()
+      const text = await response.text()
+      if (signal?.aborted || (useAuthStore().user?.id || 'guest') !== account) return null
+      const blueprint = JSON.parse(text)
+      const etag = response.headers.get('ETag')
+      this.blueprintCache.delete(cacheKey)
+      // 仅保留三份近期蓝图；大文件仍正常加载，但不常驻文本缓存。
+      if (etag && text.length <= 2 * 1024 * 1024) {
+        this.blueprintCache.set(cacheKey, { etag, text })
+        if (this.blueprintCache.size > 3) {
+          this.blueprintCache.delete(this.blueprintCache.keys().next().value!)
+        }
+      }
+      return blueprint
     } catch (err) {
-      console.error('[AgentBridge] 加载会话蓝图失败:', err)
+      if (!signal?.aborted) console.error('[AgentBridge] 加载会话蓝图失败:', err)
       return null
     }
   }
@@ -1060,16 +1092,16 @@ export class AgentBridge {
   }
 
   /** 从服务端恢复会话消息；本地未同步消息由 Store 按 id 合并。 */
-  async fetchSessionMessages(sessionId: string): Promise<ChatMessage[] | null> {
+  async fetchSessionMessages(sessionId: string, signal?: AbortSignal): Promise<ChatMessage[] | null> {
     try {
       const response = await fetch(
         `${this.httpBaseUrl}/api/sessions/${encodeURIComponent(sessionId)}/messages`,
-        { cache: 'no-store' },
+        { cache: 'no-store', signal },
       )
       if (!response.ok) return null
       return await response.json()
     } catch (err) {
-      console.error('[AgentBridge] 获取会话消息失败:', err)
+      if (!signal?.aborted) console.error('[AgentBridge] 获取会话消息失败:', err)
       return null
     }
   }
@@ -1108,16 +1140,16 @@ export class AgentBridge {
   }
 
   /** 从服务端恢复按请求归档的 Agent Turn。 */
-  async fetchSessionTurns(sessionId: string): Promise<AgentTurn[] | null> {
+  async fetchSessionTurns(sessionId: string, signal?: AbortSignal): Promise<AgentTurn[] | null> {
     try {
       const response = await fetch(
         `${this.httpBaseUrl}/api/sessions/${encodeURIComponent(sessionId)}/turns`,
-        { cache: 'no-store' },
+        { cache: 'no-store', signal },
       )
       if (!response.ok) return null
       return await response.json()
     } catch (err) {
-      console.error('[AgentBridge] 获取 Agent Turn 失败:', err)
+      if (!signal?.aborted) console.error('[AgentBridge] 获取 Agent Turn 失败:', err)
       return null
     }
   }

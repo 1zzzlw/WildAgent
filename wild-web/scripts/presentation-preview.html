@@ -13,7 +13,7 @@ const pinia = createPinia();
 let app = createApp(CanvasViewport); app.use(pinia); app.mount('#app');
 // 离线几何回归显式使用编辑权限；真实登录与服务端鉴权由 auth-browser-smoke 验证。
 useAuthStore().user = { username: 'fixture-editor', role: 'editor' };
-window.presentationTest = { app, scene: useSceneStore(), render: useRenderPanelStore(), async remount() {
+window.presentationTest = { app, pinia, scene: useSceneStore(), render: useRenderPanelStore(), async remount() {
   app.unmount(); app = createApp(CanvasViewport); app.use(pinia); app.mount('#app');
   await nextTick(); window.presentationTest.app = app;
   window.presentationTest.render.requestPreset({ type: 'view', value: 'presentation' });

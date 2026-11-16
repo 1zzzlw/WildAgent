@@ -2,7 +2,6 @@
   <LoginGate v-if="!auth.user || !editorReady" :checking="!auth.initialized" />
   <div v-else :class="['wild-editor', { 'viewport-focused': ui.viewportFocused, 'reduce-motion': !ui.animationsEnabled }]" @click.capture="handleClickSound">
     <EditorTopBar v-show="!ui.viewportFocused" />
-    <UsageStatus v-show="!ui.viewportFocused" />
     <div class="editor-main">
       <LeftPanel v-show="!ui.viewportFocused" />
       <main ref="viewportRef" class="viewport-container" aria-label="建筑渲染视口">
@@ -31,7 +30,6 @@ import { useWorkspaceStore } from '../stores/workspaceStore'
 import { useRenderPanelStore } from '../stores/renderPanelStore'
 import { playUISound } from '../utils/uiSound'
 import EditorTopBar from '../components/layout/EditorTopBar.vue'
-import UsageStatus from '../components/layout/UsageStatus.vue'
 import LeftPanel from '../components/layout/LeftPanel.vue'
 import CanvasViewport from '../components/viewport/CanvasViewport.vue'
 import ViewportToolDock from '../components/viewport/ViewportToolDock.vue'

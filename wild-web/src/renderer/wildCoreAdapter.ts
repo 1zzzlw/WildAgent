@@ -21,6 +21,7 @@ import {
   getComponentCapabilities,
 } from 'wild-core/compiler'
 import { buildReconstructionDiagnostics } from './reconstructionDiagnostics'
+import { validateBlueprint } from '../wild/sceneValidator'
 
 // 导入 wild-core 的函数
 // 注意：wild-core 使用的是包内 types.ts 的类型定义
@@ -66,6 +67,7 @@ export async function reconstructWildEntity(blueprint: Blueprint): Promise<Recon
   try {
     // 高级组合构件先展开为 Core 已支持的基础元素；源 Blueprint 保持不变。
     const compilation = compileBlueprintComponents(blueprint as any)
+    const validationIssues = validateBlueprint(blueprint, compilation)
     const coreEntity = await coreReconstructEntity(compilation.blueprint)
     const reconstruction = buildReconstructionDiagnostics(
       blueprint as unknown as Record<string, any>,
@@ -90,6 +92,7 @@ export async function reconstructWildEntity(blueprint: Blueprint): Promise<Recon
       ...coreEntity,
       componentMapping: compilation.mapping,
       reconstructionReport: reconstruction.report,
+      validationIssues,
     } as unknown as ReconstructedEntity
   } catch (error) {
     console.error('重建场景失败:', error)

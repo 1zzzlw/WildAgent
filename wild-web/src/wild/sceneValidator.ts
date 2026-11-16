@@ -24,7 +24,10 @@ import type { ValidationIssue } from '../types/scenePatch'
 import { compileBlueprintComponents } from 'wild-core/compiler'
 import { validateGeometryRelations } from 'wild-core/relationships'
 
-export function validateBlueprint(blueprint: Blueprint): ValidationIssue[] {
+export function validateBlueprint(
+  blueprint: Blueprint,
+  compiled?: ReturnType<typeof compileBlueprintComponents>,
+): ValidationIssue[] {
   const issues: ValidationIssue[] = []
 
   // 校验 meta
@@ -182,7 +185,7 @@ export function validateBlueprint(blueprint: Blueprint): ValidationIssue[] {
     componentIds.add(component.id)
   }
 
-  const compilation = compileBlueprintComponents(blueprint as any)
+  const compilation = compiled ?? compileBlueprintComponents(blueprint as any)
   for (const diagnostic of compilation.diagnostics) {
     // 保留原始级别：error 级编译诊断应阻止 Patch 提交，warning 级仅提示。
     issues.push({

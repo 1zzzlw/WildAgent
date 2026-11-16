@@ -12,6 +12,7 @@ import type { Blueprint, EmbeddedImageData, TextureImageData } from './blueprint
 import type { ComponentCompilationMapping } from 'wild-core/compiler'
 import type { InteractiveElementBehavior, TextLabel } from 'wild-core/types'
 import type { RenderMaterialDescriptor } from 'wild-core/materials'
+import type { ValidationIssue } from './scenePatch'
 
 export interface SceneDocument {
   id: string
@@ -54,6 +55,7 @@ export interface ReconstructionReport {
 }
 
 export interface ReconstructedEntity {
+  validationIssues?: ValidationIssue[]
   hiddenElementIds?: string[]
   meshes: MeshData[]
   materialParams: MaterialParams[]

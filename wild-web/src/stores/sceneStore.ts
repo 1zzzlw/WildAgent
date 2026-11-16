@@ -16,7 +16,7 @@
  * 这是整个编辑器最核心的 Store，所有场景修改都通过这里。
  */
 import { defineStore } from 'pinia'
-import { ref, shallowRef, computed } from 'vue'
+import { ref, shallowRef, computed, toRaw, watch } from 'vue'
 import type { SceneDocument, ReconstructedEntity } from '../types/scene'
 import type { Blueprint } from '../types/blueprint'
 import type { ScenePatch, ValidationIssue } from '../types/scenePatch'
@@ -27,7 +27,7 @@ import { deepClone } from '../utils/common'
 import { useHistoryStore } from './historyStore'
 import { useSelectionStore } from './selectionStore'
 import { buildGeometryRelationIndex } from 'wild-core/relationships'
-import { reconstructScene } from '../renderer/reconstructionClient'
+import { cancelPendingReconstruction, clearReconstructionCache, reconstructScene } from '../renderer/reconstructionClient'
 import { clearTextureLoadRecords } from '../renderer/textureLoadMonitor'
 import { useAuthStore } from './authStore'
 import { useAgentStore } from './agentStore'
@@ -46,21 +46,27 @@ export const useSceneStore = defineStore('scene', () => {
   const reconstructed = shallowRef<ReconstructedEntity | null>(null)
   const validationIssues = ref<ValidationIssue[]>([])
   const isReconstructing = ref(false)
+  const isLoading = ref(false)
   const isCommitting = ref(false)
   const isLocked = computed(() => {
     const agent = useAgentStore()
     return Boolean(agent.sessions.find(item => item.session_id === agent.currentSessionId)?.locked)
   })
-  const canModify = computed(() => useAuthStore().canEdit && !isLocked.value && !isCommitting.value)
+  const canModify = computed(() => useAuthStore().canEdit && !isLocked.value && !isCommitting.value && !isLoading.value && !isReconstructing.value)
   const canModifyManually = computed(() => canModify.value && useAuthStore().hasQuota('operations'))
   let reconstructionRequest = 0
+  let nextDocumentId = 0
+  watch(() => useAuthStore().user?.id, () => {
+    cancelReconstruction()
+    clearReconstructionCache()
+  })
   const relationIndex = computed(() => buildGeometryRelationIndex(document.value?.blueprint.geometry || {}))
   function reconcileSelection() { useSelectionStore().retainSelection(new Set(relationIndex.value.items.keys())) }
 
   // 创建一个新的空场景文档，用来初始化和新建
   function createEmptyDocument(): SceneDocument {
     return {
-      id: `scene_${Date.now()}`,
+      id: `scene_${Date.now()}_${++nextDocumentId}`,
       name: '未命名建筑',
       revision: 1,
       blueprint: {
@@ -83,6 +89,7 @@ export const useSceneStore = defineStore('scene', () => {
   // revision 参数可选：AI 生成/会话内刷新时传入当前 revision 以保持版本连续性，
   // 否则回退到蓝图 editor 元数据中的记录（无则从 1 开始），保证后续 patch base_revision 匹配。
   async function loadBlueprint(bp: Blueprint, name?: string, revision?: number): Promise<boolean> {
+    cancelReconstruction()
     const normalizedBlueprint = normalizeBlueprintInput(bp) as Blueprint
     const sceneName = compactSceneName(normalizedBlueprint.meta?.name || name || '未命名建筑')
     normalizedBlueprint.meta = { ...normalizedBlueprint.meta, name: sceneName }
@@ -90,13 +97,13 @@ export const useSceneStore = defineStore('scene', () => {
       ? normalizedBlueprint.editor.revision
       : undefined
     document.value = {
-      id: `scene_${Date.now()}`,
+      id: `scene_${Date.now()}_${++nextDocumentId}`,
       name: sceneName,
       revision: revision ?? editorRevision ?? 1,
       blueprint: normalizedBlueprint,
       dirty: false
     }
-    validate(normalizedBlueprint)
+    validationIssues.value = []
     useSelectionStore().clearSelection()
     useSelectionStore().setHovered(null)
     return await reconstruct()
@@ -206,13 +213,14 @@ export const useSceneStore = defineStore('scene', () => {
     clearTextureLoadRecords()
     isReconstructing.value = true
     try {
-      const entity = await reconstructScene(document.value.blueprint)
+      const entity = await reconstructScene(toRaw(document.value.blueprint))
       if (requestId !== reconstructionRequest) return false
       reconstructed.value = entity
+      validationIssues.value = [...(entity.validationIssues || [])]
       return !entity.diagnostics.some(issue => issue.level === 'error')
     } catch (error) {
-      console.error('重建失败', error)
       if (requestId === reconstructionRequest) {
+        console.error('重建失败', error)
         reconstructed.value = null
         validationIssues.value.push({ level: 'error', message: `场景重建失败：${String(error)}` })
       }
@@ -220,6 +228,12 @@ export const useSceneStore = defineStore('scene', () => {
     } finally {
       if (requestId === reconstructionRequest) isReconstructing.value = false
     }
+  }
+
+  function cancelReconstruction(): void {
+    reconstructionRequest++
+    cancelPendingReconstruction()
+    isReconstructing.value = false
   }
 
   // 校验当前 Blueprint，返回 ValidationIssue 列表
@@ -252,6 +266,7 @@ export const useSceneStore = defineStore('scene', () => {
     reconstructed,
     validationIssues,
     isReconstructing,
+    isLoading,
     isCommitting,
     isLocked,
     canModify,
@@ -261,6 +276,7 @@ export const useSceneStore = defineStore('scene', () => {
     applyPatch,
     restoreBlueprint,
     reconstruct,
+    cancelReconstruction,
     validate,
     exportWild,
     markSaved

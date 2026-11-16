@@ -3,6 +3,9 @@
     <!-- 展示3D视图的区域 -->
     <canvas ref="canvasRef"></canvas>
     <div class="viewport-overlay">
+      <div v-if="sceneStore.isLoading || sceneStore.isReconstructing" class="placement-hint" role="status" aria-live="polite">
+        {{ sceneStore.isReconstructing ? '正在准备场景…' : '正在读取会话蓝图…' }}
+      </div>
       <div v-if="placement.request" class="placement-hint" role="status">
         正在放置：{{ placement.request.label }} · {{ placementMessage }}
       </div>
@@ -301,8 +304,12 @@ onUnmounted(() => {
   cleanup()
 })
 
-watch(() => sceneStore.reconstructed, () => {
-  updateScene()
+watch([
+  () => sceneStore.reconstructed,
+  () => sceneStore.document?.id,
+  () => sceneStore.isReconstructing,
+], () => {
+  if (!sceneStore.isReconstructing) updateScene()
 })
 watch(() => sceneStore.document?.id, () => {
   placement.cancel()
@@ -315,7 +322,8 @@ watch(() => sceneStore.document?.id, () => {
 watch(() => sceneStore.document?.id, () => {
   finishEntrance()
   hasFramedScene = false
-  entrancePending = true
+  // 恢复历史会话时直接展示完整模型，不重复播放十秒组装动画。
+  entrancePending = !sceneStore.isLoading
 }, { immediate: true })
 watch(() => [...selectionStore.selectedIds], () => {
   componentTransformEnabled = false
