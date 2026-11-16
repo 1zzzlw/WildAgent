@@ -223,6 +223,7 @@ import {
   Loading, Promotion, Connection, Link, WarningFilled, CircleCheckFilled,
 } from '@element-plus/icons-vue'
 import { useAgentStore } from '../../stores/agentStore'
+import { useAuthStore } from '../../stores/authStore'
 import { useSceneStore } from '../../stores/sceneStore'
 import { useWorkspaceStore } from '../../stores/workspaceStore'
 import { agentBridge } from '../../agent/agentBridge'
@@ -264,6 +265,7 @@ function renderMarkdown(content: string): string {
 }
 
 const agentStore = useAgentStore()
+const auth = useAuthStore()
 const sceneStore = useSceneStore()
 const workspaceStore = useWorkspaceStore()
 const inputText = ref('')
@@ -364,7 +366,7 @@ const activeTurn = computed(() =>
 const hasRunningTurn = computed(() => Boolean(activeTurn.value))
 const canStop = computed(() => Boolean(activeTurn.value && !activeTurn.value.stop_requested)
   && agentStore.connectionStatus === 'connected')
-const inputPlaceholder = '输入您的建筑需求...'
+const inputPlaceholder = computed(() => auth.hasQuota('ai') ? '输入您的建筑需求...' : '今日 AI 次数已用完，明日北京时间零点恢复')
 
 let scrollFrame: number | null = null
 let hasRestoredFromServer = false
@@ -418,12 +420,14 @@ const canSend = computed(() =>
   inputText.value.trim().length > 0
   && agentStore.connectionStatus === 'connected'
   && !hasRunningTurn.value
+  && auth.hasQuota('ai')
 )
 
 const sendButtonTitle = computed(() => {
   if (agentStore.connectionStatus !== 'connected') return '未连接到 Agent 服务'
   if (activeTurn.value?.stop_requested) return '正在停止并保存已有记录…'
   if (activeTurn.value) return '停止当前任务并保存已有记录'
+  if (!auth.hasQuota('ai')) return '今日 AI 次数已用完，明日北京时间零点恢复'
   return '发送 (Ctrl+Enter)'
 })
 

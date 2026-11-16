@@ -11,7 +11,7 @@
         <div class="admin-section-heading"><h2 id="overview-heading">运行概览</h2><button class="admin-button" :disabled="loading" @click="loadStats">{{ loading ? '刷新中…' : '刷新数据' }}</button></div>
         <p v-if="error" class="admin-error" role="alert">{{ error }}</p>
         <div class="admin-metrics" :aria-busy="loading"><article v-for="metric in metrics" :key="metric.label" class="admin-card"><span>{{ metric.label }}</span><strong>{{ metric.value ?? '—' }}</strong><small>{{ metric.hint }}</small></article></div>
-        <section class="admin-card admin-overview-note"><h2>权限与使用规则</h2><dl><dt>普通用户</dt><dd>手工操作、AI 修改、生成各自计数。初始剩余 1000 / 200 / 20 次，可在用户管理中调整。</dd><dt>管理员</dt><dd>不受次数限制，可管理账号、删除蓝图、锁定与解锁蓝图，以及设置全站 AI API。</dd><dt>锁定蓝图</dt><dd>对所有账号只读，包括管理员。需要修改时先解锁。</dd><dt>操作记录</dt><dd>编辑记录保留对象、变更字段和前后值；AI 对话保留请求、回复和执行结果。页面数据更新于 {{ updatedAt || '—' }}。</dd></dl></section>
+        <section class="admin-card admin-overview-note"><h2>权限与使用规则</h2><dl><dt>普通用户</dt><dd>每天手工操作 20 次，AI 对话、修改和生成共用 200 次，每次扣 1 次。北京时间每日 00:00 自动恢复，不累计。可在用户管理中调整每日上限和当日剩余。</dd><dt>管理员</dt><dd>不受次数限制，可管理账号、删除蓝图、锁定与解锁蓝图，以及设置全站 AI API。</dd><dt>锁定蓝图</dt><dd>对所有账号只读，包括管理员。需要修改时先解锁。</dd><dt>操作记录</dt><dd>编辑记录保留对象、变更字段和前后值；AI 对话保留请求、回复和执行结果。页面数据更新于 {{ updatedAt || '—' }}。</dd></dl></section>
       </section>
       <AdminUsers v-else-if="section === 'users'" />
       <AdminLogs v-else-if="section === 'logs'" />

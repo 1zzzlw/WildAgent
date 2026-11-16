@@ -2,7 +2,7 @@
 -- 在远程 MySQL 8.0.19+ 中先创建并选中目标数据库（例如 wild_agent），再手动导入。
 -- 初始化脚本保留已有数据；已有旧版表请对照字段结构手工更新。
 -- users.identity：1 普通用户，2 管理员；注册固定为 1，管理员不受使用次数限制。
--- 已有数据库升级请先执行 migrations/20261116_admin_management.sql。
+-- 旧版数据库依次执行 migrations/20261116_admin_management.sql、migrations/20261116_daily_usage.sql。
 
 SET NAMES utf8mb4;
 
@@ -28,12 +28,13 @@ CREATE TABLE IF NOT EXISTS users (
 	password_hash VARCHAR(256) NOT NULL, 
 	status VARCHAR(16) NOT NULL, 
 	created_at BIGINT NOT NULL, 
-	operations_remaining INTEGER NOT NULL DEFAULT 1000,
-	modifications_remaining INTEGER NOT NULL DEFAULT 200,
-	generations_remaining INTEGER NOT NULL DEFAULT 20,
+	operations_daily_limit INTEGER NOT NULL DEFAULT 20,
+	ai_daily_limit INTEGER NOT NULL DEFAULT 200,
+	operations_remaining INTEGER NOT NULL DEFAULT 20,
+	ai_remaining INTEGER NOT NULL DEFAULT 200,
 	operations_used INTEGER NOT NULL DEFAULT 0,
-	modifications_used INTEGER NOT NULL DEFAULT 0,
-	generations_used INTEGER NOT NULL DEFAULT 0,
+	ai_used INTEGER NOT NULL DEFAULT 0,
+	usage_reset_at BIGINT NOT NULL DEFAULT 0,
 	PRIMARY KEY (id), 
 	CONSTRAINT ck_users_identity CHECK (identity IN (1, 2)), 
 	UNIQUE (email)

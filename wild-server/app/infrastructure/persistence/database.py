@@ -37,7 +37,12 @@ class Database:
             raise RuntimeError("业务数据表未初始化，请先在目标 MySQL 手动导入 db/schema.sql")
         for name, table in metadata.tables.items():
             actual = {column["name"] for column in inspector.get_columns(name)}
-            if set(table.c.keys()) - actual:
+            missing_columns = set(table.c.keys()) - actual
+            if name == "users" and missing_columns & {
+                "operations_daily_limit", "ai_daily_limit", "ai_remaining", "ai_used", "usage_reset_at"
+            }:
+                raise RuntimeError("每日额度表结构未升级，请先执行 db/migrations/20261116_daily_usage.sql，再启动服务")
+            if missing_columns:
                 raise RuntimeError("业务表字段与代码不一致；已有数据库请执行 db/migrations/20261116_admin_management.sql，其他版本对照 db/schema.sql 更新")
 
     def close(self) -> None:

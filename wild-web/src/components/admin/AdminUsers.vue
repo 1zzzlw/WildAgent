@@ -1,6 +1,6 @@
 <template>
   <section class="admin-card" aria-labelledby="users-heading">
-    <header class="admin-card-heading"><div><h2 id="users-heading">用户管理</h2><p>查询账号、管理身份与状态，调整三类剩余次数。</p></div></header>
+    <header class="admin-card-heading"><div><h2 id="users-heading">用户管理</h2><p>查询账号、管理身份与状态，调整手工操作和 AI 的每日额度。</p></div></header>
     <form class="admin-filters" @submit.prevent="load(1)">
       <label>账号查询<input v-model.trim="query" type="search" placeholder="用户名或邮箱" maxlength="128" /></label>
       <label>账号状态<select v-model="status"><option value="">全部状态</option><option value="active">正常</option><option value="blocked">已封禁</option></select></label>
@@ -9,13 +9,13 @@
     <p v-if="error" class="admin-error" role="alert">{{ error }} <button class="admin-link" @click="load(page)">重试</button></p>
     <div class="admin-table-scroll" :aria-busy="loading">
       <table class="admin-table">
-        <thead><tr><th scope="col">账号</th><th scope="col">身份 / 状态</th><th scope="col">剩余次数</th><th scope="col">累计使用</th><th scope="col">注册时间</th><th scope="col">操作</th></tr></thead>
+        <thead><tr><th scope="col">账号</th><th scope="col">身份 / 状态</th><th scope="col">今日剩余 / 每日额度</th><th scope="col">累计使用</th><th scope="col">注册时间</th><th scope="col">操作</th></tr></thead>
         <tbody>
           <tr v-for="user in rows" :key="user.id">
             <td><strong>{{ user.username }}</strong><small>{{ user.email }}</small></td>
             <td><span class="admin-badge">{{ user.identity === 2 ? '管理员' : '普通用户' }}</span><small :class="{ 'admin-danger': user.status === 'blocked' }">{{ user.status === 'active' ? '正常' : '已封禁' }}</small></td>
-            <td><span v-if="user.identity === 2">无限使用</span><template v-else><small>操作 {{ user.operations_remaining }}</small><small>AI 修改 {{ user.modifications_remaining }} · 生成 {{ user.generations_remaining }}</small></template></td>
-            <td><small>操作 {{ user.usage.operations.used }}</small><small>AI 修改 {{ user.usage.modifications.used }} · 生成 {{ user.usage.generations.used }}</small></td>
+            <td><span v-if="user.identity === 2">无限使用</span><template v-else><small>手工 {{ user.operations_remaining }} / {{ user.operations_daily_limit }}</small><small>AI {{ user.ai_remaining }} / {{ user.ai_daily_limit }}</small></template></td>
+            <td><small>手工 {{ user.usage.operations.used }}</small><small>AI {{ user.usage.ai.used }}</small></td>
             <td>{{ displayTime(user.created_at) }}</td>
             <td><div class="admin-actions"><button class="admin-link" @click="edit(user)">身份与额度</button><RouterLink class="admin-link" :to="{ path: '/admin/logs', query: { user_id: user.id, username: user.username } }">操作记录</RouterLink><button class="admin-link danger" :disabled="user.id === auth.user?.id || saving" @click="remove(user)">删除</button></div></td>
           </tr>
@@ -29,11 +29,12 @@
         <p><strong>{{ selected.username }}</strong> · {{ selected.email }}</p>
         <label>账号身份<select v-model.number="form.identity" :disabled="selected.id === auth.user?.id"><option :value="1">普通用户</option><option :value="2">管理员</option></select></label>
         <label>账号状态<select v-model="form.status" :disabled="selected.id === auth.user?.id"><option value="active">正常</option><option value="blocked">封禁</option></select></label>
-        <p class="admin-hint">管理员不受次数限制。以下数值是普通用户的剩余次数，不会清空累计使用记录。</p>
+        <p class="admin-hint">管理员无限使用。普通用户每天北京时间 00:00 恢复至每日额度，不累计。调整今日剩余立即生效，累计使用记录保留。AI 对话、修改和生成共用一份额度，每次扣 1 次。</p>
         <div class="admin-quota-inputs">
-          <label>手工操作<input v-model.number="form.operations_remaining" type="number" min="0" max="1000000000" step="1" required :disabled="form.identity === 2" /></label>
-          <label>AI 修改<input v-model.number="form.modifications_remaining" type="number" min="0" max="1000000000" step="1" required :disabled="form.identity === 2" /></label>
-          <label>AI 生成<input v-model.number="form.generations_remaining" type="number" min="0" max="1000000000" step="1" required :disabled="form.identity === 2" /></label>
+          <label>手工操作 · 每日额度<input v-model.number="form.operations_daily_limit" type="number" min="0" max="1000000000" step="1" required :disabled="form.identity === 2" /></label>
+          <label>AI 使用 · 每日额度<input v-model.number="form.ai_daily_limit" type="number" min="0" max="1000000000" step="1" required :disabled="form.identity === 2" /></label>
+          <label>手工操作 · 今日剩余<input v-model.number="form.operations_remaining" type="number" min="0" max="1000000000" step="1" required :disabled="form.identity === 2" /></label>
+          <label>AI 使用 · 今日剩余<input v-model.number="form.ai_remaining" type="number" min="0" max="1000000000" step="1" required :disabled="form.identity === 2" /></label>
         </div>
         <p v-if="formError" class="admin-error" role="alert">{{ formError }}</p>
         <footer class="admin-dialog-actions"><button class="admin-button" type="button" :disabled="saving" @click="dialog = false">取消</button><button class="admin-button primary" :disabled="saving">{{ saving ? '保存中…' : '保存设置' }}</button></footer>
@@ -55,7 +56,7 @@ const rows = ref<AdminUser[]>([])
 const page = ref(1), total = ref(0), query = ref(''), status = ref(''), error = ref('')
 const loading = ref(false), saving = ref(false), dialog = ref(false), formError = ref('')
 const selected = ref<AdminUser>()
-const form = reactive({ identity: 1 as 1 | 2, status: 'active', operations_remaining: 0, modifications_remaining: 0, generations_remaining: 0 })
+const form = reactive({ identity: 1 as 1 | 2, status: 'active', operations_remaining: 0, ai_remaining: 0, operations_daily_limit: 20, ai_daily_limit: 200 })
 let request = 0
 async function load(next = 1) {
   const sequence = ++request
@@ -71,7 +72,7 @@ async function load(next = 1) {
 function edit(user: AdminUser) {
   selected.value = user
   Object.assign(form, { identity: user.identity, status: user.status, operations_remaining: user.operations_remaining,
-    modifications_remaining: user.modifications_remaining, generations_remaining: user.generations_remaining })
+    ai_remaining: user.ai_remaining, operations_daily_limit: user.operations_daily_limit, ai_daily_limit: user.ai_daily_limit })
   formError.value = ''; dialog.value = true
 }
 async function save() {
@@ -93,3 +94,7 @@ async function remove(user: AdminUser) {
 }
 onMounted(() => load())
 </script>
+<style scoped>
+.admin-quota-inputs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 700px) { .admin-quota-inputs { grid-template-columns: 1fr; } }
+</style>

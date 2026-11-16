@@ -3,6 +3,7 @@ from uuid import uuid4
 
 from sqlalchemy import insert, select
 
+from app.domain.usage import next_reset_at
 from app.infrastructure.persistence.database import database
 from app.infrastructure.persistence.schema import users
 
@@ -25,9 +26,10 @@ class AccountRepository:
             return conn.execute(select(users.c.id).where(users.c.email == email.lower())).first() is not None
 
     def create(self, username: str, email: str, password_hash: str) -> dict:
+        now = int(time() * 1000)
         value = dict(id=str(uuid4()), username=username,
                      email=email.lower(), identity=1, password_hash=password_hash,
-                     status="active", created_at=int(time() * 1000))
+                     status="active", created_at=now, usage_reset_at=next_reset_at(now))
         with database.engine.begin() as conn:
             conn.execute(insert(users).values(**value))
             value = dict(conn.execute(select(users).where(users.c.id == value["id"])).mappings().one())

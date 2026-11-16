@@ -375,6 +375,10 @@ export class AgentBridge {
   /** 发送用户消息 */
   sendUserMessage(message: string): string | null {
     if (!useAuthStore().canEdit) return null
+    if (!useAuthStore().hasQuota('ai')) {
+      ElMessage.warning('今日 AI 次数已用完，明日北京时间零点恢复')
+      return null
+    }
     const agentStore = useAgentStore()
     const sceneStore = useSceneStore()
     const selectionStore = useSelectionStore()

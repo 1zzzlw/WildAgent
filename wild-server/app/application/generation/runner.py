@@ -57,11 +57,15 @@ async def execute_graph(ws: EventSink, data: dict, *, resume: bool = False):
         if data.get("_server_user_id"):
             from app.infrastructure.persistence.repositories.accounts import accounts
             from app.application.access import check_session_writable
+            from app.infrastructure.persistence.repositories.activity import charge_ai_request
 
             account = await asyncio.to_thread(accounts.get, data["_server_user_id"])
             if not account or account["status"] != "active":
                 raise AccountUnavailable("账号已被停用，生成任务不能继续")
             await asyncio.to_thread(check_session_writable, run.session_id, account)
+            await asyncio.to_thread(
+                charge_ai_request, account["id"], run.request_id, run.session_id
+            )
         await generation_job_service.initialize()
         run.graph = get_graph(
             enable_callback=True, checkpointer=generation_job_service.checkpointer

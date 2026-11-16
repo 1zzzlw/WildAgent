@@ -6,6 +6,7 @@ from app.infrastructure.persistence.database import database
 from app.infrastructure.persistence.repositories.activity import (
     append_audit,
     lock_account,
+    refresh_daily_quota,
 )
 from app.infrastructure.persistence.repositories.conversations import now_ms
 from app.infrastructure.persistence.repositories.errors import (
@@ -194,7 +195,14 @@ def change_account(actor_id: str, user_id: str, values: dict) -> dict:
         )
         if not row or row["status"] == "deleted":
             raise LookupError("用户不存在")
-        current = dict(row)
+        current = refresh_daily_quota(connection, dict(row))
+        values = dict(values)
+        for kind in ("operations", "ai"):
+            limit_key = kind + "_daily_limit"
+            remaining_key = kind + "_remaining"
+            if limit_key in values and remaining_key not in values:
+                used_today = max(0, current[limit_key] - current[remaining_key])
+                values[remaining_key] = max(0, values[limit_key] - used_today)
         disabling = (
             values.get("status", current["status"]) != "active"
             or values.get("identity", current["identity"]) != 2

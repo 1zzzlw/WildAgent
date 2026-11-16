@@ -1,8 +1,10 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 
-export type UsageKind = 'operations' | 'modifications' | 'generations'
-export type AccountUsage = Record<UsageKind, { remaining: number | null; used: number }>
+export type UsageKind = 'operations' | 'ai'
+export type AccountUsage = Record<UsageKind, {
+  remaining: number | null; used: number; daily_limit: number | null; resets_at: number
+}>
 export interface LoginUser {
   id?: string
   username: string
@@ -29,7 +31,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   function hasQuota(kind: UsageKind) {
-    return canEdit.value && (isAdmin.value || (user.value?.usage?.[kind].remaining ?? 0) > 0)
+    return canEdit.value && (isAdmin.value || (user.value?.usage?.[kind]?.remaining ?? 0) > 0)
   }
 
   async function refresh() {

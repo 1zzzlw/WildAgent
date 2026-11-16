@@ -13,12 +13,14 @@
       </button>
     </template>
     <div class="usage-panel">
-      <strong class="usage-heading">使用额度</strong>
+      <strong class="usage-heading">今日使用额度</strong>
       <p v-if="auth.isAdmin" class="usage-admin">管理员 · 无限使用</p>
-      <dl v-else class="quota-details"><div v-for="item in quotas" :key="item.kind" :class="{ exhausted: item.remaining === 0 }"><dt>{{ item.label }}</dt><dd>剩余 <strong>{{ item.remaining ?? '—' }}</strong> 次</dd></div></dl>
-      <p class="usage-help">操作按一次完成的编辑计数，拖动结束记一次；AI 修改和生成分别计数。</p>
+      <dl v-else class="quota-details"><div v-for="item in quotas" :key="item.kind" :class="{ exhausted: item.remaining === 0 }"><dt>{{ item.label }}</dt><dd>剩余 <strong>{{ item.remaining ?? '—' }}</strong> / {{ item.limit ?? '—' }} 次</dd></div></dl>
+      <p class="usage-help">AI 对话、修改和生成共用每日额度，每次请求扣 1 次。手工编辑按完成一次操作计数，拖动结束记一次。</p>
+      <p class="usage-help">每天北京时间 00:00 自动恢复，不累计至次日。</p>
       <p v-if="scene.isCommitting" class="usage-note" role="status">正在保存编辑…</p>
-      <p v-if="!auth.isAdmin && !auth.hasQuota('operations')" class="lock-note">手工次数已用完，请联系管理员调整</p>
+      <p v-if="!auth.isAdmin && !auth.hasQuota('operations')" class="lock-note">今日手工操作次数已用完，明日零点恢复</p>
+      <p v-if="!auth.isAdmin && !auth.hasQuota('ai')" class="lock-note">今日 AI 次数已用完，明日零点恢复</p>
       <p v-if="scene.isLocked" class="lock-note">蓝图已锁定 · 所有账号只读</p>
       <div class="usage-actions">
         <button v-if="auth.isAdmin && current?.filename" type="button" class="lock-button" :disabled="locking || scene.isCommitting" @click="toggleLock">{{ locking ? '处理中…' : scene.isLocked ? '解锁蓝图' : '锁定蓝图' }}</button>
@@ -40,9 +42,9 @@ import { apiRequest } from '../../services/adminApi'
 const auth = useAuthStore(), scene = useSceneStore(), agent = useAgentStore(), workspace = useWorkspaceStore()
 const locking = ref(false), refreshing = ref(false)
 const current = computed(() => agent.sessions.find(item => item.session_id === agent.currentSessionId))
-const labels: Array<{ kind: UsageKind; label: string }> = [{ kind: 'operations', label: '操作' }, { kind: 'modifications', label: 'AI 修改' }, { kind: 'generations', label: '生成' }]
-const quotas = computed(() => labels.map(item => ({ ...item, remaining: auth.user?.usage?.[item.kind].remaining })))
-const usageDescription = computed(() => auth.isAdmin ? '管理员 · 无限使用' : '剩余次数：' + quotas.value.map(item => `${item.label} ${item.remaining ?? '—'}`).join('，'))
+const labels: Array<{ kind: UsageKind; label: string }> = [{ kind: 'operations', label: '手工操作' }, { kind: 'ai', label: 'AI 使用' }]
+const quotas = computed(() => labels.map(item => ({ ...item, remaining: auth.user?.usage?.[item.kind]?.remaining, limit: auth.user?.usage?.[item.kind]?.daily_limit })))
+const usageDescription = computed(() => auth.isAdmin ? '管理员 · 无限使用' : '今日剩余：' + quotas.value.map(item => `${item.label} ${item.remaining ?? '—'}`).join('，'))
 async function refreshStatus() {
   if (refreshing.value) return
   refreshing.value = true
@@ -70,13 +72,24 @@ async function toggleLock() {
   finally { locking.value = false }
 }
 let timer: ReturnType<typeof setInterval> | undefined
-function start() { if (!timer) timer = setInterval(() => { if (!document.hidden) void refreshStatus() }, 15000) }
-function stop() { clearInterval(timer); timer = undefined }
-onMounted(() => { start(); void refreshStatus() })
+let resetTimer: ReturnType<typeof setTimeout> | undefined
+let active = false
+function scheduleReset() {
+  clearTimeout(resetTimer)
+  resetTimer = undefined
+  if (!active) return
+  const resetsAt = auth.user?.usage?.operations.resets_at
+  if (resetsAt && resetsAt > Date.now()) resetTimer = setTimeout(() => { void refreshStatus() }, resetsAt - Date.now() + 100)
+}
+function start() { active = true; if (!timer) timer = setInterval(() => { if (!document.hidden) void refreshStatus() }, 15000); scheduleReset() }
+function stop() { active = false; clearInterval(timer); timer = undefined; clearTimeout(resetTimer); resetTimer = undefined }
+function restoreVisibleStatus() { if (active && !document.hidden) void refreshStatus() }
+onMounted(() => { document.addEventListener('visibilitychange', restoreVisibleStatus); start(); void refreshStatus() })
 onActivated(() => { start(); void refreshStatus() })
 onDeactivated(stop)
-onBeforeUnmount(stop)
+onBeforeUnmount(() => { document.removeEventListener('visibilitychange', restoreVisibleStatus); stop() })
 watch(() => agent.currentSessionId, () => { void refreshStatus() })
+watch(() => auth.user?.usage?.operations.resets_at, scheduleReset)
 </script>
 <style scoped>
 .usage-status{display:inline-flex;flex-shrink:0;align-items:center;gap:8px;min-height:31px;padding:6px 10px;border:1px solid var(--studio-border);border-radius:5px;background:transparent;color:var(--studio-muted);font:inherit;font-size:11px;cursor:pointer;white-space:nowrap}

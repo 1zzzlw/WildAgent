@@ -117,9 +117,9 @@ def test_admin_routes_and_model_configuration_require_admin(management):
     ):
         assert client.get(path).status_code == 401
     user = login(client, "designer")
-    assert user["usage"]["operations"]["remaining"] == 1000
-    assert user["usage"]["modifications"]["remaining"] == 200
-    assert user["usage"]["generations"]["remaining"] == 20
+    assert user["usage"]["operations"]["remaining"] == 20
+    assert user["usage"]["ai"]["remaining"] == 200
+    assert set(user["usage"]) == {"operations", "ai"}
     for path in (
         "/api/admin/stats",
         "/api/admin/users",
@@ -154,8 +154,7 @@ def test_role_quota_and_ban_changes_take_effect_for_existing_session(management)
         json={
             "identity": 2,
             "operations_remaining": 7,
-            "modifications_remaining": 8,
-            "generations_remaining": 9,
+            "ai_remaining": 8,
         },
     )
     assert result.status_code == 200
@@ -186,7 +185,7 @@ def test_role_quota_and_ban_changes_take_effect_for_existing_session(management)
     )
     client.cookies.set("wild_session", token)
     assert (
-        client.get("/api/auth/session").json()["usage"]["generations"]["remaining"] == 9
+        client.get("/api/auth/session").json()["usage"]["ai"]["remaining"] == 8
     )
     assert client.get("/api/admin/stats").status_code == 403
 
@@ -358,72 +357,85 @@ def test_ai_quota_is_separate_and_recovery_does_not_charge_again(management):
             .where(users.c.id == user_id)
             .values(
                 operations_remaining=0,
-                modifications_remaining=1,
-                generations_remaining=1,
+                ai_remaining=3,
             )
         )
     conversations.ensure("session_ai", user_id)
-    for _ in range(2):
-        charge_ai_request(user_id, "request_generate", "session_ai", "generate")
-    charge_ai_request(user_id, "request_edit", "session_ai", "edit")
-    charge_ai_request(user_id, "request_chat", "session_ai", "chat")
+    for intent in ("generate", "edit", "chat"):
+        for _ in range(2):
+            charge_ai_request(user_id, "request_" + intent, "session_ai")
     account = accounts.get(user_id)
-    assert account["generations_used"] == account["modifications_used"] == 1
+    assert account["ai_used"] == 3
+    assert account["ai_remaining"] == 0
     assert account["operations_used"] == 0
     with pytest.raises(QuotaExceeded):
-        charge_ai_request(user_id, "second_generate", "session_ai", "generate")
+        charge_ai_request(user_id, "second_generate", "session_ai")
     with pytest.raises(OperationConflict):
-        charge_ai_request(user_id, "request_generate", "session_ai", "edit")
+        charge_ai_request(user_id, "request_generate", "different_session")
 
 
-def test_classifier_uses_verified_intent_for_quota(management, monkeypatch):
-    from app.agent.workflows.intent import workflow
+@pytest.mark.parametrize("intent", ["chat", "edit", "generate"])
+def test_ai_quota_is_charged_before_graph_and_resume_is_free(management, monkeypatch, intent):
+    from app.agent import graph as graph_module
+    from app.application.generation import runner
+    from langgraph.checkpoint.memory import InMemorySaver
     from langgraph.graph import END, StateGraph
 
     _, seeded, engine = management
     account = seeded["designer"]
     conversations.ensure("session_classify", account["id"])
 
-    async def decision(*args, **kwargs):
-        return SimpleNamespace(
-            intent="generate",
-            target="architecture",
-            target_kind="architecture",
-            profile="villa",
-            requires_scene=False,
-            reason="fixture",
-            source="fixture",
-        )
+    calls = []
+    delivered = []
+    class Sink:
+        def __init__(self):
+            self.events = []
+        async def send_json(self, event):
+            self.events.append(event)
 
-    monkeypatch.setattr(workflow, "classify_intent_decision", decision)
+    async def classifier(_state):
+        calls.append(intent)
+        return {"intent": intent, "status": "complete"}
+
+    async def initialize():
+        pass
+
+    async def deliver(run):
+        delivered.append(run.resolved_intent)
+
+    checkpoint = InMemorySaver()
+    graph = StateGraph(dict)
+    graph.add_node("classifier", classifier)
+    graph.set_entry_point("classifier")
+    graph.add_edge("classifier", END)
+    compiled = graph.compile(checkpointer=checkpoint)
+    monkeypatch.setattr(graph_module, "get_graph", lambda **_kwargs: compiled)
+    monkeypatch.setattr(runner, "generation_job_service", SimpleNamespace(
+        initialize=initialize, checkpointer=checkpoint
+    ))
+    monkeypatch.setattr(runner, "deliver_result", deliver)
     state = {
         "request_id": "classifier_test",
         "session_id": "session_classify",
-        "user_message": "生成建筑",
+        "message": "额度回归",
+        "_server_user_id": account["id"],
     }
-    graph = StateGraph(dict)
-    graph.add_node("classifier", workflow.classifier_node)
-    graph.set_entry_point("classifier")
-    graph.add_edge("classifier", END)
-    compiled = graph.compile()
-    result = asyncio.run(
-        compiled.ainvoke(state, config={"configurable": {"account_id": account["id"]}})
-    )
-    assert result["intent"] == "generate"
-    assert accounts.get(account["id"])["generations_remaining"] == 19
+    sink = Sink()
+    asyncio.run(runner.execute_graph(sink, state))
+    assert calls == [intent] and delivered == [intent]
+    assert accounts.get(account["id"])["ai_remaining"] == 199
+    asyncio.run(runner.execute_graph(sink, state, resume=True))
+    assert calls == [intent]
+    assert accounts.get(account["id"])["ai_remaining"] == 199
     with engine.begin() as connection:
         connection.execute(
             users.update()
             .where(users.c.id == account["id"])
-            .values(generations_remaining=0)
+            .values(ai_remaining=0)
         )
-    with pytest.raises(QuotaExceeded):
-        asyncio.run(
-            compiled.ainvoke(
-                {**state, "request_id": "classifier_blocked"},
-                config={"configurable": {"account_id": account["id"]}},
-            )
-        )
+    asyncio.run(runner.execute_graph(sink, {**state, "request_id": "classifier_blocked"}))
+    assert calls == [intent]
+    assert sink.events[-1]["code"] == "quota_exhausted"
 
 
 def test_applying_paid_ai_edit_does_not_consume_manual_quota(management):
@@ -435,7 +447,7 @@ def test_applying_paid_ai_edit_does_not_consume_manual_quota(management):
             users.update().where(users.c.id == actor_id).values(operations_remaining=0)
         )
     request_id = "req_aiapply"
-    charge_ai_request(actor_id, request_id, "session_aiapply", "edit")
+    charge_ai_request(actor_id, request_id, "session_aiapply")
     repository = JobRepository()
     repository.insert(
         request_id,
@@ -471,7 +483,7 @@ def test_applying_paid_ai_edit_does_not_consume_manual_quota(management):
         == 200
     )
     assert accounts.get(actor_id)["operations_used"] == 0
-    assert accounts.get(actor_id)["modifications_used"] == 1
+    assert accounts.get(actor_id)["ai_used"] == 1
 
 
 def test_admin_is_unlimited_and_ai_reply_is_in_user_audit(management):
@@ -483,8 +495,7 @@ def test_admin_is_unlimited_and_ai_reply_is_in_user_audit(management):
             .where(users.c.id == user_id)
             .values(
                 operations_remaining=0,
-                modifications_remaining=0,
-                generations_remaining=0,
+                ai_remaining=0,
             )
         )
     login(client)
@@ -492,8 +503,8 @@ def test_admin_is_unlimited_and_ai_reply_is_in_user_audit(management):
         client.put("/api/scenes/session_unlimited_scene.wild", json=scene()).status_code
         == 200
     )
-    charge_ai_request(user_id, "unlimited_ai", "session_unlimited", "generate")
-    charge_ai_request(user_id, "unlimited_edit", "session_unlimited", "edit")
+    charge_ai_request(user_id, "unlimited_ai", "session_unlimited")
+    charge_ai_request(user_id, "unlimited_edit", "session_unlimited")
     repository = JobRepository()
     repository.insert(
         "audit_reply",
@@ -534,6 +545,132 @@ def test_quota_atomic_update_never_overdraws(management):
     with ThreadPoolExecutor(max_workers=2) as pool:
         assert sorted(pool.map(consume, range(2))) == [False, True]
     assert accounts.get(actor["id"])["operations_remaining"] == 0
+
+
+def test_daily_quota_refreshes_at_midnight_without_accumulation(management, monkeypatch):
+    from app.domain.usage import next_reset_at
+    from app.infrastructure.persistence.repositories import activity
+
+    client, seeded, engine = management
+    filename = save_owned(seeded)
+    user_id = seeded["designer"]["id"]
+    login(client, "designer")
+    midnight = accounts.get(user_id)["usage_reset_at"]
+    clock = {"now": midnight - 1}
+    monkeypatch.setattr(activity, "now_ms", lambda: clock["now"])
+    with engine.begin() as connection:
+        connection.execute(users.update().where(users.c.id == user_id).values(
+            operations_daily_limit=4, ai_daily_limit=7,
+            operations_remaining=0, ai_remaining=0, operations_used=11, ai_used=13,
+        ))
+    before = client.get("/api/auth/session").json()["usage"]
+    assert before["operations"]["remaining"] == before["ai"]["remaining"] == 0
+    assert before["ai"]["resets_at"] == midnight
+    clock["now"] = midnight
+    after = client.get("/api/auth/session").json()["usage"]
+    assert after["operations"]["remaining"] == 4
+    assert after["ai"]["remaining"] == 7
+    assert after["ai"]["used"] == 13
+    assert after["ai"]["resets_at"] == next_reset_at(midnight)
+    # 读取只投影当日余额；第一次实际编辑在同一事务内重置再扣次。
+    assert accounts.get(user_id)["operations_remaining"] == 0
+    response = client.put("/api/scenes/" + filename, json=scene(radius=.9))
+    assert response.status_code == 200
+    assert response.json()["usage"]["operations"]["remaining"] == 3
+    charge_ai_request(user_id, "daily_request", "session_manage")
+    account = accounts.get(user_id)
+    assert account["operations_used"] == 12 and account["ai_used"] == 14
+    assert account["operations_remaining"] == 3 and account["ai_remaining"] == 6
+    clock["now"] += 2 * 86400000
+    refreshed = client.get("/api/auth/session").json()["usage"]
+    assert refreshed["operations"]["remaining"] == 4
+    assert refreshed["ai"]["remaining"] == 7
+    assert accounts.get(seeded["other"]["id"])["ai_used"] == 0
+
+
+def test_old_ai_request_replay_does_not_spend_next_day_quota(management, monkeypatch):
+    from app.infrastructure.persistence.repositories import activity
+
+    _, seeded, _ = management
+    user_id = seeded["designer"]["id"]
+    conversations.ensure("session_daily_replay", user_id)
+    original = charge_ai_request(user_id, "daily_replay", "session_daily_replay")
+    assert original["ai"]["remaining"] == 199
+    midnight = original["ai"]["resets_at"]
+    monkeypatch.setattr(activity, "now_ms", lambda: midnight)
+    replayed = charge_ai_request(user_id, "daily_replay", "session_daily_replay")
+    assert replayed["ai"]["remaining"] == 200
+    assert accounts.get(user_id)["ai_used"] == 1
+    fresh = charge_ai_request(user_id, "daily_new", "session_daily_replay")
+    assert fresh["ai"]["remaining"] == 199
+    assert accounts.get(user_id)["ai_used"] == 2
+
+
+def test_midnight_concurrent_requests_reset_once_and_never_overdraw(management, monkeypatch):
+    from app.infrastructure.persistence.repositories import activity
+
+    _, seeded, engine = management
+    user_id = seeded["designer"]["id"]
+    midnight = accounts.get(user_id)["usage_reset_at"]
+    monkeypatch.setattr(activity, "now_ms", lambda: midnight)
+    with engine.begin() as connection:
+        connection.execute(users.update().where(users.c.id == user_id).values(
+            operations_daily_limit=1, ai_daily_limit=1,
+            operations_remaining=0, ai_remaining=0,
+        ))
+    conversations.ensure("session_midnight", user_id)
+
+    def consume_ai(index):
+        try:
+            charge_ai_request(user_id, f"midnight_{index}", "session_midnight")
+            return True
+        except QuotaExceeded:
+            return False
+
+    def consume_manual(_index):
+        try:
+            with engine.begin() as connection:
+                actor = activity.lock_account(connection, user_id)
+                charge_usage(connection, actor, "operations")
+            return True
+        except QuotaExceeded:
+            return False
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        assert sorted(pool.map(consume_ai, range(2))) == [False, True]
+        assert sorted(pool.map(consume_manual, range(2))) == [False, True]
+    account = accounts.get(user_id)
+    assert account["ai_remaining"] == account["operations_remaining"] == 0
+    assert account["ai_used"] == account["operations_used"] == 1
+
+
+def test_admin_daily_limits_persist_and_expired_list_balances_are_current(management, monkeypatch):
+    from app.infrastructure.persistence.repositories import activity
+
+    client, seeded, engine = management
+    user_id = seeded["designer"]["id"]
+    login(client)
+    response = client.patch("/api/admin/users/" + user_id, json={
+        "operations_daily_limit": 3, "ai_daily_limit": 5,
+        "operations_remaining": 1, "ai_remaining": 2,
+    })
+    assert response.status_code == 200
+    assert response.json()["usage"]["ai"]["daily_limit"] == 5
+    assert response.json()["usage"]["ai"]["remaining"] == 2
+    # 只修改每日额度时，保留当日已用数量；单独调整剩余额度仍可即时补充。
+    updated = client.patch("/api/admin/users/" + user_id, json={"ai_daily_limit": 8})
+    assert updated.status_code == 200 and updated.json()["ai_remaining"] == 5
+    midnight = accounts.get(user_id)["usage_reset_at"]
+    monkeypatch.setattr(activity, "now_ms", lambda: midnight)
+    listed = client.get("/api/admin/users", params={"query":"designer"}).json()["items"][0]
+    assert listed["operations_remaining"] == 3 and listed["ai_remaining"] == 8
+    assert "password_hash" not in listed
+    # 已封禁账号也可以修改额度；管理员维护不会解除封禁。
+    blocked = client.patch("/api/admin/users/" + user_id, json={"status":"blocked", "ai_remaining":4})
+    assert blocked.status_code == 200
+    assert blocked.json()["status"] == "blocked" and blocked.json()["ai_remaining"] == 4
+    rejected = client.patch("/api/admin/users/" + user_id, json={"modifications_remaining":1})
+    assert rejected.status_code == 422
 
 
 @pytest.mark.parametrize("delete_account", [False, True])
@@ -754,7 +891,7 @@ def test_stats_blueprint_metrics_pagination_and_secret_redaction(management):
     assert (
         client.patch(
             "/api/admin/users/" + seeded["designer"]["id"],
-            json={"generations_remaining": -1},
+            json={"ai_remaining": -1},
         ).status_code
         == 422
     )

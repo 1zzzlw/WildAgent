@@ -20,10 +20,15 @@ from app.infrastructure.persistence.schema import blueprints, sessions
 
 
 def account_summary(account: dict) -> dict:
+    usage = public_usage(account)
+    current = dict(account)
+    for kind, quota in usage.items():
+        if quota["remaining"] is not None:
+            current[kind + "_remaining"] = quota["remaining"]
     return {
-        **account,
+        **current,
         "is_admin": account["identity"] == 2,
-        "usage": public_usage(account),
+        "usage": usage,
     }
 
 

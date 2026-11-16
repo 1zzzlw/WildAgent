@@ -22,8 +22,9 @@ class UserUpdate(BaseModel):
     identity: Literal[1, 2] | None = None
     status: Literal["active", "blocked"] | None = None
     operations_remaining: int | None = Field(default=None, ge=0, le=1000000000)
-    modifications_remaining: int | None = Field(default=None, ge=0, le=1000000000)
-    generations_remaining: int | None = Field(default=None, ge=0, le=1000000000)
+    ai_remaining: int | None = Field(default=None, ge=0, le=1000000000)
+    operations_daily_limit: int | None = Field(default=None, ge=0, le=1000000000)
+    ai_daily_limit: int | None = Field(default=None, ge=0, le=1000000000)
 
     @model_validator(mode="after")
     def reject_null(self):

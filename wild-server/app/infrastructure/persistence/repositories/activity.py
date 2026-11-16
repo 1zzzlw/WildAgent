@@ -9,6 +9,7 @@ from uuid import uuid4
 from sqlalchemy import insert, select, update
 from sqlalchemy.engine import Connection
 
+from app.domain.usage import DEFAULT_DAILY_LIMITS, USAGE_LABELS, next_reset_at
 from app.infrastructure.persistence.database import database
 from app.infrastructure.persistence.repositories.conversations import now_ms
 from app.infrastructure.persistence.repositories.errors import AccountUnavailable
@@ -16,18 +17,54 @@ from app.infrastructure.persistence.repositories.errors import OperationConflict
 from app.infrastructure.persistence.repositories.errors import QuotaExceeded
 from app.infrastructure.persistence.schema import audit_logs, users
 
-USAGE_LABELS = {"operations": "操作", "modifications": "AI 修改", "generations": "生成"}
-
 
 def public_usage(account: dict) -> dict:
     unlimited = account.get("identity") == 2
+    now = now_ms()
+    reset_at = account.get("usage_reset_at", 0)
+    expired = reset_at <= now
+    if expired:
+        reset_at = next_reset_at(now)
     result = {}
-    for kind in USAGE_LABELS:
+    for kind, default_limit in DEFAULT_DAILY_LIMITS.items():
+        limit = account.get(kind + "_daily_limit", default_limit)
+        remaining = limit if expired else account.get(kind + "_remaining", 0)
         result[kind] = {
-            "remaining": None if unlimited else account.get(kind + "_remaining", 0),
+            "remaining": None if unlimited else remaining,
             "used": account.get(kind + "_used", 0),
+            "daily_limit": None if unlimited else limit,
+            "resets_at": reset_at,
         }
     return result
+
+
+def refresh_daily_quota(connection: Connection, account: dict) -> dict:
+    """在业务事务内补齐当天余额；并发请求只有第一个能执行重置。"""
+    now = now_ms()
+    if account["usage_reset_at"] > now:
+        return account
+    connection.execute(
+        update(users)
+        .where(users.c.id == account["id"], users.c.usage_reset_at <= now)
+        .values(
+            operations_remaining=users.c.operations_daily_limit,
+            ai_remaining=users.c.ai_daily_limit,
+            usage_reset_at=next_reset_at(now),
+        )
+    )
+    columns = [
+        users.c.operations_remaining,
+        users.c.ai_remaining,
+        users.c.operations_daily_limit,
+        users.c.ai_daily_limit,
+        users.c.usage_reset_at,
+    ]
+    current = (
+        connection.execute(select(*columns).where(users.c.id == account["id"]))
+        .mappings()
+        .one()
+    )
+    return {**account, **current}
 
 
 def lock_account(connection: Connection, user_id: str) -> dict:
@@ -38,7 +75,7 @@ def lock_account(connection: Connection, user_id: str) -> dict:
     )
     if row is None or row["status"] != "active":
         raise AccountUnavailable("账号已被停用，请重新登录或联系管理员")
-    return dict(row)
+    return refresh_daily_quota(connection, dict(row))
 
 
 def event_id(actor_id: str, key: str) -> str:
@@ -78,6 +115,7 @@ def append_audit(
 
 
 def charge_usage(connection: Connection, actor: dict, kind: str) -> None:
+    actor = refresh_daily_quota(connection, actor)
     remaining = users.c[kind + "_remaining"]
     used = users.c[kind + "_used"]
     values = {kind + "_used": used + 1}
@@ -88,7 +126,9 @@ def charge_usage(connection: Connection, actor: dict, kind: str) -> None:
         statement = statement.where(remaining > 0)
         values[kind + "_remaining"] = remaining - 1
     if not connection.execute(statement.values(**values)).rowcount:
-        raise QuotaExceeded(f"{USAGE_LABELS[kind]}次数已用完，请联系管理员调整额度")
+        raise QuotaExceeded(
+            f"今日{USAGE_LABELS[kind]}次数已用完，明日零点（北京时间）恢复，可联系管理员调整"
+        )
 
 
 def fingerprint(value: object) -> str:
@@ -118,10 +158,8 @@ def record_activity(user_id: str, action: str, **kwargs) -> None:
         append_audit(connection, actor, action, **kwargs)
 
 
-def charge_ai_request(
-    user_id: str, request_id: str, session_id: str, intent: str
-) -> dict:
-    """在分类器返回前扣减真实意图对应的额度；同一任务恢复时只计一次。"""
+def charge_ai_request(user_id: str, request_id: str, session_id: str) -> dict:
+    """所有 AI 请求共用每日额度；重试、恢复以及跨天重放都只计一次。"""
     with database.engine.begin() as connection:
         actor = lock_account(connection, user_id)
         key = event_id(user_id, "ai.usage:" + request_id)
@@ -131,28 +169,18 @@ def charge_ai_request(
             .first()
         )
         if previous:
-            if (
-                previous["session_id"] != session_id
-                or previous["details"].get("intent") != intent
-            ):
-                raise OperationConflict("任务的会话或意图与已记录的额度消费不一致")
+            if previous["session_id"] != session_id:
+                raise OperationConflict("任务的会话与已记录的额度消费不一致")
             return public_usage(actor)
-        if intent in {"generate", "edit"}:
-            from app.infrastructure.persistence.repositories.locks import (
-                assert_session_unlocked,
-            )
-
-            assert_session_unlocked(connection, session_id)
-            kind = "generations" if intent == "generate" else "modifications"
-            charge_usage(connection, actor, kind)
+        charge_usage(connection, actor, "ai")
         append_audit(
             connection,
             actor,
-            "ai." + str(intent),
+            "ai.usage",
             session_id=session_id,
             request_id=request_id,
             key="ai.usage:" + request_id,
-            details={"intent": intent},
+            details={"kind": "ai", "cost": 1},
         )
         fresh = (
             connection.execute(select(users).where(users.c.id == user_id))
