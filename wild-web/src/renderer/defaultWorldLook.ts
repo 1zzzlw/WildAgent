@@ -1,10 +1,11 @@
-export type TimeOfDay = 'day' | 'sunset' | 'night'
+export type TimeOfDay = 'dawn' | 'day' | 'sunset' | 'night'
 export type ViewMode = 'editor' | 'presentation'
 export type QualityLevel = 'low' | 'medium' | 'high'
 export type CameraPresetId = 'corner' | 'human' | 'bird' | 'front'
 export type EnvironmentPresetId = 'minimal' | 'meadow' | 'alpine' | 'desert' | 'autumn'
 
 export interface TimePreset {
+  sky: TimeOfDay
   label: string
   icon: string
   background: number
@@ -51,7 +52,7 @@ export interface EnvironmentPreset {
   shadowOpacity: number
 }
 
-export const TIME_ORDER: TimeOfDay[] = ['day', 'sunset', 'night']
+export const TIME_ORDER: TimeOfDay[] = ['dawn', 'day', 'sunset', 'night']
 /**
  * ── 时段预设的标定口径（2026-09-21 重标）────────────────────────
  *
@@ -76,7 +77,15 @@ export const TIME_ORDER: TimeOfDay[] = ['day', 'sunset', 'night']
  * 变强约 4 倍，这才是"白墙不再一片死白、窗框与檐口重新出现"的真正原因。
  */
 export const TIME_PRESETS: Record<TimeOfDay, TimePreset> = {
+  dawn: {
+    sky: 'dawn', label: '清晨', icon: '🌅', background: 0x9cabbc, exposure: .9, skyVisible: true,
+    turbidity: 3, rayleigh: 1, mieCoefficient: .008, mieDirectionalG: .85,
+    sunPhi: 82, sunTheta: 110, directionalColor: 0xffd6a1, directionalIntensity: 2.8,
+    hemisphereSkyColor: 0x9bb7d7, hemisphereGroundColor: 0x665b50,
+    hemisphereIntensity: .48, groundColor: 0x737a74, fogColor: 0x9cabbc,
+  },
   day: {
+    sky: 'day',
     label: '白天', icon: '☀️', background: 0xb9c9d8, exposure: 0.30, skyVisible: true,
     // rayleigh 1.72 → 0.9、turbidity 3.2 → 2.4：实测这两个数直接决定"天是不是蓝的"。
     // 出图实测天空区平均色（同一机位、同一曝光）：
@@ -91,6 +100,7 @@ export const TIME_PRESETS: Record<TimeOfDay, TimePreset> = {
     hemisphereIntensity: 0.68, groundColor: 0x7c8378, fogColor: 0xb9c9d8,
   },
   sunset: {
+    sky: 'sunset',
     // exposure 0.9 → 1.1：旧值是在"查看器出图脚本强制 exp=1.05"的前提下看着合适的，
     // 一旦让查看器真的走预设（0.9），黄昏就偏暗（均值 113）；实测 1.1 落在 127 左右。
     label: '黄昏', icon: '🌇', background: 0x6f4054, exposure: 1.1, skyVisible: true,
@@ -100,13 +110,14 @@ export const TIME_PRESETS: Record<TimeOfDay, TimePreset> = {
     hemisphereIntensity: 0.38, groundColor: 0x5b4b48, fogColor: 0x6f4054,
   },
   night: {
+    sky: 'night',
     // exposure 0.68 → 1.4：旧值同样只在 exp=1.05 的强制覆盖下看着成立；走预设时
     // 13% 的画面被压到 ≤8（细节能量 0.57，整片死黑）。实测 1.4 时均值 ≈29、墙 ≈70。
     label: '夜晚', icon: '🌙', background: 0x050914, exposure: 1.4, skyVisible: false,
     turbidity: 2, rayleigh: 0.2, mieCoefficient: 0.001, mieDirectionalG: 0.7,
-    sunPhi: 108, sunTheta: 220, directionalColor: 0x9dbbff, directionalIntensity: 0.32,
-    hemisphereSkyColor: 0x182442, hemisphereGroundColor: 0x08070d,
-    hemisphereIntensity: 0.2, groundColor: 0x111722, fogColor: 0x050914,
+    sunPhi: 108, sunTheta: 220, directionalColor: 0x9dbbff, directionalIntensity: 0.45,
+    hemisphereSkyColor: 0x7188ad, hemisphereGroundColor: 0x111522,
+    hemisphereIntensity: 0.45, groundColor: 0x111722, fogColor: 0x050914,
   },
 }
 

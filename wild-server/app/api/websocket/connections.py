@@ -7,7 +7,7 @@ import os
 import time
 
 from fastapi import WebSocket
-from app.application.presence import MAX_VISITOR_NAME_LENGTH, normalize_display_name, presence_records
+from app.application.presence import presence_records, public_presence_snapshot
 from app.infrastructure.redis.events import realtime_bus
 
 from app.application.generation.events import versioned_event
@@ -40,11 +40,12 @@ class WebSocketConnectionRegistry:
         self.enabled = _presence_enabled() if enabled is None else enabled
         self.bus = bus
         self._connections: dict[WebSocket, str] = {}
+        self._users: dict[WebSocket, dict | None] = {}
+        self._last_sent: dict[WebSocket, dict] = {}
         self._last_touch: dict[WebSocket, float] = {}
         self._lock = asyncio.Lock()
         self._task = None
         self._online_count = 0
-        self._last_snapshot = None
 
     @property
     def online_count(self) -> int:
@@ -67,7 +68,8 @@ class WebSocketConnectionRegistry:
             await self.disconnect(ws)
 
     async def connect(self, ws: WebSocket, *, client_ip: str | None = None,
-                      region: str | None = None, display_name: str | None = None):
+                      region: str | None = None, display_name: str | None = None,
+                      user: dict | None = None):
         if not self.enabled:
             return
         await self.startup()
@@ -75,8 +77,10 @@ class WebSocketConnectionRegistry:
         client = await presence_records.register(
             display_name=display_name if display_name is not None else _query_display_name(ws),
             masked_ip=mask_ip(resolved_ip), region=region or geoip_resolver.resolve_region(resolved_ip),
+            user=user,
         )
         self._connections[ws] = client["id"]
+        self._users[ws] = user
         self._last_touch[ws] = time.time()
         await self._changed()
 
@@ -95,9 +99,20 @@ class WebSocketConnectionRegistry:
         if await presence_records.rename(identity, display_name):
             await self._changed()
 
+    async def update_activity(self, ws: WebSocket, *, session_id: object, activity: object,
+                              user: dict | None):
+        identity = self._connections.get(ws)
+        if identity and await presence_records.set_activity(
+            identity, session_id=session_id, activity=activity, user=user
+        ) and self._connections.get(ws) == identity:
+            self._users[ws] = user
+            await self._changed()
+
     async def disconnect(self, ws: WebSocket):
         identity = self._connections.pop(ws, None)
         self._last_touch.pop(ws, None)
+        self._users.pop(ws, None)
+        self._last_sent.pop(ws, None)
         if not identity:
             return
         await presence_records.remove(identity)
@@ -123,13 +138,16 @@ class WebSocketConnectionRegistry:
     async def _broadcast(self):
         async with self._lock:
             payload = await self._snapshot()
-            if payload == self._last_snapshot:
-                return
-            self._last_snapshot = payload
-            connections = tuple(self._connections)
-            results = await asyncio.gather(*(asyncio.wait_for(ws.send_json(payload), timeout=5)
-                                            for ws in connections), return_exceptions=True)
-            stale = [ws for ws, result in zip(connections, results) if isinstance(result, BaseException)]
+            updates = [(ws, public_presence_snapshot(payload, self._users.get(ws))) for ws in self._connections]
+            updates = [(ws, value) for ws, value in updates if self._last_sent.get(ws) != value]
+            results = await asyncio.gather(*(asyncio.wait_for(ws.send_json(value), timeout=5)
+                                            for ws, value in updates), return_exceptions=True)
+            stale = []
+            for (ws, value), result in zip(updates, results):
+                if isinstance(result, BaseException):
+                    stale.append(ws)
+                elif ws in self._connections:
+                    self._last_sent[ws] = value
         # 失败连接在锁外清理，广播不会被单个慢连接串行阻塞。
         for ws in stale:
             await self.disconnect(ws)

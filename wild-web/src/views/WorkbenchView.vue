@@ -104,14 +104,16 @@ onMounted(async () => {
   window.addEventListener('keydown', handleKeydown)
   document.addEventListener('fullscreenchange', syncFullscreen)
 })
-onActivated(() => { workbenchActive = true })
+onActivated(() => { workbenchActive = true; presence.workspaceActive = true })
 onDeactivated(() => {
   workbenchActive = false
+  presence.workspaceActive = false
   roaming.stop()
   ui.viewportFocused = false
   if (document.pointerLockElement) document.exitPointerLock()
 })
 onUnmounted(() => {
+  presence.workspaceActive = false
   agentBridge.disconnect()
   window.removeEventListener('keydown', handleKeydown)
   document.removeEventListener('fullscreenchange', syncFullscreen)

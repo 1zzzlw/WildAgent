@@ -34,7 +34,7 @@ def test_closed_connections_are_cleaned_without_masking_processing_errors(monkey
             def touch(self): pass
             async def stop(self): cleanup.append("heartbeat")
 
-        async def connect(socket):
+        async def connect(socket, **_options):
             if scenario == "closed_before_receive":
                 await socket.close()
 

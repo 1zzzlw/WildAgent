@@ -24,6 +24,7 @@ import { interactMechanism, isMechanismControl, syncMechanisms } from './mechani
 import { disposeElementBehavior, interactElementBehavior, syncElementBehaviorRuntimes } from './elementBehaviorRuntime'
 
 const MAX_VERTICES = 50000
+const INSTANCE_CELL_SIZE = 16
 const renderKeys = new WeakMap<THREE.Object3D, string>()
 
 /**
@@ -393,6 +394,7 @@ function populateSceneGroup(
   entity: ReconstructedEntity,
   materialCache: MaterialCache,
 ): void {
+  group.userData.wildRenderRoot = true
   const buckets = new Map<string, Array<{ meshData: MeshData; materialIndex: number }>>()
   const previous = new Map<string, THREE.Object3D[]>()
   const oldChildren = [...group.children]
@@ -427,7 +429,30 @@ function populateSceneGroup(
     buckets.set(key, bucket)
   })
 
+  const spatialBuckets: Array<Array<{ meshData: MeshData; materialIndex: number }>> = []
   for (const entries of buckets.values()) {
+    const bounds = new THREE.Box3()
+    for (const entry of entries) bounds.expandByPoint(new THREE.Vector3().fromArray(entry.meshData.transform.position))
+    const size = bounds.getSize(new THREE.Vector3())
+    if (entries.length < 128 || Math.max(size.x,size.y,size.z) <= INSTANCE_CELL_SIZE * 2) {
+      spatialBuckets.push(entries)
+      continue
+    }
+    let cells: Map<string, typeof entries>
+    let cellSize = INSTANCE_CELL_SIZE
+    do {
+      cells = new Map()
+      for (const entry of entries) {
+        const cell = entry.meshData.transform.position.map(value => Math.floor(value / cellSize)).join(',')
+        const bucket = cells.get(cell) || []
+        bucket.push(entry)
+        cells.set(cell,bucket)
+      }
+      cellSize *= 2
+    } while (cells.size > 64)
+    spatialBuckets.push(...cells.values())
+  }
+  for (const entries of spatialBuckets) {
     if (entries.length >= 3 && !entries[0].meshData.interactive) {
       try {
         const key = `instances:${meshSignature(entries[0].meshData)}:${materialKeys[entries[0].materialIndex]}:${JSON.stringify(entries.map(entry => entry.meshData.elementId))}`

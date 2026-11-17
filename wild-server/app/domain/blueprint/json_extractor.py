@@ -16,6 +16,7 @@
 可用值（而不是最长的）：模型把答案写在最前面，后面跟的才是多余内容；"取最长"在
 模型连吐多个块（如 ``volumes:``、``facades:``）时会挑错那一段。
 """
+
 import json
 import re
 from typing import Any, Callable, Iterator
@@ -38,20 +39,29 @@ def extract_json_array(text: str) -> list:
     return value
 
 
-def extract_json_object(text: str, *, required_key: str | None = None, raise_on_error: bool = False,
-                        outer_only: bool = False) -> dict | None:
-    """从 LLM 回复中提取 JSON 对象。
-
-    跳过空对象 ``{}``：对本模块的调用方（设计块字段、材质方案、物件方案、plan
-    策略…）空 dict 从来不是有效载荷，继续往后扫才找得到真正的那个。
-    """
-    accept = lambda item: isinstance(item, dict) and bool(item) and (required_key is None or required_key in item)
+def extract_json_object(
+    text: str,
+    *,
+    required_key: str | None = None,
+    raise_on_error: bool = False,
+    outer_only: bool = False,
+) -> dict | None:
+    """从 LLM 回复中提取 JSON 对象。"""
+    accept = (
+        lambda item: isinstance(item, dict)
+        and bool(item)
+        and (required_key is None or required_key in item)
+    )
     if outer_only:
         # 设计/构造声明是完整事务：外层损坏时不能把内部参数或某个构件当成整份回复。
         source = _extract_from_code_block(text)
         start = source.find("{")
         try:
-            parsed, _ = json.JSONDecoder().raw_decode(source, start) if start >= 0 else (None, 0)
+            parsed, _ = (
+                json.JSONDecoder().raw_decode(source, start)
+                if start >= 0
+                else (None, 0)
+            )
             value = parsed if accept(parsed) else None
         except ValueError:
             value = None
@@ -66,10 +76,18 @@ def extract_json_object(text: str, *, required_key: str | None = None, raise_on_
                 try:
                     json.JSONDecoder().raw_decode(source, start)
                 except json.JSONDecodeError as exc:
-                    excerpt = source[max(start, exc.pos-35):exc.pos+35].replace("\n", " ")
-                    raise ValueError(f"JSON 格式错误：第 {exc.lineno} 行，第 {exc.colno} 列，"
-                                     f"{exc.msg}；附近：{excerpt}") from exc
-            raise ValueError(f"缺少 {required_key} 的完整 JSON 对象" if required_key else "缺少完整 JSON 对象")
+                    excerpt = source[max(start, exc.pos - 35) : exc.pos + 35].replace(
+                        "\n", " "
+                    )
+                    raise ValueError(
+                        f"JSON 格式错误：第 {exc.lineno} 行，第 {exc.colno} 列，"
+                        f"{exc.msg}；附近：{excerpt}"
+                    ) from exc
+            raise ValueError(
+                f"缺少 {required_key} 的完整 JSON 对象"
+                if required_key
+                else "缺少完整 JSON 对象"
+            )
         return None
     return value
 

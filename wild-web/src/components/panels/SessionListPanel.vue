@@ -1,9 +1,12 @@
 <template>
   <div class="session-list-panel">
     <button type="button" class="session-picker" aria-haspopup="dialog"
-      :aria-label="`切换会话，当前：${currentName}`" @click="openPicker">
+      :aria-label="`切换会话，当前：${currentName}，${sessionPresenceText(agentStore.currentSessionId)}`" @click="openPicker">
       <span :class="['header-dot', `dot-${currentStatus}`]"></span>
-      <span class="current-session-name" :title="currentName">{{ currentName }}</span>
+      <span class="session-picker-summary">
+        <span class="current-session-name" :title="currentName">{{ currentName }}</span>
+        <span class="current-session-presence" :title="sessionPresenceText(agentStore.currentSessionId)">{{ sessionPresenceText(agentStore.currentSessionId) }}</span>
+      </span>
       <span class="switch-label">切换会话</span>
       <el-icon><ArrowDown /></el-icon>
     </button>
@@ -43,6 +46,9 @@
                 <span class="session-name" :title="session.name">{{ session.name || '新建筑' }}</span>
                 <span v-if="session.session_id === agentStore.currentSessionId" class="current-badge">当前</span>
               </span>
+              <span class="session-presence" :class="{ occupied: presence.operatorsBySession[session.session_id]?.length }">
+                {{ sessionPresenceText(session.session_id) }}
+              </span>
               <span class="session-meta">
                 <span>{{ statusLabel(session.status) }}</span>
                 <span v-if="session.locked">已锁定</span>
@@ -80,7 +86,9 @@ import { useAgentStore, formatRelativeTime } from '../../stores/agentStore'
 import type { SessionInfo } from '../../types/agent'
 import { useUIStore } from '../../stores/uiStore'
 import { useAuthStore } from '../../stores/authStore'
+import { usePresenceStore } from '../../extensions/presence/store'
 const auth = useAuthStore()
+const presence = usePresenceStore()
 
 const agentStore = useAgentStore()
 const emit = defineEmits<{
@@ -141,6 +149,15 @@ async function renameSession(session: SessionInfo) {
 function statusLabel(status: SessionInfo['status']) {
   return { saved: '已保存', draft: '草稿', generating: '生成中' }[status]
 }
+
+function sessionPresenceText(sessionId: string) {
+  if (!presence.isConnected) return '使用状态未连接'
+  if (!presence.sessionActivitySupported) return '使用状态暂不可用'
+  const operators = presence.operatorsBySession[sessionId] || []
+  if (!operators.length) return '空闲 · 无人操作'
+  const labels = { active: '操作中', idle: '空闲', generating: '生成中' }
+  return operators.map(client => `${client.username || client.display_name} · ${labels[client.activity || 'idle']}`).join('；')
+}
 </script>
 
 <style scoped>
@@ -182,7 +199,7 @@ function statusLabel(status: SessionInfo['status']) {
   gap: 8px;
   flex: 1;
   min-width: 0;
-  height: 32px;
+  min-height: 46px;
   padding: 0 10px;
   border: 1px solid var(--studio-border);
   border-radius: 6px;
@@ -191,6 +208,36 @@ function statusLabel(status: SessionInfo['status']) {
   cursor: pointer;
   transition: background-color 0.15s, border-color 0.15s;
 }
+
+.session-picker-summary {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  gap: 2px;
+  text-align: left;
+}
+
+.current-session-presence {
+  color: var(--studio-muted);
+  font-size: 11px;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.session-presence {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.5;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  color: var(--studio-muted);
+}
+
+.session-presence.occupied { color: var(--studio-accent); }
 
 .session-picker:hover,
 .session-card:hover {

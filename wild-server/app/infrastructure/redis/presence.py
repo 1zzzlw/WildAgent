@@ -21,14 +21,16 @@ class PresenceStore:
             await pipe.execute()
 
     async def rename(self, identity: str, display_name: str) -> bool:
+        return await self.update(identity, {"display_name": display_name})
+
+    async def update(self, identity: str, values: dict) -> bool:
         key = cache.key("presence:client:" + identity)
         raw = await cache.async_client.get(key)
         if not raw:
             return False
         value = json.loads(raw)
-        value["display_name"] = display_name
-        await cache.async_client.set(key, json.dumps(value, ensure_ascii=False), xx=True, keepttl=True)
-        return True
+        value.update(values)
+        return bool(await cache.async_client.set(key, json.dumps(value, ensure_ascii=False), xx=True, keepttl=True))
 
     async def remove(self, identity: str) -> None:
         async with cache.async_client.pipeline(transaction=True) as pipe:

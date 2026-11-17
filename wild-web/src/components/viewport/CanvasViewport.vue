@@ -91,6 +91,7 @@ import {
 } from '../../renderer/environmentRuntime'
 import { WorldLightingRig } from '../../renderer/lightingRuntime'
 import { WorldPostProcessingRuntime } from '../../renderer/postProcessingRuntime'
+import { roundGroundGrid, softenGroundEdge } from '../../renderer/circularWorldGround'
 import { applyWorldRenderQuality, configureWorldRenderer, resolveWorldIllumination, resolveWorldEnvironmentColor } from '../../renderer/worldRenderSettings'
 import { FixtureLightingRuntime } from '../../renderer/fixtureLightingRuntime'
 import { resolveBuildingApproach, type BuildingApproach } from '../../renderer/buildingApproach'
@@ -174,8 +175,8 @@ let weatherVisuals: WorldWeatherVisuals | null = null
 let cloudLayer: WorldCloudLayer | null = null
 let hemisphereLight: THREE.HemisphereLight | null = null
 let directionalLight: THREE.DirectionalLight | null = null
-let shadowGround: THREE.Mesh<THREE.PlaneGeometry, THREE.ShadowMaterial> | null = null
-let presentationGround: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial> | null = null
+let shadowGround: THREE.Mesh<THREE.CircleGeometry, THREE.ShadowMaterial> | null = null
+let presentationGround: THREE.Mesh<THREE.CircleGeometry, THREE.MeshStandardMaterial> | null = null
 let builtInEnvironment: THREE.Group | null = null
 let builtInEnvironmentSignature = ''
 let postProcessing: WorldPostProcessingRuntime | null = null
@@ -473,7 +474,7 @@ watch(() => renderPanel.presetRequest, request => {
       applyQualityPreset()
       break
     case 'time': {
-      const hour = request.value === 'day' ? 12 : request.value === 'sunset' ? 18 : 0
+      const hour = request.value === 'dawn' ? 7 : request.value === 'day' ? 12 : request.value === 'sunset' ? 18 : 0
       if (getWorldEnvironmentState().timeOfDay === hour) {
         // 同一小时不会广播环境变更；主动重选仍要把实际灯光与时段对齐。
         syncTimePresetFromWorldEnvironment()
@@ -595,7 +596,11 @@ function initThreeJS() {
   // 组件只是它的调用方 —— 这样 `lantu/viewer` 与离线出图脚本能拿到**同一份** IBL，
   // 而不是各自在本地再搭一套光照。
   environmentRuntime = new WorldEnvironmentMapRuntime(renderer, scene, {
-    onRebuilt: markNeedsRender,
+    onRebuilt: () => {
+      if (sky) sky.visible = TIME_PRESETS[timeOfDay.value].skyVisible && !environmentRuntime?.photographicSkyReady
+      updateCelestialBodies()
+      markNeedsRender()
+    },
   })
 
   // 光照骨架（半球光 + 关键光/阴影）同样由引擎侧持有；这里只保留两个别名，
@@ -607,7 +612,7 @@ function initThreeJS() {
   applyTimePreset(true)
 
   shadowGround = new THREE.Mesh(
-    new THREE.PlaneGeometry(400, 400),
+    new THREE.CircleGeometry(200, 128),
     new THREE.ShadowMaterial({ color: 0x26352d, opacity: ENVIRONMENT_PRESETS.minimal.shadowOpacity }),
   )
   shadowGround.name = 'ShadowGround'
@@ -615,11 +620,12 @@ function initThreeJS() {
   shadowGround.position.y = -0.002
   shadowGround.renderOrder = 2
   shadowGround.receiveShadow = true
+  softenGroundEdge(shadowGround.material)
   scene.add(shadowGround)
 
   const groundTexture = createGroundTexture()
   presentationGround = new THREE.Mesh(
-    new THREE.PlaneGeometry(1, 1),
+    new THREE.CircleGeometry(.5, 128),
     new THREE.MeshStandardMaterial({
       map: groundTexture,
       color: TIME_PRESETS.day.groundColor,
@@ -637,6 +643,7 @@ function initThreeJS() {
   presentationGround.visible = false
   scene.add(presentationGround)
   applyGroundWeatherMaterial(presentationGround.material)
+  softenGroundEdge(presentationGround.material)
 
   builtInEnvironment = new THREE.Group()
   builtInEnvironment.name = 'BuiltInEnvironment'
@@ -750,7 +757,7 @@ function renderFrame() {
     renderer.info.reset()
     if (fixtureLighting.update(camera, qualityLevel.value)) renderer.shadowMap.needsUpdate = true
     waterReflection?.update(camera)
-    if (composer) composer.render()
+    if (postProcessing) postProcessing.render()
     else renderer.render(scene, camera)
     renderSubmitMs = performance.now() - renderStarted
     needsRender = false
@@ -899,6 +906,7 @@ function updateScene() {
       presentationGround.position.y = bbox.min[1] - 0.004
       const groundSize = Math.max(200, maxDim * 12)
       presentationGround.scale.set(groundSize, groundSize, 1)
+      shadowGround?.scale.set(groundSize / 400, groundSize / 400, 1)
     }
     if (gridHelper) gridHelper.position.y = bbox.min[1]
     rebuildBuiltInEnvironment()
@@ -1583,7 +1591,7 @@ function syncTimePresetFromWorldEnvironment(): boolean {
     ? 'night'
     : hour >= 16
       ? 'sunset'
-      : 'day'
+      : hour < 9 ? 'dawn' : 'day'
   if (timeOfDay.value === next) return false
   timeOfDay.value = next
   return true
@@ -1606,8 +1614,9 @@ function applyTimePreset(forceEnvironment = false) {
   // 天空 uniform、太阳/月亮实体、环境贴图太阳亮点继续用 sunDirection，不受影响。
   keyLightDirection.copy(sunDirection)
   if (timeOfDay.value === 'night') keyLightDirection.negate()
+  cloudLayer?.setLighting(keyLightDirection,preset.directionalColor,preset.exposure,timeOfDay.value === 'night')
 
-  sky.visible = preset.skyVisible
+  sky.visible = preset.skyVisible && !environmentRuntime?.photographicSkyReady
   syncSkyPreset(sky, preset, atmosphere, sunDirection)
 
   // 环境贴图（PMREM）重建很贵：一遍立方图 6 面渲染 + 卷积 + 纹理创建/销毁。
@@ -1706,7 +1715,7 @@ function updateCelestialBodies(center = lightingCenter, extent = lightingExtent)
   moonBody.position.copy(center).addScaledVector(sunDirection, -radius)
   sunBody.scale.set(size * 1.62, size * 1.62, 1)
   moonBody.scale.set(size, size, 1)
-  sunBody.visible = timeOfDay.value !== 'night'
+  sunBody.visible = timeOfDay.value !== 'night' && !environmentRuntime?.photographicSkyReady
   moonBody.visible = timeOfDay.value === 'night'
   ;(sunBody.material as THREE.SpriteMaterial).opacity = Math.max(
     0.12,
@@ -1758,7 +1767,8 @@ function applyViewMode() {
   const presenting = viewMode.value === 'presentation'
   const scenic = environmentPresetId.value !== 'minimal'
   scene.background = resolveWorldIllumination(timeOfDay.value, environmentPresetId.value).background
-  if (sky) sky.visible = TIME_PRESETS[timeOfDay.value].skyVisible
+  if (sky) sky.visible = TIME_PRESETS[timeOfDay.value].skyVisible && !environmentRuntime?.photographicSkyReady
+  environmentRuntime?.setBackgroundVisible(!(renderPanel.showEdges && !roaming.active))
   cloudLayer?.setVisible(getWorldEffectState().clouds)
   ensureGridVisible()
   if (shadowGround) shadowGround.visible = true
@@ -1863,7 +1873,7 @@ function markNeedsRender() {
 /** 网格覆盖场景并留出边距；大场景减少细分，避免网格线数量无限增长。 */
 function updateGroundGrid(width = 0, depth = 0) {
   if (!scene) return
-  const gridSize = 2 ** Math.ceil(Math.log2(Math.max(16, width + 4, depth + 4)))
+  const gridSize = 2 ** Math.ceil(Math.log2(Math.max(16, Math.hypot(width, depth) + 4)))
   const divisions = Math.min(gridSize, 128)
   if (!gridHelper || renderPanel.sceneDimensions.gridSize !== gridSize) {
     if (gridHelper) {
@@ -1873,6 +1883,7 @@ function updateGroundGrid(width = 0, depth = 0) {
       materials.forEach(material => material.dispose())
     }
     gridHelper = new THREE.GridHelper(gridSize, divisions, 0x444444, 0x333333)
+    roundGroundGrid(gridHelper, gridSize / 2)
     gridHelper.name = 'GridHelper'
     scene.add(gridHelper)
   }
@@ -1985,6 +1996,7 @@ function applyEdgeMode() {
   // applyViewMode / applyGroundVisibility / ensureGridVisible /
   // updateCelestialBodies / cloudLayer.setVisible。
   if (edgesOnly) {
+    environmentRuntime?.setBackgroundVisible(false)
     componentTransformEnabled = false
     if (shadowGround) shadowGround.visible = false
     if (presentationGround) presentationGround.visible = false
@@ -2050,7 +2062,7 @@ function takeScreenshot() {
   renderer.info.reset()
   if (fixtureLighting.update(camera, qualityLevel.value)) renderer.shadowMap.needsUpdate = true
   waterReflection?.update(camera, true)
-  if (composer) composer.render()
+  if (postProcessing) postProcessing.render()
   else renderer.render(scene, camera)
   publishRenderStats()
   try {

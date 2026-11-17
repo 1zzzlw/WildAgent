@@ -284,6 +284,19 @@ def _build_repair_prompt(
     return prompt
 
 
+# base_prompt：基础系统提示词
+# user_request：用户原始需求
+# thinking_mode：是否允许首轮开启思考
+# on_reasoning_delta：向外发送思考内容、进度的异步函数
+# current_plan：可选的起始图纸
+# only_blocks：可选的设计字段分组范围
+# defects：调用方提供的待修问题
+# max_attempts：最多尝试次数，默认 3
+# call_accounting：与外层共享的调用计数字典
+# allow_design_changes：控制后面的一项顶层字段检查
+# validate：外层传入的校验函数
+# load_repair_rules：外层传入的修订资料检索函数
+# **_options：接收其他命名参数，其中 design_hash 用于追踪
 async def draft_design(
     *,
     base_prompt,
@@ -300,15 +313,17 @@ async def draft_design(
     load_repair_rules=None,
     **_options,
 ):
-    # 调用方传进来的上一轮设计图纸
+    # 调用方传进来的上一轮设计图纸，有起始图纸，就深复制；没有就使用空字典
     context = deepcopy(current_plan or {})
-    # 收集本轮可以处理的字段名
+    # 创建空集合，用来保存允许处理的顶层字段名。集合会自动去重。
     fields = set()
+    # 遍历设计字段分组
     for block in ordered_blocks():
         if only_blocks is not None and block.name not in only_blocks:
             continue
         fields.update(block.fields)
 
+    # 没有限定分组时，再加入逐层布局字段
     if only_blocks is None:
         fields.add("floor_layouts")
 
@@ -327,6 +342,7 @@ async def draft_design(
     # 初始化整个过程需要的记录
     # rejected：记录未通过的轮次、错误和模型原始输出
     # repairs：记录成功应用到候选图纸上的补丁，以及之后是否通过校验
+    # expansions：参数表达式、重复项的展开记录
     # usage：累计模型用量
     rejected = []
     repairs = []
@@ -360,7 +376,10 @@ async def draft_design(
             {"role": "system", "content": prompt},
             {"role": "user", "content": task},
         ]
+
         accounting["model_calls"] = accounting.get("model_calls", 0) + 1
+
+        # 设置追踪名称
         stage = (
             "architecture.generate" if attempt == 1 else "architecture.format_revision"
         )
@@ -385,9 +404,10 @@ async def draft_design(
         except ValueError as exc:
             issue = str(exc)
 
-        # 准备返回给调用方的数据
-        # 准备接受校验的候选图纸
-        # 是否已经进入候选图纸的校验阶段
+        # raw：模型本轮返回的对象，可能是完整设计，也可能是补丁
+        # candidate：准备接受校验的候选图纸
+        # picked：本轮成功后实际返回的数据
+        # checked：是否已经进入候选图纸的校验阶段
         picked = raw or {}
         candidate = None
         checked = False

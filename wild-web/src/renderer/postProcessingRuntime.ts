@@ -15,10 +15,11 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
 import { SSAOPass } from 'three/examples/jsm/postprocessing/SSAOPass.js'
 import { GTAOPass } from 'three/examples/jsm/postprocessing/GTAOPass.js'
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js'
-import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js'
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js'
 import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader.js'
 import type { Pass } from 'three/examples/jsm/postprocessing/Pass.js'
+import { WorldVisibilityRuntime } from './visibilityRuntime'
+import { createWorldOutputPass } from './worldOutputPass'
 
 /** SSAO 内部 RT 的分辨率比例。0.5 ⇒ normal/ssao/blur 三个 RT 的面积降到 1/4。 */
 const SSAO_RESOLUTION_SCALE = 0.5
@@ -44,6 +45,8 @@ export class WorldPostProcessingRuntime {
   readonly ssao: SSAOPass
   readonly bloom: UnrealBloomPass
   readonly fxaa: ShaderPass
+  readonly visibility = new WorldVisibilityRuntime()
+  readonly output = createWorldOutputPass()
   private readonly renderer: THREE.WebGLRenderer
   private appliedMsaaSamples = -1
   private gtao: GTAOPass | null = null
@@ -76,7 +79,7 @@ export class WorldPostProcessingRuntime {
 
     this.bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.2, 0.35, 1.05)
     this.composer.addPass(this.bloom)
-    this.composer.addPass(new OutputPass())
+    this.composer.addPass(this.output)
 
     this.fxaa = new ShaderPass(FXAAShader)
     this.composer.addPass(this.fxaa)
@@ -107,6 +110,8 @@ export class WorldPostProcessingRuntime {
    */
   setMsaaSamples(samples: number): void {
     const next = this.renderer.capabilities.isWebGL2 ? samples : 0
+    // MSAA 已在几何边缘采样，再叠 FXAA 会柔化窗框、文字和天空细节。
+    this.fxaa.enabled = next === 0
     if (next === this.appliedMsaaSamples) return
     for (const target of [this.composer.renderTarget1, this.composer.renderTarget2]) {
       target.samples = next
@@ -145,7 +150,7 @@ export class WorldPostProcessingRuntime {
   }
 
   render(): void {
-    this.composer.render()
+    this.visibility.render(this.renderer, this.ssao.scene, this.ssao.camera, () => this.composer.render())
   }
 
   dispose(): void {
@@ -158,6 +163,7 @@ export class WorldPostProcessingRuntime {
       this.gtao.dispose()
     }
     this.bloom.dispose()
+    this.output.dispose()
     this.fxaa.material.dispose()
     this.composer.dispose()
   }

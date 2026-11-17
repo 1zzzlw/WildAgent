@@ -31,8 +31,24 @@ export const usePresenceStore = defineStore('presence', () => {
   const visitorName = ref(loadVisitorName())
   const onlineCount = ref(0)
   const onlineClients = ref<OnlineClientInfo[]>([])
+  const workspaceActive = ref(false)
+  const sessionActivitySupported = ref(false)
   const hasVisitorName = computed(() => visitorName.value.length > 0)
   const isConnected = computed(() => connectionStatus.value === 'connected')
+  const operatorsBySession = computed(() => {
+    const groups: Record<string, Map<string, OnlineClientInfo>> = {}
+    const priority = { idle: 0, active: 1, generating: 2 }
+    for (const client of onlineClients.value) {
+      if (!client.can_edit || !client.session_id) continue
+      const group = groups[client.session_id] ||= new Map()
+      const key = client.user_id || client.id
+      const previous = group.get(key)
+      // 同一账号的多个标签页合并显示，保留优先级最高的活动状态。
+      if (!previous || priority[client.activity || 'idle'] > priority[previous.activity || 'idle']) group.set(key, client)
+    }
+    return Object.fromEntries(Object.entries(groups).map(([sessionId, clients]) => [sessionId,
+      [...clients.values()].sort((a, b) => (a.username || a.display_name).localeCompare(b.username || b.display_name, 'zh-CN'))]))
+  })
 
   function setVisitorName(value: string) {
     const normalized = normalizeVisitorName(value)
@@ -57,17 +73,19 @@ export const usePresenceStore = defineStore('presence', () => {
     if (status !== 'connected') clearSnapshot()
   }
 
-  function updatePresence(count: number, clients: OnlineClientInfo[] = []) {
+  function updatePresence(count: number, clients: OnlineClientInfo[] = [], activitySupported = false) {
     supported.value = true
     onlineCount.value = Number.isFinite(count)
       ? Math.max(0, Math.floor(count))
       : 0
     onlineClients.value = Array.isArray(clients) ? clients : []
+    sessionActivitySupported.value = activitySupported
   }
 
   function clearSnapshot() {
     onlineCount.value = 0
     onlineClients.value = []
+    sessionActivitySupported.value = false
   }
 
   return {
@@ -77,6 +95,9 @@ export const usePresenceStore = defineStore('presence', () => {
     hasVisitorName,
     onlineCount,
     onlineClients,
+    workspaceActive,
+    sessionActivitySupported,
+    operatorsBySession,
     isConnected,
     setVisitorName,
     setConnectionStatus,

@@ -24,6 +24,7 @@ export function applyWorldRenderQuality(renderer: THREE.WebGLRenderer, post: Wor
   renderer.setPixelRatio(ratio)
   post.setPixelRatio(ratio)
   post.setMsaaSamples(4)
+  post.output.material.uniforms.worldSharpen.value = quality === 'high' ? .16 : quality === 'medium' ? .1 : 0
   post.setAmbientOcclusion(quality === 'high' ? 'gtao' : preset.ssao ? 'ssao' : 'off')
   post.setBloomEnabled(preset.bloom && time === 'night')
   lighting?.setShadowMapSize(preset.shadowMapSize, renderer.capabilities.maxTextureSize)

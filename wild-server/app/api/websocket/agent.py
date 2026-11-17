@@ -70,7 +70,7 @@ async def agent_websocket(ws: WebSocket):
     # ---------- 消息接收循环 ----------
     try:
         await heartbeat.start(on_heartbeat_timeout)
-        await presence_service.connect(ws)
+        await presence_service.connect(ws, user=await asyncio.to_thread(current_user, ws))
         while connection_alive and not _websocket_disconnected(ws):
             # receive_text 在没有消息时挂起，但不占用事件循环线程。
             raw = await ws.receive_text()
@@ -106,6 +106,14 @@ async def agent_websocket(ws: WebSocket):
             msg_type = data.get("type")
 
             user = await asyncio.to_thread(current_user, ws) if msg_type not in {"ping", "presence_identify"} else None
+            if msg_type == "presence_activity":
+                try:
+                    await presence_service.update_activity(
+                        ws, session_id=data.get("session_id"), activity=data.get("activity"), user=user,
+                    )
+                except ApplicationError as exc:
+                    await _send_event(ws, {"type": "error", "code": exc.code, "error": exc.detail})
+                continue
             if msg_type not in {"ping", "presence_identify"} and (user or {}).get("role") != "editor":
                 await _send_event(ws, {
                     "type": "error", "code": "permission_denied",

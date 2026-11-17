@@ -77,7 +77,7 @@ const branchLabel = computed(() => categories.find(category => category.type ===
 const choiceSets = {
   camera: Object.entries(CAMERA_PRESETS).map(([value,row]) => ({ value, label: row.label, icon: { corner: Coordinate, human: User, bird: Position, front: OfficeBuilding }[value] })),
   environment: Object.entries(ENVIRONMENT_PRESETS).map(([value,row]) => ({ value, label: row.label, icon: EnvironmentIcon })),
-  time: Object.entries(TIME_PRESETS).map(([value,row]) => ({ value, label: row.label, icon: { day: Sunny, sunset: Sunset, night: Moon }[value] })),
+  time: Object.entries(TIME_PRESETS).map(([value,row]) => ({ value, label: row.label, icon: { dawn: Sunset, day: Sunny, sunset: Sunset, night: Moon }[value] })),
   quality: Object.entries(QUALITY_PRESETS).map(([value,row]) => ({ value, label: row.label, icon: { low: Cpu, medium: Odometer, high: MagicStick }[value] })),
   view: [{ value: 'editor', label: '编辑', icon: Edit }, { value: 'presentation', label: '展示', icon: View }],
 }

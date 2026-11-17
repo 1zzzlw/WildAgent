@@ -46,6 +46,7 @@ import { compactSceneName, useSceneStore } from '../stores/sceneStore'
 import { useSelectionStore } from '../stores/selectionStore'
 import { useAuthStore } from '../stores/authStore'
 import { usePresenceStore } from '../extensions/presence/store'
+import { trackSessionActivity } from '../extensions/presence/activity'
 import { PRESENCE_VISITOR_NAME_CHANGED_EVENT } from '../extensions/presence/types'
 import { generateSceneSummary } from '../wild/sceneSummary'
 import { AGENT_PROTOCOL_VERSION, createUserMessageRequest } from './protocol'
@@ -119,6 +120,7 @@ export class AgentBridge {
   private visibilityChangeHandler: (() => void) | null = null
   private lastHiddenTime: number = 0
   private visitorNameChangeHandler: EventListener | null = null
+  private activityTracker: ReturnType<typeof trackSessionActivity> | null = null
   /** 将迟到事件路由回发起请求的会话，避免切换会话后串消息。 */
   private requestContexts = new Map<string, {
     sessionId: string
@@ -182,6 +184,12 @@ export class AgentBridge {
         // 启动心跳 + 页面可见性监听
         this.startHeartbeat()
         this.setupVisibilityListener()
+        this.activityTracker?.dispose()
+        this.activityTracker = trackSessionActivity(state => {
+          if (this.ws === connection && connection.readyState === WebSocket.OPEN) connection.send(JSON.stringify({
+            protocol_version: AGENT_PROTOCOL_VERSION, type: 'presence_activity', ...state,
+          }))
+        })
         if (this.reconnectTimer) {
           clearTimeout(this.reconnectTimer)
           this.reconnectTimer = null
@@ -238,6 +246,8 @@ export class AgentBridge {
       this.ws.onclose = () => {
         if (this.ws !== connection) return
         console.log('[AgentBridge] WebSocket 已断开')
+        this.activityTracker?.dispose()
+        this.activityTracker = null
         this.stopHeartbeat()
         presenceStore.setConnectionStatus(
           this.manualDisconnect ? 'disconnected' : 'reconnecting',
@@ -660,7 +670,7 @@ export class AgentBridge {
         break
 
       case 'presence_update':
-        presenceStore.updatePresence(message.online_count, message.clients)
+        presenceStore.updatePresence(message.online_count, message.clients, message.session_activity_supported)
         break
 
       case 'error':
@@ -1247,6 +1257,7 @@ export class AgentBridge {
       timestamp: Date.now()
     }
     this.ws.send(JSON.stringify(pingMsg))
+    this.activityTracker?.publish()
   }
 
   /** 处理 pong 响应 */
@@ -1265,6 +1276,8 @@ export class AgentBridge {
 
   /** 心跳超时处理 */
   private onHeartbeatTimeout() {
+    this.activityTracker?.dispose()
+    this.activityTracker = null
     // 判定连接已死，强制关闭并重连
     if (this.ws) {
       this.ws.close()
@@ -1318,6 +1331,8 @@ export class AgentBridge {
 
   /** 清除所有定时器 */
   private clearAllTimers() {
+    this.activityTracker?.dispose()
+    this.activityTracker = null
     this.stopHeartbeat()
     this.removeVisibilityListener()
 

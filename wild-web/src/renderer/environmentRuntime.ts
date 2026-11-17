@@ -15,13 +15,14 @@
  * 职责边界：
  *   - 本文件只管"环境贴图怎么产生、什么时候重建、怎么释放"；
  *   - 不管"当前应该是白天还是黄昏"（策略在 `defaultWorldLook` + 调用方）；
- *   - 不管主场景的天空实体/日月/天气层（那是编辑器视口自己的观察道具）。
+ *   - 照片天空与 IBL 共用资源、朝向和天气色；程序天空备用实体、日月与动态天气由调用方控制。
  */
 
 import * as THREE from 'three'
 import { Sky } from 'three/examples/jsm/objects/Sky.js'
 import type { TimePreset } from './defaultWorldLook'
 import type { WorldAtmosphereAppearance } from './worldWeatherRuntime'
+import { PhotographicSky } from './photographicSky'
 
 /** 夜晚沿用更模糊的环境贴图（月光散射），白天用更锐的（太阳镜面高光要清晰）。 */
 const ENVIRONMENT_SIGMA_DAY = 0.045
@@ -160,6 +161,8 @@ export interface WorldEnvironmentMapOptions {
  * + 其后合并到窗口末尾（拖动期间最多约 8 次/秒，且松开一定落地最终态）。
  */
 export class WorldEnvironmentMapRuntime {
+  private readonly photographicSky: PhotographicSky
+  private lastInput: {preset: TimePreset; atmosphere: WorldAtmosphereAppearance; sunDirection: THREE.Vector3; isNight: boolean; groundColor: number} | null = null
   private readonly scene: THREE.Scene
   private readonly throttleMs: number
   private readonly onRebuilt: (() => void) | undefined
@@ -167,7 +170,7 @@ export class WorldEnvironmentMapRuntime {
   private environmentScene: THREE.Scene | null = null
   private environmentSky: Sky | null = null
   private environmentSunSprite: THREE.Sprite | null = null
-  private environmentGround: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial> | null = null
+  private environmentGround: THREE.Mesh<THREE.CircleGeometry, THREE.MeshBasicMaterial> | null = null
   private target: THREE.WebGLRenderTarget | null = null
   private lastRebuildTime = 0
   private lastSignature = ''
@@ -195,13 +198,21 @@ export class WorldEnvironmentMapRuntime {
     this.environmentSky = new Sky()
     this.environmentSky.scale.setScalar(SKY_SCALE)
     this.environmentScene.add(this.environmentSky)
+    this.photographicSky = new PhotographicSky(() => {
+      const input = this.lastInput
+      if (!input) return
+      this.rebuild(input.preset, input.atmosphere, input.sunDirection, input.isNight, input.groundColor)
+      this.onRebuilt?.()
+    })
+    scene.add(this.photographicSky.mesh)
+    this.environmentScene.add(this.photographicSky.environmentMesh)
     // 环境贴图内的太阳亮点：让 IBL 反射出现真实太阳镜面高光（材质更立体）。
     this.environmentSunSprite = createCelestialBody('sun')
     this.environmentSunSprite.scale.setScalar(ENVIRONMENT_SUN_SCALE)
     this.environmentSunSprite.name = 'EnvironmentSun'
     this.environmentScene.add(this.environmentSunSprite)
     // 下半球反射真实地面色，避免玻璃和水面向下也反射一整片天空。
-    this.environmentGround = new THREE.Mesh(new THREE.PlaneGeometry(2000, 2000), new THREE.MeshBasicMaterial())
+    this.environmentGround = new THREE.Mesh(new THREE.CircleGeometry(1000, 64), new THREE.MeshBasicMaterial())
     this.environmentGround.rotation.x = -Math.PI / 2
     this.environmentGround.position.y = -1
     this.environmentScene.add(this.environmentGround)
@@ -217,6 +228,10 @@ export class WorldEnvironmentMapRuntime {
     return this.target !== null
   }
 
+  get photographicSkyReady(): boolean { return this.photographicSky.ready }
+
+  setBackgroundVisible(visible: boolean): void { this.photographicSky.setVisible(visible) }
+
   /**
    * 立即重建环境贴图。签名与节流都绕开，用于时段/环境档/profile 这类离散切换。
    * 返回是否真的重建（环境场景尚未就绪时返回 false）。
@@ -230,6 +245,10 @@ export class WorldEnvironmentMapRuntime {
   ): boolean {
     if (!this.pmrem || !this.environmentScene || !this.environmentSky) return false
 
+    this.lastInput = {preset, atmosphere, sunDirection: sunDirection.clone(), isNight, groundColor}
+    this.photographicSky.update(preset, atmosphere, sunDirection)
+    this.environmentSky.visible = !this.photographicSky.ready
+
     syncSkyPreset(this.environmentSky, preset, atmosphere, sunDirection)
     this.environmentScene.background = new THREE.Color(preset.background)
       .lerp(new THREE.Color(atmosphere.backgroundTint), atmosphere.tintStrength)
@@ -237,12 +256,13 @@ export class WorldEnvironmentMapRuntime {
     if (this.environmentSunSprite) {
       // 沿太阳方向放置亮点（距离远于 PMREM 半径），夜晚隐藏避免月光串色。
       this.environmentSunSprite.position.copy(sunDirection).multiplyScalar(ENVIRONMENT_SUN_DISTANCE)
-      this.environmentSunSprite.visible = !isNight
+      this.environmentSunSprite.visible = !isNight && !this.photographicSky.ready
     }
 
     const nextTarget = this.pmrem.fromScene(
       this.environmentScene,
-      isNight ? ENVIRONMENT_SIGMA_NIGHT : ENVIRONMENT_SIGMA_DAY,
+      // 照片本身没有程序化太阳极亮点，直接交给 PMREM 按材质粗糙度滤波，保留反射细节。
+      this.photographicSky.ready ? 0 : isNight ? ENVIRONMENT_SIGMA_NIGHT : ENVIRONMENT_SIGMA_DAY,
       ENVIRONMENT_NEAR,
       ENVIRONMENT_FAR,
     )
@@ -299,6 +319,8 @@ export class WorldEnvironmentMapRuntime {
   }
 
   dispose(): void {
+    this.lastInput = null
+    this.photographicSky.dispose()
     if (this.timer !== null) {
       clearTimeout(this.timer)
       this.timer = null

@@ -1,0 +1,62 @@
+[
+  {
+    "time": "day",
+    "id": "kloofendal_48d_partly_cloudy_puresky",
+    "source": "https://polyhaven.com/a/kloofendal_48d_partly_cloudy_puresky",
+    "download": "https://dl.polyhaven.org/file/ph-assets/HDRIs/extra/Tonemapped%20JPG/kloofendal_48d_partly_cloudy_puresky.jpg",
+    "md5": "3f2b19fa9c14943b34e5d4f480ba13ba",
+    "license": "CC0-1.0",
+    "sunU": 0.599609375,
+    "file": "day.webp",
+    "dimensions": [
+      8192,
+      4096
+    ],
+    "bytes": 2087688
+  },
+  {
+    "time": "dawn",
+    "id": "qwantani_dawn_puresky",
+    "source": "https://polyhaven.com/a/qwantani_dawn_puresky",
+    "download": "https://dl.polyhaven.org/file/ph-assets/HDRIs/extra/Tonemapped%20JPG/qwantani_dawn_puresky.jpg",
+    "md5": "76d32274a15cd634a0bbae4468c2fa4a",
+    "license": "CC0-1.0",
+    "sunU": 0.5986328125,
+    "file": "dawn.webp",
+    "dimensions": [
+      8192,
+      4096
+    ],
+    "bytes": 1013248
+  },
+  {
+    "time": "sunset",
+    "id": "belfast_sunset_puresky",
+    "source": "https://polyhaven.com/a/belfast_sunset_puresky",
+    "download": "https://dl.polyhaven.org/file/ph-assets/HDRIs/extra/Tonemapped%20JPG/belfast_sunset_puresky.jpg",
+    "md5": "5313193c1b09d9776dd3395d08b6beee",
+    "license": "CC0-1.0",
+    "sunU": 0.673828125,
+    "file": "sunset.webp",
+    "dimensions": [
+      8192,
+      4096
+    ],
+    "bytes": 1283604
+  },
+  {
+    "time": "night",
+    "id": "qwantani_night_puresky",
+    "source": "https://polyhaven.com/a/qwantani_night_puresky",
+    "download": "https://dl.polyhaven.org/file/ph-assets/HDRIs/extra/Tonemapped%20JPG/qwantani_night_puresky.jpg",
+    "md5": "70c24e45fe8db819641c76068675c4a2",
+    "license": "CC0-1.0",
+    "sunU": 0.619140625,
+    "file": "night.webp",
+    "dimensions": [
+      8192,
+      4096
+    ],
+    "bytes": 6969026
+  }
+]
