@@ -29,7 +29,7 @@
       </div>
       <div class="session-list-hint">
         <span>{{ filteredSessions.length }} 个会话</span>
-        <span>按最近更新排序</span>
+        <span>按创建时间排序</span>
       </div>
       <div class="session-cards" aria-label="会话列表">
         <div v-for="session in filteredSessions" :key="session.session_id"
@@ -47,7 +47,7 @@
                 <span>{{ statusLabel(session.status) }}</span>
                 <span v-if="session.locked">已锁定</span>
                 <span v-if="session.elements_count || session.components_count">{{ session.elements_count || 0 }} 个元素</span>
-                <span>{{ formatRelativeTime(session.updated_at) }}</span>
+                <span :title="new Date(session.created_at).toLocaleString('zh-CN')">创建于 {{ formatRelativeTime(session.created_at) }}</span>
               </span>
               <span class="session-id">{{ session.session_id }}</span>
             </span>
@@ -104,7 +104,7 @@ const filteredSessions = computed(() => {
   return agentStore.sessions
     .filter(session => !query || session.name.toLowerCase().includes(query) || session.session_id.toLowerCase().includes(query))
     .slice()
-    .sort((a, b) => b.updated_at - a.updated_at)
+    .sort((a, b) => b.created_at - a.created_at || a.session_id.localeCompare(b.session_id))
 })
 
 function openPicker() {
@@ -147,6 +147,8 @@ function statusLabel(status: SessionInfo['status']) {
 .session-list-panel,
 :global(.session-dialog),
 :global(.session-menu),
+:global(.blueprint-import-dialog),
+:global(.blueprint-import-options),
 :global(.session-rename-dialog) {
   --el-color-primary: var(--studio-accent);
   --el-color-primary-light-9: var(--studio-muted);

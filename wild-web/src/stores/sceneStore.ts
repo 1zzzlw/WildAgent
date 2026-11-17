@@ -34,7 +34,7 @@ import { useAgentStore } from './agentStore'
 import { ElMessage } from 'element-plus'
 import { agentBridge } from '../agent/agentBridge'
 
-function compactSceneName(name: string): string {
+export function compactSceneName(name: string): string {
   const firstClause = String(name).trim().replace(/\s+/g, ' ').split(/[：:，,；;。]/, 1)[0]?.trim() || '未命名建筑'
   return [...firstClause].slice(0, 24).join('')
 }

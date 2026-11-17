@@ -1,6 +1,8 @@
 import { defineStore } from 'pinia'
 import { h, ref, watch } from 'vue'
-import { ElMessage, ElMessageBox, ElOption, ElSelect } from 'element-plus'
+import { ElMessage, ElMessageBox, ElOption, ElRadio, ElRadioGroup, ElSelect } from 'element-plus'
+import 'element-plus/es/components/radio/style/css'
+import 'element-plus/es/components/radio-group/style/css'
 import { agentBridge } from '../agent/agentBridge'
 import { useAgentStore } from './agentStore'
 import { useSceneStore } from './sceneStore'
@@ -62,17 +64,13 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       await scene.loadBlueprint(source || empty!.blueprint, info?.name || empty?.name)
       if (!current()) return false
       scene.markSaved()
-      if (source) {
-        agent.updateSessionInfo(sessionId, info?.name || source.meta.name,
-          source.geometry.elements?.length || 0, source.geometry.components?.length || 0)
-      }
       return true
     } finally {
       if (current()) scene.isLoading = false
     }
   }
 
-  async function saveScene(): Promise<boolean> {
+  async function saveScene(baseRevision?: number): Promise<boolean> {
     if (!useAuthStore().canEdit) return false
     const scene = useSceneStore()
     if (scene.isLocked) { ElMessage.warning('蓝图已锁定，请先由管理员解锁'); return false }
@@ -87,7 +85,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     isSaving.value = true
     try {
       const saved = await agentBridge.syncBlueprintToBackend(
-        blueprint as unknown as Record<string, unknown>, { sessionId, revision, baseRevision: revision, operationId: crypto.randomUUID(), label: '保存蓝图' },
+        blueprint as unknown as Record<string, unknown>, { sessionId, revision, baseRevision: baseRevision ?? revision, operationId: crypto.randomUUID(), label: '保存蓝图' },
       )
       if (!saved) {
         if (scene.document === doc) doc.dirty = true
@@ -139,43 +137,76 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       const scene = useSceneStore()
       if (scene.document?.dirty && !await saveScene()) return false
       const candidates = await agentBridge.findBlueprintImportCandidates(file.name, blueprint)
-      let target: typeof candidates[number] | undefined = candidates[0]
-      if (candidates.length > 1) {
-        const selected = ref(target!.filename || '')
+      let target: typeof candidates[number] | undefined
+      if (candidates.length) {
+        const available = candidates.find(item => !item.locked)
+        const selected = ref((available || candidates[0])!.filename)
+        const mode = ref(available ? 'replace' : 'copy')
         try {
           await ElMessageBox({
-            title: '存在多份匹配蓝图，请选择要替换的记录',
-            message: () => h(ElSelect, {
-              modelValue: selected.value,
-              'onUpdate:modelValue': (value: unknown) => { selected.value = String(value) },
-              style: { width: '100%' },
-            }, () => candidates.map(item => h(ElOption, { key: item.filename, label: item.filename, value: item.filename }))),
+            title: '已存在同名或匹配的建筑',
+            customClass: 'blueprint-import-dialog',
+            message: () => h('div', [
+              h('p', { style: { overflowWrap: 'anywhere' } }, `「${blueprint.meta.name || file.name}」匹配到 ${candidates.length} 份已有蓝图，请选择导入方式。`),
+              h(ElRadioGroup, {
+                modelValue: mode.value,
+                'onUpdate:modelValue': (value: unknown) => { mode.value = String(value) },
+                style: { display: 'grid', gap: '8px', margin: '16px 0' },
+                'aria-label': '导入方式',
+              }, () => [
+                h(ElRadio, { value: 'replace', disabled: !available }, () => '覆盖已有蓝图'),
+                h(ElRadio, { value: 'copy' }, () => '另存为新会话，保留两份'),
+              ]),
+              mode.value === 'replace' && candidates.length > 1 ? h(ElSelect, {
+                modelValue: selected.value,
+                'onUpdate:modelValue': (value: unknown) => { selected.value = String(value) },
+                style: { width: '100%' },
+                'aria-label': '选择要覆盖的蓝图',
+                popperClass: 'blueprint-import-options',
+              }, () => candidates.map(item => h(ElOption, {
+                key: item.filename, label: `${item.filename}${item.locked ? '（已锁定）' : ''}`,
+                value: item.filename, disabled: item.locked,
+              }))) : null,
+              h('p', { style: { marginTop: '12px', fontSize: '12px' } }, mode.value === 'replace'
+                ? '覆盖将替换蓝图内容，保留原会话、聊天记录和创建时间。'
+                : available ? '另存会创建一份新蓝图，原蓝图保持不变。' : '已有蓝图均已锁定，可以另存为新会话。'),
+            ]),
             showCancelButton: true,
-            confirmButtonText: '替换所选蓝图',
-            cancelButtonText: '取消导入',
+            confirmButtonText: '确认导入',
+            cancelButtonText: '取消',
+            closeOnClickModal: false,
           })
         } catch { return false }
-        target = candidates.find(item => item.filename === selected.value)
-        if (!target) return false
+        if (mode.value === 'replace') {
+          target = candidates.find(item => item.filename === selected.value)
+          if (!target) return false
+        }
       }
       const agent = useAgentStore()
-      const sessionId = target?.session_id || agent.createSession(blueprint.meta.name)
       if (target?.locked) throw new Error('蓝图已锁定，请先由管理员解锁再导入替换')
+      let baseRevision: number | undefined
+      if (target) {
+        const existing = await agentBridge.loadSessionBlueprint(target.session_id, undefined, target.filename) as Blueprint | null
+        if (!existing) throw new Error('无法读取待覆盖蓝图，原蓝图保持不变，请稍后重试')
+        baseRevision = existing.editor?.revision ?? 1
+      }
+      const sessionId = target?.session_id || agent.createSession(blueprint.meta.name)
+      const originalCreatedAt = agent.sessions.find(item => item.session_id === sessionId)?.created_at
       // 先绑定原会话和文件路径，保存及后续编辑都覆盖同一条数据库记录。
       agent.switchToSession(sessionId)
       if (target) {
         const session = agent.sessions.find(item => item.session_id === sessionId)!
-        Object.assign(session, target)
+        Object.assign(session, target, { created_at: originalCreatedAt ?? target.created_at })
       }
       useHistoryStore().clear()
       useSelectionStore().clearSelection()
       // 渲染蓝图文件
-      const loading = scene.loadBlueprint(blueprint, file.name)
+      const loading = scene.loadBlueprint(blueprint, file.name, baseRevision === undefined ? undefined : baseRevision + 1)
       const imported = scene.document
       if (imported) imported.dirty = true
       await loading
       if (scene.document !== imported || agent.currentSessionId !== sessionId) return false
-      const saved = await saveScene()
+      const saved = await saveScene(baseRevision)
       if (target) {
         const [messages, turns] = await Promise.all([
           agentBridge.fetchSessionMessages(sessionId), agentBridge.fetchSessionTurns(sessionId),

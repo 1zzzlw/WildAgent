@@ -42,7 +42,7 @@
 
 import { useAgentStore } from '../stores/agentStore'
 import { ElMessage } from 'element-plus'
-import { useSceneStore } from '../stores/sceneStore'
+import { compactSceneName, useSceneStore } from '../stores/sceneStore'
 import { useSelectionStore } from '../stores/selectionStore'
 import { useAuthStore } from '../stores/authStore'
 import { usePresenceStore } from '../extensions/presence/store'
@@ -53,22 +53,6 @@ import type { AgentMessage, AgentReplyResponse, AgentTurn, BlueprintGeneratedRes
 import type { Blueprint } from '../types/blueprint'
 
 type BlueprintImportTarget = SessionInfo & { filename: string }
-
-/** 与历史导入去重一致：版本号不改变蓝图内容，其他编辑器数据仍参与比较。 */
-function comparableBlueprint(blueprint: Record<string, unknown>): string {
-  const content = { ...blueprint }
-  if (content.editor && typeof content.editor === 'object' && !Array.isArray(content.editor)) {
-    const { revision: _revision, ...editor } = content.editor as Record<string, unknown>
-    if (Object.keys(editor).length) content.editor = editor
-    else delete content.editor
-  }
-  return JSON.stringify(content, (_key, value) => {
-    if (value && typeof value === 'object' && !Array.isArray(value)) {
-      return Object.fromEntries(Object.keys(value).sort().map(key => [key, value[key]]))
-    }
-    return value
-  })
-}
 
 /** 重连配置 */
 const RECONNECT_CONFIG = {
@@ -917,30 +901,16 @@ export class AgentBridge {
     }
   }
 
-  /** 导入时先匹配原文件、原会话，最后兼容旧导出的蓝图名称。 */
+  /** 按文件、原会话或实际保存的建筑名查找候选，覆盖与另存由用户决定。 */
   async findBlueprintImportCandidates(filename: string, blueprint: Blueprint): Promise<BlueprintImportTarget[]> {
     const response = await fetch(`${this.httpBaseUrl}/api/scenes`, { cache: 'no-store' })
     if (!response.ok) throw new Error('无法查询已有蓝图，请检查连接后重试')
     const scenes = await response.json() as BlueprintImportTarget[]
-    let matches = scenes.filter(item => item.filename?.split('/').pop() === filename)
     const sourceSessionId = filename.match(/^(session_[^_]+)(?:_|\.)/)?.[1]
-    if (!matches.length && sourceSessionId) {
-      matches = scenes.filter(item => item.session_id === sourceSessionId)
-    }
-    if (!matches.length && blueprint.meta.name) {
-      const named = scenes.filter(item => item.name === blueprint.meta.name)
-      if (sourceSessionId && named.length) {
-        // 旧磁盘的相同蓝图可能使用不同会话编号；仅同名不足以认定它们相同。
-        const content = comparableBlueprint(blueprint as unknown as Record<string, unknown>)
-        const compared = await Promise.all(named.map(async item => {
-          const path = item.filename.split('/').map(encodeURIComponent).join('/')
-          const existing = await fetch(`${this.httpBaseUrl}/api/scenes/${path}`, { cache: 'no-store' })
-          if (!existing.ok) throw new Error('无法核对已有蓝图，请检查连接后重试')
-          return comparableBlueprint(await existing.json()) === content ? item : null
-        }))
-        matches = compared.filter((item): item is BlueprintImportTarget => item !== null)
-      } else matches = named
-    }
+    const name = blueprint.meta.name ? compactSceneName(blueprint.meta.name) : ''
+    const matches = scenes.filter(item => item.filename?.split('/').pop() === filename
+      || Boolean(sourceSessionId && item.session_id === sourceSessionId)
+      || Boolean(name && compactSceneName(item.name) === name))
     if (matches.some(item => !item.session_id)) throw new Error('已有蓝图缺少关联会话，请先修复该记录')
     return matches.map(item => ({ ...item, status: 'saved' as const }))
   }
@@ -998,7 +968,7 @@ export class AgentBridge {
   }
 
   /** 从后端加载会话对应的蓝图 */
-  async loadSessionBlueprint(sessionId: string, signal?: AbortSignal): Promise<Record<string, unknown> | null> {
+  async loadSessionBlueprint(sessionId: string, signal?: AbortSignal, filename?: string): Promise<Record<string, unknown> | null> {
     try {
       const baseUrl = this.httpBaseUrl
       const account = useAuthStore().user?.id || 'guest'
@@ -1009,7 +979,7 @@ export class AgentBridge {
       // 优先从 sessions 列表找已知的带日期路径 filename，兼容旧格式
       const agentStore = useAgentStore()
       const session = agentStore.sessions.find(s => s.session_id === sessionId)
-      let relPath = session?.filename
+      let relPath = filename || session?.filename
       // 草稿/失败会话本来就没有场景文件，不应请求一个猜测路径制造 404。
       if (!relPath && session?.status === 'draft') return null
       if (!relPath) {

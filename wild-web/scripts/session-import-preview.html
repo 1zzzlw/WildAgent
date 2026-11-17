@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="zh-CN"><meta charset="utf-8"><title>会话导入与管理列表回归</title>
+<div id="app"></div>
+<script type="module">
+import { createApp, h, nextTick, ref } from 'vue'
+import { createPinia } from 'pinia'
+import ElementPlus, { ElMessage } from 'element-plus'
+import 'element-plus/dist/index.css'
+import '/src/style.css'
+import '/src/components/admin/admin.css'
+import SessionListPanel from '/src/components/panels/SessionListPanel.vue'
+import AdminBlueprints from '/src/components/admin/AdminBlueprints.vue'
+import { useAgentStore } from '/src/stores/agentStore.ts'
+import { useSceneStore } from '/src/stores/sceneStore.ts'
+import { useWorkspaceStore } from '/src/stores/workspaceStore.ts'
+import { useAuthStore } from '/src/stores/authStore.ts'
+import { useUIStore } from '/src/stores/uiStore.ts'
+import { agentBridge } from '/src/agent/agentBridge.ts'
+const pinia = createPinia(), screen = ref('sessions')
+const app = createApp({ render: () => screen.value === 'sessions'
+  ? h('div', { style: { maxWidth: '680px', margin: '30px auto' } }, [h(SessionListPanel)])
+  : h('div', { class: 'admin-layout' }, [h('aside', { class: 'admin-sidebar' }, '管理后台'),
+    h('main', { class: 'admin-main' }, [h(AdminBlueprints)])]) })
+app.use(pinia).use(ElementPlus).mount('#app')
+const auth = useAuthStore()
+auth.user = { id: 'session-import-fixture', username: 'fixture', identity: 2, role: 'editor' }
+await nextTick()
+window.sessionImportTest = { app, screen, agent: useAgentStore(), scene: useSceneStore(), workspace: useWorkspaceStore(), auth, ui: useUIStore(), agentBridge, clearMessages: ElMessage.closeAll }
+window.ready = true
+</script></html>

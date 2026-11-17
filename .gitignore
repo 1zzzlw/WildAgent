@@ -42,3 +42,4 @@ deliveries/
 .ruff_cache/
 语言设计蓝图/
 docs/
+output/

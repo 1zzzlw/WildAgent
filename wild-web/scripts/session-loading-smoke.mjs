@@ -118,6 +118,8 @@ try {
       check(scene.isLoading && !scene.canModify, '读取新会话期间仍允许编辑旧蓝图')
       const opened = await Promise.race([opening, new Promise((_, reject) => setTimeout(() => reject(Error('蓝图等待聊天记录')), 5000))])
       check(opened && agent.currentSessionId === 'session_load_a', '会话 A 未打开')
+      const openedInfo = agent.sessions.find(item => item.session_id === 'session_load_a')
+      check(openedInfo.created_at === 1 && openedInfo.updated_at === 1, '只读切换会话改变了创建或更新时间')
       const assembly = viewport.worldRuntime.getInstance('editor:active-blueprint').assembly
       check(!assembly.active, '历史会话重复播放组装动画')
       render.requestReplayEntrance()
