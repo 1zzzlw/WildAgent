@@ -2055,9 +2055,12 @@ async function exportGlb() {
   }
 }
 
-function takeScreenshot() {
+async function takeScreenshot() {
   if (!auth.canEdit) return
   if (!renderer || !scene || !camera) return
+  const activeEnvironment = environmentRuntime
+  await activeEnvironment?.waitForPhotographicSky()
+  if (!auth.canEdit || !renderer || !scene || !camera || activeEnvironment !== environmentRuntime) return
   // preserveDrawingBuffer=false：合成器当场再渲一帧，否则 toDataURL 读到空缓冲。
   renderer.info.reset()
   if (fixtureLighting.update(camera, qualityLevel.value)) renderer.shadowMap.needsUpdate = true

@@ -16,7 +16,7 @@ try {
   const states=[]
   for(const time of ['dawn','day','sunset','night']) {
     await viewport(`s.renderPanel.requestPreset({type:'time',value:'${time}'});return true`)
-    await p.wait(`document.querySelector('.canvas-viewport').__vueParentComponent.setupState.environmentRuntime?.photographicSkyReady`)
+    await p.wait(`document.querySelector('.canvas-viewport').__vueParentComponent.setupState.environmentRuntime?.photographicSkyHighResolutionReady`)
     await viewport(`s.finishEntrance();s.camera.fov=45;s.camera.updateProjectionMatrix();s.camera.position.set(82,32,-94);s.controls.target.set(0,13,0);s.controls.update();s.markNeedsRender();return true`)
     await p.evaluate('new Promise(resolve=>setTimeout(resolve,350))')
     states.push(await viewport(`const photo=s.scene.getObjectByName('PhotographicSky');return {time:s.timeOfDay,photo:s.environmentRuntime.photographicSkyReady,procedural:s.sky.visible,skyVisible:photo.visible,quality:s.qualityLevel,texture:[photo.material.uniforms.panorama.value.image.width,photo.material.uniforms.panorama.value.image.height],ground:s.presentationGround.geometry.type,fxaa:s.postProcessing.fxaa.enabled,pixels:[s.renderer.domElement.width,s.renderer.domElement.height],occlusion:{...s.postProcessing.visibility.stats},environment:!!s.scene.environment}`))
@@ -41,7 +41,9 @@ try {
   await p.screenshot(output+'/circular-world.png')
   await p.send('Network.enable')
   await p.send('Network.setBlockedURLs',{urls:['*skies/*.webp']})
-  await p.evaluate('window.presentationTest.remount()')
+  // 页面内缓存允许离线重挂载；用全新页面验证网络失败的程序化回退。
+  await p.send('Page.reload',{ignoreCache:true})
+  await p.wait('!!(window.ready && document.querySelector(".canvas-viewport")?.__vueParentComponent.setupState.environmentRuntime)')
   await p.wait('document.querySelector(".canvas-viewport").__vueParentComponent.setupState.sky?.visible && !document.querySelector(".canvas-viewport").__vueParentComponent.setupState.environmentRuntime?.photographicSkyReady')
   assert.deepEqual(p.errors,[])
   assert.ok(states.every(state=>state.photo&&!state.procedural&&state.environment&&state.skyVisible))

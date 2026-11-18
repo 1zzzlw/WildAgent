@@ -198,10 +198,11 @@ export class WorldEnvironmentMapRuntime {
     this.environmentSky = new Sky()
     this.environmentSky.scale.setScalar(SKY_SCALE)
     this.environmentScene.add(this.environmentSky)
-    this.photographicSky = new PhotographicSky(() => {
+    this.photographicSky = new PhotographicSky(quality => {
       const input = this.lastInput
       if (!input) return
-      this.rebuild(input.preset, input.atmosphere, input.sunDirection, input.isNight, input.groundColor)
+      // 预览只用于主画面，不增加 PMREM 构建；完整照片就绪后再更新反射。
+      if (quality !== 'preview') this.rebuild(input.preset, input.atmosphere, input.sunDirection, input.isNight, input.groundColor)
       this.onRebuilt?.()
     })
     scene.add(this.photographicSky.mesh)
@@ -230,6 +231,10 @@ export class WorldEnvironmentMapRuntime {
 
   get photographicSkyReady(): boolean { return this.photographicSky.ready }
 
+  get photographicSkyHighResolutionReady(): boolean { return this.photographicSky.highResolutionReady }
+
+  waitForPhotographicSky(): Promise<void> { return this.photographicSky.waitForHighResolution() }
+
   setBackgroundVisible(visible: boolean): void { this.photographicSky.setVisible(visible) }
 
   /**
@@ -247,7 +252,7 @@ export class WorldEnvironmentMapRuntime {
 
     this.lastInput = {preset, atmosphere, sunDirection: sunDirection.clone(), isNight, groundColor}
     this.photographicSky.update(preset, atmosphere, sunDirection)
-    this.environmentSky.visible = !this.photographicSky.ready
+    this.environmentSky.visible = !this.photographicSky.highResolutionReady
 
     syncSkyPreset(this.environmentSky, preset, atmosphere, sunDirection)
     this.environmentScene.background = new THREE.Color(preset.background)
@@ -256,13 +261,13 @@ export class WorldEnvironmentMapRuntime {
     if (this.environmentSunSprite) {
       // 沿太阳方向放置亮点（距离远于 PMREM 半径），夜晚隐藏避免月光串色。
       this.environmentSunSprite.position.copy(sunDirection).multiplyScalar(ENVIRONMENT_SUN_DISTANCE)
-      this.environmentSunSprite.visible = !isNight && !this.photographicSky.ready
+      this.environmentSunSprite.visible = !isNight && !this.photographicSky.highResolutionReady
     }
 
     const nextTarget = this.pmrem.fromScene(
       this.environmentScene,
       // 照片本身没有程序化太阳极亮点，直接交给 PMREM 按材质粗糙度滤波，保留反射细节。
-      this.photographicSky.ready ? 0 : isNight ? ENVIRONMENT_SIGMA_NIGHT : ENVIRONMENT_SIGMA_DAY,
+      this.photographicSky.highResolutionReady ? 0 : isNight ? ENVIRONMENT_SIGMA_NIGHT : ENVIRONMENT_SIGMA_DAY,
       ENVIRONMENT_NEAR,
       ENVIRONMENT_FAR,
     )

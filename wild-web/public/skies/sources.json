@@ -12,7 +12,15 @@
       8192,
       4096
     ],
-    "bytes": 2087688
+    "bytes": 2087688,
+    "preview": {
+      "file": "day.preview.webp",
+      "dimensions": [
+        1024,
+        512
+      ],
+      "bytes": 26678
+    }
   },
   {
     "time": "dawn",
@@ -27,7 +35,15 @@
       8192,
       4096
     ],
-    "bytes": 1013248
+    "bytes": 1013248,
+    "preview": {
+      "file": "dawn.preview.webp",
+      "dimensions": [
+        1024,
+        512
+      ],
+      "bytes": 5710
+    }
   },
   {
     "time": "sunset",
@@ -42,7 +58,15 @@
       8192,
       4096
     ],
-    "bytes": 1283604
+    "bytes": 1283604,
+    "preview": {
+      "file": "sunset.preview.webp",
+      "dimensions": [
+        1024,
+        512
+      ],
+      "bytes": 13298
+    }
   },
   {
     "time": "night",
@@ -57,6 +81,14 @@
       8192,
       4096
     ],
-    "bytes": 6969026
+    "bytes": 6969026,
+    "preview": {
+      "file": "night.preview.webp",
+      "dimensions": [
+        1024,
+        512
+      ],
+      "bytes": 26172
+    }
   }
 ]
