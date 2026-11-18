@@ -13,11 +13,11 @@ DESIGN_BLOCKS = (
     DesignBlock(
         "intent", ("concept", "design_intent", "design_constraints", "design_rationale")
     ),
-    DesignBlock("massing", ("massing", "volumes")),
-    DesignBlock("structure", ("structural_grid", "circulation")),
-    DesignBlock("facade", ("facades", "curtain_wall")),
-    DesignBlock("roof", ("roof",)),
-    DesignBlock("components", ("components", "materials", "detail_packages")),
+    DesignBlock("massing", ("massing", "coordinate_system", "levels", "profiles", "volumes")),
+    DesignBlock("structure", ("structural_grid", "systems", "slabs", "voids", "floor_layouts", "circulation")),
+    DesignBlock("facade", ("walls", "facades", "curtain_wall")),
+    DesignBlock("roof", ("roofs", "roof")),
+    DesignBlock("components", ("components", "relations", "materials", "detail_packages")),
 )
 
 

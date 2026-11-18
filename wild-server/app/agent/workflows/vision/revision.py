@@ -96,8 +96,8 @@ _REVISION_PROMPT = """你正在按**可见效果**修订一份已经定稿的建
 
 _VISION_FIELD_MAP: dict[str, str] = {
     "massing_hierarchy": "decisions.volumes",
-    "facade_rhythm": "decisions.facades",
-    "entrance_legibility": "decisions.facades",
+    "facade_rhythm": "decisions.components",
+    "entrance_legibility": "decisions.components",
     "material_harmony": "decisions.materials",
 }
 

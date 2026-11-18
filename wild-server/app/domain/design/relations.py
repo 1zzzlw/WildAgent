@@ -470,12 +470,15 @@ def place_roof_surface(row, marker):
 
 
 def roof_design_errors(blueprint: dict, entities: list[dict], marker: dict) -> list[str]:
-    """核对矩形体量屋面的投影并集；封檐条不能替代整片屋面。"""
+    """核对真实屋面范围与投影并集，庭院和曲线边界不能用包围盒代替。"""
     volume = marker.get("design", {}).get("volume")
     from app.domain.components.names import resolve_component_name
     if resolve_component_name(marker["type"])["entity_type"] != "roof" or not isinstance(volume, dict):
         return []
-    from app.domain.design.coordinates import rectangle_uncovered_area
+    from shapely import affinity
+    from shapely.geometry import Point, Polygon, box
+    from shapely.ops import unary_union
+    from app.domain.geometry.floors import floor_region
     from app.domain.validation.spatial import _roof_footprint_entries
     walls = [e for e in entity_index(blueprint).values() if e.get("type") == "wall"]
     elevation = marker["entity"]["position"][1]
@@ -487,9 +490,20 @@ def roof_design_errors(blueprint: dict, entities: list[dict], marker: dict) -> l
         elevation = position[1] - height / 2
     native_roofs = {e["id"]: e for e in entities if e.get("type") == "roof"}
     regions, projected, below, support_gaps = [], [], [], []
+    polygon_regions = []
+    projected_polygons = []
     for x0, x1, z0, z1, y, entity_id in _roof_footprint_entries(entities, walls):
         roof = native_roofs[entity_id]
         surface_y = y + roof["thickness"] if roof.get("roofType") == "flat" else y
+        if roof.get("roofType") == "dome":
+            shape = affinity.scale(Point(0,0).buffer(1,quad_segs=128), (x1-x0)/2,(z1-z0)/2)
+            shape = affinity.translate(shape,(x0+x1)/2,(z0+z1)/2)
+            projected_polygons.append(shape)
+            if surface_y >= elevation-TOLERANCE:
+                polygon_regions.append(shape)
+            else:
+                below.append(f"[{entity_id}] 穹顶支承标高{surface_y:g}低于设计{elevation:g}")
+            continue
         projected.append((x0, z0, x1, z1))
         if surface_y >= elevation-TOLERANCE:
             regions.append((x0, z0, x1, z1))
@@ -498,12 +512,13 @@ def roof_design_errors(blueprint: dict, entities: list[dict], marker: dict) -> l
                          "图纸 placement.position 是整体中心，size.height 为整体高度；"
                          "核对图纸中心、相对墙顶高差与实际支承，不能只修改覆盖宽深")
     for entity in entities:
-        if entity.get("type") == "floor" and entity.get("shape", "rect") == "rect":
-            a, b = entity["from"], entity["to"]
-            if a[1]+entity["thickness"] >= elevation-TOLERANCE:
-                regions.append((min(a[0], b[0]), min(a[2], b[2]), max(a[0], b[0]), max(a[2], b[2])))
-                projected.append(regions[-1])
-        elif entity.get("type") == "primitive" and entity.get("shape") == "box":
+        if entity.get("type") == "floor":
+            actual = floor_region(entity)
+            projected_polygons.append(actual)
+            if entity["from"][1]+entity["thickness"] >= elevation-TOLERANCE:
+                polygon_regions.append(actual)
+            continue
+        if entity.get("type") == "primitive" and entity.get("shape") == "box":
             surface = roof_box_surface(entity)
             if surface is None:
                 continue
@@ -559,13 +574,17 @@ def roof_design_errors(blueprint: dict, entities: list[dict], marker: dict) -> l
                             support_gaps.append(f"[{wall['id']}] 墙顶 {top:.3f}m，XZ 端点 {points} 对应屋面底 "
                                                 f"{[round(v, 3) for v in undersides]}m，最大空隙 {gap:.3f}m")
     overhang = marker["design"].get("overhang", 0)
-    target = (volume["x"]-overhang, volume["z"]-overhang,
-              volume["x"]+volume["width"]+overhang, volume["z"]+volume["depth"]+overhang)
-    missing = rectangle_uncovered_area(target, [(a-TOLERANCE, b-TOLERANCE, c+TOLERANCE, d+TOLERANCE)
-                                               for a, b, c, d in regions])
+    outline = marker.get("resolved_outline")
+    target = (Polygon(outline["outer"],outline.get("holes",[])) if outline else
+              box(volume["x"],volume["z"],volume["x"]+volume["width"],volume["z"]+volume["depth"]))
+    target = target.buffer(overhang,join_style="mitre") if overhang else target
+    actual = unary_union([*[box(*bounds) for bounds in regions],*polygon_regions])
+    missing = target.difference(actual.buffer(TOLERANCE)).area
+    excess = actual.difference(target.buffer(TOLERANCE)).area
+    if outline and excess > TOLERANCE:
+        return [f"❌ [{marker['id']}] 屋面超出已设计真实轮廓或覆盖庭院 {excess:.3f}㎡；不得用体量包围盒补屋面"]
     if missing > TOLERANCE and below:
-        projected_missing = rectangle_uncovered_area(target, [(a-TOLERANCE, b-TOLERANCE, c+TOLERANCE, d+TOLERANCE)
-                                                              for a, b, c, d in projected])
+        projected_missing = target.difference(unary_union([*[box(*bounds) for bounds in projected],*projected_polygons]).buffer(TOLERANCE)).area
         coverage = ("平面投影已覆盖体量及出檐" if projected_missing <= TOLERANCE else
                     f"平面投影还缺少 {projected_missing:.3f}㎡，核对倾斜后上表面的 X/Z 中心与投影宽深")
         return [f"❌ [{entities[0]['id']}] 图纸标记 {marker['id']}：{coverage}；" + "；".join(below)]
@@ -584,12 +603,20 @@ def _opening_frame(blueprint, entities, marker):
     family = resolve_component_name(marker["type"])["entity_type"]
     index = entity_index(blueprint)
     diagram = marker.get("diagram_host") or index.get(spec.get("parentWall"))
-    if family not in {"door", "window"} or not diagram or diagram.get("type") != "wall" or diagram.get("curve"):
+    if family not in {"door", "window"} or not diagram or diagram.get("type") != "wall":
         return None
     openings = [e for e in entities if e.get("type") == family]
     openings = openings or [e for e in entities if e.get("type") == "opening"]
     if not openings:
         return None
+    if diagram.get("curve"):
+        if any(opening.get("parentWall") != diagram["id"] for opening in openings):
+            raise ValueError("曲墙门窗必须引用同一逻辑墙宿主，不能借用其他墙面的局部坐标")
+        left = min(opening["from"][0] for opening in openings)
+        right = max(opening["from"][0]+opening["width"] for opening in openings)
+        bottom = min(opening["from"][1] for opening in openings)
+        top = max(opening["from"][1]+opening["height"] for opening in openings)
+        return index,diagram,openings,(1,0),(left,right,bottom,top),[opening["from"][2] for opening in openings]
     a, b = diagram["from"], diagram["to"]
     length = hypot(b[0]-a[0], b[2]-a[2])
     if length <= TOLERANCE:
@@ -675,6 +702,17 @@ def railing_design_errors(blueprint, entities, marker):
 def opening_target(marker, diagram, width, height):
     """把图纸中心、洞口起点和开间中心统一成沿示意墙的左下角。"""
     spec = marker.get("entity") or {}
+    if diagram.get("path"):
+        from shapely.geometry import LineString, Point
+
+        if spec.get("from"):
+            return list(spec["from"])
+        if "centerAlong" in spec:
+            return [spec["centerAlong"]-width/2,spec["bottomY"],0]
+        if spec.get("position"):
+            point = spec["position"]
+            line = LineString(diagram["path"])
+            return [line.project(Point(point[0],point[2]))-width/2,point[1]-height/2,0]
     a, b = diagram["from"], diagram["to"]
     length = hypot(b[0]-a[0], b[2]-a[2])
     ux, uz = (b[0]-a[0])/length, (b[2]-a[2])/length
@@ -736,8 +774,9 @@ def opening_host(blueprint, marker, *, diagram_hosts=None):
         along = [(v[0]-a[0])*ux+(v[2]-a[2])*uz for v in (p, q)]
         normal = [-(v[0]-a[0])*uz+(v[2]-a[2])*ux for v in (p, q)]
         low, high = _wall_vertical_range(wall)
-        if (max(map(abs, normal)) <= TOLERANCE and min(along) <= TOLERANCE
-                and max(along) >= length-TOLERANCE
+        target = opening_target(marker, diagram, size["width"], size["height"])
+        if (max(map(abs, normal)) <= TOLERANCE and min(along) <= target[0]+TOLERANCE
+                and max(along) >= target[0]+size["width"]-TOLERANCE
                 and low <= min(a[1], b[1])+TOLERANCE and high >= max(a[1], b[1])-TOLERANCE):
             candidates.append(wall)
     return candidates[0] if len(candidates) == 1 else None
@@ -747,46 +786,16 @@ def body_host_errors(blueprint, markers, *, diagram_hosts=None):
     """主体交接前核对开敞面与门窗宿主；不把示意定位框当实体墙。"""
     from app.domain.components.names import resolve_component_name
     from app.domain.validation.spatial import MAX_OPENING_NORMAL_OFFSET
-    from app.domain.validation.spatial import _is_finite_vector3
-    from app.domain.validation.spatial import _wall_vertical_range
-    from app.domain.design.openings import is_open_side
-    from app.domain.design.coordinates import floor_elevations
-    from app.domain.design.coordinates import representative_floor_indices
-    from app.domain.design.coordinates import rectangle_uncovered_area
-    from app.domain.design.contracts import MassingDecision
     errors = []
     for marker in markers:
-        if marker["type"] == "building_body" and marker.get("design", {}).get("massing"):
-            design = marker["design"]
-            elevations = floor_elevations(design)
-            indices = representative_floor_indices(MassingDecision.model_validate(design["massing"]))
-            walls = [w for w in entity_index(blueprint).values() if w.get("type") == "wall" and not w.get("curve")
-                     and all(_is_finite_vector3(w.get(k)) for k in ("from", "to"))]
-            open_faces, closed_faces = [], []
-            for volume in design.get("volumes", []):
-                x, z, w, d = (volume[k] for k in ("x", "z", "width", "depth"))
-                frames = {"front": (2, z, 0, x, x+w), "back": (2, z+d, 0, x, x+w),
-                          "left": (0, x, 2, z, z+d), "right": (0, x+w, 2, z, z+d)}
-                for floor in range(volume["start_floor"], volume["end_floor"]+1):
-                    for face, facade in {**design.get("facades", {}), **volume.get("facades", {})}.items():
-                        pattern = facade["ground_pattern"] if floor == 1 else facade["upper_pattern"]
-                        normal, plane, axis, left, right = frames[face]
-                        bottom, top = elevations[indices[floor-1]], elevations[indices[floor-1]+1]
-                        target = open_faces if is_open_side(pattern) else closed_faces
-                        target.append((volume["id"], face, floor, normal, plane, axis, left, right, bottom, top))
-            for volume_id, face, floor, normal, plane, axis, left, right, bottom, top in open_faces:
-                shared = [(a, y0, b, y1) for owner, _, _, n, p, _, a, b, y0, y1 in closed_faces
-                          if owner != volume_id and n == normal and abs(p-plane) <= TOLERANCE]
-                if rectangle_uncovered_area((left, bottom, right, top), shared) <= TOLERANCE:
-                    continue  # 开敞体量不重复建墙，也不撤销另一体量明确设计的共用围护。
-                for wall in walls:
-                    a, b = wall["from"], wall["to"]
-                    low, high = _wall_vertical_range(wall)
-                    if (max(abs(a[normal]-plane), abs(b[normal]-plane)) <= TOLERANCE
-                            and min(a[axis], b[axis]) <= left+TOLERANCE and max(a[axis], b[axis]) >= right-TOLERANCE
-                            and low <= bottom+TOLERANCE and high >= top-TOLERANCE):
-                        errors.append(f"❌ [{wall['id']}] 体量 {volume_id} 的 {face} L{floor} 明确开敞，却生成整面实体墙；"
-                                      "该界面未被其他体量已声明的实墙围护完整覆盖；按 open 保留无墙空间，定位参考不能编成薄 wall")
+        if marker["type"] == "building_body" and marker.get("geometry"):
+            from app.domain.design.completeness import value_matches
+
+            actual = entity_index(blueprint)
+            for expected in marker["geometry"]["elements"]:
+                entity = actual.get(expected["id"])
+                if entity is None or not value_matches(entity, expected):
+                    errors.append(f"主体实体 {expected['id']} 缺失或偏离已解析几何；按图纸轮廓、标高与留洞执行，不重画包围盒")
         family = resolve_component_name(marker["type"])["entity_type"]
         host_id = marker.get("entity", {}).get("parentWall")
         diagram = marker.get("diagram_host")
@@ -864,6 +873,16 @@ def place_opening_group(blueprint, row, marker):
     da, dy, dn = target[0]-left, target[1]-bottom, target[2]-normals[0]
     if max(abs(da), abs(dy), abs(dn)) <= TOLERANCE:
         return row, changes
+    if diagram.get("curve"):
+        # 纯原生门窗共享同一沿墙坐标；包含自由细部时不能用平移伪装曲面重建。
+        if any(entity not in openings for entity in entities):
+            return row, changes
+        for opening in openings:
+            before = list(opening["from"])
+            opening["from"] = [value+delta for value,delta in zip(before,(da,dy,dn))]
+            changes.append({"rule":"compiler.opening_placement","entity_id":opening["id"],
+                            "field":"from","before":before,"after":list(opening["from"])})
+        return row, changes
     dx, dz = ux*da-uz*dn, uz*da+ux*dn
     for entity in entities:
         if entity in openings:
@@ -901,7 +920,7 @@ def opening_design_errors(blueprint: dict, entities: list[dict], marker: dict) -
     openings = openings or [e for e in entities if e.get("type") == "opening"]
     if not openings:
         return [prefix + "门窗必须落实真实洞口；primitive 玻璃和框条不会在墙上开洞"]
-    if not diagram or diagram.get("curve"):
+    if not diagram:
         return []
     try:
         _, _, _, _, (left, right, bottom, top), normals = _opening_frame(blueprint, entities, marker)
@@ -915,7 +934,7 @@ def opening_design_errors(blueprint: dict, entities: list[dict], marker: dict) -
                       f"整组宽度不得超过 {limits['max_width']:g}m，保持图纸中心不变")
     if limits and top > limits["bottom_y"]+limits["max_height"]+TOLERANCE:
         errors.append(prefix + f"整组洞口超过本层开间顶部；高度不得超过 {limits['max_height']:g}m，保持图纸底标高不变")
-    if family == "window":
+    if family == "window" and not diagram.get("curve"):
         for opening in openings:
             if opening.get("type") != "window":
                 continue

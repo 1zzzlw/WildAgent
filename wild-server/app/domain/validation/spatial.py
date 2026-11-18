@@ -46,6 +46,17 @@ def _floor_regions_by_level(elements: list[dict]) -> list[tuple[float, list[list
     grouped: dict[float, list[list[float]]] = {}
     for item in elements:
         if item.get("type") == "floor":
+            if item.get("shape") in {"circle","polygon"}:
+                from app.domain.geometry.floors import floor_region
+
+                try:
+                    region = floor_region(item)
+                    y = round(float(item["from"][1])+float(item["thickness"]),3)
+                except (ValueError,TypeError,KeyError):
+                    continue  # 参数校验另行报告无效楼板。
+                grouped.setdefault(y, []).append({"outer":list(region.exterior.coords),
+                                                 "holes":[list(ring.coords) for ring in region.interiors]})
+                continue
             start, end = item.get("from"), item.get("to")
         elif (item.get("type") == "primitive" and item.get("shape") == "box"
               and item.get("rotation", [0, 0, 0]) == [0, 0, 0]):
@@ -80,6 +91,14 @@ def _floor_regions_by_level(elements: list[dict]) -> list[tuple[float, list[list
 
 def _connected_landing(regions, start, end):
     """拆板后的相接矩形仍是同一平台；点接触和实际间隙不构成通路。"""
+    if any(isinstance(region,dict) for region in regions):
+        from shapely.geometry import Point
+        from shapely.ops import unary_union
+        from app.domain.geometry.floors import region_shape
+
+        combined = unary_union([region_shape(region) for region in regions])
+        pieces = [combined] if combined.geom_type == "Polygon" else combined.geoms
+        return any(piece.buffer(0.001).covers(Point(start)) and piece.buffer(0.001).covers(Point(end)) for piece in pieces)
     reached = {i for i, region in enumerate(regions) if point_in_regions(start, [region])}
     pending = list(reached)
     while pending:
@@ -2368,16 +2387,15 @@ def _aabb(el: dict) -> tuple[float, float, float, float, float, float] | None:
         return (min_x, max_x, min_y, max_y, min_z, max_z)
 
     if t == "floor":
-        f = _vec3(el.get("from"))
-        to = _vec3(el.get("to"))
-        if not f or not to or len(f) < 3 or len(to) < 3:
+        from app.domain.geometry.floors import floor_region
+
+        try:
+            x0,z0,x1,z1 = floor_region(el).bounds
+            y = float(el["from"][1])
+            thickness = float(el.get("thickness",0))
+        except (ValueError,TypeError,KeyError):
             return None
-        thickness = float(el.get("thickness", 0))
-        return (
-            min(f[0], to[0]), max(f[0], to[0]),
-            float(f[1]), float(f[1]) + thickness,
-            min(f[2], to[2]), max(f[2], to[2]),
-        )
+        return (x0,x1,y,y+thickness,z0,z1)
 
     if t == "beam":
         f = _vec3(el.get("from"))
@@ -3224,7 +3242,7 @@ def validate_element_dimensions(blueprint: dict) -> str:
         eid = el.get("id", "?")
 
         if t in {"wall", "floor", "beam", "stair"}:
-            coordinate_fields = ("from",) if t == "floor" and el.get("shape") == "circle" else ("from", "to")
+            coordinate_fields = ("from",) if t == "floor" and el.get("shape") in {"circle","polygon"} else ("from", "to")
             invalid_fields = [
                 field
                 for field in coordinate_fields
@@ -3270,7 +3288,14 @@ def validate_element_dimensions(blueprint: dict) -> str:
         elif t == "floor":
             f, to = el.get("from", [0,0,0]), el.get("to", [0,0,0])
             th = el.get("thickness", 0)
-            if el.get("shape", "rect") == "circle":
+            if el.get("shape") == "polygon":
+                from app.domain.geometry.floors import floor_region
+
+                try:
+                    floor_region(el)
+                except ValueError as exc:
+                    issues.append(f"❌ [{eid}] {exc}")
+            elif el.get("shape", "rect") == "circle":
                 if not _is_positive_number(el.get("radius")):
                     issues.append(f"❌ [{eid}] 圆形 floor radius 必须是正有限数字")
             else:
@@ -4391,6 +4416,23 @@ def _validate_element_fields(
     """检查单个基础实体的必填字段、几何形状和旋转协议。"""
     element_type = element.get("type", "")
     element_id = element.get("id", "?")
+    if element_type == "solid":
+        from app.domain.components.capability import load_engine_schema
+        from jsonschema import Draft202012Validator
+
+        schema = load_engine_schema()
+        if schema is None:
+            issues.append(f"❌ [{element_id}] WILD Schema不可用，不能确认solid参数")
+            return
+        definition = next((value for value in schema.get("$defs", {}).values()
+                           if value.get("properties", {}).get("type", {}).get("const") == "solid"
+                           and value.get("properties", {}).get("kind", {}).get("const") == element.get("kind")), None)
+        if definition is None:
+            issues.append(f"❌ [{element_id}] 未知solid.kind {element.get('kind')!r}")
+            return
+        for error in Draft202012Validator({**definition,"$defs":schema["$defs"]}).iter_errors(element):
+            issues.append(f"❌ [{element_id}] solid字段 {'/'.join(map(str,error.path))}：{error.message}")
+        return
     required = required_fields.get(element_type, [])
     if not required:
         issues.append(f"❌ [{element_id}] 未知构件类型 '{element_type}'")
@@ -4439,6 +4481,13 @@ def _validate_element_fields(
         if shape == "circle":
             if "radius" not in element:
                 issues.append(f"❌ [{element_id}] 圆形 floor 缺少 radius")
+        elif shape == "polygon":
+            from app.domain.geometry.floors import floor_region
+
+            try:
+                floor_region(element)
+            except ValueError as exc:
+                issues.append(f"❌ [{element_id}] {exc}")
         elif "to" not in element:
             issues.append(f"❌ [{element_id}] 矩形 floor 缺少 to")
 

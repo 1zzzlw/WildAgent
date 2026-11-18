@@ -9,12 +9,10 @@ import json
 from typing import Any
 
 from app.domain.design.contracts import ArchitectureDecisions
-from app.domain.design.contracts import ComplexityDecision
 from app.domain.design.contracts import ComponentObject
 from app.domain.design.contracts import DesignConstraint
 from app.domain.design.contracts import DesignDocument
 from app.domain.design.contracts import DesignRequirements
-from app.domain.design.contracts import EnvelopeDecision
 from app.domain.design.contracts import ObjectDecisions
 from app.domain.design.contracts import ResolvedDesign
 from app.domain.design.contracts import RuleTrace
@@ -212,55 +210,19 @@ def _merge_material_intent(plan, old) -> dict[str, Any]:
     return materials
 
 
-def _architecture_decisions(
-    plan, complexity, profile, curtain_wall, materials
-) -> ArchitectureDecisions:
-    """将图纸字段映射到建筑决策契约。"""
-    return ArchitectureDecisions(
-        **{
-            k: v
-            for k, v in plan.items()
-            if k not in ArchitectureDecisions.model_fields
-            and k
-            not in {
-                "schema_version",
-                "profile",
-                "design_constraints",
-                "normalization_changes",
-                "curtain_wall",
-                "material_regions",
-            }
-        },
-        concept=str(plan.get("concept") or ""),
-        massing=plan["massing"],
-        complexity=ComplexityDecision.model_validate(complexity),
-        volumes=plan["volumes"],
-        structural_grid=plan["structural_grid"],
-        envelope=plan.get("envelope")
-        or EnvelopeDecision(
-            system="curtain_wall" if curtain_wall else "unspecified",
-            curtain_wall={} if curtain_wall else None,
-        ),
-        facades=plan["facades"],
-        roof=plan["roof"],
-        circulation={
-            **(plan.get("circulation") or {}),
-            "vertical_strategy": str(
-                (plan.get("circulation") or {}).get("vertical_strategy")
-                or ("core_and_stair" if profile == "high_rise" else "stair")
-            ),
-        },
-        materials=materials,
-        detail_packages=list(plan.get("detail_packages") or []),
-        component_quota=plan.get("component_quota") or {},
-        components=plan.get("components") or [],
-        balcony_access_count=int(plan.get("balcony_access_count") or 0),
-        balcony_width=plan.get("balcony_width"),
-        required_components=list(plan.get("required_components") or []),
-        unsupported_component_types=list(plan.get("unsupported_component_types") or []),
-        design_rationale=list(plan.get("design_rationale") or []),
-        design_intent=plan.get("design_intent"),
-    )
+def _architecture_decisions(plan, complexity, profile, curtain_wall, materials) -> ArchitectureDecisions:
+    """完整保留设计字段；公共契约负责默认值，避免手写字段映射遗漏新增模块。"""
+    metadata = {
+        "schema_version", "profile", "design_constraints", "normalization_changes",
+        "curtain_wall", "material_regions", "parameters",
+    }
+    payload = {key: value for key, value in plan.items() if key not in metadata}
+    payload["complexity"] = complexity
+    payload["materials"] = materials
+    if not payload.get("envelope"):
+        payload["envelope"] = {"system": "curtain_wall" if curtain_wall else "unspecified",
+                               "curtain_wall": {} if curtain_wall else None}
+    return ArchitectureDecisions.model_validate(payload)
 
 
 def _record_normalization(
@@ -511,54 +473,18 @@ def attach_material_plan(
 def architecture_plan_from_document(
     document: DesignDocument | dict[str, Any],
 ) -> dict[str, Any]:
-    """将批准后的设计决策编译回现有生成节点能够消费的方案协议。"""
-
-    doc = (
-        document
-        if isinstance(document, DesignDocument)
-        else DesignDocument.model_validate(document)
+    """输出同一设计决定的平铺视图，保留轮廓、宿主、构造与完整材料意图。"""
+    doc = document if isinstance(document, DesignDocument) else DesignDocument.model_validate(document)
+    if isinstance(doc.decisions, ObjectDecisions):
+        return _object_plan_from_document(doc, doc.decisions)
+    plan = doc.decisions.model_dump(mode="json", exclude_none=True)
+    plan.update(
+        schema_version="1.0",
+        profile=doc.requirements.profile,
+        design_constraints=[item.model_dump(mode="json") for item in doc.constraints],
+        curtain_wall=doc.decisions.envelope.system == "curtain_wall",
     )
-    d = doc.decisions
-    if isinstance(d, ObjectDecisions):
-        return _object_plan_from_document(doc, d)
-    return {
-        **(d.model_extra or {}),
-        "schema_version": "1.0",
-        "profile": doc.requirements.profile,
-        "concept": d.concept,
-        "massing": d.massing.model_dump(mode="json"),
-        "complexity": d.complexity.model_dump(mode="json"),
-        "volumes": [item.model_dump(mode="json") for item in d.volumes],
-        "structural_grid": d.structural_grid.model_dump(mode="json"),
-        "circulation": d.circulation.model_dump(mode="json"),
-        "detail_packages": list(d.detail_packages),
-        "facades": {
-            key: value.model_dump(mode="json", exclude_none=True)
-            for key, value in d.facades.items()
-        },
-        "roof": d.roof.model_dump(mode="json"),
-        "component_quota": deepcopy(d.component_quota),
-        "components": [
-            {**item.model_dump(mode="json", exclude_none=True), "host": item.host}
-            for item in d.components
-        ],
-        "curtain_wall": d.envelope.system == "curtain_wall",
-        "balcony_access_count": d.balcony_access_count,
-        "balcony_width": d.balcony_width,
-        "required_components": list(d.required_components),
-        "unsupported_component_types": list(d.unsupported_component_types),
-        "design_constraints": [c.model_dump(mode="json") for c in doc.constraints],
-        "design_rationale": list(d.design_rationale),
-        "design_intent": (
-            d.design_intent.model_dump(mode="json") if d.design_intent else None
-        ),
-        "materials": {
-            "regions": [
-                item.model_dump(mode="json", exclude_none=True, exclude_defaults=True)
-                for item in d.materials.regions
-            ]
-        },
-    }
+    return plan
 
 
 def _object_plan_from_document(

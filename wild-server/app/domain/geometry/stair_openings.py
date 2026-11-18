@@ -50,6 +50,21 @@ def _blocked_regions(blueprint):
     members = list(_members(blueprint))
     stairs = [(s, _opening(s)) for s, _ in members if s.get("type") == "stair"]
     for floor, instance in members:
+        if floor.get("type") == "floor" and floor.get("shape") in {"circle","polygon"}:
+            from app.domain.geometry.floors import floor_region
+            from shapely.geometry import box
+
+            shape = floor_region(floor)
+            cuts = []
+            for stair,opening in stairs:
+                if opening is None or not stair["from"][1]+0.25 < floor["from"][1] <= stair["to"][1]+0.25:
+                    continue
+                intersection = shape.intersection(box(*opening).buffer(-EPS))
+                if intersection.area > EPS*EPS:
+                    cuts.append((stair["id"],intersection.bounds))
+            if cuts:
+                yield floor,instance,shape.bounds,cuts
+            continue
         if floor.get("type") != "floor" or floor.get("shape", "rect") != "rect":
             continue
         start, end = floor.get("from"), floor.get("to")
@@ -89,6 +104,8 @@ def cut_stair_openings(blueprint: dict) -> list[str]:
     used_ids = {element.get("id") for element, _ in _members(blueprint)}
     changed = []
     for floor, instance, bounds, cuts in blocked:
+        if floor.get("shape","rect") != "rect":
+            continue  # 复杂楼板必须按图纸的显式void处理，禁止自动铺回矩形差集。
         rectangles = subtract_rectangles(bounds, [cut for _, cut in cuts], epsilon=EPS)
         pieces = []
         for index, (x0, z0, x1, z1) in enumerate(rectangles):

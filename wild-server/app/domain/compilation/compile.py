@@ -2207,6 +2207,11 @@ def compile_design(
     if mode not in MODES:
         raise ValueError(f"未知编译模式 {mode!r}，闭集为 {MODES}")
 
+    from app.domain.design.spatial import has_spatial_geometry
+
+    if has_spatial_geometry(plan):
+        return _compile_spatial_design(plan, mode, user_message, material_plan)
+
     blueprint, brief, stats = _compose(plan, user_message, material_plan, normalized_input=normalized_input)
     unsupported, uncompiled = _capability_gaps(brief, blueprint)
     # 收缺陷的顺序即"从粗到细"：整图 schema → 逐构件必填/枚举 → 交付流水线 + 设计清单。
@@ -2270,6 +2275,46 @@ def compile_design(
 
 
 __all__ = ["compile_design"]
+
+
+def _compile_spatial_design(plan, mode, user_message, material_plan):
+    """新图纸复用空间解析和任务构造入口；无确定实现的任务如实列为uncompiled。"""
+    from app.domain.design.resolver import build_design_document, attach_material_plan, resolve_design
+    from app.domain.design.construction_systems import construct_system
+    from app.domain.blueprint.materials.plan import resolve_material_plan
+
+    materials = material_plan or resolve_material_plan(None, [], plan)
+    document = build_design_document(plan, session_id="offline", source_request=user_message or "离线编译设计图纸")
+    document = attach_material_plan(document, materials)
+    resolved = resolve_design(document)
+    blueprint = {
+        "meta": {"version":"1.0", "type":"building", "name":document.decisions.concept or "建筑"},
+        "geometry":{"elements":[],"components":[]},
+        "materials":{role["materialId"]:role["material"] for role in materials["roles"]},
+        "assets":materials.get("resolvedAssets", {}),
+    }
+    uncompiled, defects = set(), []
+    for marker in resolved.component_markers:
+        if marker.get("capability_gaps"):
+            uncompiled.add(marker["type"])
+            continue
+        fragment = construct_system(marker, blueprint)
+        if fragment is None:
+            uncompiled.add(marker["type"])
+            continue
+        for bucket in ("elements","components"):
+            blueprint["geometry"][bucket].extend(fragment["geometry"].get(bucket, []))
+    for gap in resolved.capability_gaps:
+        defects.append(CompileDefect(code=gap["code"], severity="error", target=gap["entity"],
+                                     evidence=str(gap["actual"]), design_field="decisions."+gap["field"]))
+    defects.extend(_schema_defects(blueprint))
+    defects.extend(_structure_defects(blueprint))
+    return CompileResult(
+        mode=mode, blueprint=blueprint if mode == MODE_FINAL else None,
+        design_brief={"design_hash":resolved.design_hash} if mode == MODE_FINAL else None,
+        defects=defects, uncompiled=sorted(uncompiled),
+        stats={"markers":len(resolved.component_markers),"capability_gaps":resolved.capability_gaps},
+    )
 
 
 def _ordered_component_instances(instances):

@@ -439,96 +439,12 @@ async def architecture_planner(state: GenerationState) -> dict:
 
 
 def _validate_architecture_draft(raw, state, profile_id, complexity, previous):
-    """检查完整设计的字段、尺寸和关系，返回通过契约的文档与解析结果。"""
+    """由统一契约检查字段与引用，再用共享空间解析结果检查设计关系。"""
     from app.domain.design.resolver import resolve_design
+    from app.domain.design.coordinates import component_dimension_conflicts, roof_span_conflicts
+    from app.domain.design.spatial import execution_view
 
-    message = state["user_message"]
-    # 如果 massing 是字典就读取，否则返回空字典
-    massing = raw.get("massing") if isinstance(raw.get("massing"), dict) else {}
-
-    # 检查这四个字段是否不为空
-    missing = [
-        f"/massing/{key}"
-        for key in ("shape", "width", "depth", "floors")
-        if massing.get(key) is None
-    ]
-
-    # 防止 volumes 不是列表或 volumes 是空列表
-    if not isinstance(raw.get("volumes"), list) or not raw["volumes"]:
-        # 将错误信息添加到 missing 列表中，指示缺少 /volumes 字段
-        missing.append("/volumes")
-    else:
-        # 检查每个 volume 的字段是否完整，此时 volumes 是一个非空列表
-        for index, volume in enumerate(raw["volumes"]):
-            for key in (
-                "id",
-                "x",
-                "z",
-                "width",
-                "depth",
-                "start_floor",
-                "end_floor",
-            ):
-                if not isinstance(volume, dict) or volume.get(key) is None:
-                    missing.append(f"/volumes/{index}/{key}")
-
-    facades = raw.get("facades") if isinstance(raw.get("facades"), dict) else {}
-
-    for face in ("front", "back", "left", "right"):
-        facade = facades.get(face)
-        for field in ("bays", "ground_pattern", "upper_pattern"):
-            if not isinstance(facade, dict) or facade.get(field) is None:
-                missing.append(f"/facades/{face}/{field}")
-
-    if not isinstance(raw.get("roof"), dict) or not raw["roof"].get("type"):
-        missing.append("/roof/type")
-
-    if missing:
-        raise ValueError(
-            "图纸缺少关键设计字段：" + "、".join(missing) + "；请按本次建筑设计补全"
-        )
-
-    components = raw.get("components") or []
-
-    if not isinstance(components, list) or any(
-        not isinstance(item, dict) for item in components
-    ):
-        raise ValueError("components 必须是构件对象数组")
-
-    if any(not item.get("id") for item in raw.get("components") or []):
-        raise ValueError("每个显式构件标记必须有稳定 id；不能只写构件类型与宿主")
-
-    # 导入构件名称解析函数
-    from app.domain.components.names import resolve_component_name
-
-    # 检查挂在体量上的门窗，是否给出足够的定位信息
-    volume_ids = {v.get("id") for v in raw.get("volumes", []) if isinstance(v, dict)}
-    # 快速判断某个宿主是不是体量 ID
-    for index, item in enumerate(components):
-        placement = item.get("placement") or {}
-        # 这个构件属于门或窗
-        # 并且 host 是字符串
-        # 并且 host 引用的是一个体量
-        # 并且 placement 是字典
-        # 并且没有给出世界坐标 position
-        # 并且 face、floor 至少缺一个
-        if (
-            resolve_component_name(item.get("type", ""))["entity_type"]
-            in {"door", "window"}
-            and isinstance(item.get("host"), str)
-            and item.get("host") in volume_ids
-            and isinstance(placement, dict)
-            and not placement.get("position")
-            and (not placement.get("face") or not placement.get("floor"))
-        ):
-            raise ValueError(
-                f"/components/{index}/placement：体量内门窗的沿墙定位需要 face 和 floor，"
-                "或写出世界 position；不能仅凭 offset 猜测墙面和楼层"
-            )
-
-    # 收集材料冲突，组装待构造的设计方案
-    material_errors = _material_role_conflicts(components)
-
+    material_errors = _material_role_conflicts(raw.get("components") or [])
     plan = {
         "profile": profile_id,
         **raw,
@@ -539,35 +455,21 @@ def _validate_architecture_draft(raw, state, profile_id, complexity, previous):
             "reason": complexity["reason"],
         },
     }
-
     try:
-        # 把普通字典构造成设计契约对象
         document = build_design_document_or_error(
             plan,
-            session_id=str(
-                state.get("session_id") or state.get("request_id") or "unknown"
-            ),
-            source_request=message,
+            session_id=str(state.get("session_id") or state.get("request_id") or "unknown"),
+            source_request=state["user_message"],
             building_type=profile_id,
             style_intent=list(state.get("style_preference") or []),
             previous=previous,
         )
-    except DesignContractError as exc:
-        raise ValueError("；".join([*material_errors, str(exc)])) from exc
-    from app.domain.design.coordinates import roof_span_conflicts
-    from app.domain.design.coordinates import component_dimension_conflicts
-    from app.domain.design.markers import component_markers
-
-    data = document.decisions.model_dump(mode="json")
-    coordinate_errors = (
-        material_errors
-        + component_dimension_conflicts(data)
-        + roof_span_conflicts(component_markers(document))
-    )
-    try:
         resolved = resolve_design(document)
-    except ValueError as exc:
-        coordinate_errors.append(_validation_reason(exc))
-    if coordinate_errors:
-        raise ValueError("；".join(coordinate_errors))
+        drawing = execution_view(document.decisions.model_dump(mode="json"))
+        errors = material_errors + component_dimension_conflicts(drawing)
+        errors.extend(roof_span_conflicts(resolved.component_markers))
+        if errors:
+            raise ValueError("；".join(errors))
+    except (DesignContractError, ValueError) as exc:
+        raise ValueError(_validation_reason(exc)) from exc
     return document, resolved

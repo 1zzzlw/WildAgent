@@ -810,7 +810,10 @@ def _item_context(state, markers, base, reference_entity_ids=()):
     drawing = state["design_document"]["decisions"]
     from app.domain.design.coordinates import design_geometry_context
 
-    geometry = design_geometry_context(drawing)
+    geometry = (state.get("resolved_design") or {}).get("geometry_context") or design_geometry_context(drawing)
+    from app.domain.design.spatial import execution_view
+
+    spatial_view = execution_view(drawing, geometry)
     body = any(m["type"] == "building_body" for m in markers.values())
     from app.domain.components.names import resolve_component_name
 
@@ -851,7 +854,7 @@ def _item_context(state, markers, base, reference_entity_ids=()):
     }
     volumes = [
         v
-        for v in drawing.get("volumes", [])
+        for v in spatial_view.get("volumes", [])
         if circulation or any(m.get("host") == v["id"] for m in markers.values())
     ]
     for entity in entities:
@@ -888,7 +891,8 @@ def _item_context(state, markers, base, reference_entity_ids=()):
         "markers": list(markers.values()),
         "drawing": {
             key: drawing.get(key)
-            for key in ("concept", "design_intent", "massing", "materials")
+            for key in ("concept", "design_intent", "massing", "materials", "coordinate_system",
+                        "levels", "profiles", "systems", "walls", "slabs", "voids", "roofs", "relations", "floor_layouts")
         },
         "diagram_hosts": [
             e
@@ -1273,9 +1277,13 @@ class _MarkerGeneration:
         self.system_ids = {
             i
             for i, m in self.pending.items()
-            if construction_spec(m["design"]) is not None
+            if construction_spec(m["design"]) is not None or m.get("geometry") is not None or m.get("capability_gaps")
         }
-        for marker_id in sorted(self.system_ids):
+        from graphlib import TopologicalSorter
+
+        dependencies = {marker_id: set(self.pending[marker_id].get("depends_on", [])) & self.system_ids
+                        for marker_id in sorted(self.system_ids)}
+        for marker_id in TopologicalSorter(dependencies).static_order():
             marker = self.pending[marker_id]
             attempt = {
                 "tool": "construct_system",
@@ -1288,6 +1296,8 @@ class _MarkerGeneration:
             }
             self.trace.append(attempt)
             try:
+                if marker.get("capability_gaps"):
+                    raise ValueError(json.dumps(marker["capability_gaps"], ensure_ascii=False))
                 row = construct_system(marker, self.base)
                 attempt["output"] = deepcopy(row)
                 candidate, accepted, rejected, record = _accept_fragment(

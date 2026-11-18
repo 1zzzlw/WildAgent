@@ -5,7 +5,7 @@ from math import hypot, isfinite
 import textwrap
 
 from app.domain.components.names import resolve_component_name
-from app.domain.design.coordinates import representative_floor_indices
+from app.domain.design.spatial import execution_view, host_path, host_point, polygons, section_at, section_polygon
 
 BACKGROUND = "#0f172a"
 COLORS = {"wall": "#facc15", "window": "#60a5fa", "door": "#fb7185",
@@ -31,13 +31,10 @@ def _marker_location(marker, levels):
     wall = marker.get("diagram_host")
     point = entity.get("position") or entity.get("base")
     if wall:
-        a, b = wall["from"], wall["to"]
-        length = hypot(b[0]-a[0], b[2]-a[2])
-        local = entity.get("from", [entity.get("centerAlong", length/2), 0, 0])
-        if not point and length:
-            ux, uz = (b[0]-a[0])/length, (b[2]-a[2])/length
-            point = [a[0]+ux*local[0]-uz*local[2], a[1], a[2]+uz*local[0]+ux*local[2]]
-        floor = min(levels, key=lambda l: abs(l.base_y-a[1])).index
+        from app.domain.design.spatial import host_point
+        local = entity.get("from", [entity.get("centerAlong", wall["length"]/2), 0, 0])
+        point = point or host_point(wall, local[0], wall["from"][1]+local[1], local[2])
+        floor = min(levels, key=lambda level: abs(level.base_y-point[1])).index
     elif isinstance(point, list) and len(point) == 3:
         floor = (design.get("placement") or {}).get("floor")
         floor = floor or min(levels, key=lambda l: abs(l.base_y-point[1])).index
@@ -53,10 +50,13 @@ def _marker_location(marker, levels):
 
 def render_drawing_svg(document, resolved, floor=None):
     d = document.decisions
+    if not resolved.geometry_context.get("volumes"):
+        message = escape("；".join(str(gap.get("actual", "")) for gap in resolved.capability_gaps))
+        return f'<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="160"><rect width="1200" height="160" fill="{BACKGROUND}"/><text x="32" y="70" fill="#d6ad72">设计已保留，当前无可投影几何：{message}</text></svg>'
     selected = [l for l in resolved.levels if floor is None or l.index == floor]
     if not selected:
         raise ValueError(f"设计没有第 {floor} 层")
-    layouts = d.model_dump(mode="json").get("floor_layouts") or []
+    layouts = execution_view(d.model_dump(mode="json"), resolved.geometry_context).get("floor_layouts") or []
     walls, located, pending, roof_markers = resolved.projection_elements, {}, [], []
     for marker in resolved.component_markers:
         if marker["type"] == "building_body":
@@ -70,7 +70,10 @@ def render_drawing_svg(document, resolved, floor=None):
             located[marker["id"]] = (marker, family, *location)
         else:
             pending.append(marker)
-    bounds = [(v.x, v.z, v.width, v.depth) for v in d.volumes]
+    bounds = []
+    for volume in resolved.geometry_context["volumes"].values():
+        x0, z0, x1, z1 = volume["bounds"]
+        bounds.append((x0, z0, x1-x0, z1-z0))
     for layout in layouts:
         for room in layout.get("rooms") or []:
             room_bounds = _room_bounds(room)
@@ -109,21 +112,41 @@ def render_drawing_svg(document, resolved, floor=None):
         def xy(p):
             return (ox+p[0]*scale, oz+p[-1]*scale)
 
-        layer = [w for w in walls if abs(w["from"][1]-level.base_y) < 0.001]
+        def region_path(outer, holes=()):
+            commands = []
+            for ring in (outer,*holes):
+                points = [xy(point) for point in ring]
+                commands.append("M "+" L ".join(f"{x:.2f} {y:.2f}" for x,y in points)+" Z")
+            return " ".join(commands)
+
+        layer = [w for w in walls if w["from"][1]-0.001 <= level.base_y < w["to"][1]-0.001]
         rooms = []
         for current_layout in layouts:
             if current_layout.get("floor") != level.index:
                 continue
             for current_room in current_layout.get("rooms") or []:
                 rooms.append((current_room, _room_bounds(current_room)))
-        semantic = representative_floor_indices(d.massing)
-        for i, v in enumerate(d.volumes):
-            if not v.start_floor <= semantic.index(level.index)+1 <= v.end_floor:
+        for identity, volume in resolved.geometry_context["volumes"].items():
+            sections = volume["sections"]
+            section = section_at(
+                [{"y": item["y"], "edges": item["edges"], "holes": item["holes"]} for item in sections],
+                level.base_y,
+            )
+            if section is None:
                 continue
-            x, y = xy([v.x, v.z])
-            parts.append(f'<rect x="{x:.2f}" y="{y:.2f}" width="{v.width*scale:.2f}" height="{v.depth*scale:.2f}" fill="none" stroke="#334155" stroke-dasharray="5 5" data-design-path="/decisions/volumes/{i}"><title>{escape(v.id)} · 空间包络，非实体墙</title></rect>')
-            if not rooms:
-                text(x+v.width*scale/2, y+v.depth*scale/2, v.model_dump().get("name") or v.id, "#94a3b8", 16, 'text-anchor="middle"')
+            shape = section_polygon(section)
+            for polygon in polygons(shape):
+                path = region_path(list(polygon.exterior.coords),[list(ring.coords) for ring in polygon.interiors])
+                parts.append(f'<path d="{path}" fill="none" fill-rule="evenodd" stroke="#334155" stroke-dasharray="5 5" data-volume-id="{escape(identity)}"><title>{escape(identity)} · 真实体量截面，非实体墙</title></path>')
+                if not rooms:
+                    center = xy(list(polygon.representative_point().coords[0]))
+                    text(*center, identity, "#94a3b8", 16, 'text-anchor="middle"')
+        for facts in resolved.geometry_context["levels"]:
+            if facts["index"] != level.index:
+                continue
+            for void in facts["voids"]:
+                path = region_path(void["outer"],void.get("holes",[]))
+                parts.append(f'<path d="{path}" fill="#1e293b" fill-opacity=".4" stroke="#94a3b8" stroke-dasharray="7 6" fill-rule="evenodd" data-void-id="{escape(void["id"])}"/>')
         for room, b in rooms:
             if not b:
                 continue
@@ -132,7 +155,9 @@ def render_drawing_svg(document, resolved, floor=None):
                 parts.append(f'<rect x="{x:.2f}" y="{y:.2f}" width="{b[2]*scale:.2f}" height="{b[3]*scale:.2f}" fill="#1e293b" fill-opacity=".4" stroke="#94a3b8" stroke-dasharray="7 6" data-room-id="{escape(str(room.get("id", room.get("name", ""))), quote=True)}"/>')
         for wall in layer:
             parts.append(f'<g data-entity-id="{escape(wall["id"], quote=True)}" data-design-path="{escape(wall.get("design_path", "/decisions"), quote=True)}"><title>{escape(wall["id"])}</title>')
-            line(xy(wall["from"]), xy(wall["to"]), COLORS["wall"], max(5, wall.get("thickness", 0)*scale))
+            points = host_path(wall, level.base_y)
+            for start, end in zip(points, points[1:]):
+                line(xy(start), xy(end), COLORS["wall"], max(5, wall.get("thickness", 0)*scale))
             parts.append('</g>')
         counts, symbols_only = Counter(), 0
         for marker, family, floor_index, p in located.values():
@@ -147,12 +172,14 @@ def render_drawing_svg(document, resolved, floor=None):
             parts.append(f'<g data-marker-id="{escape(marker["id"], quote=True)}" data-design-path="{escape(marker.get("design_path", "/decisions/components"), quote=True)}"><title>{escape(design.get("name") or LABELS.get(family, marker["type"]))} · {escape(marker["id"])} · {escape(str(size))}</title>')
             wall = marker.get("diagram_host")
             if family in {"door", "window"} and wall and size.get("width"):
-                a, b = wall["from"], wall["to"]
-                length = hypot(b[0]-a[0], b[2]-a[2])
-                ux, uz = (b[0]-a[0])/length, (b[2]-a[2])/length
+                length = wall["length"]
                 start = entity.get("from", [entity.get("centerAlong", length/2)-size["width"]/2, 0, 0])[0]
-                p0 = xy([a[0]+ux*start, a[2]+uz*start])
-                p1 = xy([a[0]+ux*(start+size["width"]), a[2]+uz*(start+size["width"])])
+                q0 = host_point(wall, start, level.base_y)
+                q1 = host_point(wall, start+size["width"], level.base_y)
+                p0, p1 = xy(q0), xy(q1)
+                dx, dz = q1[0]-q0[0], q1[2]-q0[2]
+                chord = hypot(dx, dz)
+                ux, uz = (dx/chord, dz/chord) if chord else (1, 0)
                 line(p0, p1, BACKGROUND, max(8, wall.get("thickness", 0)*scale)+2)
                 line(p0, p1, color, 2)
                 if family == "window":
@@ -200,8 +227,9 @@ def render_drawing_svg(document, resolved, floor=None):
             if room.get("void"):
                 text(x, y+len(lines)*15+12, "挑空上空", "#93c5fd", 13, 'text-anchor="middle"')
             parts.append('</g>')
-        vx0, vz0 = min(v.x for v in d.volumes), min(v.z for v in d.volumes)
-        vx1, vz1 = max(v.x+v.width for v in d.volumes), max(v.z+v.depth for v in d.volumes)
+        volume_bounds = [v["bounds"] for v in resolved.geometry_context["volumes"].values()]
+        vx0, vz0 = min(v[0] for v in volume_bounds), min(v[1] for v in volume_bounds)
+        vx1, vz1 = max(v[2] for v in volume_bounds), max(v[3] for v in volume_bounds)
         a, b = xy([vx0, vz0]), xy([vx1, vz1])
         line((a[0], b[1]+32), (b[0], b[1]+32), "#64748b", 1, 'data-design-path="/decisions/massing"')
         for x in (a[0], b[0]):
@@ -229,7 +257,8 @@ def render_drawing_svg(document, resolved, floor=None):
         text(820, top+542, "点标记：位置已知，形态或尺寸待实现", "#94a3b8", 14)
         text(820, top+569, "门弧：已声明铰接端与开启侧", "#94a3b8", 14)
         text(820, top+609, f"本层 {sum(counts.values())} 个构件标记 · {symbols_only} 个点标记", "#93c5fd", 15)
-        for i, s in enumerate(textwrap.wrap("屋型："+d.roof.type, 26)[:2]):
+        roof_label = "、".join(m["design"].get("form", {}).get("roof_type", "屋面") for m in roof_markers) or "无独立屋面"
+        for i, s in enumerate(textwrap.wrap("屋型："+roof_label, 26)[:2]):
             text(820, top+637+i*21, s, "#94a3b8", 13, 'data-design-path="/decisions/roof"')
         for marker in roof_markers:
             parts.append(f'<g data-marker-id="{escape(marker["id"], quote=True)}"><title>{escape(marker["id"])} · 屋面不覆盖平面剖切图</title></g>')

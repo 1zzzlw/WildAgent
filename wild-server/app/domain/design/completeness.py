@@ -99,30 +99,49 @@ def value_matches(actual: Any, expected: Any) -> bool:
 
 
 def path_schema(document: DesignDocument, path: str) -> dict | None:
-    """Read capability from the actual Pydantic schema rather than a second field catalog."""
+    """按当前实例的判别字段解析Schema，兼容轮廓和体量几何的oneOf联合。"""
     schema = type(document.decisions).model_json_schema()
-    node = schema
+    actual = document.decisions.model_dump(mode="json")
     tokens = path.strip("/").split("/")
     if not tokens or tokens[0] != "decisions":
         return None
-    for token in tokens[1:]:
+
+    def dereference(node):
         while "$ref" in node:
             node = schema.get("$defs", {}).get(node["$ref"].rsplit("/",1)[-1], {})
-        if "anyOf" in node:
-            node = next((n for n in node["anyOf"] if n.get("type") != "null"), {})
-            while "$ref" in node:
-                node = schema.get("$defs", {}).get(node["$ref"].rsplit("/",1)[-1], {})
+        return node
+
+    def select(node, value):
+        node = dereference(node)
+        alternatives = node.get("oneOf") or node.get("anyOf")
+        if not alternatives:
+            return node
+        for branch in alternatives:
+            branch = dereference(branch)
+            if isinstance(value, dict):
+                properties = branch.get("properties", {})
+                if any("const" in field and value.get(key) != field["const"] for key,field in properties.items()):
+                    continue
+            if schema_value_supported(branch,value):
+                return select(branch,value)
+        return {}
+
+    node = schema
+    for token in tokens[1:]:
+        node = select(node,actual)
         if node.get("type") == "array" and token.isdigit():
+            index = int(token)
+            actual = actual[index] if isinstance(actual,list) and index < len(actual) else None
             node = node.get("items", {})
         elif token in node.get("properties", {}):
             node = node["properties"][token]
-        elif isinstance(node.get("additionalProperties"), dict):
+            actual = actual.get(token) if isinstance(actual,dict) else None
+        elif isinstance(node.get("additionalProperties"),dict):
             node = node["additionalProperties"]
+            actual = actual.get(token) if isinstance(actual,dict) else None
         else:
             return None
-    while "$ref" in node:
-        node = schema.get("$defs", {}).get(node["$ref"].rsplit("/",1)[-1], {})
-    return node
+    return dereference(node)
 
 
 def schema_value_supported(schema: dict, value: Any) -> bool:

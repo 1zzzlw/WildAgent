@@ -208,6 +208,14 @@ def normalize_architecture_plan(
     """
     if not isinstance(raw, dict):
         raise ValueError("建筑方案必须是完整 JSON 对象，不能使用默认建筑代替")
+    from app.domain.design.spatial import has_spatial_geometry
+
+    if has_spatial_geometry(raw):
+        from app.domain.design.contracts import ArchitectureDecisions
+
+        fields = {key:value for key,value in raw.items() if key in ArchitectureDecisions.model_fields}
+        validated = ArchitectureDecisions.model_validate(fields)
+        return {**deepcopy(raw), **validated.model_dump(mode="json", exclude_none=True)}
     source = raw
     complexity = deepcopy(
         complexity_profile or source.get("complexity") or resolve_complexity_profile()

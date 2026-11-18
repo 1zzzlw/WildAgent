@@ -40,6 +40,18 @@ def representative_floor_indices(massing):
 
 def floor_elevations(design):
     """同一图纸的楼面世界标高；显式 level 优先，未声明时沿用层高。"""
+    if design.get("levels"):
+        levels = {}
+        roof = []
+        for level in design["levels"]:
+            levels[level["id"]] = level["elevation"]
+            if level.get("index") is not None:
+                levels[level["index"]] = level["elevation"]
+            if level["kind"] == "roof":
+                roof.append(level["elevation"])
+        if roof:
+            levels[design["massing"]["floors"]+1] = max(roof)
+        return levels
     height, count = design["massing"]["floor_height"], design["massing"]["floors"]
     explicit = {}
     layouts = design.get("floor_layouts") or []
@@ -75,6 +87,15 @@ def floor_connection_targets(design, component):
     count = design["massing"]["floors"]
     targets, issues = [], []
     for index, connection in enumerate(component.get("floor_connections") or []):
+        if connection.get("from_level"):
+            lower,upper = connection["from_level"],connection["to_level"]
+            if lower not in levels or upper not in levels or levels[upper] <= levels[lower]:
+                issues.append({"code":"floor_connection_reference","path":f"/floor_connections/{index}",
+                               "actual":connection,"reason":"连接标高不存在或终点不高于起点"})
+                continue
+            targets.append({**connection,"from_floor":lower,"to_floor":upper,"from_y":levels[lower],
+                            "to_y":levels[upper],"rise":levels[upper]-levels[lower]})
+            continue
         lower, upper = connection["from_floor"], connection["to_floor"]
         destination = count + 1 if upper == "roof" else upper
         if lower > count or destination > count + (upper == "roof") or destination <= lower:
@@ -88,60 +109,13 @@ def floor_connection_targets(design, component):
 
 
 def design_geometry_context(design):
-    """由同一图纸推导标高和空间边界，供构件实现与设计落实检查共用。"""
-    from app.domain.design.contracts import MassingDecision
+    """所有节点共用已解析的轮廓、标高和宿主；禁止各自从宽深重算建筑。"""
+    if design.get("geometry_context"):
+        return design["geometry_context"]
+    from app.domain.design.spatial import resolve_geometry
 
-    indices = representative_floor_indices(MassingDecision.model_validate(design["massing"]))
-    elevations = floor_elevations(design)
-    volumes = {
-        v["id"]: {
-            "bounds": [v["x"], v["z"], v["x"] + v["width"], v["z"] + v["depth"]],
-            "center_xz": [v["x"] + v["width"] / 2, v["z"] + v["depth"] / 2],
-            "base_y": elevations[indices[v["start_floor"] - 1]],
-            "roof_support_y": elevations[indices[v["end_floor"] - 1] + 1],
-        }
-        for v in design.get("volumes") or []
-    }
-    levels = []
-    for slot, index in enumerate(indices, 1):
-        volume_ids = []
-        for volume in design.get("volumes") or []:
-            if volume["start_floor"] <= slot <= volume["end_floor"]:
-                volume_ids.append(volume["id"])
-        levels.append(
-            {
-                "index": index,
-                "base_y": elevations[index],
-                "top_y": elevations[index + 1],
-                "height": elevations[index + 1] - elevations[index],
-                "volume_ids": volume_ids,
-                "voids": [],
-            }
-        )
-    by_floor = {level["index"]: level for level in levels}
-    for layout_index, layout in enumerate(design.get("floor_layouts") or []):
-        for room_index, room in enumerate(layout.get("rooms") or []):
-            path = f"/floor_layouts/{layout_index}/rooms/{room_index}"
-            if "void" in room and type(room["void"]) is not bool:
-                raise ValueError(f"{path}/void：必须是 boolean，true 表示此层挑空")
-            if room.get("void") is not True:
-                continue
-            bounds = room.get("bounds") or {}
-            if (not isinstance(bounds, dict)
-                    or not all(type(bounds.get(key)) in (int, float) and isfinite(bounds[key])
-                               for key in ("x", "z", "width", "depth"))
-                    or bounds["width"] <= 0 or bounds["depth"] <= 0):
-                raise ValueError(f"{path}/bounds：挑空范围须有有限的 x/z 和正数 width/depth")
-            floor = layout.get("floor")
-            if type(floor) is not int or floor not in elevations or floor > design["massing"]["floors"]:
-                raise ValueError(f"{path}：挑空必须引用有效楼层 floor")
-            if floor in by_floor:
-                by_floor[floor]["voids"].append({
-                    "design_path": path,
-                    "bounds": [bounds["x"], bounds["z"], bounds["x"] + bounds["width"],
-                               bounds["z"] + bounds["depth"]],
-                })
-    return {"levels": levels, "volumes": volumes}
+    result = resolve_geometry(design)
+    return {key:value for key,value in result.items() if key not in {"source","body_geometry"}}
 
 
 def stair_span_conflicts(design):
@@ -149,8 +123,9 @@ def stair_span_conflicts(design):
     from app.domain.components.names import resolve_component_name
 
     levels = floor_elevations(design)
-    highest_floor = levels[design["massing"]["floors"]]
-    available_rise = highest_floor - levels[1]
+    numeric_levels = [value for key,value in levels.items() if isinstance(key,int) and key <= design["massing"]["floors"]]
+    highest_floor = max(numeric_levels)
+    available_rise = highest_floor - min(numeric_levels)
     issues = []
     for index, component in enumerate(design.get("components") or []):
         if resolve_component_name(component.get("type", ""))["entity_type"] != "stair":
@@ -189,36 +164,26 @@ def stair_span_conflicts(design):
 
 
 def design_relation_checks(design, markers, frames):
-    """核对墙体表达、设计引用与明确楼层连接，不代替设计取舍。"""
+    """用已解析宿主核对引用和重复墙；不再重新构造四向矩形围护。"""
+    from shapely.geometry import LineString
     from app.domain.components.names import resolve_component_name
+    from app.domain.design.spatial import host_path
 
     ids = {v["id"] for v in design["volumes"]} | {m["id"] for m in markers} | set(frames)
-    errors, reviews, stairs = [], [], []
-    facades = [frame for frame in frames.values() if frame.get("facing")]
-    for wall in frames.values():
-        if not wall.get("design_path", "").startswith("/decisions/floor_layouts/"):
-            continue
-        a, b = wall["from"], wall["to"]
-        length = hypot(b[0]-a[0], b[2]-a[2])
-        ux, uz = (b[0]-a[0])/length, (b[2]-a[2])/length
-        for facade in facades:
-            p, q = facade["from"], facade["to"]
-            if min(max(a[1], b[1]), max(p[1], q[1]))-max(min(a[1], b[1]), min(p[1], q[1])) <= 0.001:
+    errors, reviews = [], []
+    walls = list(frames.values())
+    for index, wall in enumerate(walls):
+        for other in walls[index+1:]:
+            lower = max(wall["from"][1], other["from"][1])
+            upper = min(wall["to"][1], other["to"][1])
+            if upper-lower <= 0.001:
                 continue
-            if max(abs(-(point[0]-a[0])*uz+(point[2]-a[2])*ux) for point in (p, q)) > 0.001:
-                continue
-            along = [(point[0]-a[0])*ux+(point[2]-a[2])*uz for point in (p, q)]
-            overlap = min(length, max(along))-max(0, min(along))
-            if overlap <= 0.001:
-                continue
-            conflict = ("该面有效 facades 为 open，却在平面墙清单中重新封墙"
-                        if facade.get("open") else "同一围护墙同时由体量立面和平面墙清单重复声明")
-            errors.append({"code": "floor_wall_facade_conflict", "path": wall["design_path"],
-                           "expected": "floor_layouts.walls 只声明独立内墙，围护统一由有效 facades 表达",
-                           "actual": {"wall_id": wall["id"], "facade_id": facade["id"], "overlap": overlap},
-                           "reason": f"平面墙 {wall['id']} 与围护宿主 {facade['id']} 共线重叠 {overlap:g}m；"
-                                     f"{conflict}。核对 /floor_layouts、/facades 与 /volumes 中的覆盖；"
-                                     "外墙保留一个围护来源，相关门窗引用对应宿主；不要通过删掉必要宿主消除重复"})
+            path = LineString(host_path(wall, lower))
+            overlap = path.intersection(LineString(host_path(other, lower))).length
+            if overlap > 0.001:
+                errors.append({"code": "floor_wall_facade_conflict", "path": wall["design_path"],
+                               "actual": {"wall_id": wall["id"], "facade_id": other["id"], "overlap": overlap},
+                               "reason": "同一墙路径被重复声明；保留一个实体来源并修订相关引用"})
     for marker in markers:
         if marker["type"] == "building_body":
             continue
@@ -227,148 +192,56 @@ def design_relation_checks(design, markers, frames):
                                  ("relation/target", (component.get("relation") or {}).get("target"))):
             if reference and reference not in ids:
                 errors.append({"code": "design_reference_missing", "path": f"{path}/{field}",
-                               "marker_id": marker["id"], "expected": "图纸已声明的宿主或构件 ID",
-                               "actual": reference, "reason": "引用目标未在本次图纸声明"})
+                               "marker_id": marker["id"], "actual": reference, "reason": "引用目标未在图纸声明"})
         family = resolve_component_name(marker["type"])["entity_type"]
         placement = component.get("placement") or {}
         if (not marker.get("host") and not (component.get("relation") or {}).get("target")
                 and not placement.get("position")
                 and (placement.get("face") or placement.get("floor")
                      or any(placement.get(key) for key in ("offset", "sill_height", "normal_offset")))):
-            errors.append({"code": "design_placement_reference_missing", "path": f"{path}/placement",
-                           "marker_id": marker["id"], "expected": "沿宿主定位须有 host/relation.target，独立定位须有世界 position",
-                           "actual": placement, "related_paths": [path + "/host"],
-                           "reason": "局部距离缺少参考对象，无法确定构件世界位置；显式选择宿主或世界定位，不由执行节点猜测"})
+            errors.append({"code": "design_placement_reference_missing", "path": path+"/placement",
+                           "marker_id": marker["id"], "reason": "局部定位缺少host或relation.target参考对象"})
         if family in {"door", "window"} and marker.get("host") not in frames:
-            errors.append({"code": "design_opening_host_missing", "path": f"{path}/host",
-                           "marker_id": marker["id"], "expected": "可解析的图纸墙宿主",
-                           "actual": marker.get("host"),
-                           "reason": f"门窗 {marker['id']} 未能解析到墙面；host 必须引用已声明内墙或 "
-                                     "wall_<体量id>_<front/back/left/right>_L<楼层>，"
-                                     "也可引用体量并明确 placement.face、floor 或世界 position；"
-                                     "仅有 face、floor、offset 不能确定宿主，不交给执行节点猜测"})
-        if family != "stair":
-            continue
-        targets, problems = floor_connection_targets(design, component)
-        marker["floor_connections"] = targets
-        errors.extend({**problem, "path": path + problem["path"], "marker_id": marker["id"]}
-                      for problem in problems)
-        stairs.append((marker, targets))
-        if not targets:
-            reviews.append({"marker_id": marker["id"], "path": path + "/floor_connections",
-                            "reason": "楼梯连接楼层未结构化，须核对实际到达楼面；不据文字猜测连接"})
-        position, size = placement.get("position"), component.get("size") or {}
-        if targets and position and size.get("width") and size.get("depth"):
-            x0, x1 = position[0] - size["width"] / 2, position[0] + size["width"] / 2
-            z0, z1 = position[2] - size["depth"] / 2, position[2] + size["depth"] / 2
-            for wall in frames.values():
-                if not wall.get("design_path", "").startswith("/decisions/floor_layouts/"):
-                    continue
-                a, b = wall["from"], wall["to"]
-                if not any(target["from_y"] <= a[1] <= target["to_y"] for target in targets):
-                    continue
-                crosses_x = abs(a[0] - b[0]) <= 0.001 and x0 < a[0] < x1 and min(a[2], b[2]) < z1 and max(a[2], b[2]) > z0
-                crosses_z = abs(a[2] - b[2]) <= 0.001 and z0 < a[2] < z1 and min(a[0], b[0]) < x1 and max(a[0], b[0]) > x0
-                if crosses_x or crosses_z:
-                    reviews.append({"marker_id": marker["id"], "path": path + "/placement",
-                                    "expected": "实现梯段、平台及通行开口后复核与内墙的关系",
-                                    "actual": {"footprint": [x0, z0, x1, z1], "wall_id": wall["id"],
-                                               "wall_path": wall["design_path"]},
-                                    "reason": "楼梯占地包围范围与内墙相交；包围范围不能证明实际梯段碰撞，不能据此自动搬动或裁剪楼梯"})
-    if stairs and all(targets for _, targets in stairs) and design["massing"].get("representation_mode", "full") == "full":
-        reached = {1}
-        while True:
-            expanded = set(reached)
-            for _, targets in stairs:
-                for target in targets:
-                    if target["from_floor"] in reached:
-                        expanded.add(target["to_floor"])
-            if expanded == reached:
-                break
-            reached = expanded
-        missing = sorted(set(range(1, design["massing"]["floors"] + 1)) - reached)
-        if missing:
-            issue = {"code": "stair_floor_unreachable", "path": "/decisions/components",
-                     "marker_id": "circulation", "marker_ids": [m["id"] for m, _ in stairs],
-                     "expected": "各声明楼层可从首层到达", "actual": {"unreachable_floors": missing},
-                     "reason": "明确楼梯连接漏连楼层"}
-            (errors if design.get("circulation", {}).get("vertical_strategy") == "stair" else reviews).append(issue)
+            errors.append({"code": "design_opening_host_missing", "path": path+"/host",
+                           "marker_id": marker["id"], "actual": marker.get("host"),
+                           "reason": "门窗必须引用可解析的逻辑墙宿主，不能由执行节点猜测"})
+        if family == "stair":
+            targets, problems = floor_connection_targets(design, component)
+            marker["floor_connections"] = targets
+            errors.extend({**problem, "path": path+problem["path"], "marker_id": marker["id"]} for problem in problems)
+            if not targets:
+                reviews.append({"marker_id": marker["id"], "path": path+"/floor_connections",
+                                "reason": "楼梯缺少明确楼层连接，尚不能确认上下口可达"})
     return errors, reviews
 
 
 def floor_layout_conflicts(design):
-    """Reject a partition that cuts across a declared rectangular room."""
+    """检查墙路径是否穿过房间内部，支持真实多边形与曲线墙。"""
+    from shapely.geometry import LineString
+    from app.domain.design.layout import _room_shape
+
     issues = []
-    for floor_index, layout in enumerate(design.get("floor_layouts") or []):
+    for layout_index, layout in enumerate(design.get("floor_layouts") or []):
         for wall_index, wall in enumerate(layout.get("walls") or []):
-            a, b = wall.get("from"), wall.get("to")
-            if not (isinstance(a, list) and isinstance(b, list) and len(a) == len(b) == 2
-                    and all(type(n) in (int, float) and isfinite(n) for n in a+b)):
-                continue  # Field validation reports malformed walls separately.
+            points = wall.get("path") or [wall.get("from"), wall.get("to")]
+            if any(point is None for point in points):
+                continue
             if any(item.get("host") == wall.get("id") for item in design.get("components") or []):
-                continue  # A designed opening or attached detail needs human review.
+                continue
+            path = LineString(points)
             for room_index, room in enumerate(layout.get("rooms") or []):
-                box = room.get("bounds") or {}
-                if not isinstance(box, dict):
+                if room.get("void"):
                     continue
-                if not all(type(box.get(key)) in (int, float) and isfinite(box[key])
-                           for key in ("x", "z", "width", "depth")):
+                shape = _room_shape(room)
+                if shape is None:
                     continue
-                x0, z0 = box["x"], box["z"]
-                x1, z1 = x0+box["width"], z0+box["depth"]
-                vertical = (abs(a[0]-b[0]) <= 0.001 and x0+0.001 < a[0] < x1-0.001
-                            and min(a[1], b[1]) <= z0+0.001 and max(a[1], b[1]) >= z1-0.001)
-                horizontal = (abs(a[1]-b[1]) <= 0.001 and z0+0.001 < a[1] < z1-0.001
-                              and min(a[0], b[0]) <= x0+0.001 and max(a[0], b[0]) >= x1-0.001)
-                if vertical or horizontal:
-                    origin, extent, lower, upper, cut = (("x", "width", x0, x1, a[0]) if vertical else
-                                                         ("z", "depth", z0, z1, a[1]))
-                    neighbors = []
-                    for other in layout.get("rooms") or []:
-                        bounds = other.get("bounds") or {}
-                        if other is room or other.get("void") or not isinstance(bounds, dict) or not all(
-                                type(bounds.get(k)) in (int, float) and isfinite(bounds[k])
-                                for k in ("x", "z", "width", "depth")):
-                            continue
-                        left, right = max(x0, bounds["x"]), min(x1, bounds["x"]+bounds["width"])
-                        front, back = max(z0, bounds["z"]), min(z1, bounds["z"]+bounds["depth"])
-                        if right-left > 0.001 and back-front > 0.001:
-                            neighbors.append(f"{other.get('id', '?')}（{other.get('name', '未命名')}）"
-                                             f"：X=[{left:g}, {right:g}]，Z=[{front:g}, {back:g}]")
-                    issues.append(f"/floor_layouts/{floor_index}/rooms/{room_index}："
-                                  f"内墙 {wall.get('id', wall_index)}（from={a}, to={b}）贯穿"
-                                  f"第 {layout.get('floor', '?')} 层房间 {room.get('id', room_index)}"
-                                  f"（{room.get('name', '未命名')}）范围，世界 X=[{x0:g}, {x1:g}]，Z=[{z0:g}, {z1:g}]；"
-                                  f"墙段位于 {'X' if vertical else 'Z'}={a[0] if vertical else a[1]:g}，"
-                                  "在房间内部跨越整个范围。保留墙时，房间 bounds 应在墙的一侧；"
-                                  f"例如保留较大坐标边界时可写 bounds.{origin}={cut:g}、bounds.{extent}={upper-cut:g}；"
-                                  f"保留较小坐标边界时可写 bounds.{origin}={lower:g}、bounds.{extent}={cut-lower:g}。"
-                                  "仅把墙端缩短到房间另一边界仍然是贯穿。"
-                                  + ("该房间还与以下房间范围重叠，须一并核对：" + "；".join(neighbors) + "。" if neighbors else "") +
-                                  "保留房间时，修订墙段到房间边界或明确设计通行开口。"
-                                  f"核对 /floor_layouts/{floor_index}/walls/{wall_index} 与该房间 bounds，"
-                                  "不能原样返回冲突数据")
+                crossing = path.intersection(shape.buffer(-0.001))
+                if crossing.length > 0.001:
+                    issues.append(f"/floor_layouts/{layout_index}/walls/{wall_index}：墙 {wall.get('id')} "
+                                  f"穿过 rooms/{room_index} 房间内部；联合修订墙与房间边界")
     return issues
 
 
-def rectangle_uncovered_area(bounds, regions):
-    """矩形减去矩形并集的面积；重复、重叠覆盖不能抵消其他位置的空缺。"""
-    x0, z0, x1, z1 = bounds
-    x_coordinates = {x0, x1}
-    for region in regions:
-        for x in (region[0], region[2]):
-            x_coordinates.add(max(x0, min(x1, x)))
-    xs = sorted(x_coordinates)
-    covered = 0
-    for left, right in zip(xs, xs[1:]):
-        intervals = sorted((max(z0, r[1]), min(z1, r[3])) for r in regions
-                           if r[0] <= left and r[2] >= right and r[1] < z1 and r[3] > z0)
-        end, length = z0, 0
-        for low, high in intervals:
-            length += max(0, high-max(end, low))
-            end = max(end, high)
-        covered += (right-left)*length
-    return max(0, (x1-x0)*(z1-z0)-covered)
 
 
 def opening_coordinate_errors(markers):
@@ -389,7 +262,7 @@ def opening_coordinate_errors(markers):
                 or resolve_component_name(marker["type"])["entity_type"] not in {"door", "window"}):
             continue
         a, b = wall["from"], wall["to"]
-        length = hypot(b[0]-a[0], b[2]-a[2])
+        length = wall.get("length") or hypot(b[0]-a[0], b[2]-a[2])
         along, y, _ = spec["from"]
         size = design.get("size") or {}
         width, height = size.get("width", 0), size.get("height", 0)
@@ -457,40 +330,6 @@ def opening_coordinate_errors(markers):
     return errors
 
 
-def exterior_facade_intervals(volume, face, floor, volumes):
-    """自动立面使用的外露墙段；同向共面区域只分配给一个体量。"""
-    axis = "x" if face in {"front", "back"} else "z"
-    extent = "width" if axis == "x" else "depth"
-    normal, normal_extent = ("z", "depth") if axis == "x" else ("x", "width")
-    positive = face in {"right", "back"}
-    plane = getattr(volume, normal) + (getattr(volume, normal_extent) if positive else 0)
-    origin, length = getattr(volume, axis), getattr(volume, extent)
-    segments = [(0.0, length)]
-    for other in volumes:
-        if other.id == volume.id or not other.start_floor <= floor <= other.end_floor:
-            continue
-        low, high = getattr(other, normal), getattr(other, normal)+getattr(other, normal_extent)
-        inside = low <= plane+0.001 and high > plane+0.001 if positive else low < plane-0.001 and high >= plane-0.001
-        shared = plane == (high if positive else low)
-        owner = (-getattr(other, extent), other.id) < (-length, volume.id)
-        if not inside and not (shared and owner):
-            continue
-        start = max(0.0, getattr(other, axis)-origin)
-        end = min(length, getattr(other, axis)+getattr(other, extent)-origin)
-        if face in {"back", "left"}:
-            start, end = length-end, length-start
-        if end <= start:
-            continue
-        updated_segments = []
-        for left, right in segments:
-            for segment_start, segment_end in (
-                (left, min(right, start)),
-                (max(left, end), right),
-            ):
-                if segment_end - segment_start > 0.001:
-                    updated_segments.append((segment_start, segment_end))
-        segments = updated_segments
-    return segments
 
 
 def component_dimension_conflicts(design):

@@ -117,8 +117,6 @@ def validate_design_brief_constraints(
                 errors.append(
                     f"建筑方案要求 {modeled_floors} 层，但缺少楼板标高 {missing_floor_levels}"
                 )
-            if not counts.get("stair"):
-                errors.append(f"建筑方案要求 {modeled_floors} 层，但没有 stair 构件")
 
     quotas = design_brief.get("component_quota", {})
     # 配额数量缺口不再是错误（用户决策 2026-09-29，见 design_quota_shortfalls）；

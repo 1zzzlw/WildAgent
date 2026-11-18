@@ -10,8 +10,10 @@ def construction_spec(design):
 
 
 def check_opening_bounds(spec, opening, wall):
+    from app.domain.validation.spatial import _wall_length
+
     a, b = wall["from"], wall["to"]
-    length = hypot(b[0] - a[0], b[2] - a[2])
+    length = _wall_length(wall)
     wall_bottom = min(a[1], b[1])
     wall_top = max(a[1], b[1])
     start, bottom, _ = opening["from"]
@@ -139,6 +141,18 @@ def validate_construction(design):
 
 
 def construct_system(marker, blueprint):
+    if marker.get("geometry") is not None:
+        from copy import deepcopy
+
+        # 几何事实由设计解析器确定；与普通构造共用同一片段验收和装配入口。
+        geometry = deepcopy(marker["geometry"])
+        roles = marker.get("geometry_material_roles", {})
+        materials = marker.get("construction_materials", {})
+        for entity in geometry["elements"]:
+            role = roles.get(entity["id"].split("__part_")[0]) or roles.get(entity["id"])
+            if role in materials:
+                entity["material"] = materials[role]
+        return {"id":marker["id"],"geometry":geometry}
     design = marker["design"]
     validate_construction(design)
     spec = construction_spec(design)
@@ -178,8 +192,8 @@ def construct_system(marker, blueprint):
         from app.domain.design.relations import wall_attached_point
         wall = opening_host(blueprint, marker)
         diagram = marker.get("diagram_host") or wall
-        if not wall or not diagram or wall.get("curve"):
-            raise ValueError("构造展开需要已实现的直墙宿主")
+        if not wall or not diagram:
+            raise ValueError("构造展开需要已实现的墙宿主")
         origin = opening_target(marker, diagram, size["width"], size["height"])
         if origin is None:
             raise ValueError("构造展开缺少图纸门窗定位")
@@ -192,50 +206,53 @@ def construct_system(marker, blueprint):
         components.append(opening)
         wall = next(w for w in blueprint["geometry"]["elements"] if w["id"] == opening["parentWall"])
         check_opening_bounds(spec, opening, wall)
-        a, b = wall["from"], wall["to"]
-        length = hypot(b[0]-a[0], b[2]-a[2])
-        ux, uz = (b[0]-a[0])/length, (b[2]-a[2])/length
-        start, bottom, _ = opening["from"]
-        width, height = size["width"], size["height"]
-
-        def attached(suffix, along, y, outward, w, h, d, material):
-            position = wall_attached_point(blueprint, opening, along, y, outward)
-            if abs(uz) < 1e-6:
-                box(suffix, position, [w, h, d], material)
-            elif abs(ux) < 1e-6:
-                box(suffix, position, [d, h, w], material)
-            else:
-                box(suffix, position, [w, h, d], material, [0, -atan2(uz, ux), 0])
-
-        if "surround" in spec:
-            surround = spec["surround"]
-            w, d, material = surround["width"], surround["depth"], surround["material"]
-            if surround["embed"] >= wall["thickness"]:
-                raise ValueError("门窗套嵌入深度超过宿主墙厚")
-            outward = d/2-surround["embed"]
-            for suffix, along in (("left", start-w/2), ("right", start+width+w/2)):
-                attached("surround_"+suffix, along, bottom+height/2, outward, w, height, d, material)
-            attached("surround_top", start+width/2, bottom+height+w/2, outward, width+2*w, w, d, material)
-            if design["type"] == "window":
-                attached("surround_bottom", start+width/2, bottom-w/2, outward, width+2*w, w, d, material)
-        if spec["system"] == "entrance":
-            canopy = spec["canopy"]
-            w, d, h = canopy["width"], canopy["depth"], canopy["thickness"]
-            left = start+(width-w)/2
-            top = bottom+height+canopy["clearance"]
-            components.append({"id": mid+"_canopy", "type": "canopy", "parentWall": wall["id"],
-                               "from": [left, top+h/2, opening["from"][2]], "width": w, "depth": d,
-                               "thickness": h, "supportCount": 0, "material": mat(canopy["material"])})
-            soffit = canopy["soffit"]
-            t = soffit["thickness"]
-            if soffit["embed"] >= wall["thickness"]:
-                raise ValueError("檐底嵌入深度超过宿主墙厚")
-            attached("soffit", start+width/2, top-t/2, (d-soffit["embed"])/2, w, t, d+soffit["embed"], soffit["material"])
-            if "posts" in canopy:
-                post = canopy["posts"]
-                p, post_height = post["width"], top-t-post["baseY"]
-                for suffix, along in (("left", left+p/2), ("right", left+w-p/2)):
-                    attached("post_"+suffix, along, post["baseY"]+post_height/2, d-p/2, p, post_height, p, post["material"])
+        if "surround" in spec or spec["system"] == "entrance":
+            if wall.get("curve"):
+                raise ValueError("曲墙门窗可使用原生框扇；独立窗套和入口附件尚未实现曲面安装")
+            a, b = wall["from"], wall["to"]
+            length = hypot(b[0]-a[0], b[2]-a[2])
+            ux, uz = (b[0]-a[0])/length, (b[2]-a[2])/length
+            start, bottom, _ = opening["from"]
+            width, height = size["width"], size["height"]
+    
+            def attached(suffix, along, y, outward, w, h, d, material):
+                position = wall_attached_point(blueprint, opening, along, y, outward)
+                if abs(uz) < 1e-6:
+                    box(suffix, position, [w, h, d], material)
+                elif abs(ux) < 1e-6:
+                    box(suffix, position, [d, h, w], material)
+                else:
+                    box(suffix, position, [w, h, d], material, [0, -atan2(uz, ux), 0])
+    
+            if "surround" in spec:
+                surround = spec["surround"]
+                w, d, material = surround["width"], surround["depth"], surround["material"]
+                if surround["embed"] >= wall["thickness"]:
+                    raise ValueError("门窗套嵌入深度超过宿主墙厚")
+                outward = d/2-surround["embed"]
+                for suffix, along in (("left", start-w/2), ("right", start+width+w/2)):
+                    attached("surround_"+suffix, along, bottom+height/2, outward, w, height, d, material)
+                attached("surround_top", start+width/2, bottom+height+w/2, outward, width+2*w, w, d, material)
+                if design["type"] == "window":
+                    attached("surround_bottom", start+width/2, bottom-w/2, outward, width+2*w, w, d, material)
+            if spec["system"] == "entrance":
+                canopy = spec["canopy"]
+                w, d, h = canopy["width"], canopy["depth"], canopy["thickness"]
+                left = start+(width-w)/2
+                top = bottom+height+canopy["clearance"]
+                components.append({"id": mid+"_canopy", "type": "canopy", "parentWall": wall["id"],
+                                   "from": [left, top+h/2, opening["from"][2]], "width": w, "depth": d,
+                                   "thickness": h, "supportCount": 0, "material": mat(canopy["material"])})
+                soffit = canopy["soffit"]
+                t = soffit["thickness"]
+                if soffit["embed"] >= wall["thickness"]:
+                    raise ValueError("檐底嵌入深度超过宿主墙厚")
+                attached("soffit", start+width/2, top-t/2, (d-soffit["embed"])/2, w, t, d+soffit["embed"], soffit["material"])
+                if "posts" in canopy:
+                    post = canopy["posts"]
+                    p, post_height = post["width"], top-t-post["baseY"]
+                    for suffix, along in (("left", left+p/2), ("right", left+w-p/2)):
+                        attached("post_"+suffix, along, post["baseY"]+post_height/2, d-p/2, p, post_height, p, post["material"])
 
     def rounded(value):
         if isinstance(value, float):

@@ -47,7 +47,7 @@
           <span>{{ architectureDecisions.massing.floors }} 层</span>
           <span>{{ architectureDecisions.volumes.length }} 个体量</span>
           <span>{{ architectureDecisions.envelope.system }}</span>
-          <span>{{ architectureDecisions.roof.type }} 屋顶</span>
+          <span>{{ architectureDecisions.roofs?.length ? architectureDecisions.roofs.map(roof => roof.geometry.type).join('、') : architectureDecisions.roof.type }} 屋顶</span>
           <span v-if="designMaterialConcept">{{ designMaterialConcept }}</span>
         </div>
         <div v-else-if="objectDecisions" class="design-facts">
@@ -194,91 +194,91 @@
         </div>
       </details>
     </div>
-  </details>
 
-  <Teleport to="body">
-    <div v-if="drawingOpen && architectureDecisions" class="drawing-backdrop" @click.self="drawingOpen = false">
-      <section ref="drawingDialog" class="drawing-dialog" role="dialog" aria-modal="true" aria-label="平面设计图纸"
-        tabindex="-1" @keydown.esc="drawingOpen = false">
-        <header class="drawing-header">
-          <strong>平面设计图纸</strong>
-          <div class="drawing-floors" aria-label="放大图纸楼层">
-            <button v-for="level in designLevels" :key="level.index" type="button"
-              :class="{ selected: selectedDesignFloor === level.index }"
-              @click="selectedDesignFloor = level.index">F{{ level.index }} · {{ level.base_y.toFixed(3) }} m</button>
+    <Teleport to="body">
+      <div v-if="drawingOpen && architectureDecisions" class="drawing-backdrop" @click.self="drawingOpen = false">
+        <section ref="drawingDialog" class="drawing-dialog" role="dialog" aria-modal="true" aria-label="平面设计图纸"
+          tabindex="-1" @keydown.esc="drawingOpen = false">
+          <header class="drawing-header">
+            <strong>平面设计图纸</strong>
+            <div class="drawing-floors" aria-label="放大图纸楼层">
+              <button v-for="level in designLevels" :key="level.index" type="button"
+                :class="{ selected: selectedDesignFloor === level.index }"
+                @click="selectedDesignFloor = level.index">F{{ level.index }} · {{ level.base_y.toFixed(3) }} m</button>
+            </div>
+            <div class="drawing-actions">
+              <button type="button" aria-label="缩小图纸" :disabled="drawingZoom <= 0.5"
+                @click="drawingZoom = Math.max(0.5, drawingZoom - 0.25)">−</button>
+              <button type="button" title="恢复适应宽度" @click="drawingZoom = 1">{{ Math.round(drawingZoom * 100) }}%</button>
+              <button type="button" aria-label="放大图纸" :disabled="drawingZoom >= 3"
+                @click="drawingZoom = Math.min(3, drawingZoom + 0.25)">+</button>
+              <a :href="designPreviewUrl" target="_blank" rel="noopener noreferrer">打开 SVG</a>
+              <button type="button" aria-label="关闭平面图纸" @click="drawingOpen = false">×</button>
+            </div>
+          </header>
+          <div class="drawing-viewport">
+            <img :src="designPreviewUrl" :style="{ width: `${drawingZoom * 100}%` }" alt="当前楼层完整平面设计图纸" />
           </div>
-          <div class="drawing-actions">
-            <button type="button" aria-label="缩小图纸" :disabled="drawingZoom <= 0.5"
-              @click="drawingZoom = Math.max(0.5, drawingZoom - 0.25)">−</button>
-            <button type="button" title="恢复适应宽度" @click="drawingZoom = 1">{{ Math.round(drawingZoom * 100) }}%</button>
-            <button type="button" aria-label="放大图纸" :disabled="drawingZoom >= 3"
-              @click="drawingZoom = Math.min(3, drawingZoom + 0.25)">+</button>
-            <a :href="designPreviewUrl" target="_blank" rel="noopener noreferrer">打开 SVG</a>
-            <button type="button" aria-label="关闭平面图纸" @click="drawingOpen = false">×</button>
+        </section>
+      </div>
+      <aside
+        v-if="turn.plan && planWindowOpen"
+        class="plan-floating-window"
+        role="dialog"
+        aria-label="执行计划"
+      >
+        <header class="plan-floating-header">
+          <div>
+            <strong>执行计划</strong>
+            <span>已结束 {{ planCounts.ended }}/{{ planCounts.total }} 个任务</span>
+            <span v-if="markerCounts.total">已落实 {{ markerCounts.implemented }}/{{ markerCounts.total }} 个标记<span v-if="markerCounts.abandoned"> · 舍弃 {{ markerCounts.abandoned }}</span></span>
+          </div>
+          <div class="plan-floating-actions">
+            <button type="button" @click="planWindowMinimized = !planWindowMinimized">
+              {{ planWindowMinimized ? '展开' : '最小化' }}
+            </button>
+            <button type="button" aria-label="关闭执行计划" @click="planWindowOpen = false">×</button>
           </div>
         </header>
-        <div class="drawing-viewport">
-          <img :src="designPreviewUrl" :style="{ width: `${drawingZoom * 100}%` }" alt="当前楼层完整平面设计图纸" />
-        </div>
-      </section>
-    </div>
-    <aside
-      v-if="turn.plan && planWindowOpen"
-      class="plan-floating-window"
-      role="dialog"
-      aria-label="执行计划"
-    >
-      <header class="plan-floating-header">
-        <div>
-          <strong>执行计划</strong>
-          <span>已结束 {{ planCounts.ended }}/{{ planCounts.total }} 个任务</span>
-          <span v-if="markerCounts.total">已落实 {{ markerCounts.implemented }}/{{ markerCounts.total }} 个标记<span v-if="markerCounts.abandoned"> · 舍弃 {{ markerCounts.abandoned }}</span></span>
-        </div>
-        <div class="plan-floating-actions">
-          <button type="button" @click="planWindowMinimized = !planWindowMinimized">
-            {{ planWindowMinimized ? '展开' : '最小化' }}
-          </button>
-          <button type="button" aria-label="关闭执行计划" @click="planWindowOpen = false">×</button>
-        </div>
-      </header>
-      <template v-if="!planWindowMinimized">
-        <div class="plan-floating-meta">
-          <span>粒度：{{ BUILDING_DETAIL_LEVELS.find(level => level.value === turn.plan?.detail_level)?.label || '低' }}</span>
-          <span>第 {{ turn.plan.iterations || 0 }} 轮</span>
-          <span>{{ planBatchCount }} 个生成批次</span>
-          <span v-if="planParallelGroups">{{ planParallelGroups }} 个并发组</span>
-        </div>
-        <div v-if="planShortfall.length" class="plan-change-summary">
-          <strong>待处理 {{ planShortfall.length }} 条</strong>
-        </div>
-        <div class="dynamic-plan-tasks plan-floating-tasks">
-          <div
-            v-for="item in turn.plan.items"
-            :key="item.id"
-            :class="['dynamic-plan-task', `plan-${planItemState(item)}`, { 'plan-running': itemStep(item)?.status === 'running' }]"
-          >
-            <span class="plan-step-mark">{{ itemStep(item)?.status === 'running' ? '⟳' : planItemMark(planItemState(item)) }}</span>
-            <span class="plan-step-main">
-              <strong>{{ item.label || item.id }}</strong>
-              <small>{{ planItemDetail(item) }}</small>
-              <small v-if="planExecutionLabel(item)" class="plan-execution-mode">
-                {{ planExecutionLabel(item) }}
-              </small>
-            </span>
-            <span class="plan-phase">{{ item.op }}</span>
-            <details v-if="itemStep(item)" class="plan-item-thinking" :open="itemStep(item)?.status === 'running'">
-              <summary>执行过程与模型思考</summary>
-              <div v-if="itemStep(item)?.thinking" class="thinking-content"
-                v-html="renderMarkdown(itemStep(item)?.thinking || '')"></div>
-              <div v-if="itemStep(item)?.reasoning" class="thinking-content plan-item-reasoning"
-                v-html="renderMarkdown(itemStep(item)?.reasoning || '')"></div>
-              <small v-else>{{ itemStep(item)?.status === 'running' ? '等待模型返回思考内容…' : '本条目没有模型返回的思考内容。' }}</small>
-            </details>
+        <template v-if="!planWindowMinimized">
+          <div class="plan-floating-meta">
+            <span>粒度：{{ BUILDING_DETAIL_LEVELS.find(level => level.value === turn.plan?.detail_level)?.label || '低' }}</span>
+            <span>第 {{ turn.plan.iterations || 0 }} 轮</span>
+            <span>{{ planBatchCount }} 个生成批次</span>
+            <span v-if="planParallelGroups">{{ planParallelGroups }} 个并发组</span>
           </div>
-        </div>
-      </template>
-    </aside>
-  </Teleport>
+          <div v-if="planShortfall.length" class="plan-change-summary">
+            <strong>待处理 {{ planShortfall.length }} 条</strong>
+          </div>
+          <div class="dynamic-plan-tasks plan-floating-tasks">
+            <div
+              v-for="item in turn.plan.items"
+              :key="item.id"
+              :class="['dynamic-plan-task', `plan-${planItemState(item)}`, { 'plan-running': itemStep(item)?.status === 'running' }]"
+            >
+              <span class="plan-step-mark">{{ itemStep(item)?.status === 'running' ? '⟳' : planItemMark(planItemState(item)) }}</span>
+              <span class="plan-step-main">
+                <strong>{{ item.label || item.id }}</strong>
+                <small>{{ planItemDetail(item) }}</small>
+                <small v-if="planExecutionLabel(item)" class="plan-execution-mode">
+                  {{ planExecutionLabel(item) }}
+                </small>
+              </span>
+              <span class="plan-phase">{{ item.op }}</span>
+              <details v-if="itemStep(item)" class="plan-item-thinking" :open="itemStep(item)?.status === 'running'">
+                <summary>执行过程与模型思考</summary>
+                <div v-if="itemStep(item)?.thinking" class="thinking-content"
+                  v-html="renderMarkdown(itemStep(item)?.thinking || '')"></div>
+                <div v-if="itemStep(item)?.reasoning" class="thinking-content plan-item-reasoning"
+                  v-html="renderMarkdown(itemStep(item)?.reasoning || '')"></div>
+                <small v-else>{{ itemStep(item)?.status === 'running' ? '等待模型返回思考内容…' : '本条目没有模型返回的思考内容。' }}</small>
+              </details>
+            </div>
+          </div>
+        </template>
+      </aside>
+    </Teleport>
+  </details>
 </template>
 
 <script setup lang="ts">

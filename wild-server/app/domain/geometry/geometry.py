@@ -47,6 +47,9 @@ def shared_footprint(level_regions: list[list[list[float]]]) -> list[float] | No
     """
     if not level_regions or any(not regions for regions in level_regions):
         return None
+    if any(isinstance(region,dict) for regions in level_regions for region in regions):
+        # 自动直梯布局只承诺矩形共同覆盖；复杂轮廓需要明确的设计占地，不能套包围盒。
+        return None
     candidates = [
         [float(value) for value in region]
         for region in level_regions[0]
@@ -118,6 +121,11 @@ def shared_stair_layout(
 
 
 def point_in_regions(point: Point, regions: list[list[float]]) -> bool:
+    if any(isinstance(region,dict) for region in regions):
+        from shapely.geometry import Point as GeometryPoint
+        from app.domain.geometry.floors import region_shape
+
+        return any(region_shape(region).buffer(EPSILON).covers(GeometryPoint(point)) for region in regions)
     x, z = point
     return any(
         float(region[0]) - EPSILON <= x <= float(region[2]) + EPSILON

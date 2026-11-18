@@ -342,7 +342,17 @@ def material_role_specs(
 
     from app.domain.design.resolver import is_object_plan
 
-    return OBJECT_ROLE_SPECS if is_object_plan(architecture_plan) else ROLE_SPECS
+    if is_object_plan(architecture_plan):
+        return OBJECT_ROLE_SPECS
+    declared = ((architecture_plan or {}).get("materials") or {}).get("roles") or {}
+    if not declared:
+        return ROLE_SPECS
+    specs = dict(ROLE_SPECS)
+    for role, intent in declared.items():
+        base_role = intent.get("base_role", "facade_primary")
+        specs[role] = {**ROLE_SPECS.get(base_role, ROLE_SPECS["facade_primary"]),
+                       "materialId": ROLE_SPECS[role]["materialId"] if role in ROLE_SPECS else f"material_{role}"}
+    return specs
 
 
 # 骨架生成器会先用这些受控材质 ID 标记构件的“用途”：例如玻璃幕墙壳体

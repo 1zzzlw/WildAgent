@@ -7,7 +7,6 @@ import asyncio
 
 from loguru import logger
 
-from app.domain.blueprint.materials.plan import ROLE_SPECS
 from app.domain.blueprint.materials.plan import compact_asset_catalog
 from app.domain.blueprint.materials.plan import material_role_specs
 from app.domain.blueprint.materials.plan import named_material_roles
@@ -32,7 +31,9 @@ async def material_planner(state: GenerationState) -> dict:
     # 角色表一次定住：物件场景是 wood/metal/glass/stone/fabric/accent，
     # 建筑场景是原来的七个立面/结构角色。提示词与解析器用同一份，避免分叉。
     role_specs = material_role_specs(architecture_plan)
-    object_scene = role_specs is not ROLE_SPECS
+    from app.domain.design.resolver import is_object_plan
+
+    object_scene = is_object_plan(architecture_plan)
     manifests = asset_storage.list_manifests()
     catalog = compact_asset_catalog(manifests)
     procedural_materials_enabled = state.get("procedural_materials_enabled") is True
@@ -67,6 +68,7 @@ async def material_planner(state: GenerationState) -> dict:
         intent = (design_document.get("decisions") or {}).get("materials") or {}
         if (
             intent.get("regions")
+            or intent.get("roles")
             or intent.get("keywords")
             or state.get("design_material_refresh") is True
         ):

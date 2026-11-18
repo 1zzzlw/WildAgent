@@ -121,13 +121,15 @@ def plan_changes(before, after, *, source="unknown"):
 
 
 def decision_summary(plan: dict) -> str:
+    """摘要只读取共享空间事实，不能再次假定体量是轴对齐矩形。"""
+    from app.domain.design.spatial import resolve_geometry
+
     massing = plan["massing"]
-    volumes = plan["volumes"]
-    width = max(v["x"]+v["width"] for v in volumes)-min(v["x"] for v in volumes)
-    depth = max(v["z"]+v["depth"] for v in volumes)-min(v["z"] for v in volumes)
-    return (f"[决策事实] 体量包络{width:g}×{depth:g}m，尺寸控制上限{massing['width']}×{massing['depth']}m；"
+    bounds = resolve_geometry(plan)["bounds"]
+    return (f"[决策事实] 体量包络{bounds['width']:g}×{bounds['depth']:g}m，"
+            f"尺寸控制上限{massing['width']}×{massing['depth']}m；"
             f"{massing['floors']}层，表达{massing['modeled_floors']}层；"
-            f"{len(plan['volumes'])}个体量；屋顶 {plan['roof']['type']}")
+            f"{len(plan['volumes'])}个体量")
 
 
 def approved_compilation_changes(expected: dict, actual: dict) -> list[dict]:

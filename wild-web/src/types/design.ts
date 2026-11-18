@@ -1,4 +1,5 @@
 /** DesignDocument v1。字段与后端 Pydantic JSON Schema 保持一致。 */
+import type { DesignCoordinateSystem, DesignFloorLayout, DesignLevel, DesignPlacement, DesignProfile, DesignRelation, DesignRoof, DesignSlab, DesignSystem, DesignVoid, DesignVolumeGeometry, DesignWall, Point2 } from './spatialDesign'
 
 export type DesignStatus = 'draft' | 'approved' | 'compiled'
 export type OpeningKind = 'door' | 'window' | 'empty' | 'open'
@@ -26,12 +27,16 @@ export interface DesignMassing {
 export interface DesignVolume {
   id: string
   role: string
-  x: number
-  z: number
-  width: number
-  depth: number
-  start_floor: number
-  end_floor: number
+  /** 新设计的局部参考系与真实几何。 */
+  placement?: { origin_xz: Point2; yaw?: number } | null
+  geometry?: DesignVolumeGeometry | null
+  /** 以下字段仅兼容历史矩形图纸，与geometry互斥。 */
+  x?: number | null
+  z?: number | null
+  width?: number | null
+  depth?: number | null
+  start_floor?: number | null
+  end_floor?: number | null
   facades?: Partial<Record<'front' | 'back' | 'left' | 'right', DesignFacade>>
 }
 
@@ -42,19 +47,9 @@ export interface DesignFacade {
   upper_pattern: OpeningToken[]
 }
 
-// 建筑侧角色与物件侧角色的并集——`ResolvedMaterialPlan` 被两支共用。
-// 后端唯一事实源：`wild-server/app/design/contracts.py::MaterialRoleName`。
-// 物件侧没有 frame，用 metal（见 `material_plan.py::_METALLIC_ROLES`）。
-export type ArchitectureMaterialRoleName =
-  | 'facade_primary' | 'structure' | 'floor' | 'frame' | 'door'
-  | 'glass' | 'roof' | 'ground' | 'accent'
+/** 图纸可声明自定义材质角色；默认用途来自后端材料角色表。 */
 
-export type ObjectMaterialRoleName =
-  | 'wood' | 'metal' | 'glass' | 'stone' | 'fabric' | 'accent'
-
-export type MaterialRoleName =
-  | ArchitectureMaterialRoleName
-  | ObjectMaterialRoleName
+export type MaterialRoleName = string
 
 export interface ResolvedMaterialPlan {
   concept: string
@@ -102,11 +97,21 @@ export interface ArchitectureDecisions {
     reason: string
   }
   volumes: DesignVolume[]
+  coordinate_system?: DesignCoordinateSystem
+  levels?: DesignLevel[]
+  profiles?: DesignProfile[]
+  systems?: Record<string, DesignSystem>
+  walls?: DesignWall[]
+  slabs?: DesignSlab[]
+  voids?: DesignVoid[]
+  roofs?: DesignRoof[]
+  relations?: DesignRelation[]
+  floor_layouts?: DesignFloorLayout[]
   structural_grid: {
     system: string
     x_bays: number
     z_bays: number
-  }
+  } | null
   envelope: {
     system: string
     curtain_wall: {
@@ -122,8 +127,10 @@ export interface ArchitectureDecisions {
   }
   circulation: {
     vertical_strategy: string
+    required_connections?: Array<{ from: string; to: string; via?: string | null }>
+    clearance_paths?: Array<{ id: string; level: string; points: Point2[]; width: number; height: number }>
   }
-  materials: { keywords: string[]; regions?: Array<{ role: string; type: string; note?: string }>; resolved_plan: ResolvedMaterialPlan | null }
+  materials: { keywords: string[]; roles?: Record<string, Record<string, unknown>>; regions?: Array<{ role: string; type: string; note?: string }>; resolved_plan: ResolvedMaterialPlan | null }
   detail_packages: string[]
   component_quota: Record<string, unknown>
   balcony_access_count: number
@@ -134,7 +141,15 @@ export interface ArchitectureDecisions {
     type: string
     host: string | null
     description?: string
-    placement?: { face?: 'front' | 'back' | 'left' | 'right' | null; floor?: number | null; offset?: number; sill_height?: number; normal_offset?: number; position?: number[]; [key: string]: unknown } | null
+    placement?: DesignPlacement | null
+    system?: string | null
+    parameters?: Record<string, unknown>
+    material_bindings?: Record<string, string>
+    footprint?: string | null
+    opening?: string | null
+    access?: string | null
+    guarding?: Record<string, unknown> | null
+    floor_connections?: Array<{ from_level?: string | null; to_level?: string | null; from_floor?: number | null; to_floor?: number | 'roof' | null }>
     size: Record<string, number>
     form: Record<string, unknown>
     material_role: string | null
@@ -256,7 +271,12 @@ export interface ResolvedDesign {
     evidence: string
   }>
   bounds: { width: number; depth: number; height: number }
-  levels: Array<{ index: number; base_y: number; top_y: number }>
+  levels: Array<{ id?: string; kind?: string; index: number; base_y: number; top_y: number }>
+  /** 共享几何事实与确定性主体，不由前端重新推算坐标。 */
+  geometry_context?: Record<string, unknown>
+  body_geometry?: { elements: Array<Record<string, unknown>>; components: Array<Record<string, unknown>> }
+  logical_hosts?: Array<Record<string, unknown>>
+  capability_gaps?: Array<Record<string, unknown>>
   volumes: DesignVolume[]
   facade_slots: Array<{
     id: string

@@ -176,6 +176,21 @@ def _entity_check(
     if len(tokens) < 2 or tokens[0] != "decisions":
         return "unsupported", None, f"{target} 不是设计决策路径，实体侧无对应物"
     root = tokens[1]
+    if root in {"levels","profiles","systems","walls","slabs","voids"}:
+        from app.domain.design.spatial import resolve_geometry
+
+        facts = resolve_geometry(document.decisions.model_dump(mode="json"))
+        if facts["capability_gaps"]:
+            return "unsupported",facts["capability_gaps"],"设计保留了尚未落实的高级几何能力"
+        index = {entity["id"]:entity for entity in _entities(blueprint,"element")}
+        expected_entities = facts["body_geometry"]["elements"]
+        if not expected_entities:
+            return "needs_review",None,"没有可核对的确定性主体，不以字段存在证明实体完成"
+        missing = [entity["id"] for entity in expected_entities
+                   if entity["id"] not in index or not value_matches(index[entity["id"]],entity)]
+        return ("open" if missing else "satisfied"),missing,"按共享解析结果逐项核对真实主体、楼板与留洞；偏离实体ID清单"
+    if root in {"roofs","relations"}:
+        return "needs_review",None,"引用合法性已核对，所选屋面或实体关系仍须单独验收"
 
     # ── 体量：层数 / 尺寸 ──
     if root == "massing":

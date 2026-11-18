@@ -1,4 +1,5 @@
 """设计示意投影；保留离线视觉修订使用的旧编译适配器。"""
+
 from __future__ import annotations
 
 from collections import Counter
@@ -7,7 +8,7 @@ from app.domain.design.contracts import DesignDocument
 from app.domain.design.contracts import ResolvedDesign
 from app.domain.design.contracts import ResolvedLevel
 
-RESOLVER_VERSION = "drawing-projection/2"
+RESOLVER_VERSION = "drawing-projection/1"
 
 
 def compile_document(document: DesignDocument):
@@ -25,148 +26,133 @@ def compile_document(document: DesignDocument):
 
 
 def project_drawing(document: DesignDocument) -> ResolvedDesign:
-    """从设计尺寸绘制示意，不运行 WILD 编译器。"""
+    """从同一空间解析结果生成图纸、任务宿主和确定性主体，版本始终为1。"""
     from app.domain.design.resolver import _stable_hash
     from app.domain.design.markers import component_markers
-    from app.domain.design.coordinates import representative_floor_indices
-    from app.domain.design.coordinates import floor_elevations
-    from app.domain.design.coordinates import design_geometry_context
-    from app.domain.design.coordinates import floor_layout_conflicts
-    from app.domain.design.coordinates import design_relation_checks
-    from app.domain.design.coordinates import opening_coordinate_errors
-    from app.domain.design.coordinates import stair_span_conflicts
-    from app.domain.design.coordinates import DesignCoordinateConflict
-    from app.domain.design.layout import floor_circulation_checks, opening_partition_conflicts
-    from app.domain.design.relations import opening_target
-    from app.domain.design.construction_systems import construction_spec
-    from app.domain.design.construction_systems import check_opening_bounds
-    from app.domain.design.openings import is_open_side
-    from app.domain.design.openings import split_opening
-    from app.domain.components.names import resolve_component_name
+    from app.domain.design.spatial import execution_view, resolve_geometry
+    from app.domain.design.coordinates import (
+        DesignCoordinateConflict,
+        opening_coordinate_errors,
+    )
+    from app.domain.design.layout import (
+        floor_circulation_checks,
+        opening_partition_conflicts,
+    )
+    from app.domain.design.coordinates import (
+        design_relation_checks,
+        floor_layout_conflicts,
+        stair_span_conflicts,
+    )
 
-    d = document.decisions
-    indices = representative_floor_indices(d.massing)
-    elevations = floor_elevations(d.model_dump(mode="json"))
-    layout_issues = floor_layout_conflicts(d.model_dump(mode="json"))
-    if layout_issues:
-        raise ValueError("；".join(layout_issues))
-    geometry = design_geometry_context(d.model_dump(mode="json"))
+    data = document.decisions.model_dump(mode="json")
+    geometry = resolve_geometry(data)
+    drawing = execution_view(data, geometry)
+    markers = component_markers(document, geometry)
+    hosts = {host["id"]: host for host in geometry["hosts"]}
+    errors = []
+    for code, messages in (
+        ("design_floor_layout_conflict", floor_layout_conflicts(drawing)),
+        ("design_stair_span_conflict", stair_span_conflicts(drawing)),
+        ("design_opening_conflict", opening_coordinate_errors(markers)),
+    ):
+        errors.extend(
+            {"code": code, "path": "/decisions", "reason": message}
+            for message in messages
+        )
+    relation_errors, relation_reviews = design_relation_checks(drawing, markers, hosts)
+    errors.extend(relation_errors)
+    circulation_errors, reviews = floor_circulation_checks(drawing, markers, hosts)
+    reviews.extend(relation_reviews)
+    for relation in data.get("relations", []):
+        reviews.append(
+            {
+                "marker_id": relation["id"],
+                "reason": f"设计关系{relation['type']}的引用已核对，实际承托、连通或对齐仍需实体证据",
+            }
+        )
+    for condition in (data.get("circulation") or {}).get("clearance_paths", []):
+        reviews.append(
+            {
+                "marker_id": condition["id"],
+                "reason": "已声明通行净宽净高，墙、构件与实际通道的净空验收尚未完成",
+            }
+        )
+    for number, condition in enumerate(
+        (data.get("circulation") or {}).get("required_connections", [])
+    ):
+        reviews.append(
+            {
+                "marker_id": f"required_connection_{number}",
+                "actual": condition,
+                "reason": "通行要求已保留，指定起终点和经由构件仍须逐项核对实际路径",
+            }
+        )
+    errors.extend(circulation_errors)
+    errors.extend(opening_partition_conflicts(markers, hosts))
+    if errors:
+        raise DesignCoordinateConflict(errors)
     levels = []
     for level in geometry["levels"]:
         levels.append(
             ResolvedLevel(
-                index=level["index"], base_y=level["base_y"], top_y=level["top_y"]
+                index=level["index"],
+                id=level["id"],
+                kind=level["kind"],
+                base_y=level["base_y"],
+                top_y=level["top_y"],
             )
         )
-    walls, frames = [], {}
-    for volume_index, v in enumerate(d.volumes):
-        corners = {"front": ([v.x, v.z], [v.x+v.width, v.z]),
-                   "right": ([v.x+v.width, v.z], [v.x+v.width, v.z+v.depth]),
-                   "back": ([v.x+v.width, v.z+v.depth], [v.x, v.z+v.depth]),
-                   "left": ([v.x, v.z+v.depth], [v.x, v.z])}
-        for floor in range(v.start_floor, v.end_floor+1):
-            for face, (a, b) in corners.items():
-                facade = v.facades.get(face) or d.facades[face]
-                frame = {"id": f"wall_{v.id}_{face}_L{floor}", "type": "wall",
-                         "from": [a[0], elevations[indices[floor-1]], a[1]],
-                         "to": [b[0], elevations[indices[floor-1]+1], b[1]], "facing": face,
-                         "design_path": f"/decisions/volumes/{volume_index}"}
-                pattern = facade.ground_pattern if floor == 1 else facade.upper_pattern
-                length = v.width if face in {"front", "back"} else v.depth
-                frame["open_intervals"] = []
-                for bay, token in enumerate(pattern):
-                    if split_opening(token)[0] == "open":
-                        frame["open_intervals"].append((bay * length / facade.bays, (bay + 1) * length / facade.bays))
-                if is_open_side(pattern):
-                    frame["open"] = True
-                else:
-                    walls.append(frame)
-                frames[frame["id"]] = frame
-    # 平面内墙也是主体的设计宿主；与外墙共用世界坐标和门窗定位协议。
-    from math import isfinite
-    for index, layout in enumerate(d.model_dump(mode="json").get("floor_layouts") or []):
-        floor = layout.get("floor")
-        if floor not in elevations or floor > d.massing.floors:
-            continue
-        for j, wall in enumerate(layout.get("walls") or []):
-            path = f"/decisions/floor_layouts/{index}/walls/{j}"
-            if (not isinstance(wall.get("id"), str) or not wall["id"] or wall["id"] in frames
-                    or any(not isinstance(wall.get(key), list) or len(wall[key]) != 2
-                           or any(type(n) not in (int, float) or not isfinite(n) for n in wall[key])
-                           for key in ("from", "to"))
-                    or wall["from"] == wall["to"]
-                    or type(wall.get("thickness")) not in (int, float) or not isfinite(wall["thickness"])
-                    or wall["thickness"] <= 0):
-                raise ValueError(f"{path}：内墙需唯一 id、不同的世界 X/Z 端点 from/to 和正数 thickness")
-            frame = {"id": wall["id"], "type": "wall", "thickness": wall["thickness"],
-                     "from": [wall["from"][0], elevations[floor], wall["from"][1]],
-                     "to": [wall["to"][0], elevations[floor+1], wall["to"][1]], "design_path": path}
-            frames[frame["id"]] = frame
-            walls.append(frame)
-    markers = component_markers(document)
-    material_ids = {role.role: role.materialId for role in d.materials.resolved_plan.roles} if d.materials.resolved_plan else {}
+    gaps = []
+    for number, review in enumerate(reviews):
+        gaps.append(
+            {
+                "id": f"relation.{number}",
+                "constraint_id": "design.relationship",
+                "status": "needs_review",
+                "design_hash": _stable_hash(document),
+                "target": review.get("marker_id", "circulation"),
+                "expected": review.get("expected"),
+                "actual": review.get("actual"),
+                "evidence": review["reason"],
+            }
+        )
+    capabilities = list(geometry["capability_gaps"])
     for marker in markers:
-        role = marker["design"].get("material_role")
-        if role in material_ids:
-            marker["material_id"] = material_ids[role]
-        if construction_spec(marker["design"]) is not None:
-            marker["construction_materials"] = material_ids
-    for marker in markers:
-        if marker["host"] in frames:
-            marker["diagram_host"] = frames[marker["host"]]
-            size = marker["design"].get("size") or {}
-            if (resolve_component_name(marker["type"])["entity_type"] in {"door", "window"}
-                    and marker["entity"].get("position") and size.get("width") and size.get("height")):
-                marker["entity"]["from"] = opening_target(marker, marker["diagram_host"], size["width"], size["height"])
-            spec = construction_spec(marker["design"])
-            if spec is not None and spec["system"] in {"entrance", "framed_opening"}:
-                origin = opening_target(marker, marker["diagram_host"], size["width"], size["height"])
-                if origin is None:
-                    raise ValueError(f"{marker['design_path']}/placement：可执行构造缺少门窗定位")
-                try:
-                    check_opening_bounds(spec, {"type": marker["type"], "from": origin, **size}, marker["diagram_host"])
-                except ValueError as exc:
-                    raise ValueError(f"{marker['design_path']}/form/construction：{exc}") from exc
-    relation_errors, relation_reviews = design_relation_checks(d.model_dump(mode="json"), markers, frames)
-    circulation_errors, circulation_reviews = floor_circulation_checks(d.model_dump(mode="json"), markers, frames)
-    relation_errors.extend(circulation_errors)
-    relation_reviews.extend(circulation_reviews)
-    relation_errors.extend(opening_partition_conflicts(markers, frames))
-    relation_errors.extend({"code": "design_stair_span_conflict", "path": message.partition("：")[0],
-                            "reason": message.partition("：")[2]}
-                           for message in stair_span_conflicts(d.model_dump(mode="json")))
-    relation_errors.extend({"code": "design_opening_conflict", "path": message.partition("：")[0],
-                            "reason": message.partition("：")[2]}
-                           for message in opening_coordinate_errors(markers))
-    if relation_errors:
-        raise DesignCoordinateConflict(relation_errors)
-    warnings = ["图纸为设计示意；构件形态由 plan 尝试实现，未定位标记列于图纸清单。"]
-    for layout in d.model_dump(mode="json").get("floor_layouts") or []:
-        rooms, partitions = layout.get("rooms") or [], layout.get("walls") or []
-        if len(rooms) > 1 and not partitions:
-            warnings.append(f"第 {layout.get('floor', '?')} 层有多个房间标签但没有内墙；请确认是否为开放式布局。")
-        partition_ids = {wall.get("id") for wall in partitions}
-        if partitions and not any(
-            c.host in partition_ids
-            and (
-                c.type == "opening"
-                or resolve_component_name(c.type)["entity_type"] == "door"
-            )
-            for c in d.components
-        ):
-            warnings.append(f"第 {layout.get('floor', '?')} 层有内墙但没有附着其上的通行开口；请核对实际动线。")
+        capabilities.extend(marker.get("capability_gaps", []))
+    for number, gap in enumerate(capabilities):
+        gaps.append(
+            {
+                "id": f"capability.{number}",
+                "constraint_id": "design.capability",
+                "status": "unsupported",
+                "design_hash": _stable_hash(document),
+                "target": gap["entity"],
+                "expected": gap["expected"],
+                "actual": gap["actual"],
+                "evidence": gap["code"],
+            }
+        )
+    facts = {
+        key: value
+        for key, value in geometry.items()
+        if key not in {"source", "body_geometry"}
+    }
     return ResolvedDesign(
-        design_id=document.design_id, design_revision=document.revision,
-        design_hash=_stable_hash(document), resolver_version=RESOLVER_VERSION,
-        bounds={"width": max(v.x+v.width for v in d.volumes)-min(v.x for v in d.volumes),
-                "depth": max(v.z+v.depth for v in d.volumes)-min(v.z for v in d.volumes),
-                "height": elevations[d.massing.floors+1]-elevations[1]},
-        levels=levels, volumes=d.volumes, facade_slots=[], projection_elements=walls,
-        design_gaps=[{"id": "relation." + str(i), "constraint_id": "design.relationship",
-                      "status": "needs_review", "design_hash": _stable_hash(document),
-                      "target": review["marker_id"], "expected": review.get("expected", review["path"]),
-                      "actual": review.get("actual"), "evidence": review["reason"]}
-                     for i, review in enumerate(relation_reviews)],
-        component_markers=markers, component_quantities=dict(Counter(m["type"] for m in markers)),
-        warnings=warnings,
+        design_id=document.design_id,
+        design_revision=document.revision,
+        design_hash=_stable_hash(document),
+        resolver_version=RESOLVER_VERSION,
+        bounds=geometry["bounds"],
+        levels=levels,
+        volumes=document.decisions.volumes,
+        facade_slots=[],
+        projection_elements=geometry["hosts"],
+        logical_hosts=geometry["hosts"],
+        geometry_context=facts,
+        body_geometry=geometry["body_geometry"],
+        capability_gaps=capabilities,
+        design_gaps=gaps,
+        component_markers=markers,
+        component_quantities=dict(Counter(marker["type"] for marker in markers)),
+        warnings=["图纸为设计示意；几何有效、设计履约和实际视觉效果分别验收。"],
     )
