@@ -166,14 +166,22 @@ def stair_span_conflicts(design):
         size = component.get("size") if isinstance(component.get("size"), dict) else {}
         height = size.get("height")
         if isinstance(height, (int, float)) and not isinstance(height, bool) and height > available_rise + 0.25:
-            issues.append(f"/components/{index}/size/height：楼梯高 {height:g}m 超过首层至顶层楼面高差 "
+            issues.append(f"/components/{index}/size/height：楼梯高 {height:g}m 超过连接楼面高差 "
                           f"{available_rise:g}m；核对连接楼层，屋面通行须显式写 form.roof_access")
+        elif targets and isinstance(height, (int, float)) and not isinstance(height, bool) and height < available_rise - 0.25:
+            issues.append(f"/components/{index}/size/height：楼梯 {component.get('id', index)} 高 {height:g}m，"
+                          f"不足以覆盖 /components/{index}/floor_connections 声明的楼面高差 {available_rise:g}m；"
+                          f"实际连接标高为 {[(t['from_y'], t['to_y']) for t in targets]}。"
+                          "显式修订楼梯尺寸、梯段或连接设计，不交给执行节点拉伸楼梯")
         if all(isinstance(form.get(key), (int, float)) and not isinstance(form[key], bool)
                for key in ("flights", "rises", "riser_height")):
             total_rise = form["flights"] * form["rises"] * form["riser_height"]
             if total_rise > available_rise + 0.25:
                 issues.append(f"/components/{index}/form：梯段数×每跑级数×踏步高={total_rise:g}m，"
                               f"超过首层至顶层楼面高差 {available_rise:g}m；修订楼梯连接或踏步参数")
+            elif targets and total_rise < available_rise - 0.25:
+                issues.append(f"/components/{index}/form：踏步总高差 {total_rise:g}m 小于明确连接楼面高差 "
+                              f"{available_rise:g}m；核对 /components/{index}/floor_connections 与踏步参数")
             elif isinstance(height, (int, float)) and not isinstance(height, bool) and abs(total_rise-height) > 0.25:
                 issues.append(f"/components/{index}/form：踏步总高差 {total_rise:g}m 与楼梯 size.height "
                               f"{height:g}m 不一致；修订踏步或楼梯高度")
@@ -222,6 +230,15 @@ def design_relation_checks(design, markers, frames):
                                "marker_id": marker["id"], "expected": "图纸已声明的宿主或构件 ID",
                                "actual": reference, "reason": "引用目标未在本次图纸声明"})
         family = resolve_component_name(marker["type"])["entity_type"]
+        placement = component.get("placement") or {}
+        if (not marker.get("host") and not (component.get("relation") or {}).get("target")
+                and not placement.get("position")
+                and (placement.get("face") or placement.get("floor")
+                     or any(placement.get(key) for key in ("offset", "sill_height", "normal_offset")))):
+            errors.append({"code": "design_placement_reference_missing", "path": f"{path}/placement",
+                           "marker_id": marker["id"], "expected": "沿宿主定位须有 host/relation.target，独立定位须有世界 position",
+                           "actual": placement, "related_paths": [path + "/host"],
+                           "reason": "局部距离缺少参考对象，无法确定构件世界位置；显式选择宿主或世界定位，不由执行节点猜测"})
         if family in {"door", "window"} and marker.get("host") not in frames:
             errors.append({"code": "design_opening_host_missing", "path": f"{path}/host",
                            "marker_id": marker["id"], "expected": "可解析的图纸墙宿主",
@@ -240,6 +257,24 @@ def design_relation_checks(design, markers, frames):
         if not targets:
             reviews.append({"marker_id": marker["id"], "path": path + "/floor_connections",
                             "reason": "楼梯连接楼层未结构化，须核对实际到达楼面；不据文字猜测连接"})
+        position, size = placement.get("position"), component.get("size") or {}
+        if targets and position and size.get("width") and size.get("depth"):
+            x0, x1 = position[0] - size["width"] / 2, position[0] + size["width"] / 2
+            z0, z1 = position[2] - size["depth"] / 2, position[2] + size["depth"] / 2
+            for wall in frames.values():
+                if not wall.get("design_path", "").startswith("/decisions/floor_layouts/"):
+                    continue
+                a, b = wall["from"], wall["to"]
+                if not any(target["from_y"] <= a[1] <= target["to_y"] for target in targets):
+                    continue
+                crosses_x = abs(a[0] - b[0]) <= 0.001 and x0 < a[0] < x1 and min(a[2], b[2]) < z1 and max(a[2], b[2]) > z0
+                crosses_z = abs(a[2] - b[2]) <= 0.001 and z0 < a[2] < z1 and min(a[0], b[0]) < x1 and max(a[0], b[0]) > x0
+                if crosses_x or crosses_z:
+                    reviews.append({"marker_id": marker["id"], "path": path + "/placement",
+                                    "expected": "实现梯段、平台及通行开口后复核与内墙的关系",
+                                    "actual": {"footprint": [x0, z0, x1, z1], "wall_id": wall["id"],
+                                               "wall_path": wall["design_path"]},
+                                    "reason": "楼梯占地包围范围与内墙相交；包围范围不能证明实际梯段碰撞，不能据此自动搬动或裁剪楼梯"})
     if stairs and all(targets for _, targets in stairs) and design["massing"].get("representation_mode", "full") == "full":
         reached = {1}
         while True:
@@ -360,6 +395,11 @@ def opening_coordinate_errors(markers):
         width, height = size.get("width", 0), size.get("height", 0)
         world = bool(design["placement"].get("position"))
         problems = []
+        for low, high in wall.get("open_intervals", []):
+            if min(along + width, high) - max(along, low) > 0.001:
+                problems.append(f"洞口沿墙范围 [{along:g}, {along+width:g}]m 与 facades 中 open（无墙）区段 "
+                                f"[{low:g}, {high:g}]m 重叠；关联 {wall.get('design_path', '/decisions/volumes')} "
+                                "与 /decisions/facades，显式修订围护布局或宿主，不能把无墙区段当作门窗宿主")
         if along < -0.001 or along+width > length+0.001:
             message = f"沿墙范围 [{along:g}, {along+width:g}]m，宿主允许 [0, {length:g}]m，窗宽={width:g}m；"
             if width > length:

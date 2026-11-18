@@ -275,6 +275,10 @@ class SupportRelation(ContractModel):
 
 class ComponentPlacement(ContractModel):
     model_config = ConfigDict(extra="allow", validate_assignment=True, allow_inf_nan=False)
+    position: list[Annotated[float, Field(strict=True, allow_inf_nan=False)]] | None = Field(
+        default=None, min_length=3, max_length=3, exclude_if=lambda value: value is None,
+        description="构件世界中心 [x,y,z]；参数表达式必须先展开为三个有限数字",
+    )
     face: Literal["front", "back", "left", "right"] | None = None
     floor: int | None = Field(default=None, ge=1)
     offset: float = Field(default=0)

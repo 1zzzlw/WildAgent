@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import time as _time
 import asyncio
+import json
 
 from pydantic import ValidationError
 
@@ -32,7 +33,21 @@ def _coordinate_reasons(conflicts: list[dict]) -> list[str]:
                 "若该尺寸是用户硬要求，应修订体量布局；否则显式修订总体尺寸，保留未受影响的设计。"
             )
         else:
-            messages.append(f"{path}：{conflict['reason']}")
+            message = f"{path}：{conflict['reason']}"
+            if "expected" in conflict or "actual" in conflict:
+                message += "；" + json.dumps(
+                    {
+                        key: conflict[key]
+                        for key in ("marker_id", "expected", "actual")
+                        if key in conflict
+                    },
+                    ensure_ascii=False,
+                )
+            if conflict.get("related_paths"):
+                message += "；关联修订路径：" + "、".join(
+                    p.removeprefix("/decisions") for p in conflict["related_paths"]
+                )
+            messages.append(message)
     return messages
 
 
@@ -80,6 +95,11 @@ def _validation_reason(exc: Exception) -> str:
                     message = (
                         f"face 仅表示 front/back/left/right 四个竖向立面，实际 {item.get('input')!r}；"
                         "台基、屋顶、檐底等非立面定位用 placement.position=[x,y,z] 写世界中心坐标，朝向说明写在 form/description"
+                    )
+                if path.startswith("/components/") and "/placement/position" in path:
+                    message = (
+                        f"position 必须是三个有限数字组成的世界中心 [x,y,z]，实际 {item.get('input')!r}；"
+                        "共享参数的计算须使用以 = 开头的表达式并先展开，不能把未计算的字符串交给执行节点"
                     )
                 if path.startswith("/components/") and any(
                     path.endswith("/placement/" + field)
@@ -534,7 +554,6 @@ def _validate_architecture_draft(raw, state, profile_id, complexity, previous):
         )
     except DesignContractError as exc:
         raise ValueError("；".join([*material_errors, str(exc)])) from exc
-    from app.domain.design.coordinates import stair_span_conflicts
     from app.domain.design.coordinates import roof_span_conflicts
     from app.domain.design.coordinates import component_dimension_conflicts
     from app.domain.design.markers import component_markers
@@ -543,7 +562,6 @@ def _validate_architecture_draft(raw, state, profile_id, complexity, previous):
     coordinate_errors = (
         material_errors
         + component_dimension_conflicts(data)
-        + stair_span_conflicts(data)
         + roof_span_conflicts(component_markers(document))
     )
     try:

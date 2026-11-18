@@ -1,5 +1,6 @@
 """执行计划、建筑方案与材质计划提示词。"""
 
+
 def build_material_optimization_prompt(selection: list[str]) -> str:
     """限制文本模型只优化已有材质参数，不接触图片或几何。"""
     selected = ", ".join(selection)
@@ -59,40 +60,204 @@ def build_architecture_plan_prompt(
     from app.domain.blueprint.materials.plan import ROLE_SPECS
     from app.domain.design.parametric import PARAMETRIC_PROTOCOL
     from app.domain.design.contracts import RoofDecision
+
     roof_axis = RoofDecision.model_json_schema()["properties"]["ridge_axis"]
-    complexity = resolve_complexity_profile((complexity_profile or {}).get("level", "simple"))
-    current = json.dumps({k: v for k, v in current_plan.items()
-                          if k not in {"component_quota", "required_components"}}, ensure_ascii=False) if current_plan else "无"
+    complexity = resolve_complexity_profile(
+        (complexity_profile or {}).get("level", "simple")
+    )
+
+    current = (
+        json.dumps(
+            {
+                k: v
+                for k, v in current_plan.items()
+                if k not in {"component_quota", "required_components"}
+            },
+            ensure_ascii=False,
+        )
+        if current_plan
+        else "无"
+    )
+
+    # 下面这份字典会被序列化成 JSON 注入 prompt，作为“字段结构与类型说明”；
+    # 模型按它输出完整设计，随后由 normalize_architecture_plan 归一化并经
+    # DesignDocument 契约校验。字段语义以 app/domain/design/contracts.py 为准。
     output_fields = {
+        # 一句话设计概念；后续知识检索、材质方案和追溯都会引用它。
         "concept": "string：本次设计概念",
+        # 审核前的设计方向说明（文字/列表，不直接生成几何），供后续节点理解取舍。
         "design_intent": {
-            "goals": ["string"], "assumptions": ["string"], "selected_systems": ["string"],
-            "spatial_strategy": "string", "composition": "string", "material_strategy": "string",
+            # 本次要达成的设计目标（功能、形式、体验）。
+            "goals": ["string"],
+            # 用户没明说、但设计必须成立的前提（朝向、场地、层数默认值等）。
+            "assumptions": ["string"],
+            # 已选系统名（结构、屋面、围护、竖向交通等），用于知识检索和节点对齐。
+            "selected_systems": ["string"],
+            # 空间组织策略：分区、通高、庭院、公私分离等。
+            "spatial_strategy": "string",
+            # 体量构图关系：主次、退台、错动、对称/非对称。
+            "composition": "string",
+            # 材料与色彩方向；实际 PBR 材质由材质方案节点落实，这里只表态。
+            "material_strategy": "string",
         },
-        "massing": {"shape": "string", "width": "number", "depth": "number",
-                    "floors": "integer", "modeled_floors": "integer", "floor_height": "number"},
-        "volumes": [{"id": "string", "x": "number", "z": "number", "width": "number",
-                     "depth": "number", "start_floor": "integer", "end_floor": "integer",
-                     "facades": {}}],
-        "structural_grid": {"system": "string", "x_bays": "integer", "z_bays": "integer"},
-        "circulation": {"vertical_strategy": "string", "description": "string"},
-        "facades": {face: {"bays": "integer", "ground_pattern": ["string"], "upper_pattern": ["string"]}
-                    for face in ("front", "back", "left", "right")},
-        "roof": {"type": "string", "ridge_axis": " 或 ".join(roof_axis["enum"]) + "；" + roof_axis["description"], "overhang": "number",
-                 "volumes": [{"volume": "体量 id", "type": "string", "overhang": "number"}]},
-        "components": [{
-            "id": "string", "type": "string", "host": "宿主 id，独立构件可省略",
-            "size": {"width": "number", "height": "number", "depth": "number"},
-            "form": {}, "description": "string", "placement": {},
-            "floor_connections": [{"from_floor": "integer", "to_floor": "integer 或 roof"}],
-        }],
-        "floor_layouts": [{"floor": "integer", "level": "number",
-                           "rooms": [{"id": "string", "name": "string", "void": "boolean（可选，true 表示此层挑空）", "bounds": {
-                               "x": "number", "z": "number", "width": "number", "depth": "number"}}],
-                           "walls": [{"id": "string", "from": ["number", "number"],
-                                      "to": ["number", "number"], "thickness": "number"}]}],
-        "envelope": {"system": "string"},
+        # 总体控制：width/depth 是包络上限，真正的平面形状由 volumes 决定。
+        "massing": {
+            # 形状标签（rectangle/l_shape/u_shape/stepped/courtyard/circle/linear/
+            # radial/tower/twin_tower/pavilion/basilica/centralized…）；仅表态，
+            # 表外值不拦截，实际几何仍由 volumes 表达。
+            "shape": "string",
+            # 总体 X 方向包络上限（米）；不是单个体量宽度，也不是场地边界。
+            "width": "number",
+            # 总体 Z 方向包络上限（米）；所有 volumes 的并集不得超出。
+            "depth": "number",
+            # 总楼层数（含不单独建模的重复层），从 1 开始。
+            "floors": "integer",
+            # 实际建模层数；full 模式必须等于 floors，schematic 模式可小于 floors。
+            "modeled_floors": "integer",
+            # 标准层高（米）；floor_layouts.level 未显式声明时据此推导各层楼面标高。
+            "floor_height": "number",
+        },
+        # 体量分解：每个建模层必须至少被一个体量覆盖，同层可并列多个体量。
+        "volumes": [
+            {
+                # 体量稳定 ID，必须唯一；被 roof.volumes、volume.facades 和构件 host 引用。
+                "id": "string",
+                # 体量平面起点（左下角）的世界 X 坐标（米），不是中心；
+                # 整体平移不影响校验，校验比较的是并集尺寸。
+                "x": "number",
+                # 体量平面起点的世界 Z 坐标（米），不是中心。
+                "z": "number",
+                # 体量 X 方向尺寸（米）。
+                "width": "number",
+                # 体量 Z 方向尺寸（米）。
+                "depth": "number",
+                # 体量起始楼层（含），1..floors。
+                "start_floor": "integer",
+                # 体量结束楼层（含）；不得小于 start_floor，也不得超过 modeled_floors。
+                "end_floor": "integer",
+                # 本体量的立面覆盖，格式同共享 facades；只写与共享立面不同的面。
+                "facades": {},
+            }
+        ],
+        # 结构组织：决定骨架如何用柱梁或承重墙表达轴网，不要求每个交点建柱。
+        "structural_grid": {
+            # 结构体系标签，常见 frame / hybrid / long_span / wall_bearing。
+            "system": "string",
+            # X 方向开间数（≥1），是组织参考，不是柱子数量。
+            "x_bays": "integer",
+            # Z 方向开间数（≥1）。
+            "z_bays": "integer",
+        },
+        # 竖向交通：多层建筑必须选择；选定的楼梯还要写进 components.floor_connections。
+        "circulation": {
+            # 策略标签：none / stair / core_and_stair（多层不得 none）。
+            "vertical_strategy": "string",
+            # 交通组织文字说明（位置、服务范围、疏散关系）。
+            "description": "string",
+        },
+        # 四面共享立面规则：作用于所有体量，单个体量差异由 volume.facades 覆盖；
+        # 契约要求四面齐全。front=最小 Z 面、back=最大 Z 面、left=最小 X 面、right=最大 X 面。
+        "facades": {
+            face: {
+                # 该立面开间数（≥1）；两个 pattern 的长度都必须等于它。
+                "bays": "integer",
+                # 首层逐开间开口 token：door[:swing|slide|lift] /
+                # window[:swing|slide|fixed] / empty（有墙无洞）/ open（开敞无墙，
+                # 当前只能整面 open）；非法 token 降级为 empty，形态名写错只丢形态。
+                "ground_pattern": ["string"],
+                # 二层及以上逐开间开口 token，文法同 ground_pattern。
+                "upper_pattern": ["string"],
+            }
+            for face in ("front", "back", "left", "right")
+        },
+        # 屋面：整体类型 + 逐体量覆盖；none/open 表示没有独立屋面。
+        "roof": {
+            # 屋顶类型标签：flat / gable / hip / dome / chinese_curved /
+            # chinese_pagoda / none / open。
+            "type": "string",
+            # 屋脊方向，仅双坡（gable）需要选择 x 或 z；其他已知屋型可省略。
+            "ridge_axis": " 或 ".join(roof_axis["enum"])
+            + "；"
+            + roof_axis["description"],
+            # 檐口出挑（米，0–2）。
+            "overhang": "number",
+            # 逐体量屋面：volume 引用体量 id，type/overhang 覆盖整体设置；
+            # 逐体量覆盖只支持 flat / gable / hip。
+            "volumes": [{"volume": "体量 id", "type": "string", "overhang": "number"}],
+        },
+        # 需要独立实现的结构、交通与形制构件；只写空间/尺寸/连接，不写细部构造。
+        "components": [
+            {
+                # 构件实例稳定 ID，必须唯一；被 host / relation.target 引用。
+                "id": "string",
+                # 稳定英文 snake_case 构件类型；造型和材料写 description/form。
+                "type": "string",
+                # 宿主引用：wall_<体量id>_<face>_L<楼层>、已声明内墙 id，
+                # 或体量 id 配合 placement.face/floor；独立构件省略。
+                "host": "宿主 id，独立构件可省略",
+                # 构件尺寸（米，有限正数）；位置参数不写在这里。
+                "size": {"width": "number", "height": "number", "depth": "number"},
+                # 开放形式参数：造型、材质、构造/细部意图，由 plan 转成 WILD。
+                "form": {},
+                # 自然语言说明造型与材料。
+                "description": "string",
+                # 位置：沿墙用 face/floor/offset/sill_height/normal_offset，
+                # 世界定位用 position:[x,y,z] 表示构件中心。
+                "placement": {},
+                # 仅楼梯使用：from_floor/to_floor 为楼层整数，上屋面写 "roof"；
+                # 必须递增且楼层存在。
+                "floor_connections": [
+                    {"from_floor": "integer", "to_floor": "integer 或 roof"}
+                ],
+            }
+        ],
+        # 逐层房间与独立内墙；可选。围护墙由 facades 表达，这里不要重复声明。
+        "floor_layouts": [
+            {
+                # 楼层索引，1..floors。
+                "floor": "integer",
+                # 该层楼面完成面标高（米）；同层只能一个值，上层必须高于下层。
+                "level": "number",
+                # 房间/空间划分。
+                "rooms": [
+                    {
+                        # 房间 ID。
+                        "id": "string",
+                        # 房间功能名称。
+                        "name": "string",
+                        # 可选；true 表示此层该范围为挑空（不铺楼板），普通房间省略。
+                        "void": "boolean（可选，true 表示此层挑空）",
+                        # 房间平面范围（米），坐标与体量一致。
+                        "bounds": {
+                            "x": "number",
+                            "z": "number",
+                            "width": "number",
+                            "depth": "number",
+                        },
+                    }
+                ],
+                # 独立内墙（隔墙）；可被构件 host 引用。
+                "walls": [
+                    {
+                        # 内墙 ID。
+                        "id": "string",
+                        # 墙平面起点 [x,z]。
+                        "from": ["number", "number"],
+                        # 墙平面终点 [x,z]。
+                        "to": ["number", "number"],
+                        # 墙厚（米）。
+                        "thickness": "number",
+                    }
+                ],
+            }
+        ],
+        # 围护体系；可选，省略时由方案中的幕墙标记推导。
+        "envelope": {
+            # 围护体系标签：solid_wall（默认）/ curtain_wall（玻璃幕墙）。
+            "system": "string"
+        },
     }
+
     return f"""
 你负责体量、空间关系、构造层次、材料构图和设计取舍；程序负责参数计算、重复展开和已确定关系的几何落实。
 本次建筑类型线索：{profile_id}。建筑设计以用户需求为准。
@@ -151,7 +316,9 @@ def build_object_design_prompt(
     #: 图鉴预设表（`subtype` 的闭集）。通道说明与示例都直接引用这里，
     #: 不另写一份 —— 预设增删时提示词自动跟着变。
     catalog_text = _json.dumps(subtype_catalog or [], ensure_ascii=False, indent=2)
-    materials = ", ".join(material_ids or []) or "wood, metal, glass, stone, fabric, accent"
+    materials = (
+        ", ".join(material_ids or []) or "wood, metal, glass, stone, fabric, accent"
+    )
     revision_section = ""
     if current_plan and revision_feedback:
         revision_section = f"""
@@ -311,11 +478,20 @@ def build_material_plan_prompt(
     """
     import json as _json
     from app.domain.blueprint.materials.surfaces import surface_catalog
+
     builtin_surfaces = surface_catalog()
     style_section = _style_preference_section(style_preference) if object_scene else ""
-    explicit_materials = [{"id": c.get("id"), "role": c["material_role"], "material": c["form"]["material"]}
-                          for c in architecture_plan.get("components", []) if c.get("material_role")
-                          and isinstance(c.get("form"), dict) and c["form"].get("material")]
+    explicit_materials = [
+        {
+            "id": c.get("id"),
+            "role": c["material_role"],
+            "material": c["form"]["material"],
+        }
+        for c in architecture_plan.get("components", [])
+        if c.get("material_role")
+        and isinstance(c.get("form"), dict)
+        and c["form"].get("material")
+    ]
     # P6-A：没有资产**不等于**不能做材质设计。合法参数材质（baseColor /
     # roughness / metallic）不依赖任何贴图就能承载设计意图，必须把这句说清楚，
     # 否则空列表会让模型以为自己无事可做，转而去编 assetId。
@@ -347,24 +523,48 @@ def build_material_plan_prompt(
             "只在物件材质叙事确实支持某种程序化预设时选择它；"
             "不确定就用普通材质，不得为了使用 Shader 强行改成不相关的题材。"
         )
-        example_roles = _json.dumps([
-            {"role": "wood", "assetId": None, "proceduralPresetId": None,
-             "shaderAdjustments": {}, "baseColor": [0.42, 0.26, 0.14],
-             "roughness": 0.62, "metallic": 0},
-            {"role": "metal", "assetId": None, "proceduralPresetId": None,
-             "shaderAdjustments": {}, "baseColor": [0.16, 0.17, 0.18],
-             "roughness": 0.32, "metallic": 0.8},
-            {"role": "fabric", "assetId": None, "proceduralPresetId": None,
-             "shaderAdjustments": {}, "baseColor": [0.46, 0.44, 0.42],
-             "roughness": 0.92, "metallic": 0},
-        ], ensure_ascii=False, indent=4)
+        example_roles = _json.dumps(
+            [
+                {
+                    "role": "wood",
+                    "assetId": None,
+                    "proceduralPresetId": None,
+                    "shaderAdjustments": {},
+                    "baseColor": [0.42, 0.26, 0.14],
+                    "roughness": 0.62,
+                    "metallic": 0,
+                },
+                {
+                    "role": "metal",
+                    "assetId": None,
+                    "proceduralPresetId": None,
+                    "shaderAdjustments": {},
+                    "baseColor": [0.16, 0.17, 0.18],
+                    "roughness": 0.32,
+                    "metallic": 0.8,
+                },
+                {
+                    "role": "fabric",
+                    "assetId": None,
+                    "proceduralPresetId": None,
+                    "shaderAdjustments": {},
+                    "baseColor": [0.46, 0.44, 0.42],
+                    "roughness": 0.92,
+                    "metallic": 0,
+                },
+            ],
+            ensure_ascii=False,
+            indent=4,
+        )
     else:
         role_requirement = (
             "3. 必须覆盖 facade_primary、structure、floor、frame、door、glass、roof；"
             "ground 和 accent 可选。"
         )
         subject = "你是建筑材质设计师。落实当前建筑设计意图中的材料层次与色彩；方案尚待用户审核，不能另选风格或改动几何。"
-        plan_heading = "# 当前建筑方案（design_intent 是材料方向，design_rationale 是设计依据）"
+        plan_heading = (
+            "# 当前建筑方案（design_intent 是材料方向，design_rationale 是设计依据）"
+        )
         motivate = (
             "用户即使只说“生成一个别墅”，你也必须结合建筑方案主动补齐主材、辅材、点缀、"
             "表面新旧程度和整体色板；"
@@ -378,23 +578,63 @@ def build_material_plan_prompt(
             "只在建筑类型、风格、环境或材质叙事确实支持砖材时选择红砖预设；"
             "现代玻璃幕墙、木屋或石材立面不得为了使用 Shader 强行改成红砖。"
         )
-        example_roles = _json.dumps([
-            {"role": "facade_primary", "assetId": None, "proceduralPresetId": None,
-             "shaderAdjustments": {}, "baseColor": [0.82, 0.8, 0.76],
-             "roughness": 0.72, "metallic": 0},
-            {"role": "structure", "assetId": None, "baseColor": [0.65, 0.66, 0.67],
-             "roughness": 0.76, "metallic": 0},
-            {"role": "floor", "assetId": None, "baseColor": [0.5, 0.5, 0.5],
-             "roughness": 0.8, "metallic": 0},
-            {"role": "frame", "assetId": None, "baseColor": [0.12, 0.13, 0.14],
-             "roughness": 0.3, "metallic": 0.8},
-            {"role": "door", "assetId": None, "baseColor": [0.35, 0.2, 0.1],
-             "roughness": 0.62, "metallic": 0},
-            {"role": "glass", "assetId": None, "baseColor": [0.72, 0.88, 0.96],
-             "roughness": 0.08, "metallic": 0},
-            {"role": "roof", "assetId": None, "baseColor": [0.25, 0.26, 0.28],
-             "roughness": 0.76, "metallic": 0},
-        ], ensure_ascii=False, indent=4)
+        example_roles = _json.dumps(
+            [
+                {
+                    "role": "facade_primary",
+                    "assetId": None,
+                    "proceduralPresetId": None,
+                    "shaderAdjustments": {},
+                    "baseColor": [0.82, 0.8, 0.76],
+                    "roughness": 0.72,
+                    "metallic": 0,
+                },
+                {
+                    "role": "structure",
+                    "assetId": None,
+                    "baseColor": [0.65, 0.66, 0.67],
+                    "roughness": 0.76,
+                    "metallic": 0,
+                },
+                {
+                    "role": "floor",
+                    "assetId": None,
+                    "baseColor": [0.5, 0.5, 0.5],
+                    "roughness": 0.8,
+                    "metallic": 0,
+                },
+                {
+                    "role": "frame",
+                    "assetId": None,
+                    "baseColor": [0.12, 0.13, 0.14],
+                    "roughness": 0.3,
+                    "metallic": 0.8,
+                },
+                {
+                    "role": "door",
+                    "assetId": None,
+                    "baseColor": [0.35, 0.2, 0.1],
+                    "roughness": 0.62,
+                    "metallic": 0,
+                },
+                {
+                    "role": "glass",
+                    "assetId": None,
+                    "baseColor": [0.72, 0.88, 0.96],
+                    "roughness": 0.08,
+                    "metallic": 0,
+                },
+                {
+                    "role": "roof",
+                    "assetId": None,
+                    "baseColor": [0.25, 0.26, 0.28],
+                    "roughness": 0.76,
+                    "metallic": 0,
+                },
+            ],
+            ensure_ascii=False,
+            indent=4,
+        )
 
     return f"""{subject}
 

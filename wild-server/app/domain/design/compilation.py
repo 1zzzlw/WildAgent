@@ -7,7 +7,7 @@ from app.domain.design.contracts import DesignDocument
 from app.domain.design.contracts import ResolvedDesign
 from app.domain.design.contracts import ResolvedLevel
 
-RESOLVER_VERSION = "drawing-projection/1"
+RESOLVER_VERSION = "drawing-projection/2"
 
 
 def compile_document(document: DesignDocument):
@@ -34,11 +34,14 @@ def project_drawing(document: DesignDocument) -> ResolvedDesign:
     from app.domain.design.coordinates import floor_layout_conflicts
     from app.domain.design.coordinates import design_relation_checks
     from app.domain.design.coordinates import opening_coordinate_errors
+    from app.domain.design.coordinates import stair_span_conflicts
     from app.domain.design.coordinates import DesignCoordinateConflict
+    from app.domain.design.layout import floor_circulation_checks, opening_partition_conflicts
     from app.domain.design.relations import opening_target
     from app.domain.design.construction_systems import construction_spec
     from app.domain.design.construction_systems import check_opening_bounds
     from app.domain.design.openings import is_open_side
+    from app.domain.design.openings import split_opening
     from app.domain.components.names import resolve_component_name
 
     d = document.decisions
@@ -68,7 +71,13 @@ def project_drawing(document: DesignDocument) -> ResolvedDesign:
                          "from": [a[0], elevations[indices[floor-1]], a[1]],
                          "to": [b[0], elevations[indices[floor-1]+1], b[1]], "facing": face,
                          "design_path": f"/decisions/volumes/{volume_index}"}
-                if is_open_side(facade.ground_pattern if floor == 1 else facade.upper_pattern):
+                pattern = facade.ground_pattern if floor == 1 else facade.upper_pattern
+                length = v.width if face in {"front", "back"} else v.depth
+                frame["open_intervals"] = []
+                for bay, token in enumerate(pattern):
+                    if split_opening(token)[0] == "open":
+                        frame["open_intervals"].append((bay * length / facade.bays, (bay + 1) * length / facade.bays))
+                if is_open_side(pattern):
                     frame["open"] = True
                 else:
                     walls.append(frame)
@@ -119,6 +128,13 @@ def project_drawing(document: DesignDocument) -> ResolvedDesign:
                 except ValueError as exc:
                     raise ValueError(f"{marker['design_path']}/form/construction：{exc}") from exc
     relation_errors, relation_reviews = design_relation_checks(d.model_dump(mode="json"), markers, frames)
+    circulation_errors, circulation_reviews = floor_circulation_checks(d.model_dump(mode="json"), markers, frames)
+    relation_errors.extend(circulation_errors)
+    relation_reviews.extend(circulation_reviews)
+    relation_errors.extend(opening_partition_conflicts(markers, frames))
+    relation_errors.extend({"code": "design_stair_span_conflict", "path": message.partition("：")[0],
+                            "reason": message.partition("：")[2]}
+                           for message in stair_span_conflicts(d.model_dump(mode="json")))
     relation_errors.extend({"code": "design_opening_conflict", "path": message.partition("：")[0],
                             "reason": message.partition("：")[2]}
                            for message in opening_coordinate_errors(markers))
