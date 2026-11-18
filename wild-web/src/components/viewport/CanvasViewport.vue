@@ -401,6 +401,9 @@ function startCharacterRoaming() {
       onMessage: message => { roaming.message = message },
       requestRender: markNeedsRender,
     })
+    // 只预热新增人物的材质，并使用出生位置实际选中的灯光；不重编译整栋建筑。
+    fixtureLighting.update(camera, qualityLevel.value)
+    renderer.compile(characterRoaming.avatar, camera, scene)
     characterRoaming.capturePointer()
     markShadowsDirty()
   } catch (error) {
@@ -722,13 +725,17 @@ function renderFrame() {
   const entranceAnimating = assemblyRuntime?.tick(delta) ?? false
   const mechanismAnimating = !entranceAnimating && tickMechanisms(sceneGroup, delta)
   const behaviorAnimating = !entranceAnimating && tickElementBehaviors(sceneGroup, delta)
+  const avatarWasVisible = characterRoaming?.avatar.visible ?? false
   const characterAnimating = characterRoaming?.tick(delta) ?? false
+  const avatarVisibilityChanged = avatarWasVisible !== (characterRoaming?.avatar.visible ?? false)
   const controlsAnimating = !roaming.active && (controls?.update() ?? false)
-  if (characterAnimating || mechanismAnimating || entranceAnimating) {
-    needsRender = true
+  if (characterAnimating || mechanismAnimating || entranceAnimating) needsRender = true
+  // 锁鼠只代表相机仍需逐帧响应，不代表世界几何发生变化。
+  // 第一视角隐藏人物后，转头/行走不应反复重画整栋建筑和室内灯的阴影。
+  if ((characterAnimating && characterRoaming?.avatar.visible) || avatarVisibilityChanged || mechanismAnimating || entranceAnimating) {
     waterReflection?.invalidate()
     const now = performance.now()
-    if (now - lastShadowDirtyTime >= SHADOW_DIRTY_THROTTLE_MS
+    if (avatarVisibilityChanged || now - lastShadowDirtyTime >= SHADOW_DIRTY_THROTTLE_MS
       || entranceAnimating && !assemblyRuntime?.active) {
       lastShadowDirtyTime = now
       markShadowsDirty()

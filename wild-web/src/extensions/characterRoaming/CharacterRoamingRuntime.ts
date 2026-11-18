@@ -86,6 +86,9 @@ export class CharacterRoamingRuntime {
 
   get locked(): boolean { return document.pointerLockElement === this.options.canvas }
 
+  /** 供宿主预热材质、判断人物是否改变投影；资源仍由漫游运行时释放。 */
+  get avatar(): THREE.Group { return this.robot.root }
+
   private spawn(): void {
     const bounds = this.world.bounds
     const center = bounds.isEmpty() ? new THREE.Vector3() : bounds.getCenter(new THREE.Vector3())

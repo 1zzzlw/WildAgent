@@ -24,6 +24,7 @@ export class WorldVisibilityRuntime {
   readonly stats = { tested: 0, occluded: 0, occluders: 0 }
   private readonly cache = new WeakMap<THREE.Mesh, BoundsCache>()
   private readonly viewProjection = new THREE.Matrix4()
+  private readonly frustum = new THREE.Frustum()
   private readonly point = new THREE.Vector3()
   private readonly cameraPosition = new THREE.Vector3()
   private readonly cameraDirection = new THREE.Vector3()
@@ -44,6 +45,7 @@ export class WorldVisibilityRuntime {
     this.cameraPosition.setFromMatrixPosition(camera.matrixWorld)
     camera.getWorldDirection(this.cameraDirection).negate()
     this.viewProjection.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse)
+    this.frustum.setFromProjectionMatrix(this.viewProjection)
     const meshes: THREE.Mesh[] = []
     const collect = (object: THREE.Object3D) => {
       if (!object.visible) return
@@ -52,7 +54,9 @@ export class WorldVisibilityRuntime {
         if (object.children.some(child => !child.frustumCulled)) return
         object.traverseVisible(child => {
           if (child instanceof THREE.Mesh && !(child instanceof THREE.SkinnedMesh) && !child.morphTargetInfluences?.length
-            && child.frustumCulled && !child.children.length && child.layers.test(camera.layers)) meshes.push(child)
+            && child.frustumCulled && !child.children.length && child.layers.test(camera.layers)
+            // 与 Three.js 绘制阶段使用同一保守球体测试，屏外网格不再参与遮挡投影计算。
+            && this.frustum.intersectsObject(child)) meshes.push(child)
         })
       } else object.children.forEach(collect)
     }
