@@ -807,6 +807,57 @@ def test_shared_edit_charges_actor_preserves_creator_and_enforces_revision_and_l
     assert client.get("/api/scenes/" + filename).status_code == 200
 
 
+def test_audit_pagination_keeps_large_details_out_of_sort_and_preserves_filters(management):
+    client, seeded, storage = management
+    details = {"content": "完整 AI 回复 " + "x" * 120000, "changes": [{"before": 1, "after": 2}]}
+    records = []
+    for identifier, timestamp in (("large-a", 10), ("large-c", 10), ("large-b", 9), ("too-old", 8), ("too-new", 11)):
+        records.append({"id": identifier, "actor_id": seeded["designer"]["id"], "actor_name": "designer",
+                        "action": "ai.agent_reply", "resource": "large-record-" + identifier,
+                        "details": details, "created_at": timestamp})
+    records.extend([
+        {**records[0], "id": "other-user", "actor_id": seeded["other"]["id"], "actor_name": "other"},
+        {**records[0], "id": "other-action", "action": "ai.request"},
+        {**records[0], "id": "other-query", "resource": "unrelated"},
+    ])
+    with storage.begin() as connection:
+        connection.execute(audit_logs.insert(), records)
+    login(client)
+    statements = []
+
+    def record_query(_connection, _cursor, statement, _parameters, _context, _many):
+        if "from audit_logs" in statement.lower():
+            statements.append(statement.lower())
+
+    event.listen(storage, "before_cursor_execute", record_query)
+    try:
+        pages = []
+        for page in (1, 2, 3):
+            response = client.get("/api/admin/logs", params={"user_id": seeded["designer"]["id"],
+                "action": "ai.agent_reply", "query": "large-record-", "since": 9, "until": 10,
+                "page": page, "page_size": 2})
+            assert response.status_code == 200, response.text
+            pages.append(response.json())
+        empty = client.get("/api/admin/logs", params={"query": "no-such-audit-resource"}).json()
+    finally:
+        event.remove(storage, "before_cursor_execute", record_query)
+
+    assert [row["id"] for row in pages[0]["items"]] == ["large-a", "large-c"]
+    assert [row["id"] for row in pages[1]["items"]] == ["large-b"]
+    assert pages[2]["items"] == []
+    for index, page in enumerate(pages, 1):
+        assert (page["total"], page["page"], page["page_size"]) == (3, index, 2)
+        for row in page["items"]:
+            assert row["details"] == details, "分页不能截断 AI 回复和变更详情"
+    assert empty["items"] == [] and empty["total"] == 0
+    sorted_queries = [statement for statement in statements if "order by" in statement]
+    assert len(sorted_queries) == 4
+    assert all("audit_logs.details" not in statement for statement in sorted_queries), "大 JSON 不能进入排序缓冲区"
+    detail_queries = [statement for statement in statements if "audit_logs.details" in statement]
+    assert len(detail_queries) == 2, "只按本页 ID 读取详情，空页不读取详情"
+    assert all("audit_logs.id in" in statement and "order by" not in statement for statement in detail_queries)
+
+
 def test_blueprint_pagination_never_reads_large_json(management):
     client, seeded, storage = management
     filenames = [f"session_large_{letter}.wild" for letter in ("a", "b", "c")]

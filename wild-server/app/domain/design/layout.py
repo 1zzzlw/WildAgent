@@ -8,9 +8,12 @@ from shapely.ops import substring, unary_union
 
 from app.domain.components.names import resolve_component_name
 from app.domain.design.relations import opening_target
-from app.domain.design.spatial import host_path, polygons, resolve_geometry
-
-TOPOLOGY_GRID = 1e-8  # 只消除浮点运算噪声；不改变源图纸或毫米级设计检查。
+from app.domain.design.spatial import (
+    TOPOLOGY_GRID,
+    host_path,
+    polygons,
+    resolve_geometry,
+)
 
 
 def _room_shape(room):

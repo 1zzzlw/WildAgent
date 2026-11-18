@@ -83,15 +83,22 @@ def list_activity(
     if until is not None:
         filters.append(audit_logs.c.created_at <= until)
     with database.engine.connect() as connection:
-        return _page(
+        # 先只排序 ID，避免大体积 AI 回复/变更 JSON 占满 MySQL filesort 缓冲区。
+        result = _page(
             connection,
-            select(audit_logs)
+            select(audit_logs.c.id)
             .where(*filters)
             .order_by(audit_logs.c.created_at.desc(), audit_logs.c.id),
             select(func.count()).select_from(audit_logs).where(*filters),
             page,
             page_size,
         )
+        ids = [item["id"] for item in result["items"]]
+        if ids:
+            rows = connection.execute(select(audit_logs).where(audit_logs.c.id.in_(ids))).mappings()
+            by_id = {row["id"]: dict(row) for row in rows}
+            result["items"] = [by_id[identity] for identity in ids if identity in by_id]
+        return result
 
 
 def list_blueprints(query: str, locked: bool | None, page: int, page_size: int) -> dict:

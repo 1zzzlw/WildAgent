@@ -6,7 +6,7 @@ from bisect import bisect_right
 from copy import deepcopy
 from math import acos, ceil, cos, hypot, pi, sin
 
-from shapely import affinity
+from shapely import affinity, set_precision
 from shapely.geometry import (
     GeometryCollection,
     LineString,
@@ -20,6 +20,7 @@ from shapely.validation import explain_validity
 
 CHORD_ERROR = 0.00025  # 轮廓离散弦高上限，米；不能借此放宽设计尺寸约束。
 GEOMETRY_EPSILON = 1e-7
+TOPOLOGY_GRID = 1e-8  # 纳米级归一只消除运算噪声，不改变毫米级设计尺寸。
 
 
 def has_spatial_geometry(design: dict) -> bool:
@@ -364,7 +365,7 @@ def resolve_region(
                     actual={"volume": identity, "level": region["level"]},
                 )
             shapes.append(section_polygon(section))
-        return unary_union(shapes)
+        return unary_union([set_precision(shape, TOPOLOGY_GRID) for shape in shapes])
     shape = profile_polygon(region["profile"], profiles)
     shape = affinity.rotate(
         shape, -region.get("yaw", 0), origin=(0, 0), use_radians=True
@@ -392,7 +393,17 @@ def validate_spatial_design(design: dict) -> None:
     roofs = index_by_id(design.get("roofs", []), "/roofs")
     relations = index_by_id(design.get("relations", []), "/relations")
     all_ids = set()
-    for records in (levels, profiles, volumes, walls, slabs, voids, components, roofs, relations):
+    for records in (
+        levels,
+        profiles,
+        volumes,
+        walls,
+        slabs,
+        voids,
+        components,
+        roofs,
+        relations,
+    ):
         overlap = all_ids.intersection(records)
         if overlap:
             issue("/decisions", "不同实体的稳定ID不得重复", actual=sorted(overlap))

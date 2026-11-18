@@ -10,14 +10,32 @@ import json
 from datetime import datetime, timezone
 from typing import Any, Annotated, Literal
 
-from pydantic import AfterValidator, BaseModel, ConfigDict, Field, field_validator, model_validator
-
-from app.domain.design.spatial_contracts import (
-    ClearancePath, ConstructionSystem, CoordinateSystem, DesignFloorLayout, DesignLevel, DesignProfile, DesignRelation, RequiredConnection,
-    DesignRoof, DesignSlab, DesignVoid, DesignWall, ElevationReference,
-    VolumeGeometry, VolumePlacement,
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    ConfigDict,
+    Field,
+    field_validator,
+    model_validator,
 )
 
+from app.domain.design.spatial_contracts import (
+    ClearancePath,
+    ConstructionSystem,
+    CoordinateSystem,
+    DesignFloorLayout,
+    DesignLevel,
+    DesignProfile,
+    DesignRelation,
+    RequiredConnection,
+    DesignRoof,
+    DesignSlab,
+    DesignVoid,
+    DesignWall,
+    ElevationReference,
+    VolumeGeometry,
+    VolumePlacement,
+)
 
 
 def utc_now_iso() -> str:
@@ -28,11 +46,29 @@ def architecture_output_schema() -> dict:
     """从正式契约导出新方案的输出规则；历史字段只用于读取，不再提示模型生成。"""
     schema = ArchitectureDecisions.model_json_schema()
     hidden = {
-        "": {"facades", "roof", "curtain_wall", "complexity", "component_quota", "balcony_access_count", "balcony_width", "required_components", "unsupported_component_types"},
+        "": {
+            "facades",
+            "roof",
+            "curtain_wall",
+            "complexity",
+            "component_quota",
+            "balcony_access_count",
+            "balcony_width",
+            "required_components",
+            "unsupported_component_types",
+        },
         "MassingDecision": {"tiers"},
         "MaterialIntent": {"resolved_plan"},
         "ComponentInstance": {"relation"},
-        "VolumeDecision": {"x", "z", "width", "depth", "start_floor", "end_floor", "facades"},
+        "VolumeDecision": {
+            "x",
+            "z",
+            "width",
+            "depth",
+            "start_floor",
+            "end_floor",
+            "facades",
+        },
         "ComponentPlacement": {"face", "floor", "sill_height"},
         "FloorConnection": {"from_floor", "to_floor"},
         "DesignFloorLayout": {"floor", "walls"},
@@ -42,18 +78,26 @@ def architecture_output_schema() -> dict:
         node = schema["$defs"][name] if name else schema
         for field in fields:
             node.get("properties", {}).pop(field, None)
-        node["required"] = [key for key in node.get("required", []) if key not in fields]
-    schema["$defs"]["DesignFloorLayout"]["properties"]["level"] = {"type": "string", "description": "levels中的稳定楼面ID"}
-    for name,required in (
-        ("VolumeDecision",["id","placement","geometry"]),
-        ("DesignFloorLayout",["level","rooms"]),
-        ("DesignRoom",["id","region"]),
-        ("FloorConnection",["from_level","to_level"]),
+        node["required"] = [
+            key for key in node.get("required", []) if key not in fields
+        ]
+    schema["$defs"]["DesignFloorLayout"]["properties"]["level"] = {
+        "type": "string",
+        "description": "levels中的稳定楼面ID",
+    }
+    for name, required in (
+        ("VolumeDecision", ["id", "placement", "geometry"]),
+        ("DesignFloorLayout", ["level", "rooms"]),
+        ("DesignRoom", ["id", "region"]),
+        ("FloorConnection", ["from_level", "to_level"]),
     ):
         schema["$defs"][name]["required"] = required
-    schema["required"] = list(dict.fromkeys([*schema["required"],"levels","profiles"]))
+    schema["required"] = list(
+        dict.fromkeys([*schema["required"], "levels", "profiles"])
+    )
     # 删除仅由历史字段引入的定义，避免提示词保留两套空间规则。
     used = set()
+
     def collect(value):
         if isinstance(value, dict):
             value.pop("title", None)
@@ -69,8 +113,11 @@ def architecture_output_schema() -> dict:
         elif isinstance(value, list):
             for item in value:
                 collect(item)
+
     collect(schema)
-    schema["$defs"] = {name: value for name, value in schema["$defs"].items() if name in used}
+    schema["$defs"] = {
+        name: value for name, value in schema["$defs"].items() if name in used
+    }
     return schema
 
 
@@ -102,17 +149,25 @@ class MassingTierDecision(ContractModel):
     volumes 落层或 shape 派生轮廓，与本字段无关。
     """
 
-    model_config = ConfigDict(extra="allow", validate_assignment=True, allow_inf_nan=False)
+    model_config = ConfigDict(
+        extra="allow", validate_assignment=True, allow_inf_nan=False
+    )
     floors: int = Field(ge=1)
     width_ratio: float = Field(gt=0)
     depth_ratio: float = Field(default=1.0, gt=0)
 
 
 class MassingDecision(ContractModel):
-    model_config = ConfigDict(extra="allow", validate_assignment=True, allow_inf_nan=False)
+    model_config = ConfigDict(
+        extra="allow", validate_assignment=True, allow_inf_nan=False
+    )
     shape: str = Field(min_length=1)
-    width: float = Field(gt=0, description="总体 X 方向尺寸控制上限（米），无世界原点边界")
-    depth: float = Field(gt=0, description="总体 Z 方向尺寸控制上限（米），实际包络由 volumes 决定")
+    width: float = Field(
+        gt=0, description="总体 X 方向尺寸控制上限（米），无世界原点边界"
+    )
+    depth: float = Field(
+        gt=0, description="总体 Z 方向尺寸控制上限（米），实际包络由 volumes 决定"
+    )
     floors: int = Field(ge=1)
     modeled_floors: int = Field(ge=1)
     representation_mode: Literal["full", "schematic"] = "full"
@@ -136,28 +191,71 @@ class MassingDecision(ContractModel):
 
 
 class VolumeDecision(ContractModel):
-    model_config = ConfigDict(extra="allow", validate_assignment=True, allow_inf_nan=False)
+    model_config = ConfigDict(
+        extra="allow", validate_assignment=True, allow_inf_nan=False
+    )
     id: str = Field(min_length=1, pattern=r"^[A-Za-z0-9_\-]+$")
     role: str = "primary"
-    placement: VolumePlacement | None = Field(default=None, exclude_if=lambda value: value is None)
-    geometry: VolumeGeometry | None = Field(default=None, exclude_if=lambda value: value is None)
-    x: float | None = Field(default=None, allow_inf_nan=False, exclude_if=lambda value: value is None, description="历史矩形体量起点；新图纸使用 placement/geometry")
-    z: float | None = Field(default=None, allow_inf_nan=False, exclude_if=lambda value: value is None)
-    width: float | None = Field(default=None, gt=0, exclude_if=lambda value: value is None)
-    depth: float | None = Field(default=None, gt=0, exclude_if=lambda value: value is None)
-    start_floor: int | None = Field(default=None, ge=1, exclude_if=lambda value: value is None)
-    end_floor: int | None = Field(default=None, ge=1, exclude_if=lambda value: value is None)
-    facades: dict[Literal["front", "back", "left", "right"], FacadeDecision] = Field(default_factory=dict, exclude_if=lambda value: not value)
+    placement: VolumePlacement | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
+    geometry: VolumeGeometry | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
+    x: float | None = Field(
+        default=None,
+        allow_inf_nan=False,
+        exclude_if=lambda value: value is None,
+        description="历史矩形体量起点；新图纸使用 placement/geometry",
+    )
+    z: float | None = Field(
+        default=None, allow_inf_nan=False, exclude_if=lambda value: value is None
+    )
+    width: float | None = Field(
+        default=None, gt=0, exclude_if=lambda value: value is None
+    )
+    depth: float | None = Field(
+        default=None, gt=0, exclude_if=lambda value: value is None
+    )
+    start_floor: int | None = Field(
+        default=None, ge=1, exclude_if=lambda value: value is None
+    )
+    end_floor: int | None = Field(
+        default=None, ge=1, exclude_if=lambda value: value is None
+    )
+    facades: dict[Literal["front", "back", "left", "right"], FacadeDecision] = Field(
+        default_factory=dict, exclude_if=lambda value: not value
+    )
 
     @model_validator(mode="after")
     def floor_range_is_valid(self):
         if self.geometry is not None:
             if self.placement is None:
                 raise ValueError("几何体量必须明确 placement")
-            if any(value is not None for value in (self.x, self.z, self.width, self.depth, self.start_floor, self.end_floor)):
+            if any(
+                value is not None
+                for value in (
+                    self.x,
+                    self.z,
+                    self.width,
+                    self.depth,
+                    self.start_floor,
+                    self.end_floor,
+                )
+            ):
                 raise ValueError("不能同时声明 geometry 和历史矩形体量字段")
             return self
-        if any(value is None for value in (self.x, self.z, self.width, self.depth, self.start_floor, self.end_floor)):
+        if any(
+            value is None
+            for value in (
+                self.x,
+                self.z,
+                self.width,
+                self.depth,
+                self.start_floor,
+                self.end_floor,
+            )
+        ):
             raise ValueError("体量必须给出 placement/geometry，或完整历史矩形字段")
         if self.end_floor < self.start_floor:
             raise ValueError("volume.end_floor 不能小于 start_floor")
@@ -165,7 +263,9 @@ class VolumeDecision(ContractModel):
 
 
 class StructuralGridDecision(ContractModel):
-    model_config = ConfigDict(extra="allow", validate_assignment=True, allow_inf_nan=False)
+    model_config = ConfigDict(
+        extra="allow", validate_assignment=True, allow_inf_nan=False
+    )
     system: str
     x_bays: int = Field(ge=1)
     z_bays: int = Field(ge=1)
@@ -176,7 +276,9 @@ OpeningToken = str
 
 
 class FacadeDecision(ContractModel):
-    model_config = ConfigDict(extra="allow", validate_assignment=True, allow_inf_nan=False)
+    model_config = ConfigDict(
+        extra="allow", validate_assignment=True, allow_inf_nan=False
+    )
     bays: int = Field(ge=1)
     entrance_bay: int | None = Field(default=None, ge=1)
     ground_pattern: list[OpeningToken]
@@ -184,9 +286,14 @@ class FacadeDecision(ContractModel):
 
     @model_validator(mode="after")
     def patterns_match_bays(self):
-        if len(self.ground_pattern) != self.bays or len(self.upper_pattern) != self.bays:
-            raise ValueError(f"立面 pattern 长度必须与 bays 相同：bays={self.bays}，"
-                             f"ground_pattern={len(self.ground_pattern)}，upper_pattern={len(self.upper_pattern)}")
+        if (
+            len(self.ground_pattern) != self.bays
+            or len(self.upper_pattern) != self.bays
+        ):
+            raise ValueError(
+                f"立面 pattern 长度必须与 bays 相同：bays={self.bays}，"
+                f"ground_pattern={len(self.ground_pattern)}，upper_pattern={len(self.upper_pattern)}"
+            )
         if self.entrance_bay is not None and self.entrance_bay > self.bays:
             raise ValueError("entrance_bay 不能超出 bays")
         return self
@@ -195,7 +302,9 @@ class FacadeDecision(ContractModel):
 class RoofVolumeOverride(ContractModel):
     """逐体量屋面设计，允许扩展造型参数。"""
 
-    model_config = ConfigDict(extra="allow", validate_assignment=True, allow_inf_nan=False)
+    model_config = ConfigDict(
+        extra="allow", validate_assignment=True, allow_inf_nan=False
+    )
     volume: str = Field(min_length=1)
     type: str | None = None
     overhang: float | None = Field(default=None, ge=0, le=2)
@@ -204,11 +313,16 @@ class RoofVolumeOverride(ContractModel):
 class RoofDecision(ContractModel):
     """整体屋面意图与逐体量覆盖。"""
 
-    model_config = ConfigDict(extra="allow", validate_assignment=True, allow_inf_nan=False)
+    model_config = ConfigDict(
+        extra="allow", validate_assignment=True, allow_inf_nan=False
+    )
     type: str
-    ridge_axis: Literal["x", "z"] = Field(default="x", description=(
-        "仅双坡（gable）屋顶需要选择屋脊方向；其他已知屋型可省略，由程序保留兼容默认值。"
-    ))
+    ridge_axis: Literal["x", "z"] = Field(
+        default="x",
+        description=(
+            "仅双坡（gable）屋顶需要选择屋脊方向；其他已知屋型可省略，由程序保留兼容默认值。"
+        ),
+    )
     overhang: float = Field(default=0, ge=0, le=2)
     #: 按设计体量引用分配屋面形态，plan 负责实现。
     volumes: list[RoofVolumeOverride] = Field(default_factory=list)
@@ -230,29 +344,49 @@ class RoofDecision(ContractModel):
                     kinds.append(item.get("type") or value.get("type"))
                 else:
                     return value
-        without_axis = {"flat", "hip", "dome", "chinese_curved", "chinese_pagoda", "none", "open"}
+        without_axis = {
+            "flat",
+            "hip",
+            "dome",
+            "chinese_curved",
+            "chinese_pagoda",
+            "none",
+            "open",
+        }
         if all(isinstance(kind, str) and kind in without_axis for kind in kinds):
             return {**value, "ridge_axis": cls.model_fields["ridge_axis"].default}
         return value
 
 
 class CurtainWallDecision(ContractModel):
-    model_config = ConfigDict(extra="allow", validate_assignment=True, allow_inf_nan=False)
+    model_config = ConfigDict(
+        extra="allow", validate_assignment=True, allow_inf_nan=False
+    )
     grid_strategy: str = "floor_and_bay_aligned"
 
 
 class EnvelopeDecision(ContractModel):
-    model_config = ConfigDict(extra="allow", validate_assignment=True, allow_inf_nan=False)
+    model_config = ConfigDict(
+        extra="allow", validate_assignment=True, allow_inf_nan=False
+    )
     system: str = "solid_wall"
     curtain_wall: CurtainWallDecision | None = None
 
 
-
 class CirculationDecision(ContractModel):
-    model_config = ConfigDict(extra="allow", validate_assignment=True, allow_inf_nan=False)
+    model_config = ConfigDict(
+        extra="allow", validate_assignment=True, allow_inf_nan=False
+    )
     vertical_strategy: str = ""
-    required_connections: list[RequiredConnection] = Field(default_factory=list, description="本次明确要求的连通关系，引用房间、入口或标高ID")
-    clearance_paths: list[ClearancePath] = Field(default_factory=list, description="本次明确要求的通行净空折线；实体净空需另行验收")
+    required_connections: list[RequiredConnection] = Field(
+        default_factory=list,
+        description="本次明确要求的连通关系，引用房间、入口或标高ID",
+    )
+    clearance_paths: list[ClearancePath] = Field(
+        default_factory=list,
+        description="本次明确要求的通行净空折线；实体净空需另行验收",
+    )
+
 
 # 材料角色由图纸声明，默认角色及参数仍来自blueprint/materials/plan.py。
 MaterialRoleName = str
@@ -306,16 +440,23 @@ class MaterialRegion(ContractModel):
 
 
 class MaterialIntent(ContractModel):
-    model_config = ConfigDict(extra="allow", validate_assignment=True, allow_inf_nan=False)
+    model_config = ConfigDict(
+        extra="allow", validate_assignment=True, allow_inf_nan=False
+    )
     keywords: list[str] = Field(default_factory=list)
-    roles: dict[str, dict[str, Any]] = Field(default_factory=dict, description="本次材料角色及描述，可用base_role引用默认用途；实际PBR由材料节点落实")
+    roles: dict[str, dict[str, Any]] = Field(
+        default_factory=dict,
+        description="本次材料角色及描述，可用base_role引用默认用途；实际PBR由材料节点落实",
+    )
     resolved_plan: ResolvedMaterialPlan | None = None
     #: 区域/构件材质绑定（P5-C）。空列表 ⇒ 全部按类型默认角色，与引入前逐字段一致。
     regions: list[MaterialRegion] = Field(default_factory=list, max_length=20)
 
 
 class SupportRelation(ContractModel):
-    model_config = ConfigDict(extra="allow", validate_assignment=True, allow_inf_nan=False)
+    model_config = ConfigDict(
+        extra="allow", validate_assignment=True, allow_inf_nan=False
+    )
     kind: str = "supports"
     target: str = Field(min_length=1, description="关系目标的稳定实例 ID 或实体 ID")
     along_ratio: float = Field(default=0.5, ge=0, le=1)
@@ -323,32 +464,73 @@ class SupportRelation(ContractModel):
 
 
 class ComponentPlacement(ContractModel):
-    model_config = ConfigDict(extra="allow", validate_assignment=True, allow_inf_nan=False)
-    position: list[Annotated[float, Field(strict=True, allow_inf_nan=False)]] | None = Field(
-        default=None, min_length=3, max_length=3, exclude_if=lambda value: value is None,
-        description="构件世界中心 [x,y,z]；参数表达式必须先展开为三个有限数字",
+    model_config = ConfigDict(
+        extra="allow", validate_assignment=True, allow_inf_nan=False
+    )
+    position: list[Annotated[float, Field(strict=True, allow_inf_nan=False)]] | None = (
+        Field(
+            default=None,
+            min_length=3,
+            max_length=3,
+            exclude_if=lambda value: value is None,
+            description="构件世界中心 [x,y,z]；参数表达式必须先展开为三个有限数字",
+        )
     )
     face: Literal["front", "back", "left", "right"] | None = None
     floor: int | None = Field(default=None, ge=1)
     offset: float = Field(default=0)
-    sill_height: float = Field(default=0, exclude_if=lambda value: value == 0, description="历史定位：相对宿主墙底的高度，新图纸优先使用elevation")
-    normal_offset: float = Field(default=0, description="沿宿主墙局部法线的偏移；不是世界 X/Z")
-    mode: Literal["world", "wall", "anchor", "surface"] | None = Field(default=None, description="唯一定位方式；空值仅兼容历史图纸")
-    anchor: str | None = Field(default=None, description="position或墙局部坐标所对应的构件锚点，例如center、bottom_left")
-    elevation: ElevationReference | None = Field(default=None, description="墙上构件锚点的世界标高引用，与历史sill_height互斥")
-    rotation: tuple[float, float, float] = Field(default=(0, 0, 0), description="相对定位参考系绕X/Y/Z旋转的弧度")
-    mounting: Literal["conform", "tangent_plane"] = Field(default="conform", description="曲墙上的贴合方式；切平面安装不等于沿曲墙展开")
-    host_anchor: str | None = Field(default=None, description="anchor模式引用的宿主锚点名称")
-    self_anchor: str | None = Field(default=None, description="anchor模式对齐的构件自身锚点名称")
-    anchor_offset: tuple[float, float, float] = Field(default=(0, 0, 0), description="宿主锚点坐标系内的米制偏移，不是世界坐标")
-    chart: str | None = Field(default=None, description="surface模式引用的宿主曲面参数域ID")
-    uv: tuple[Annotated[float, Field(ge=0, le=1)], Annotated[float, Field(ge=0, le=1)]] | None = Field(default=None, description="曲面参数域中的归一化二维位置")
-    orientation: Literal["surface_frame"] = Field(default="surface_frame", description="使用宿主曲面的切向与法向定义朝向")
+    sill_height: float = Field(
+        default=0,
+        exclude_if=lambda value: value == 0,
+        description="历史定位：相对宿主墙底的高度，新图纸优先使用elevation",
+    )
+    normal_offset: float = Field(
+        default=0, description="沿宿主墙局部法线的偏移；不是世界 X/Z"
+    )
+    mode: Literal["world", "wall", "anchor", "surface"] | None = Field(
+        default=None, description="唯一定位方式；空值仅兼容历史图纸"
+    )
+    anchor: str | None = Field(
+        default=None,
+        description="position或墙局部坐标所对应的构件锚点，例如center、bottom_left",
+    )
+    elevation: ElevationReference | None = Field(
+        default=None, description="墙上构件锚点的世界标高引用，与历史sill_height互斥"
+    )
+    rotation: tuple[float, float, float] = Field(
+        default=(0, 0, 0), description="相对定位参考系绕X/Y/Z旋转的弧度"
+    )
+    mounting: Literal["conform", "tangent_plane"] = Field(
+        default="conform", description="曲墙上的贴合方式；切平面安装不等于沿曲墙展开"
+    )
+    host_anchor: str | None = Field(
+        default=None, description="anchor模式引用的宿主锚点名称"
+    )
+    self_anchor: str | None = Field(
+        default=None, description="anchor模式对齐的构件自身锚点名称"
+    )
+    anchor_offset: tuple[float, float, float] = Field(
+        default=(0, 0, 0), description="宿主锚点坐标系内的米制偏移，不是世界坐标"
+    )
+    chart: str | None = Field(
+        default=None, description="surface模式引用的宿主曲面参数域ID"
+    )
+    uv: (
+        tuple[Annotated[float, Field(ge=0, le=1)], Annotated[float, Field(ge=0, le=1)]]
+        | None
+    ) = Field(default=None, description="曲面参数域中的归一化二维位置")
+    orientation: Literal["surface_frame"] = Field(
+        default="surface_frame", description="使用宿主曲面的切向与法向定义朝向"
+    )
 
     @model_validator(mode="before")
     @classmethod
     def anchor_offset_alias(cls, value):
-        if isinstance(value, dict) and value.get("mode") == "anchor" and isinstance(value.get("offset"), (list, tuple)):
+        if (
+            isinstance(value, dict)
+            and value.get("mode") == "anchor"
+            and isinstance(value.get("offset"), (list, tuple))
+        ):
             value = dict(value)
             value["anchor_offset"] = value.pop("offset")
         return value
@@ -367,8 +549,15 @@ class ComponentPlacement(ContractModel):
             raise ValueError("elevation 和 sill_height 只能选择一个")
         if self.mode == "surface" and (self.uv is None or not self.chart):
             raise ValueError("曲面定位必须给 chart 和 uv")
-        if self.mode == "wall" and self.anchor not in {"bottom_left", "opening_start_bottom", "opening_center_bottom", "center"}:
-            raise ValueError("wall定位anchor必须为bottom_left、opening_start_bottom、opening_center_bottom或center")
+        if self.mode == "wall" and self.anchor not in {
+            "bottom_left",
+            "opening_start_bottom",
+            "opening_center_bottom",
+            "center",
+        }:
+            raise ValueError(
+                "wall定位anchor必须为bottom_left、opening_start_bottom、opening_center_bottom或center"
+            )
         return self
 
 
@@ -379,42 +568,76 @@ def _dimension_name(value: str) -> str:
 
 
 class FloorConnection(ContractModel):
-    from_floor: int | None = Field(default=None, ge=1, exclude_if=lambda value: value is None)
-    to_floor: Annotated[int, Field(ge=1)] | Literal["roof"] | None = Field(default=None, exclude_if=lambda value: value is None)
-    from_level: str | None = Field(default=None, exclude_if=lambda value: value is None, description="起点楼面levels ID")
-    to_level: str | None = Field(default=None, exclude_if=lambda value: value is None, description="终点楼面或屋面levels ID；标高必须高于起点")
+    from_floor: int | None = Field(
+        default=None, ge=1, exclude_if=lambda value: value is None
+    )
+    to_floor: Annotated[int, Field(ge=1)] | Literal["roof"] | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
+    from_level: str | None = Field(
+        default=None,
+        exclude_if=lambda value: value is None,
+        description="起点楼面levels ID",
+    )
+    to_level: str | None = Field(
+        default=None,
+        exclude_if=lambda value: value is None,
+        description="终点楼面或屋面levels ID；标高必须高于起点",
+    )
 
     @model_validator(mode="after")
     def connection_references(self):
         indexed = self.from_floor is not None and self.to_floor is not None
         named = bool(self.from_level and self.to_level)
         if indexed == named:
-            raise ValueError("楼层连接必须选择完整的 from_level/to_level 或历史楼层整数")
+            raise ValueError(
+                "楼层连接必须选择完整的 from_level/to_level 或历史楼层整数"
+            )
         return self
 
 
 class ComponentInstance(ContractModel):
     """保留实例设计及扩展参数，由 plan 实现形态与依附关系。"""
 
-    model_config = ConfigDict(extra="allow", validate_assignment=True, allow_inf_nan=False)
+    model_config = ConfigDict(
+        extra="allow", validate_assignment=True, allow_inf_nan=False
+    )
     type: str = Field(min_length=1)
-    system: str | None = Field(default=None, description="systems中与构件type一致的共享系统ID")
-    parameters: dict[str, Any] = Field(default_factory=dict, description="实例对共享构造参数的显式取值")
-    material_bindings: dict[str, str] = Field(default_factory=dict, description="构件部位名称到materials.roles角色的绑定")
+    system: str | None = Field(
+        default=None, description="systems中与构件type一致的共享系统ID"
+    )
+    parameters: dict[str, Any] = Field(
+        default_factory=dict, description="实例对共享构造参数的显式取值"
+    )
+    material_bindings: dict[str, str] = Field(
+        default_factory=dict, description="构件部位名称到materials.roles角色的绑定"
+    )
     footprint: str | None = Field(default=None, description="构件占地轮廓的profiles ID")
-    opening: str | None = Field(default=None, description="构件需要的voids留洞ID，例如楼梯上层洞口")
-    access: str | None = Field(default=None, description="构件通行或操作净空的profiles ID")
-    guarding: dict[str, Any] | None = Field(default=None, description="留洞与临空边的防护设计参数；声明不自动生成栏杆")
+    opening: str | None = Field(
+        default=None, description="构件需要的voids留洞ID，例如楼梯上层洞口"
+    )
+    access: str | None = Field(
+        default=None, description="构件通行或操作净空的profiles ID"
+    )
+    guarding: dict[str, Any] | None = Field(
+        default=None, description="留洞与临空边的防护设计参数；声明不自动生成栏杆"
+    )
     id: str | None = Field(default=None, min_length=1, pattern=r"^[A-Za-z0-9_-]+$")
     relation: SupportRelation | None = None
-    floor_connections: list[FloorConnection] = Field(default_factory=list, exclude_if=lambda value: not value)
+    floor_connections: list[FloorConnection] = Field(
+        default_factory=list, exclude_if=lambda value: not value
+    )
     #: 设计中的宿主引用；plan 负责转换为真实实体引用。
-    host: str | None = Field(default="", description="宿主引用 ID；省略、空字符串或 null 表示无宿主")
+    host: str | None = Field(
+        default="", description="宿主引用 ID；省略、空字符串或 null 表示无宿主"
+    )
     description: str = ""
     #: 相对宿主的尺寸（逐类型字段不同）
     placement: ComponentPlacement | None = None
-    size: dict[Annotated[str, AfterValidator(_dimension_name)],
-               Annotated[float, Field(gt=0, allow_inf_nan=False)]] = Field(default_factory=dict)
+    size: dict[
+        Annotated[str, AfterValidator(_dimension_name)],
+        Annotated[float, Field(gt=0, allow_inf_nan=False)],
+    ] = Field(default_factory=dict)
     #: 开放的设计形式描述，plan 负责转换成 WILD。
     form: dict[str, Any] = Field(default_factory=dict)
     #: 材质角色名
@@ -428,6 +651,7 @@ class ComponentInstance(ContractModel):
     @model_validator(mode="after")
     def construction_contract(self):
         from app.domain.design.construction_systems import validate_construction
+
         validate_construction(self.model_dump(mode="json", exclude_none=True))
         return self
 
@@ -435,7 +659,9 @@ class ComponentInstance(ContractModel):
 class ArchitectureIntent(ContractModel):
     """本次采用的整体设计方向；实际几何由对应设计模块表达。"""
 
-    model_config = ConfigDict(extra="allow", validate_assignment=True, allow_inf_nan=False)
+    model_config = ConfigDict(
+        extra="allow", validate_assignment=True, allow_inf_nan=False
+    )
 
     goals: list[str] = Field(default_factory=list)
     assumptions: list[str] = Field(default_factory=list)
@@ -444,7 +670,9 @@ class ArchitectureIntent(ContractModel):
     material_strategy: str = Field(default="")
     selected_systems: list[str] = Field(default_factory=list)
 
-    @field_validator("spatial_strategy", "composition", "material_strategy", mode="before")
+    @field_validator(
+        "spatial_strategy", "composition", "material_strategy", mode="before"
+    )
     @classmethod
     def preserve_sectioned_strategy(cls, value: Any) -> Any:
         """兼容模型分项表达；统一存成文本，保留键、内容与嵌套列表。"""
@@ -454,7 +682,9 @@ class ArchitectureIntent(ContractModel):
 
 
 class ArchitectureDecisions(ContractModel):
-    model_config = ConfigDict(extra="allow", validate_assignment=True, allow_inf_nan=False)
+    model_config = ConfigDict(
+        extra="allow", validate_assignment=True, allow_inf_nan=False
+    )
     #: 判别字段。与 `ObjectDecisions.kind` 一起构成 `decisions` 的带标签联合。
     #: 有默认值是为了让 2026-09-23 之前存档的 DesignDocument（当时只有建筑一种）
     #: 仍然可读——见 `DesignDocument._default_decisions_kind`。
@@ -462,20 +692,42 @@ class ArchitectureDecisions(ContractModel):
     concept: str = Field(default="")
     massing: MassingDecision
     complexity: ComplexityDecision = Field(default_factory=ComplexityDecision)
-    coordinate_system: CoordinateSystem = Field(default_factory=CoordinateSystem, description="全图统一的单位、轴向与旋转约定")
-    levels: list[DesignLevel] = Field(default_factory=list, description="楼面与屋面等明确标高，使用稳定ID引用")
-    profiles: list[DesignProfile] = Field(default_factory=list, description="可复用的闭合轮廓及其有向边，支持曲线和孔洞")
-    systems: dict[str, ConstructionSystem] = Field(default_factory=dict, description="按系统ID索引的共享构造参数，不包含实例位置")
-    walls: list[DesignWall] = Field(default_factory=list, description="围护和隔墙的逻辑实体，也是门窗宿主")
-    slabs: list[DesignSlab] = Field(default_factory=list, description="楼板、平台的实际边界、顶标高与扣洞引用")
-    voids: list[DesignVoid] = Field(default_factory=list, description="按楼面声明的楼梯孔、中庭等留洞区域")
-    roofs: list[DesignRoof] = Field(default_factory=list, description="独立屋面清单；没有独立屋面时留空")
-    relations: list[DesignRelation] = Field(default_factory=list, description="构件间的显式承托、连通与对齐关系")
-    floor_layouts: list[DesignFloorLayout] = Field(default_factory=list, description="各楼面的功能分区，房间边界不代替实体墙")
+    coordinate_system: CoordinateSystem = Field(
+        default_factory=CoordinateSystem, description="全图统一的单位、轴向与旋转约定"
+    )
+    levels: list[DesignLevel] = Field(
+        default_factory=list, description="楼面与屋面等明确标高，使用稳定ID引用"
+    )
+    profiles: list[DesignProfile] = Field(
+        default_factory=list, description="可复用的闭合轮廓及其有向边，支持曲线和孔洞"
+    )
+    systems: dict[str, ConstructionSystem] = Field(
+        default_factory=dict, description="按系统ID索引的共享构造参数，不包含实例位置"
+    )
+    walls: list[DesignWall] = Field(
+        default_factory=list, description="围护和隔墙的逻辑实体，也是门窗宿主"
+    )
+    slabs: list[DesignSlab] = Field(
+        default_factory=list, description="楼板、平台的实际边界、顶标高与扣洞引用"
+    )
+    voids: list[DesignVoid] = Field(
+        default_factory=list, description="按楼面声明的楼梯孔、中庭等留洞区域"
+    )
+    roofs: list[DesignRoof] = Field(
+        default_factory=list, description="独立屋面清单；没有独立屋面时留空"
+    )
+    relations: list[DesignRelation] = Field(
+        default_factory=list, description="构件间的显式承托、连通与对齐关系"
+    )
+    floor_layouts: list[DesignFloorLayout] = Field(
+        default_factory=list, description="各楼面的功能分区，房间边界不代替实体墙"
+    )
     volumes: list[VolumeDecision] = Field(min_length=1)
     structural_grid: StructuralGridDecision | None = None
     envelope: EnvelopeDecision = Field(default_factory=EnvelopeDecision)
-    facades: dict[Literal["front", "back", "left", "right"], FacadeDecision] = Field(default_factory=dict)
+    facades: dict[Literal["front", "back", "left", "right"], FacadeDecision] = Field(
+        default_factory=dict
+    )
     roof: RoofDecision = Field(default_factory=lambda: RoofDecision(type="none"))
     circulation: CirculationDecision = Field(default_factory=CirculationDecision)
     materials: MaterialIntent = Field(default_factory=MaterialIntent)
@@ -555,7 +807,9 @@ class ObjectDecisions(ContractModel):
 
 class DesignConstraint(ContractModel):
     id: str = Field(min_length=1, max_length=120)
-    kind: Literal["user_hard", "engine_hard", "system_required", "preference", "reference"]
+    kind: Literal[
+        "user_hard", "engine_hard", "system_required", "preference", "reference"
+    ]
     target: str = Field(min_length=1, max_length=240)
     expression: str = Field(min_length=1, max_length=1000)
     source: str = Field(default="", max_length=500)
@@ -568,10 +822,14 @@ class DesignConstraint(ContractModel):
 
 class RuleTrace(ContractModel):
     rule_id: str = Field(min_length=1, max_length=160)
-    classification: Literal["engine_hard", "conditional", "preference", "reference", "unsupported"]
+    classification: Literal[
+        "engine_hard", "conditional", "preference", "reference", "unsupported"
+    ]
     applies_when: str = Field(default="", max_length=500)
     schema_targets: list[str] = Field(default_factory=list, max_length=20)
-    enforcement: list[Literal["schema", "planner", "resolver", "compiler", "validator", "none"]]
+    enforcement: list[
+        Literal["schema", "planner", "resolver", "compiler", "validator", "none"]
+    ]
     source: str = Field(default="", max_length=500)
     # Field-level diagnostic evidence, never input for compilation.
     changes: list[dict[str, Any]] = Field(default_factory=list)
@@ -604,13 +862,6 @@ class DesignDocument(ContractModel):
     @model_validator(mode="before")
     @classmethod
     def _default_decisions_kind(cls, data: Any) -> Any:
-        """让 2026-09-23 之前存档的设计文档继续可读。
-
-        那时 `decisions` 只可能是建筑方案，但存档里没有 `kind` 字段；带标签联合
-        要求标签必须存在，缺了会直接 ValidationError。这里在解析前补上默认标签，
-        而不是给联合放宽成"猜类型"——猜错会静默把建筑读成物件，那更糟。
-        """
-
         if not isinstance(data, dict):
             return data
         if data.get("schema_version") in {"design/1.1", "design/1.2", "design/1.3"}:
@@ -653,7 +904,10 @@ class DesignDocument(ContractModel):
         decisions = self.decisions
         assert isinstance(decisions, ArchitectureDecisions)
         massing = decisions.massing
-        if massing.representation_mode == "full" and massing.modeled_floors != massing.floors:
+        if (
+            massing.representation_mode == "full"
+            and massing.modeled_floors != massing.floors
+        ):
             raise ValueError("full 模式必须让 modeled_floors 等于 floors")
         if any(volume.geometry is not None for volume in decisions.volumes):
             from app.domain.design.spatial import validate_spatial_design
@@ -670,13 +924,19 @@ class DesignDocument(ContractModel):
         from app.domain.design.coordinates import DesignCoordinateConflict
         from app.domain.design.coordinates import volume_conflicts
         from app.domain.design.coordinates import floor_elevations
+
         floor_elevations(decisions.model_dump())
-        conflicts = volume_conflicts([v.model_dump(mode="json") for v in decisions.volumes],
-                                    massing.model_dump(mode="json"))
+        conflicts = volume_conflicts(
+            [v.model_dump(mode="json") for v in decisions.volumes],
+            massing.model_dump(mode="json"),
+        )
         if conflicts:
             raise DesignCoordinateConflict(conflicts)
         for floor in range(1, massing.modeled_floors + 1):
-            if not any(volume.start_floor <= floor <= volume.end_floor for volume in decisions.volumes):
+            if not any(
+                volume.start_floor <= floor <= volume.end_floor
+                for volume in decisions.volumes
+            ):
                 raise ValueError(f"第 {floor} 建模层没有任何 volume 覆盖")
         required_faces = {"front", "back", "left", "right"}
         if set(decisions.facades) != required_faces:
@@ -745,7 +1005,9 @@ class ResolvedDesign(ContractModel):
     design_hash: str = Field(pattern=r"^sha256:[0-9a-f]{64}$")
     resolver_version: str = "legacy"
     component_markers: list[dict[str, Any]] = Field(default_factory=list)
-    projection_elements: list[dict[str, Any]] = Field(default_factory=list, exclude=True)
+    projection_elements: list[dict[str, Any]] = Field(
+        default_factory=list, exclude=True
+    )
     design_gaps: list[DesignGap] = Field(default_factory=list)
     compile_blockers: list[dict[str, Any]] = Field(default_factory=list)
     bounds: dict[Literal["width", "depth", "height"], float]
@@ -754,7 +1016,19 @@ class ResolvedDesign(ContractModel):
     facade_slots: list[ResolvedFacadeSlot]
     component_quantities: dict[str, int]
     warnings: list[str] = Field(default_factory=list)
-    geometry_context: dict[str, Any] = Field(default_factory=dict, description="一次解析得到的真实截面、楼板与标高事实，后续节点直接复用")
-    body_geometry: dict[str, Any] = Field(default_factory=dict, description="可确定计算的WILD主体片段，经现有装配与校验入口采用")
-    logical_hosts: list[dict[str, Any]] = Field(default_factory=list, description="逻辑墙的有向路径、分段截面、厚度与实际空间范围")
-    capability_gaps: list[dict[str, Any]] = Field(default_factory=list, description="图纸可保留但当前执行入口尚未落实的能力，不得隐式降级")
+    geometry_context: dict[str, Any] = Field(
+        default_factory=dict,
+        description="一次解析得到的真实截面、楼板与标高事实，后续节点直接复用",
+    )
+    body_geometry: dict[str, Any] = Field(
+        default_factory=dict,
+        description="可确定计算的WILD主体片段，经现有装配与校验入口采用",
+    )
+    logical_hosts: list[dict[str, Any]] = Field(
+        default_factory=list,
+        description="逻辑墙的有向路径、分段截面、厚度与实际空间范围",
+    )
+    capability_gaps: list[dict[str, Any]] = Field(
+        default_factory=list,
+        description="图纸可保留但当前执行入口尚未落实的能力，不得隐式降级",
+    )

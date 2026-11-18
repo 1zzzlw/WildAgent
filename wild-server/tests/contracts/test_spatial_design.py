@@ -552,27 +552,84 @@ def test_construct_systems_orders_hosts_before_named_opening_tasks(kind):
     assert not state.pending
 
 
-def test_actual_architecture_node_accepts_spatial_schema_without_legacy_fields(monkeypatch):
+def test_actual_architecture_node_accepts_spatial_schema_without_legacy_fields(
+    monkeypatch,
+):
     import asyncio
     import json
     from types import SimpleNamespace
     from app.agent.runtime import agent_runtime
-    from app.agent.workflows.design import architecture,drafting
+    from app.agent.workflows.design import architecture, drafting
     from app.infrastructure.llm.invocation import LlmResult
 
     plan = spatial_plan("circle")
     calls = []
-    async def reply(_model,messages,**_kwargs):
+
+    async def reply(_model, messages, **_kwargs):
         calls.append(messages)
-        return LlmResult(content=json.dumps(plan,ensure_ascii=False))
-    monkeypatch.setattr(agent_runtime.spec_loader,"load_many_result",lambda *_a,**_kw:SimpleNamespace(text="",hits=[]))
-    monkeypatch.setattr(architecture,"get_reasoning_callback",lambda:None)
-    monkeypatch.setattr(drafting,"create_llm",lambda **_kw:object())
-    monkeypatch.setattr(drafting,"invoke_llm",reply)
-    result = asyncio.run(architecture.architecture_planner({"user_message":"生成圆形建筑","detail_level":"minimal",
-                        "intent_profile":"custom","session_id":"spatial-node","thinking_mode":False}))
-    assert result.get("error") is None,result.get("error")
+        return LlmResult(content=json.dumps(plan, ensure_ascii=False))
+
+    monkeypatch.setattr(
+        agent_runtime.spec_loader,
+        "load_many_result",
+        lambda *_a, **_kw: SimpleNamespace(text="", hits=[]),
+    )
+    monkeypatch.setattr(architecture, "get_reasoning_callback", lambda: None)
+    monkeypatch.setattr(drafting, "create_llm", lambda **_kw: object())
+    monkeypatch.setattr(drafting, "invoke_llm", reply)
+    result = asyncio.run(
+        architecture.architecture_planner(
+            {
+                "user_message": "生成圆形建筑",
+                "detail_level": "minimal",
+                "intent_profile": "custom",
+                "session_id": "spatial-node",
+                "thinking_mode": False,
+            }
+        )
+    )
+    assert result.get("error") is None, result.get("error")
     assert len(calls) == 1
     assert result["design_document"]["schema_version"] == "design/1.0"
     assert result["architecture_plan"]["volumes"][0]["geometry"]["type"] == "extrusion"
     assert result["resolved_design"]["body_geometry"]["elements"]
+
+
+def test_arc_and_straight_volume_joint_is_one_floor_despite_trig_noise():
+    plan = spatial_plan()
+    plan["profiles"].append(
+        {
+            "id": "half_circle",
+            "type": "curve_loop",
+            "segments": [
+                {
+                    "id": "arc",
+                    "type": "arc",
+                    "center": [0, 0],
+                    "radius": 2,
+                    "start_angle": 0,
+                    "sweep_angle": pi,
+                },
+                {"id": "chord", "type": "line", "from": [-2, 0], "to": [2, 0]},
+            ],
+        }
+    )
+    plan["volumes"].append(
+        {
+            "id": "rotunda",
+            "placement": {"origin_xz": [4, -6], "yaw": 0},
+            "geometry": {
+                "type": "extrusion",
+                "profile": "half_circle",
+                "bottom": {"level": "L1"},
+                "top": {"level": "RF"},
+            },
+        }
+    )
+    plan["slabs"][0]["region"]["volumes"].append("rotunda")
+    before = deepcopy(plan)
+    geometry = resolve_geometry(document(plan).decisions.model_dump(mode="json"))
+    assert len(geometry["slabs"]) == 1
+    floor = geometry["slabs"][0]
+    assert Polygon(floor["outer"]).area == pytest.approx(80 + 2 * pi, abs=0.002)
+    assert plan == before
