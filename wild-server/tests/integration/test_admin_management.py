@@ -190,7 +190,7 @@ def test_role_quota_and_ban_changes_take_effect_for_existing_session(management)
     assert client.get("/api/admin/stats").status_code == 403
 
 
-def test_deleted_account_keeps_private_data_and_audit_ownership(management):
+def test_deleted_creator_keeps_shared_data_and_audit_ownership(management):
     client, seeded, _ = management
     filename = save_owned(seeded)
     login(client, "designer")
@@ -214,6 +214,11 @@ def test_deleted_account_keeps_private_data_and_audit_ownership(management):
     assert all(
         item["filename"] != filename for item in client.get("/api/scenes").json()
     )
+    client.cookies.clear()
+    login(client, "other")
+    assert client.get("/api/scenes/" + filename).status_code == 200
+    assert client.put("/api/scenes/" + filename, json=scene(radius=0.7)).status_code == 200
+    assert blueprint_repository.get(filename)["owner_id"] == user_id
 
 
 @pytest.mark.parametrize("change", [{"identity": 1}, {"status": "blocked"}])
@@ -375,7 +380,8 @@ def test_ai_quota_is_separate_and_recovery_does_not_charge_again(management):
 
 
 @pytest.mark.parametrize("intent", ["chat", "edit", "generate"])
-def test_ai_quota_is_charged_before_graph_and_resume_is_free(management, monkeypatch, intent):
+@pytest.mark.parametrize("shared_session", [False, True])
+def test_ai_quota_is_charged_before_graph_and_resume_is_free(management, monkeypatch, intent, shared_session):
     from app.agent import graph as graph_module
     from app.application.generation import runner
     from langgraph.checkpoint.memory import InMemorySaver
@@ -383,7 +389,11 @@ def test_ai_quota_is_charged_before_graph_and_resume_is_free(management, monkeyp
 
     _, seeded, engine = management
     account = seeded["designer"]
-    conversations.ensure("session_classify", account["id"])
+    creator = seeded["other"] if shared_session else account
+    conversations.ensure("session_classify", creator["id"])
+    if shared_session:
+        with engine.begin() as connection:
+            connection.execute(users.update().where(users.c.id == creator["id"]).values(status="blocked"))
 
     calls = []
     delivered = []
@@ -424,6 +434,9 @@ def test_ai_quota_is_charged_before_graph_and_resume_is_free(management, monkeyp
     asyncio.run(runner.execute_graph(sink, state))
     assert calls == [intent] and delivered == [intent]
     assert accounts.get(account["id"])["ai_remaining"] == 199
+    assert conversations.owner("session_classify") == (True, creator["id"])
+    if shared_session:
+        assert accounts.get(creator["id"])["ai_used"] == 0
     asyncio.run(runner.execute_graph(sink, state, resume=True))
     assert calls == [intent]
     assert accounts.get(account["id"])["ai_remaining"] == 199
@@ -746,13 +759,16 @@ def test_scene_load_reads_body_once_and_revalidates_changed_content(management):
     assert changed.json()["geometry"]["elements"][0]["radius"] == 0.8
 
 
-def test_scene_cache_never_bypasses_ownership_or_disabled_account(management):
+def test_shared_scene_cache_still_rejects_guests_and_disabled_accounts(management):
     client, seeded, _ = management
     filename = save_owned(seeded)
     login(client, "designer")
     token = client.cookies.get("wild_session")
     etag = client.get("/api/scenes/" + filename).headers["etag"]
     login(client, "other")
+    response = client.get("/api/scenes/" + filename, headers={"If-None-Match": etag})
+    assert response.status_code == 304
+    client.post("/api/auth/guest")
     response = client.get("/api/scenes/" + filename, headers={"If-None-Match": etag})
     assert response.status_code == 404 and "etag" not in response.headers
     login(client)
@@ -762,6 +778,33 @@ def test_scene_cache_never_bypasses_ownership_or_disabled_account(management):
     client.cookies.set("wild_session", token)
     response = client.get("/api/scenes/" + filename, headers={"If-None-Match": etag})
     assert response.status_code == 404 and "etag" not in response.headers
+
+
+def test_shared_edit_charges_actor_preserves_creator_and_enforces_revision_and_lock(management):
+    client, seeded, storage = management
+    filename = save_owned(seeded)
+    created_at = blueprint_repository.get_metadata(filename)["created_at"]
+    login(client, "other")
+    response = client.put("/api/scenes/" + filename, json=scene(radius=0.8, revision=2),
+                          headers={"X-Operation-Id": "shared_edit", "X-Base-Revision": "1"})
+    assert response.status_code == 200
+    assert accounts.get(seeded["other"]["id"])["operations_used"] == 1
+    assert accounts.get(seeded["designer"]["id"])["operations_used"] == 0
+    saved = blueprint_repository.get_metadata(filename)
+    assert saved["owner_id"] == seeded["designer"]["id"] and saved["created_at"] == created_at
+    with storage.connect() as connection:
+        actor_id = connection.scalar(select(audit_logs.c.actor_id).where(
+            audit_logs.c.resource == filename, audit_logs.c.action == "blueprint.edit"))
+    assert actor_id == seeded["other"]["id"]
+    login(client, "designer")
+    assert client.put("/api/scenes/" + filename, json=scene(radius=0.9, revision=2),
+                      headers={"X-Base-Revision": "1"}).status_code == 409
+    login(client)
+    assert client.patch("/api/admin/blueprints/" + filename, json={"locked": True}).status_code == 200
+    login(client, "other")
+    assert client.put("/api/scenes/" + filename, json=scene(radius=0.9, revision=3)).status_code == 423
+    assert client.put("/api/scenes/session_manage_other.wild", json=scene()).status_code == 423
+    assert client.get("/api/scenes/" + filename).status_code == 200
 
 
 def test_blueprint_pagination_never_reads_large_json(management):

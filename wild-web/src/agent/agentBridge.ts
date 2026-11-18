@@ -1161,7 +1161,7 @@ export class AgentBridge {
     }
   }
 
-  /** 用当前快照替换服务端 Turn 历史。 */
+  /** 按请求合并服务端 Turn 历史，保留其他账号已同步的请求。 */
   async syncTurnsToServer(sessionId: string, turns: AgentTurn[]): Promise<boolean> {
     if (!useAuthStore().canEdit) return false
     const body = JSON.stringify({ turns })

@@ -16,7 +16,6 @@ from app.infrastructure.persistence.schema import users
 from app.infrastructure.persistence.repositories.accounts import accounts
 from app.infrastructure.persistence.repositories.blueprints import blueprint_repository
 from app.infrastructure.persistence.repositories.conversations import conversations
-from app.infrastructure.persistence.repositories.errors import AccessDenied
 from app.application.accounts import email_key
 from app.application.accounts import hash_password
 from config import SMTPConfig, config
@@ -129,35 +128,65 @@ def test_expired_code_and_smtp_failure_are_not_successful(signup, monkeypatch):
     assert cache.client.get(cache.key("email:code:" + email_key("another@example.com"))) is None
 
 
-def test_private_sessions_are_isolated_and_shared_history_remains_visible(signup, storage):
+def test_accounts_share_sessions_messages_turns_and_blueprints_without_changing_creator(signup, storage):
     client, _, app = signup
     first = accounts.create("first", "first@example.com", hash_password("Wild-test-123"))
     second = accounts.create("second", "second@example.com", hash_password("Wild-test-123"))
     client.post("/api/auth/login", json={"email": "first@example.com", "password": "Wild-test-123"})
     sid = client.post("/api/sessions").json()["session_id"]
-    path = f"2026-11-14/{sid}_私有蓝图.wild"
+    path = f"2026-11-14/{sid}_共享蓝图.wild"
     assert client.put("/api/scenes/" + path, json=blueprint()).status_code == 200
     assert client.post(f"/api/sessions/{sid}/messages", json=[{"id":"one", "role":"user", "content":"私人消息"}]).json()["message_count"] == 1
     assert client.post(f"/api/sessions/{sid}/messages", json=[{"id":"one", "role":"user", "content":"私人消息"}]).json()["message_count"] == 1
     assert client.get(f"/api/sessions/{sid}/messages").json()[0]["content"] == "私人消息"
     assert blueprint_repository.get(path)["owner_id"] == first["id"]
-    blueprint_repository.save("session_900_shared.wild", blueprint("共享资料"))
+    created_at = client.get(f"/api/sessions/{sid}").json()["created_at"]
+    first_turn = {"request_id": "first_turn", "status": "completed", "started_at": 1, "completed_at": 2}
+    assert client.put(f"/api/sessions/{sid}/turns", json={"turns": [first_turn]}).status_code == 200
+    blueprint_repository.save("session_900_shared.wild", blueprint("历史公共资料"))
     with TestClient(app) as other:
         other.post("/api/auth/login", json={"email":"second@example.com", "password":"Wild-test-123"})
-        assert {row["filename"] for row in other.get("/api/scenes").json()} == {"session_900_shared.wild"}
-        assert other.get("/api/scenes/" + path).status_code == 404
-        assert other.get(f"/api/sessions/{sid}/messages").status_code == 404
-        assert other.put(f"/api/scenes/{sid}_其他名字.wild", json=blueprint()).status_code == 404
-        assert other.delete(f"/api/sessions/{sid}").status_code == 404
-    with pytest.raises(AccessDenied):
-        conversations.ensure(sid, second["id"])
+        assert other.get("/api/sessions").json() == client.get("/api/sessions").json()
+        assert {row["filename"] for row in other.get("/api/scenes").json()} == {path, "session_900_shared.wild"}
+        assert other.get("/api/scenes/" + path).json() == blueprint()
+        assert other.get(f"/api/sessions/{sid}/messages").json()[0]["content"] == "私人消息"
+        assert other.get(f"/api/sessions/{sid}/turns").json() == [first_turn]
+        assert other.post(f"/api/sessions/{sid}/messages", json=[{"id": "two", "role": "user", "content": "共同讨论"}]).status_code == 200
+        assert other.put(f"/api/sessions/{sid}/turns", json={"turns": [{"request_id": "second_turn", "status": "completed"}]}).status_code == 200
+        assert other.put(f"/api/sessions/{sid}", json={"name": "共享会话"}).status_code == 200
+        assert other.put("/api/scenes/" + path, json=blueprint("第二账号修改")).status_code == 200
+        assert other.delete(f"/api/sessions/{sid}").status_code == 403
+        assert other.delete("/api/scenes/" + path).status_code == 403
+    # 旧页面回写快照不能清掉另一个账号的执行记录，也不能把完成状态退回运行中。
+    assert client.put(f"/api/sessions/{sid}/turns", json={"turns": [{**first_turn, "status": "running"}]}).status_code == 200
+    turns = client.get(f"/api/sessions/{sid}/turns").json()
+    assert {turn["request_id"] for turn in turns} == {"first_turn", "second_turn"}
+    assert turns[0]["status"] == "completed"
+    assert {message["id"] for message in client.get(f"/api/sessions/{sid}/messages").json()} == {"one", "two"}
+    info = client.get(f"/api/sessions/{sid}").json()
+    assert info["name"] == "共享会话" and info["created_at"] == created_at
+    conversations.ensure(sid, second["id"])
+    assert conversations.owner(sid) == (True, first["id"])
+    assert blueprint_repository.get(path)["owner_id"] == first["id"]
+    assert accounts.get(first["id"])["operations_used"] == 1
+    assert accounts.get(second["id"])["operations_used"] == 1
     with TestClient(app) as guest:
         guest.post("/api/auth/guest")
         assert len(guest.get("/api/sessions").json()) == 1
         assert guest.get("/api/scenes/session_900_shared.wild").status_code == 200
         assert guest.get("/api/scenes/" + path).status_code == 404
     storage.dispose()
-    assert client.get("/api/scenes/" + path).json() == blueprint()
+    assert client.get("/api/scenes/" + path).json() == blueprint("第二账号修改")
+
+
+def test_stale_shared_turn_snapshot_does_not_evict_more_recent_history(storage):
+    owner = accounts.create("creator", "creator@example.com", "unused-test-password-hash")
+    other = accounts.create("collaborator", "collaborator@example.com", "unused-test-password-hash")
+    values = [{"request_id": f"request_{index}", "started_at": index, "status": "completed"} for index in range(20)]
+    assert conversations.sync_turns("session_history", values, owner["id"], 3) == 3
+    assert conversations.sync_turns("session_history", values[:10], other["id"], 3) == 3
+    assert conversations.read("session_history")["turns"] == values[-3:]
+    assert conversations.owner("session_history") == (True, owner["id"])
 
 
 def test_legacy_migration_is_repeatable_and_preserves_source(storage, tmp_path):

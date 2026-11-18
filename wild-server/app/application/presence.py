@@ -3,7 +3,7 @@ import asyncio
 import re
 import secrets
 import time
-from app.application.access import check_owner
+from app.application.access import check_resource_access
 from app.application.errors import ApplicationError
 from app.infrastructure.persistence.repositories.conversations import conversations
 from app.infrastructure.redis.presence import PresenceStore
@@ -19,7 +19,7 @@ def public_presence_snapshot(snapshot: dict, user: dict | None) -> dict:
     for value in snapshot["clients"]:
         client = {key: item for key, item in value.items() if not key.startswith("_")}
         owner_id = value.get("_session_owner_id")
-        if owner_id is not None and user.get("id") != owner_id and user.get("identity") != 2:
+        if owner_id is not None and not user.get("id"):
             client.update(session_id=None, activity="idle")
         clients.append(client)
     return {**snapshot, "clients": clients}
@@ -66,8 +66,8 @@ class PresenceService:
             if user.get("role") != "editor" or not user.get("id"):
                 raise ApplicationError("forbidden", "登录编辑账号后才能上报会话操作状态")
             exists, owner_id = await asyncio.to_thread(conversations.owner, session_id)
-            check_owner(owner_id, user)
-            # 尚未保存的本地草稿只对创建它的账号显示。
+            check_resource_access(owner_id, user)
+            # 本地草稿也按账号资料处理，不向访客展示会话位置。
             if not exists:
                 owner_id = user["id"]
         return await self.store.update(identity, {

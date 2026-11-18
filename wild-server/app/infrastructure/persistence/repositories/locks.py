@@ -3,27 +3,18 @@
 from sqlalchemy import select
 from sqlalchemy.engine import Connection
 
-from app.infrastructure.persistence.repositories.errors import (
-    AccountUnavailable,
-    BlueprintLocked,
-)
-from app.infrastructure.persistence.schema import blueprints, sessions, users
+from app.infrastructure.persistence.repositories.errors import BlueprintLocked
+from app.infrastructure.persistence.schema import blueprints, sessions
 
 
 def assert_session_unlocked(connection: Connection, session_id: str | None) -> None:
     if not session_id:
         return
-    session = connection.execute(
-        select(sessions.c.owner_id)
+    connection.execute(
+        select(sessions.c.session_id)
         .where(sessions.c.session_id == session_id)
         .with_for_update()
     ).first()
-    if session and session.owner_id:
-        status = connection.scalar(
-            select(users.c.status).where(users.c.id == session.owner_id)
-        )
-        if status != "active":
-            raise AccountUnavailable("蓝图所属账号已被停用，不能继续修改")
     locked = connection.execute(
         select(blueprints.c.filename)
         .where(blueprints.c.session_id == session_id, blueprints.c.locked.is_(True))

@@ -5,6 +5,7 @@
       @switch="handleSessionSwitch"
       @new="handleNewSession"
       @delete="handleDeleteSession"
+      @refresh="restoreSessionsFromServer(true)"
     />
 
     <div class="content-toolbar">
@@ -674,23 +675,27 @@ async function handleDeleteSession(sessionId: string) {
   ElMessage.success('会话已删除')
 }
 
-// ── 页面初始化：以服务器 storage/scenes/*.wild 为会话事实来源 ──
-async function restoreSessionsFromServer() {
+// ── 从服务端恢复或刷新共享会话列表 ──
+async function restoreSessionsFromServer(refreshOnly = false) {
   // 面板通过 v-show 保持挂载，恢复逻辑只应在首次挂载执行一次；
   // 二次触发（未来若改用 v-if 或热重载）时不再切走会话。
-  if (hasRestoredFromServer) return
-  hasRestoredFromServer = true
+  if (!refreshOnly) {
+    if (hasRestoredFromServer) return
+    hasRestoredFromServer = true
+  }
   // 有正在执行/待审核的任务时，保持当前会话，避免被服务器快照切走。
   const hasActiveTask = agentStore.currentTurns.some(
     turn => turn.status === 'running' || turn.status === 'waiting_review',
   )
-  if (hasActiveTask) return
+  if (hasActiveTask && !refreshOnly) return
   const restoringSessionId = agentStore.currentSessionId
+  const restoringAccountId = auth.user?.id
   const serverScenes = await agentBridge.fetchSessionList()
-  if (agentStore.currentSessionId !== restoringSessionId) return
+  if (auth.user?.id !== restoringAccountId) return
+  if (!refreshOnly && agentStore.currentSessionId !== restoringSessionId) return
   if (serverScenes === null) {
     // 后端暂不可用时，从 localStorage 恢复草稿会话
-    restoreFromLocalDrafts()
+    if (!refreshOnly) restoreFromLocalDrafts()
     return
   }
 
@@ -710,10 +715,12 @@ async function restoreSessionsFromServer() {
       components_count: scene.components_count || 0,
       message_count: scene.message_count || 0,
       building_type: scene.building_type,
-      status: scene.status === 'draft' ? 'draft' as const : 'saved' as const,
+      status: agentStore.sessions.find(session => session.session_id === session_id)?.status === 'generating'
+        ? 'generating' as const : scene.status === 'draft' ? 'draft' as const : 'saved' as const,
     }
   })
   agentStore.replaceSessions(serverSessions)
+  if (refreshOnly) return
 
   if (serverSessions.length === 0) {
     await handleNewSession()

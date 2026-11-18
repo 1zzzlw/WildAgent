@@ -95,13 +95,19 @@ const emit = defineEmits<{
   switch: [sessionId: string]
   new: []
   delete: [sessionId: string]
+  refresh: []
 }>()
 
 const ui = useUIStore()
 const pickerVisible = computed({ get: () => ui.sessionPickerVisible, set: value => { ui.sessionPickerVisible = value } })
 const searchQuery = ref('')
 const searchInput = ref<InputInstance>()
-watch(pickerVisible, visible => { if (visible) searchQuery.value = '' })
+watch(pickerVisible, visible => {
+  if (visible) {
+    searchQuery.value = ''
+    emit('refresh')
+  }
+})
 const currentInfo = computed(() =>
   agentStore.sessions.find(session => session.session_id === agentStore.currentSessionId)
 )

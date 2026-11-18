@@ -1,27 +1,25 @@
-"""统一会话和蓝图归属检查，HTTP 与 WebSocket 共用。"""
+"""账号共享会话和蓝图；HTTP 与 WebSocket 共用访问检查。"""
 from app.application.errors import ApplicationError
 from app.infrastructure.persistence.repositories.blueprints import blueprint_repository
 from app.infrastructure.persistence.repositories.blueprints import session_for_filename
 from app.infrastructure.persistence.repositories.conversations import conversations
 
 
-def check_owner(owner_id: str | None, user: dict | None) -> None:
-    if (user or {}).get("identity") == 2:
-        return
-    if owner_id is not None and (user or {}).get("id") != owner_id:
+def check_resource_access(owner_id: str | None, user: dict | None) -> None:
+    if owner_id is not None and not (user or {}).get("id"):
         raise ApplicationError('not_found', "资料不存在")
 
 
 def check_session(session_id: str, user: dict | None) -> None:
     exists, owner = conversations.owner(session_id)
     if exists:
-        check_owner(owner, user)
+        check_resource_access(owner, user)
 
 
 def check_blueprint(filename: str, user: dict | None) -> None:
     row = blueprint_repository.get_metadata(filename)
     if row:
-        check_owner(row["owner_id"], user)
+        check_resource_access(row["owner_id"], user)
     sid = session_for_filename(filename)
     if sid:
         check_session(sid, user)

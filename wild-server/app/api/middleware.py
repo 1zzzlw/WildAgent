@@ -1,4 +1,4 @@
-"""HTTP 身份与资料归属检查。"""
+"""HTTP 身份与共享资料访问检查。"""
 from fastapi import HTTPException, Request
 from fastapi.responses import JSONResponse
 from starlette.concurrency import run_in_threadpool

@@ -10,7 +10,6 @@ from app.infrastructure.persistence.schema import blueprints
 from app.infrastructure.persistence.repositories.conversations import ensure_session
 from app.infrastructure.persistence.repositories.conversations import now_ms
 from app.infrastructure.persistence.repositories.conversations import visible_to
-from app.infrastructure.persistence.repositories.errors import AccessDenied
 from app.infrastructure.persistence.repositories.errors import OperationConflict
 from app.infrastructure.persistence.repositories.activity import append_audit, charge_usage, event_id, fingerprint, lock_account
 from app.infrastructure.persistence.repositories.blueprint_changes import content_fingerprint, describe_changes
@@ -103,8 +102,6 @@ class BlueprintRepository:
                                             operation_id, label, base_revision):
                     return filename
             if current:
-                if owner_id is not None and current["owner_id"] not in {None, owner_id}:
-                    raise AccessDenied("资料不存在")
                 conn.execute(update(blueprints).where(blueprints.c.filename == filename).values(**value))
             else:
                 conn.execute(insert(blueprints).values(filename=filename, session_id=session_id,
@@ -114,8 +111,6 @@ class BlueprintRepository:
     @staticmethod
     def _authorize_save(conn, actor, filename, blueprint, current, session_id,
                         operation_id, label, base_revision):
-        if current and actor["identity"] != 2 and current["owner_id"] not in {None, actor["id"]}:
-            raise AccessDenied("资料不存在")
         payload_hash = fingerprint(blueprint)
         if operation_id:
             previous = conn.execute(select(audit_logs).where(

@@ -132,8 +132,6 @@ def replace_turns(session_id: str, user: dict | None, body: list[dict] | dict=No
     _safe_session_id(session_id)
     raw = body.get("turns", []) if isinstance(body, dict) else body
     turns = _normalize_turns(raw)
-    deduplicated = {turn["request_id"]: turn for turn in turns}
-    values = list(deduplicated.values())[-MAX_TURNS_PER_SESSION:]
     user = user or {}
-    conversations.write(session_id, {"turns": values}, user.get("id"))
-    return {"status": "ok", "turn_count": len(values)}
+    count = conversations.sync_turns(session_id, turns, user.get("id"), MAX_TURNS_PER_SESSION)
+    return {"status": "ok", "turn_count": count}

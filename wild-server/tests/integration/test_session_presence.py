@@ -95,7 +95,7 @@ def test_shared_activity_identity_idle_expiry_and_disconnect_across_workers(stor
     assert conversations.read("session_shared") == before
 
 
-def test_private_and_unsaved_session_visibility_and_read_only_user(storage):
+def test_account_shared_activity_and_unsaved_session_visibility_excludes_guests(storage):
     owner, other, admin = editor("owner"), editor("other"), editor("admin")
     admin["identity"] = 2
     guest = {"role": "guest", "username": "访客"}
@@ -107,18 +107,19 @@ def test_private_and_unsaved_session_visibility_and_read_only_user(storage):
         for session_id in ("session_private", "session_unsaved"):
             await service.set_activity(client["id"], session_id=session_id, activity="active", user=owner)
             raw = await service.snapshot()
-            for viewer in (owner, admin):
+            for viewer in (owner, other, admin):
                 public = public_presence_snapshot(raw, viewer)
                 assert public["clients"][0]["session_id"] == session_id
                 assert public["clients"][0]["username"] == "owner"
-            for viewer in (other, guest, None):
+            for viewer in (guest, None):
                 public = public_presence_snapshot(raw, viewer)
                 assert public["clients"][0]["session_id"] is None
                 assert public["clients"][0]["activity"] == "idle"
                 assert not any(key.startswith("_") for key in public["clients"][0])
-        for user, session_id in ((other, "session_private"), (guest, "session_private")):
-            with pytest.raises(ApplicationError):
-                await service.set_activity(client["id"], session_id=session_id, activity="active", user=user)
+        await service.set_activity(client["id"], session_id="session_private", activity="active", user=other)
+        assert (await service.snapshot())["clients"][0]["username"] == "other"
+        with pytest.raises(ApplicationError):
+            await service.set_activity(client["id"], session_id="session_private", activity="active", user=guest)
         await service.set_activity(client["id"], session_id=None, activity="idle", user=owner)
         assert (await service.snapshot())["clients"][0]["session_id"] is None
         await service.remove(client["id"])

@@ -3,14 +3,13 @@ from __future__ import annotations
 from time import time
 from uuid import uuid4
 
-from sqlalchemy import delete, func, insert, or_, select, update
+from sqlalchemy import delete, func, insert, select, true, update
 from sqlalchemy.exc import IntegrityError
 
 from app.infrastructure.persistence.database import database
 from app.infrastructure.persistence.schema import messages
 from app.infrastructure.persistence.schema import sessions
 from app.infrastructure.persistence.schema import turns
-from app.infrastructure.persistence.repositories.errors import AccessDenied
 
 
 def now_ms() -> int:
@@ -18,7 +17,8 @@ def now_ms() -> int:
 
 
 def visible_to(column, user_id: str | None):
-    return or_(column.is_(None), column == user_id) if user_id else column.is_(None)
+    """登录账号共享全部资料；访客仍只读取历史公共资料。"""
+    return true() if user_id else column.is_(None)
 
 
 def ensure_session(conn, session_id: str, owner_id: str | None = None) -> dict:
@@ -32,8 +32,6 @@ def ensure_session(conn, session_id: str, owner_id: str | None = None) -> dict:
         except IntegrityError:
             pass  # 另一请求刚创建了相同会话，重新加锁读取，保留已经确定的归属。
         row = conn.execute(select(sessions).where(sessions.c.session_id == session_id).with_for_update()).mappings().one()
-    if owner_id is not None and row["owner_id"] not in {None, owner_id}:
-        raise AccessDenied("资料不存在")
     return dict(row)
 
 
@@ -120,6 +118,29 @@ class ConversationRepository:
             self._replace(conn, messages, session_id, existing)
             conn.execute(update(sessions).where(sessions.c.session_id == session_id).values(updated_at=now_ms()))
             return len(existing)
+
+    def sync_turns(self, session_id: str, values: list[dict], owner_id: str | None, limit: int) -> int:
+        """在同一会话行锁下合并快照，保留其他账号的请求及已完成状态。"""
+        with database.engine.begin() as conn:
+            ensure_session(conn, session_id, owner_id)
+            existing = conn.execute(select(turns.c.payload_json).where(
+                turns.c.session_id == session_id).order_by(turns.c.position)).scalars()
+            merged = {}
+            for value in existing:
+                if isinstance(value.get("request_id"), str) and value["request_id"]:
+                    merged[value["request_id"]] = value
+            for value in values:
+                previous = merged.get(value["request_id"], {})
+                if (previous.get("status") in {"completed", "done", "error", "stopped"}
+                        and value.get("status") in {"running", "waiting_review"}):
+                    continue
+                merged[value["request_id"]] = {**previous, **value}
+            records = list(merged.values())
+            records.sort(key=lambda turn: turn.get("started_at") if type(turn.get("started_at")) in (int, float) else 0)
+            records = records[-limit:]
+            self._replace(conn, turns, session_id, records)
+            conn.execute(update(sessions).where(sessions.c.session_id == session_id).values(updated_at=now_ms()))
+            return len(records)
 
     def delete(self, session_id: str) -> None:
         from app.infrastructure.persistence.repositories.locks import assert_session_unlocked
