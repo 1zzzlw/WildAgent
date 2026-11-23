@@ -56,6 +56,7 @@ def architecture_output_schema() -> dict:
             "balcony_width",
             "required_components",
             "unsupported_component_types",
+            "coordinate_system",
         },
         "MassingDecision": {"tiers"},
         "MaterialIntent": {"resolved_plan"},
@@ -101,6 +102,7 @@ def architecture_output_schema() -> dict:
     def collect(value):
         if isinstance(value, dict):
             value.pop("title", None)
+            value.pop("default", None)
             reference = value.get("$ref", "")
             if reference.startswith("#/$defs/"):
                 name = reference.removeprefix("#/$defs/")
@@ -108,7 +110,10 @@ def architecture_output_schema() -> dict:
                     used.add(name)
                     collect(schema["$defs"][name])
             for key, item in value.items():
-                if key != "$defs":
+                if key in {"properties", "patternProperties"}:
+                    for field_schema in item.values():
+                        collect(field_schema)
+                elif key != "$defs":
                     collect(item)
         elif isinstance(value, list):
             for item in value:

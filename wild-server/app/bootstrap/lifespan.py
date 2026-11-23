@@ -6,6 +6,7 @@ from app.infrastructure.persistence.database import database
 from app.infrastructure.redis.connection import cache
 from app.infrastructure.redis.events import realtime_bus
 from app.api.websocket.connections import presence_service
+from app.infrastructure.temporary import ensure_writable_temp_directory
 
 from app.bootstrap.resources import initialize_agent_resources
 from app.application.generation.runner import run_generation
@@ -28,6 +29,7 @@ async def lifespan(app: FastAPI):
     参数 ``app`` 由 FastAPI 注入，保留它是为了符合 lifespan 回调协议。
     """
     print_log()
+    ensure_writable_temp_directory()
     try:
         await init_connect()
         await asyncio.to_thread(initialize_agent_resources)

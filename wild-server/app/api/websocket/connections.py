@@ -64,20 +64,24 @@ class WebSocketConnectionRegistry:
             self._task.cancel()
             await asyncio.gather(self._task, return_exceptions=True)
             self._task = None
-        for ws in tuple(self._connections):
+        for ws in tuple(self._users):
             await self.disconnect(ws)
 
     async def connect(self, ws: WebSocket, *, client_ip: str | None = None,
                       region: str | None = None, display_name: str | None = None,
-                      user: dict | None = None):
+                      user: dict | None = None, guest_session_id: str | None = None):
         if not self.enabled:
             return
         await self.startup()
+        if not ((user or {}).get("id") or guest_session_id):
+            self._users[ws] = None
+            await self._broadcast()
+            return
         resolved_ip = client_ip or extract_client_ip(ws)
         client = await presence_records.register(
             display_name=display_name if display_name is not None else _query_display_name(ws),
             masked_ip=mask_ip(resolved_ip), region=region or geoip_resolver.resolve_region(resolved_ip),
-            user=user,
+            user=user, guest_session_id=guest_session_id,
         )
         self._connections[ws] = client["id"]
         self._users[ws] = user
@@ -102,6 +106,13 @@ class WebSocketConnectionRegistry:
     async def update_activity(self, ws: WebSocket, *, session_id: object, activity: object,
                               user: dict | None):
         identity = self._connections.get(ws)
+        if identity and user is None:
+            self._connections.pop(ws, None)
+            self._last_touch.pop(ws, None)
+            self._users[ws] = None
+            await presence_records.remove(identity)
+            await self._changed()
+            return
         if identity and await presence_records.set_activity(
             identity, session_id=session_id, activity=activity, user=user
         ) and self._connections.get(ws) == identity:
@@ -138,7 +149,7 @@ class WebSocketConnectionRegistry:
     async def _broadcast(self):
         async with self._lock:
             payload = await self._snapshot()
-            updates = [(ws, public_presence_snapshot(payload, self._users.get(ws))) for ws in self._connections]
+            updates = [(ws, public_presence_snapshot(payload, user)) for ws, user in self._users.items()]
             updates = [(ws, value) for ws, value in updates if self._last_sent.get(ws) != value]
             results = await asyncio.gather(*(asyncio.wait_for(ws.send_json(value), timeout=5)
                                             for ws, value in updates), return_exceptions=True)
@@ -146,7 +157,7 @@ class WebSocketConnectionRegistry:
             for (ws, value), result in zip(updates, results):
                 if isinstance(result, BaseException):
                     stale.append(ws)
-                elif ws in self._connections:
+                elif ws in self._users:
                     self._last_sent[ws] = value
         # 失败连接在锁外清理，广播不会被单个慢连接串行阻塞。
         for ws in stale:

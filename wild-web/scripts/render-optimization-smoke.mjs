@@ -32,6 +32,31 @@ try {
     assert.ok(Math.abs(rig.key.shadow.normalBias-Math.max(.001,1.5*2*rig.extent/1024))<1e-9,'切档后bias仍按纹素推导')
     rig.dispose()
   }
+
+  const { WaterReflectionRuntime } = await vite.ssrLoadModule('/src/renderer/waterReflectionRuntime.ts')
+  const scene = new THREE.Scene()
+  const waterGeometry = new THREE.BoxGeometry(4, 0.2, 4)
+  const waterMaterial = new THREE.MeshStandardMaterial()
+  waterMaterial.userData.wildWaterSurface = true
+  const pools = new THREE.InstancedMesh(waterGeometry, waterMaterial, 3)
+  pools.position.set(10, 1, 0)
+  pools.setMatrixAt(0, new THREE.Matrix4().makeTranslation(30, 2, 0))
+  pools.setMatrixAt(1, new THREE.Matrix4().makeTranslation(-40, 5, 0))
+  pools.setMatrixAt(2, new THREE.Matrix4().makeTranslation(150, 8, 0))
+  scene.add(pools)
+  const eye = new THREE.PerspectiveCamera(35, 1, 0.1, 100)
+  const reflection = new WaterReflectionRuntime({}, scene)
+  reflection.setRoot(scene)
+  for (const [x, y] of [[40, 3], [-30, 6]]) {
+    eye.position.set(x, y + 6, 12)
+    eye.lookAt(x, y, 0)
+    assert.ok(Math.abs(reflection.getVisibleWaterLevel(eye) - (y + 0.1)) < 1e-6)
+  }
+  eye.lookAt(-30, 15, 40)
+  assert.equal(reflection.hasVisibleSurface(eye), false)
+  reflection.dispose()
+  waterGeometry.dispose()
+  waterMaterial.dispose()
 } finally { await vite.close() }
 
 const browser = await launchEditorBrowser('http://127.0.0.1:5178/scripts/material-mechanism-preview.html')

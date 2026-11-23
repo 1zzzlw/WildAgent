@@ -163,14 +163,55 @@ def stair_span_conflicts(design):
     return issues
 
 
-def design_relation_checks(design, markers, frames):
-    """用已解析宿主核对引用和重复墙；不再重新构造四向矩形围护。"""
+def entity_reference_paths(design: dict, identities: set[str]) -> list[str]:
+    """定位实体引用，供冲突反馈和原子修订共用；不把说明文字当引用。"""
+    fields = {"host", "target", "targets", "subject", "members", "from", "to", "via"}
+    paths = []
+
+    def visit(value, path="", field=""):
+        if isinstance(value, dict):
+            for key, item in value.items():
+                token = key.replace("~", "~0").replace("/", "~1")
+                visit(item, path + "/" + token, key)
+        elif isinstance(value, list):
+            for index, item in enumerate(value):
+                visit(item, f"{path}/{index}", field)
+        elif field in fields and isinstance(value, str) and value in identities:
+            paths.append(path)
+
+    visit(design)
+    return paths
+
+
+def wall_covers(retained: dict, removed: dict) -> bool:
+    """仅允许移除被另一面墙完整覆盖的实体；部分搭接不等于冗余。"""
     from shapely.geometry import LineString
-    from app.domain.components.names import resolve_component_name
     from app.domain.design.spatial import host_path
 
-    ids = {v["id"] for v in design["volumes"]} | {m["id"] for m in markers} | set(frames)
-    errors, reviews = [], []
+    lower, upper = removed["from"][1], removed["to"][1]
+    if retained["from"][1] > lower + 1e-6 or retained["to"][1] < upper - 1e-6:
+        return False
+    heights = {lower, upper}
+    for wall in (retained, removed):
+        for section in wall.get("sections", []):
+            if lower < section["y"] < upper:
+                heights.add(section["y"])
+    ordered = sorted(heights)
+    for start, end in zip(ordered, ordered[1:]):
+        heights.add((start + end) / 2)
+    for height in heights:
+        kept_path = LineString(host_path(retained, height))
+        if not kept_path.buffer(1e-6).covers(LineString(host_path(removed, height))):
+            return False
+    return True
+
+
+def duplicate_wall_conflicts(design: dict, frames: dict) -> list[dict]:
+    """重叠墙反馈同时包含两个来源及引用，允许在同一候选中完成修订。"""
+    from shapely.geometry import LineString
+    from app.domain.design.spatial import host_path
+
+    errors = []
     walls = list(frames.values())
     for index, wall in enumerate(walls):
         for other in walls[index+1:]:
@@ -181,9 +222,21 @@ def design_relation_checks(design, markers, frames):
             path = LineString(host_path(wall, lower))
             overlap = path.intersection(LineString(host_path(other, lower))).length
             if overlap > 0.001:
+                references = entity_reference_paths(design, {wall["id"], other["id"]})
                 errors.append({"code": "floor_wall_facade_conflict", "path": wall["design_path"],
                                "actual": {"wall_id": wall["id"], "facade_id": other["id"], "overlap": overlap},
+                               "related_paths": [wall["design_path"], other["design_path"], *references],
                                "reason": "同一墙路径被重复声明；保留一个实体来源并修订相关引用"})
+    return errors
+
+
+def design_relation_checks(design, markers, frames):
+    """用已解析宿主核对引用和重复墙；不再重新构造四向矩形围护。"""
+    from app.domain.components.names import resolve_component_name
+
+    ids = {v["id"] for v in design["volumes"]} | {m["id"] for m in markers} | set(frames)
+    errors = duplicate_wall_conflicts(design, frames)
+    reviews = []
     for marker in markers:
         if marker["type"] == "building_body":
             continue

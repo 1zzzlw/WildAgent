@@ -29,6 +29,16 @@ const EYE_HEIGHT = 1.58
 const STEP_HEIGHT = 0.32
 const MOVE_KEYS = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space', 'ShiftLeft', 'ShiftRight'])
 const DOUBLE_SPACE_MS = 300
+const CAMERA_PROBE_OFFSETS = [[0, 0], [0.14, 0], [-0.14, 0], [0, 0.14], [0, -0.14]] as const
+const cameraProbe = new THREE.Ray()
+const cameraPosition = new THREE.Vector3()
+const cameraRotation = new THREE.Quaternion()
+const cameraRight = new THREE.Vector3()
+const cameraUp = new THREE.Vector3()
+const desiredVelocity = new THREE.Vector3()
+const stepMovement = new THREE.Vector3()
+const bodyBeforeStep = new Capsule()
+const landingOffset = new THREE.Vector3()
 
 /** 独立运行时：宿主只提供相机、显示根、交互回调和逐帧调用。无文档/编辑器依赖。 */
 export class CharacterRoamingRuntime {
@@ -260,7 +270,7 @@ export class CharacterRoamingRuntime {
     for (let i = 0; i < steps; i++) this.move(elapsed / steps)
     this.cameraStepOffset = THREE.MathUtils.damp(this.cameraStepOffset, 0, 14, elapsed)
     this.syncAvatar(elapsed)
-    this.updateCamera()
+    const cameraChanged = this.updateCamera()
     this.targetClock += elapsed
     if (this.targetClock >= 0.1) {
       this.targetClock = 0
@@ -269,20 +279,20 @@ export class CharacterRoamingRuntime {
       const b = target?.userData.interaction
       this.setTargetLabel(kind === 'opening' ? '右键 · 开关门窗' : kind === 'light' ? '右键 · 切换灯光' : kind === 'elevator' && b.role.endsWith('Button') ? '右键 · 电梯按钮' : kind === 'rotor' && b.role === 'control' ? '右键 · 风扇调速' : target ? elementBehaviorLabel(target) : '')
     }
-    return true
+    return cameraChanged || this.robot.root.visible
   }
 
   private move(delta: number): void {
     const x = Number(this.keys.has('KeyD')) - Number(this.keys.has('KeyA'))
     const z = Number(this.keys.has('KeyW')) - Number(this.keys.has('KeyS'))
-    const wish = new THREE.Vector3(x, 0, -z)
+    const wish = desiredVelocity.set(x, 0, -z)
     if (wish.lengthSq() > 0) wish.normalize().applyAxisAngle(THREE.Object3D.DEFAULT_UP, this.yaw).multiplyScalar(3.2)
     this.velocity.x = THREE.MathUtils.damp(this.velocity.x, wish.x, 14, delta)
     this.velocity.z = THREE.MathUtils.damp(this.velocity.z, wish.z, 14, delta)
     if (this.flying) {
       const vertical = Number(this.keys.has('Space')) - Number(this.keys.has('ShiftLeft') || this.keys.has('ShiftRight'))
       this.velocity.y = THREE.MathUtils.damp(this.velocity.y, vertical * 3.2, 14, delta)
-      this.body.translate(this.velocity.clone().multiplyScalar(delta))
+      this.body.translate(stepMovement.copy(this.velocity).multiplyScalar(delta))
       this.world.resolve(this.body, this.velocity)
       return
     }
@@ -292,8 +302,9 @@ export class CharacterRoamingRuntime {
     if (jumping) this.velocity.y = 6
     // 取消高空飞行后的下落也保持有限步长，避免速度持续累积穿过薄屋面。
     this.velocity.y = Math.max(-20, this.velocity.y - 18 * delta)
-    const before = this.body.clone()
-    const movement = this.velocity.clone().multiplyScalar(delta)
+    bodyBeforeStep.copy(this.body)
+    const before = bodyBeforeStep
+    const movement = stepMovement.copy(this.velocity).multiplyScalar(delta)
     this.body.translate(movement)
     const contact = this.world.resolve(this.body, this.velocity)
     this.grounded = contact.grounded
@@ -303,7 +314,8 @@ export class CharacterRoamingRuntime {
       this.tryStep(before, movement, delta)
     }
     if (wasGrounded && !jumping) {
-      this.snapToFloor()
+      // 只有子步失去承重接触时才向下探测，保留下台阶时的连续落脚。
+      if (!this.grounded) this.snapToFloor()
       // 缓冲台阶高度变化；碰撞体仍立即落脚，镜头始终留在胶囊高度内。
       this.cameraStepOffset = THREE.MathUtils.clamp(this.cameraStepOffset + before.start.y - this.body.start.y,
         -STEP_HEIGHT, HEIGHT - EYE_HEIGHT - 0.04)
@@ -346,17 +358,17 @@ export class CharacterRoamingRuntime {
       const down = Math.min(0.025, remaining)
       remaining -= down
       let high = candidate.start.y
-      candidate.translate(new THREE.Vector3(0, -down, 0))
+      candidate.translate(landingOffset.set(0, -down, 0))
       if (clear()) continue
       let low = candidate.start.y
       // 固定水平位置收敛到接触高度，兼顾踏步边缘与薄地板。
       for (let i = 0; i < 8; i++) {
         const middle = (low + high) / 2
-        candidate.translate(new THREE.Vector3(0, middle - candidate.start.y, 0))
+        candidate.translate(landingOffset.set(0, middle - candidate.start.y, 0))
         if (clear()) high = middle
         else low = middle
       }
-      candidate.translate(new THREE.Vector3(0, high + 0.00001 - candidate.start.y, 0))
+      candidate.translate(landingOffset.set(0, high + 0.00001 - candidate.start.y, 0))
       return true
     }
     return false
@@ -375,28 +387,33 @@ export class CharacterRoamingRuntime {
     this.robot.update(delta, Math.hypot(this.velocity.x, this.velocity.z), this.grounded, this.yaw, this.flying)
   }
 
-  private updateCamera(): void {
+  private updateCamera(): boolean {
     const camera = this.options.camera
     this.eye.copy(this.body.start).y += EYE_HEIGHT - RADIUS + this.cameraStepOffset
     this.orientation.set(this.pitch, this.yaw, 0)
-    camera.quaternion.setFromEuler(this.orientation)
-    this.direction.set(0, 0, -1).applyQuaternion(camera.quaternion)
-    camera.position.copy(this.eye)
+    cameraRotation.setFromEuler(this.orientation)
+    this.direction.set(0, 0, -1).applyQuaternion(cameraRotation)
+    cameraPosition.copy(this.eye)
     let distance = 0
     if (this.view === 'third') {
-      const backwards = this.direction.clone().negate()
-      const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion)
-      const up = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion)
+      cameraProbe.direction.copy(this.direction).negate()
+      cameraRight.set(1, 0, 0).applyQuaternion(cameraRotation)
+      cameraUp.set(0, 1, 0).applyQuaternion(cameraRotation)
       distance = 3.8
-      for (const offset of [new THREE.Vector3(), right.clone().multiplyScalar(0.14), right.clone().multiplyScalar(-0.14), up.clone().multiplyScalar(0.14), up.clone().multiplyScalar(-0.14)]) {
-        distance = Math.min(distance, this.world.rayDistance(new THREE.Ray(this.eye.clone().add(offset), backwards), distance))
+      for (const [right, up] of CAMERA_PROBE_OFFSETS) {
+        cameraProbe.origin.copy(this.eye).addScaledVector(cameraRight, right).addScaledVector(cameraUp, up)
+        distance = this.world.rayDistance(cameraProbe, distance)
       }
       // 给近裁剪面留空间；相机贴墙时收近，不能透过墙体观察。
       distance = Math.max(0.05, distance - 0.2)
-      camera.position.addScaledVector(backwards, distance)
+      cameraPosition.addScaledVector(cameraProbe.direction, distance)
     }
     this.robot.root.visible = this.view === 'third' && distance > 0.55
+    if (camera.position.equals(cameraPosition) && camera.quaternion.equals(cameraRotation)) return false
+    camera.position.copy(cameraPosition)
+    camera.quaternion.copy(cameraRotation)
     camera.updateMatrixWorld(true)
+    return true
   }
 
   private interactionTarget(): THREE.Mesh | null {

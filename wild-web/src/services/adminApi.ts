@@ -7,10 +7,12 @@ export interface AdminUser {
   operations_remaining: number; ai_remaining: number
   operations_daily_limit: number; ai_daily_limit: number
 }
-export interface AuditLog {
+export interface AuditLogSummary {
   id: string; actor_id: string; actor_name: string; action: string; resource: string
-  session_id?: string; request_id?: string; details: Record<string, unknown>; created_at: number
+  session_id?: string; request_id?: string; created_at: number
+  preview: string
 }
+export type AuditLog = Omit<AuditLogSummary, 'preview'> & { details: Record<string, unknown> }
 export interface AdminBlueprint {
   filename: string; name: string; owner_id?: string; owner_name?: string; session_id?: string
   elements_count: number; components_count: number; locked: boolean; updated_at: number; created_at: number
@@ -24,9 +26,9 @@ export interface AdminStats {
   new_users_7d: number; active_users_24h: number; blueprints: number; locked_blueprints: number; operations: number
 }
 
-export async function apiRequest<T>(path: string, method = 'GET', body?: unknown): Promise<T> {
+export async function apiRequest<T>(path: string, method = 'GET', body?: unknown, signal?: AbortSignal): Promise<T> {
   const response = await fetch(path, {
-    method, credentials: 'same-origin', cache: 'no-store',
+    method, signal, credentials: 'same-origin', cache: 'no-store',
     headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
     body: body === undefined ? undefined : JSON.stringify(body),
   })

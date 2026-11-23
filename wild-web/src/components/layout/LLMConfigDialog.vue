@@ -16,20 +16,17 @@
           aria-labelledby="wild-config-modal-title"
         >
           <header class="wild-config-modal__header">
-            <div>
-              <p class="wild-config-modal__eyebrow">系统设置</p>
-              <h2 id="wild-config-modal-title">LLM 配置</h2>
-            </div>
+            <h2 id="wild-config-modal-title">AI API 设置</h2>
             <button class="wild-config-modal__close" type="button" aria-label="关闭" @click="handleClose">×</button>
           </header>
 
           <div class="config-content">
             <div class="config-scope-warning">
-              这是当前服务器的全站 Chat 模型配置，会影响所有会话；它不是按用户隔离的个人密钥。
+              保存后，所有用户的新请求会使用这份配置。
             </div>
             <div class="config-section">
-              <label class="config-label">供应商</label>
-              <select v-model="form.provider" class="config-input">
+              <label for="model-provider" class="config-label">供应商</label>
+              <select id="model-provider" v-model="form.provider" class="config-input">
                 <option v-for="provider in providers" :key="provider.value" :value="provider.value">
                   {{ provider.label }}
                 </option>
@@ -37,8 +34,9 @@
               <div class="config-hint">自动识别沿用当前地址；通过代理接入时，选择其支持的供应商协议。</div>
             </div>
             <div class="config-section">
-              <label class="config-label">模型名称</label>
+              <label for="model-name" class="config-label">模型名称</label>
               <input
+                id="model-name"
                 v-model="form.name"
                 type="text"
                 class="config-input"
@@ -48,8 +46,9 @@
             </div>
 
             <div class="config-section">
-              <label class="config-label">API Key</label>
+              <label for="model-api-key" class="config-label">API Key</label>
               <input
+                id="model-api-key"
                 v-model="form.api_key"
                 type="password"
                 class="config-input"
@@ -59,8 +58,9 @@
             </div>
 
             <div class="config-section">
-              <label class="config-label">Base URL</label>
+              <label for="model-base-url" class="config-label">Base URL</label>
               <input
+                id="model-base-url"
                 v-model="form.base_url"
                 type="text"
                 class="config-input"
@@ -70,8 +70,9 @@
             </div>
 
             <div class="config-section">
-              <label class="config-label">思考预算（Token）</label>
+              <label for="model-thinking-budget" class="config-label">思考预算（Token）</label>
               <input
+                id="model-thinking-budget"
                 v-model.number="form.thinking_budget"
                 type="number"
                 class="config-input"
@@ -89,7 +90,7 @@
             <div class="config-divider"></div>
 
             <div class="config-section">
-              <label class="config-label">当前配置</label>
+              <h3 class="config-label">当前配置</h3>
               <div class="current-config">
                 <div class="config-item">
                   <span class="config-key">供应商:</span>
@@ -139,7 +140,7 @@
             >
               {{ testing ? '测试中...' : '测试连接' }}
             </button>
-            <div v-if="testResult" class="test-result">
+            <div v-if="testResult" class="test-result" role="status">
               <span v-if="testResult.success" class="test-success">
                 ✓ 当前输入可用（尚未保存）· {{ testResult.latency }}ms
               </span>
@@ -147,11 +148,12 @@
                 ✗ {{ testResult.message }}
               </span>
             </div>
-            <div style="flex: 1"></div>
-            <button type="button" class="btn-secondary" @click="handleClose">取消</button>
-            <button type="button" class="btn-primary" @click="handleSave" :disabled="saving">
-              {{ saving ? '保存中...' : '保存' }}
-            </button>
+            <div class="config-actions">
+              <button type="button" class="btn-secondary" @click="handleClose">取消</button>
+              <button type="button" class="btn-primary" @click="handleSave" :disabled="saving">
+                {{ saving ? '保存中...' : '保存' }}
+              </button>
+            </div>
           </footer>
         </section>
       </div>
@@ -364,15 +366,14 @@ function handleClose() {
   display: grid;
   place-items: center;
   padding: 24px;
-  background: var(--studio-bg);
-  backdrop-filter: blur(4px);
+  background: #11182085;
   outline: none;
 }
 
 .wild-config-modal__panel {
   display: flex;
   width: min(600px, calc(100vw - 48px));
-  max-height: min(86vh, 700px);
+  max-height: min(86dvh, 720px);
   overflow: hidden;
   flex-direction: column;
   border: 1px solid var(--studio-border);
@@ -388,14 +389,6 @@ function handleClose() {
   justify-content: space-between;
   padding: 20px 22px 16px;
   border-bottom: 1px solid var(--studio-border);
-}
-
-.wild-config-modal__eyebrow {
-  margin: 0 0 3px;
-  color: var(--studio-accent);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.16em;
 }
 
 .wild-config-modal__header h2 {
@@ -452,7 +445,6 @@ function handleClose() {
   background: var(--studio-input);
   color: var(--studio-text);
   font-size: 14px;
-  outline: none;
   transition: border-color 0.15s;
 }
 
@@ -505,6 +497,8 @@ function handleClose() {
 }
 
 .config-value {
+  min-width: 0;
+  overflow-wrap: anywhere;
   color: var(--studio-text);
   font-size: 13px;
 }
@@ -534,6 +528,7 @@ function handleClose() {
 
 .wild-config-modal__footer {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   padding: 12px 22px 18px;
@@ -541,10 +536,16 @@ function handleClose() {
 }
 
 .test-result {
-  margin-left: 12px;
+  flex: 1 1 180px;
+  min-width: 0;
+  max-height: 96px;
+  overflow: auto;
   font-size: 13px;
   font-weight: 500;
+  overflow-wrap: anywhere;
 }
+
+.config-actions { display: flex; margin-left: auto; gap: 8px; }
 
 .test-success {
   color: var(--studio-accent);
@@ -552,10 +553,6 @@ function handleClose() {
 
 .test-error {
   color: var(--studio-danger);
-  max-width: 300px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .btn-primary,
@@ -570,14 +567,13 @@ function handleClose() {
 }
 
 .btn-primary {
-  border-color: var(--studio-accent-border);
-  background: var(--studio-hover);
-  color: var(--studio-text);
+  border-color: var(--studio-accent);
+  background: var(--studio-accent);
+  color: var(--studio-bg);
 }
 
 .btn-primary:hover:not(:disabled) {
-  border-color: var(--studio-accent-border);
-  background: var(--studio-hover);
+  filter: brightness(1.1);
 }
 
 .btn-secondary {
@@ -625,7 +621,7 @@ function handleClose() {
 
   .wild-config-modal__panel {
     width: calc(100vw - 24px);
-    max-height: 92vh;
+    max-height: calc(100dvh - 24px);
   }
 
   .wild-config-modal__header,
@@ -634,5 +630,9 @@ function handleClose() {
     padding-right: 16px;
     padding-left: 16px;
   }
+
+  .test-result { order: -1; flex-basis: 100%; }
+  .config-input { min-height: 44px; font-size: 16px; }
+  .btn-primary, .btn-secondary { min-width: 0; min-height: 44px; padding-inline: 10px; }
 }
 </style>

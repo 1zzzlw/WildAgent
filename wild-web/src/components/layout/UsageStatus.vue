@@ -1,13 +1,12 @@
 <template>
   <ElPopover v-if="auth.canEdit" trigger="click" placement="bottom-end" :width="300">
     <template #reference>
-      <button type="button" class="usage-status" :aria-label="usageDescription + '，点击查看额度与蓝图状态'" :title="usageDescription">
+      <button type="button" class="usage-status" :class="{ 'has-exhausted-quota': hasExhaustedQuota }" :aria-label="usageDescription + '，查看额度与蓝图状态'" :title="usageDescription">
         <ElIcon aria-hidden="true"><Wallet /></ElIcon>
         <span class="usage-counts" aria-live="polite" aria-atomic="true">
           <span v-if="auth.isAdmin" class="usage-admin">管理员 · 无限使用</span>
-          <template v-else><span v-for="item in quotas" :key="item.kind" :class="{ exhausted: item.remaining === 0 }">{{ item.label }} <strong>{{ item.remaining ?? '—' }}</strong></span></template>
+          <template v-else><span v-for="item in quotas" :key="item.kind" :class="{ exhausted: item.remaining === 0 }">{{ item.shortLabel }} <strong>{{ item.remaining ?? '—' }}</strong></span></template>
         </span>
-        <span class="usage-compact">{{ auth.isAdmin ? '无限额度' : '使用额度' }}</span>
         <ElIcon v-if="scene.isLocked" class="lock-note" aria-label="蓝图已锁定"><Lock /></ElIcon>
         <ElIcon class="usage-arrow" aria-hidden="true"><ArrowDown /></ElIcon>
       </button>
@@ -42,8 +41,12 @@ import { apiRequest } from '../../services/adminApi'
 const auth = useAuthStore(), scene = useSceneStore(), agent = useAgentStore(), workspace = useWorkspaceStore()
 const locking = ref(false), refreshing = ref(false)
 const current = computed(() => agent.sessions.find(item => item.session_id === agent.currentSessionId))
-const labels: Array<{ kind: UsageKind; label: string }> = [{ kind: 'operations', label: '手工操作' }, { kind: 'ai', label: 'AI 使用' }]
+const labels: Array<{ kind: UsageKind; label: string; shortLabel: string }> = [
+  { kind: 'operations', label: '手工操作', shortLabel: '手工' },
+  { kind: 'ai', label: 'AI 使用', shortLabel: 'AI' },
+]
 const quotas = computed(() => labels.map(item => ({ ...item, remaining: auth.user?.usage?.[item.kind]?.remaining, limit: auth.user?.usage?.[item.kind]?.daily_limit })))
+const hasExhaustedQuota = computed(() => !auth.isAdmin && quotas.value.some(item => item.remaining === 0))
 const usageDescription = computed(() => auth.isAdmin ? '管理员 · 无限使用' : '今日剩余：' + quotas.value.map(item => `${item.label} ${item.remaining ?? '—'}`).join('，'))
 async function refreshStatus() {
   if (refreshing.value) return
@@ -92,13 +95,14 @@ watch(() => agent.currentSessionId, () => { void refreshStatus() })
 watch(() => auth.user?.usage?.operations.resets_at, scheduleReset)
 </script>
 <style scoped>
-.usage-status{display:inline-flex;flex-shrink:0;align-items:center;gap:8px;min-height:31px;padding:6px 10px;border:1px solid var(--studio-border);border-radius:5px;background:transparent;color:var(--studio-muted);font:inherit;font-size:11px;cursor:pointer;white-space:nowrap}
+.usage-status{display:inline-flex;flex-shrink:0;align-items:center;justify-content:center;gap:6px;min-width:32px;min-height:32px;padding:0 8px;border:1px solid var(--studio-border);border-radius:6px;background:transparent;color:var(--studio-muted);font:inherit;font-size:12px;cursor:pointer;white-space:nowrap}
 .usage-status:hover{background:var(--studio-hover);color:var(--studio-text)}
-.usage-counts{display:inline-flex;align-items:center;gap:12px}
-.usage-counts strong{color:var(--studio-text);margin-left:3px;font-variant-numeric:tabular-nums}
+.usage-counts{display:inline-flex;align-items:center;gap:8px}
+.usage-counts strong{color:var(--studio-text);margin-left:1px;font-variant-numeric:tabular-nums}
 .exhausted,.usage-counts .exhausted strong,.lock-note{color:var(--studio-danger)}
+.usage-status.has-exhausted-quota{color:var(--studio-danger)}
 .usage-admin{color:var(--studio-accent)}
-.usage-compact{display:none}.usage-arrow{font-size:10px}
+.usage-arrow{font-size:10px}
 .usage-panel{display:grid;gap:12px;color:var(--studio-text);font-size:12px}
 .usage-panel p,.quota-details,.quota-details dd{margin:0}
 .usage-heading{font-size:13px;font-weight:600}
@@ -108,6 +112,5 @@ watch(() => auth.user?.usage?.operations.resets_at, scheduleReset)
 .lock-button{font:inherit;min-height:32px;background:transparent;border:1px solid var(--studio-border);border-radius:4px;color:var(--studio-accent);cursor:pointer;padding:5px 10px}
 .lock-button:hover{background:var(--studio-hover)}.lock-button:disabled{opacity:.45;cursor:wait}
 .usage-status:focus-visible,.lock-button:focus-visible{outline:2px solid var(--studio-accent);outline-offset:2px}
-@media(max-width:1600px){.usage-counts{display:none}.usage-compact{display:inline}}
-@media(max-width:700px){.usage-status{padding:6px;gap:4px}.usage-compact,.usage-arrow{display:none}.lock-button{min-height:44px}}
+@media(max-width:760px){.usage-status{padding:0 6px;gap:4px}.usage-counts,.usage-arrow{display:none}.lock-button{min-height:44px}}
 </style>

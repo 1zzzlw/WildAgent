@@ -3,6 +3,8 @@ from sqlalchemy import (JSON, BigInteger, Boolean, CheckConstraint, Column, Fore
                         MetaData, SmallInteger, String, Table, Text, text)
 from sqlalchemy.dialects.mysql import LONGTEXT
 
+from app.domain.usage import DEFAULT_DAILY_LIMITS
+
 metadata = MetaData()
 options = {"mysql_engine": "InnoDB", "mysql_charset": "utf8mb4", "mysql_collate": "utf8mb4_bin"}
 users = Table("users", metadata,
@@ -14,9 +16,9 @@ users = Table("users", metadata,
     Column("status", String(16), nullable=False, default="active"),
     Column("created_at", BigInteger, nullable=False),
     Column("operations_daily_limit", Integer, nullable=False, server_default=text("20")),
-    Column("ai_daily_limit", Integer, nullable=False, server_default=text("200")),
+    Column("ai_daily_limit", Integer, nullable=False, server_default=text(str(DEFAULT_DAILY_LIMITS["ai"]))),
     Column("operations_remaining", Integer, nullable=False, server_default=text("20")),
-    Column("ai_remaining", Integer, nullable=False, server_default=text("200")),
+    Column("ai_remaining", Integer, nullable=False, server_default=text(str(DEFAULT_DAILY_LIMITS["ai"]))),
     Column("operations_used", Integer, nullable=False, server_default=text("0")),
     Column("ai_used", Integer, nullable=False, server_default=text("0")),
     Column("usage_reset_at", BigInteger, nullable=False, server_default=text("0")),
@@ -67,6 +69,7 @@ audit_logs = Table("audit_logs", metadata,
     Column("created_at", BigInteger, nullable=False), **options)
 Index("ix_audit_actor_created", audit_logs.c.actor_id, audit_logs.c.created_at)
 Index("ix_audit_action_created", audit_logs.c.action, audit_logs.c.created_at)
+Index("ix_audit_created_id", audit_logs.c.created_at.desc(), audit_logs.c.id)
 designs = Table("design_documents", metadata,
     Column("session_id", String(128), ForeignKey("conversation_sessions.session_id", ondelete="CASCADE"), primary_key=True),
     Column("revision", Integer, primary_key=True),

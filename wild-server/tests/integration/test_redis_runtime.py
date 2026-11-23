@@ -35,11 +35,19 @@ def test_global_presence_rename_disconnect_and_expired_connections(storage):
         b = RealtimeBus(client=cache.async_client)
         first = WebSocketConnectionRegistry(bus=a)
         second = WebSocketConnectionRegistry(bus=b)
-        ws1, ws2 = Socket(), Socket()
+        ws1, ws2, login_page, reconnected = Socket(), Socket(), Socket(), Socket()
+        first_user = {"id": "first", "username": "甲", "role": "editor"}
+        second_user = {"id": "second", "username": "乙", "role": "editor"}
         try:
-            await first.connect(ws1, client_ip="127.0.0.1", region="测试", display_name="甲")
-            await second.connect(ws2, client_ip="127.0.0.1", region="测试", display_name="乙")
+            await first.connect(login_page)
+            assert login_page.events[-1]["online_count"] == 0
+            assert login_page not in first._connections
+            await first.connect(ws1, client_ip="127.0.0.1", region="测试", display_name="甲", user=first_user)
+            await second.connect(ws2, client_ip="127.0.0.1", region="测试", display_name="乙", user=second_user)
             await eventually(lambda: ws1.events[-1]["online_count"] == 2 and ws2.events[-1]["online_count"] == 2)
+            assert login_page.events[-1]["online_count"] == 2
+            await second.connect(reconnected, client_ip="127.0.0.1", region="测试", user=first_user)
+            assert reconnected.events[-1]["online_count"] == 2
             await second.update_display_name(ws2, "新名称")
             await eventually(lambda: any(v["display_name"] == "新名称" for v in ws1.events[-1]["clients"]))
             first._last_touch[ws1] -= 30
@@ -47,6 +55,8 @@ def test_global_presence_rename_disconnect_and_expired_connections(storage):
             identity = first._connections[ws1]
             assert await cache.async_client.ttl(cache.key("presence:client:" + identity)) > 100
             await first.disconnect(ws1)
+            assert (await second._snapshot())["online_count"] == 2
+            await second.disconnect(reconnected)
             await eventually(lambda: ws2.events[-1]["online_count"] == 1)
             await cache.async_client.set(cache.key("presence:client:dead"), json.dumps({"id":"dead","connected_at":0}), ex=120)
             await cache.async_client.zadd(cache.key("presence:connections"), {"dead": time.time()-1})

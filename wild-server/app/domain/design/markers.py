@@ -193,6 +193,9 @@ def component_markers(document, geometry=None):
 
             section = section_at(volume["sections"],support)
             outline = shape.get("outline") or {}
+            if not isinstance(outline, dict):
+                issue(f"/roofs/{design['id']}/geometry/outline", "屋面轮廓应为带 type 的区域对象",
+                      actual=type(outline).__name__)
             if outline.get("type") in {"profile_region","volume_union_section"}:
                 resolved = resolve_region(outline,levels,
                     {profile["id"]:profile for profile in source["profiles"]},

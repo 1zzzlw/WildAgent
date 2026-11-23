@@ -2,7 +2,7 @@
 
 from datetime import datetime, time, timedelta, timezone
 
-DEFAULT_DAILY_LIMITS = {"operations": 20, "ai": 200}
+DEFAULT_DAILY_LIMITS = {"operations": 20, "ai": 5}
 USAGE_LABELS = {"operations": "手工操作", "ai": "AI 使用"}
 QUOTA_TIMEZONE = timezone(timedelta(hours=8))
 

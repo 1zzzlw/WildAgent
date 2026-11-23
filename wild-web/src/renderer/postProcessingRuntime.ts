@@ -48,6 +48,7 @@ export class WorldPostProcessingRuntime {
   readonly visibility = new WorldVisibilityRuntime()
   readonly output = createWorldOutputPass()
   private readonly renderer: THREE.WebGLRenderer
+  private pixelRatio: number
   private appliedMsaaSamples = -1
   private gtao: GTAOPass | null = null
 
@@ -58,6 +59,7 @@ export class WorldPostProcessingRuntime {
     options: WorldPostProcessingOptions = {},
   ) {
     this.renderer = renderer
+    this.pixelRatio = renderer.getPixelRatio()
     this.composer = new EffectComposer(renderer)
     this.composer.addPass(new RenderPass(scene, camera))
 
@@ -83,6 +85,7 @@ export class WorldPostProcessingRuntime {
 
     this.fxaa = new ShaderPass(FXAAShader)
     this.composer.addPass(this.fxaa)
+    this.updateFxaaResolution()
 
     this.setMsaaSamples(options.msaaSamples ?? 4)
   }
@@ -90,15 +93,19 @@ export class WorldPostProcessingRuntime {
   /** 尺寸变化：合成器 + FXAA resolution uniform（按设备像素比换算）。 */
   setSize(width: number, height: number): void {
     this.composer.setSize(width, height)
-    const pixelRatio = this.renderer.getPixelRatio()
-    this.fxaa.material.uniforms.resolution.value.set(
-      1 / Math.max(width * pixelRatio, 1),
-      1 / Math.max(height * pixelRatio, 1),
-    )
+    this.updateFxaaResolution()
   }
 
   setPixelRatio(pixelRatio: number): void {
+    if (pixelRatio === this.pixelRatio) return
+    this.pixelRatio = pixelRatio
     this.composer.setPixelRatio(pixelRatio)
+    this.updateFxaaResolution()
+  }
+
+  private updateFxaaResolution(): void {
+    const { width, height } = this.composer.renderTarget1
+    this.fxaa.material.uniforms.resolution.value.set(1 / Math.max(width, 1), 1 / Math.max(height, 1))
   }
 
   /**

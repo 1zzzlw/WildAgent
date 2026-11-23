@@ -131,6 +131,24 @@ try {
     rider.world.dispose()
     root.traverse(object => object.geometry?.dispose())
   }
+  {
+    const root = new THREE.Group()
+    box(root, [2, 2, .2], [0, 1, -2])
+    box(root, [2, 2, .2], [0, 1, -5])
+    const world = new RoamingCollisionWorld(root, 0)
+    const ray = new THREE.Ray(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, -1))
+    assert.equal(world.rayDistance(ray, 1), 1, '相机探测距离外的墙不应收近镜头')
+    assert.ok(Math.abs(world.rayDistance(ray, 6) - 1.9) < .001, '探测范围内应使用最近的墙')
+    world.dispose()
+    root.traverse(object => object.geometry?.dispose())
+  }
+  {
+    const rider = runtime(new THREE.Group(), [0, 0, 0])
+    assert.equal(rider.tick(1 / 60), false, '第一人称静止时不需要重复绘图')
+    rider.keys.add('KeyW')
+    assert.equal(rider.tick(1 / 60), true, '重新移动时立即绘制')
+    rider.world.dispose()
+  }
   material.dispose()
   console.log(JSON.stringify({ status: 'PASS', guards }, null, 2))
 } finally {

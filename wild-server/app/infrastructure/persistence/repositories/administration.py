@@ -1,6 +1,6 @@
 """管理查询与账号变更；结果不包含密码散列。"""
 
-from sqlalchemy import func, or_, select, update
+from sqlalchemy import case, func, or_, select, update
 
 from app.infrastructure.persistence.database import database
 from app.infrastructure.persistence.repositories.activity import (
@@ -19,6 +19,7 @@ ACCOUNT_COLUMNS = [column for column in users.c if column.name != "password_hash
 BLUEPRINT_COLUMNS = [
     column for column in blueprints.c if column.name != "blueprint_json"
 ]
+AUDIT_LIST_COLUMNS = [column for column in audit_logs.c if column.name != "details"]
 
 
 def _page(connection, statement, count_statement, page: int, page_size: int) -> dict:
@@ -64,6 +65,8 @@ def list_activity(
     until: int | None,
     page: int,
     page_size: int,
+    *,
+    include_details: bool = True,
 ) -> dict:
     filters = []
     if user_id:
@@ -95,10 +98,29 @@ def list_activity(
         )
         ids = [item["id"] for item in result["items"]]
         if ids:
-            rows = connection.execute(select(audit_logs).where(audit_logs.c.id.in_(ids))).mappings()
+            if include_details:
+                statement = select(audit_logs)
+            else:
+                preview_fields = []
+                for field in ("label", "message", "content", "summary"):
+                    value = audit_logs.c.details[field].as_string()
+                    preview_fields.append(func.nullif(value, ""))
+                preview = func.substr(func.coalesce(*preview_fields, ""), 1, 180)
+                statement = select(*AUDIT_LIST_COLUMNS, preview.label("preview"))
+            rows = connection.execute(
+                statement.where(audit_logs.c.id.in_(ids))
+            ).mappings()
             by_id = {row["id"]: dict(row) for row in rows}
             result["items"] = [by_id[identity] for identity in ids if identity in by_id]
         return result
+
+
+def get_activity(log_id: str) -> dict | None:
+    with database.engine.connect() as connection:
+        row = connection.execute(
+            select(audit_logs).where(audit_logs.c.id == log_id)
+        ).mappings().first()
+        return dict(row) if row is not None else None
 
 
 def list_blueprints(query: str, locked: bool | None, page: int, page_size: int) -> dict:
@@ -129,47 +151,41 @@ def list_blueprints(query: str, locked: bool | None, page: int, page_size: int) 
 
 
 def statistics() -> dict:
+    now = now_ms()
+    active = users.c.status == "active"
+    blocked = users.c.status == "blocked"
+    deleted = users.c.status == "deleted"
+    administrator = active & (users.c.identity == 2)
+    recent_registration = ~deleted & (users.c.created_at >= now - 7 * 86400000)
     with database.engine.connect() as connection:
-        counts = dict(
-            connection.execute(
-                select(users.c.status, func.count()).group_by(users.c.status)
-            ).all()
-        )
+        counts = connection.execute(
+            select(
+                func.count(case((active, 1))).label("active_users"),
+                func.count(case((blocked, 1))).label("blocked_users"),
+                func.count(case((deleted, 1))).label("deleted_users"),
+                func.count(case((administrator, 1))).label("administrators"),
+                func.count(case((recent_registration, 1))).label("new_users_7d"),
+            )
+        ).mappings().one()
+        blueprint_counts = connection.execute(
+            select(
+                func.count().label("blueprints"),
+                func.count(case((blueprints.c.locked.is_(True), 1))).label("locked_blueprints"),
+            ).select_from(blueprints)
+        ).mappings().one()
         return {
-            "users": counts.get("active", 0) + counts.get("blocked", 0),
-            "active_users": counts.get("active", 0),
-            "blocked_users": counts.get("blocked", 0),
-            "deleted_users": counts.get("deleted", 0),
-            "administrators": connection.scalar(
-                select(func.count())
-                .select_from(users)
-                .where(users.c.identity == 2, users.c.status == "active")
-            ),
-            "new_users_7d": connection.scalar(
-                select(func.count())
-                .select_from(users)
-                .where(
-                    users.c.status != "deleted",
-                    users.c.created_at >= now_ms() - 7 * 86400000,
-                )
-            ),
+            **counts,
+            **blueprint_counts,
+            "users": counts["active_users"] + counts["blocked_users"],
             "active_users_24h": connection.scalar(
                 select(func.count(func.distinct(audit_logs.c.actor_id)))
                 .select_from(
                     audit_logs.join(users, audit_logs.c.actor_id == users.c.id)
                 )
                 .where(
-                    audit_logs.c.created_at >= now_ms() - 86400000,
-                    users.c.status != "deleted",
+                    audit_logs.c.created_at >= now - 86400000,
+                    ~deleted,
                 )
-            ),
-            "blueprints": connection.scalar(
-                select(func.count()).select_from(blueprints)
-            ),
-            "locked_blueprints": connection.scalar(
-                select(func.count())
-                .select_from(blueprints)
-                .where(blueprints.c.locked.is_(True))
             ),
             "operations": connection.scalar(
                 select(func.count()).select_from(audit_logs)

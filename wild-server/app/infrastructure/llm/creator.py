@@ -32,7 +32,10 @@ def get_mimo_model(model_cfg, *, enable_thinking=False, streaming=False):
 def get_deepseek_model(model_cfg, *, enable_thinking=False, streaming=False):
     name = model_cfg.name.casefold()
     extra = None
-    if not ("r1" in name or "reasoner" in name) and any(v in name for v in ("v3.1", "v3.2", "v4")):
+    if name == "deepseek-flash" or (
+        not ("r1" in name or "reasoner" in name)
+        and any(version in name for version in ("v3.1", "v3.2", "v4"))
+    ):
         extra = {"thinking": {"type": "enabled" if enable_thinking else "disabled"}}
         if enable_thinking and model_cfg.thinking_budget:
             extra["reasoning_effort"] = _effort(model_cfg.thinking_budget)

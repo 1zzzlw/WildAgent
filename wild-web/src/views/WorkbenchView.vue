@@ -38,6 +38,7 @@ import { useCharacterRoamingStore } from '../extensions/characterRoaming/store'
 const ui = useUIStore()
 defineOptions({ name: 'WorkbenchView' })
 let workbenchActive = true
+let workbenchDisposed = false
 const scene = useSceneStore()
 const history = useHistoryStore()
 const workspace = useWorkspaceStore()
@@ -57,7 +58,15 @@ function enterEditor() {
   agentBridge.disconnect()
   agentBridge.connect()
 }
-watch(() => auth.user, user => { if (user) enterEditor() }, { flush: 'sync' })
+watch(() => auth.user, user => {
+  if (user) {
+    enterEditor()
+  } else if (editorReady.value) {
+    editorReady.value = false
+    agentBridge.disconnect()
+    agentBridge.connect()
+  }
+}, { flush: 'sync' })
 watch(() => ui.viewportFocused, async focused => {
   await nextTick()
   if (focused && viewportRef.value?.requestFullscreen) {
@@ -98,11 +107,12 @@ async function handleKeydown(event: KeyboardEvent) {
   if (event.key === '?') ui.shortcutsVisible = true
 }
 onMounted(async () => {
-  agentBridge.connect()
-  await auth.restore()
-  if (auth.user) enterEditor()
   window.addEventListener('keydown', handleKeydown)
   document.addEventListener('fullscreenchange', syncFullscreen)
+  await auth.restore()
+  if (workbenchDisposed) return
+  if (auth.user) enterEditor()
+  else agentBridge.connect()
 })
 onActivated(() => { workbenchActive = true; presence.workspaceActive = true })
 onDeactivated(() => {
@@ -113,6 +123,7 @@ onDeactivated(() => {
   if (document.pointerLockElement) document.exitPointerLock()
 })
 onUnmounted(() => {
+  workbenchDisposed = true
   presence.workspaceActive = false
   agentBridge.disconnect()
   window.removeEventListener('keydown', handleKeydown)

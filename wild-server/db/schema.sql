@@ -3,6 +3,8 @@
 -- 初始化脚本保留已有数据；已有旧版表请对照字段结构手工更新。
 -- users.identity：1 普通用户，2 管理员；注册固定为 1，管理员不受使用次数限制。
 -- 旧版数据库依次执行 migrations/20261116_admin_management.sql、migrations/20261116_daily_usage.sql。
+-- 已有每日额度字段的数据库执行 migrations/20261123_ai_daily_limit.sql 更新 AI 默认额度。
+-- 已有 audit_logs 的数据库可执行 migrations/20261123_admin_audit_index.sql 加入全站日志时间索引。
 
 SET NAMES utf8mb4;
 
@@ -29,9 +31,9 @@ CREATE TABLE IF NOT EXISTS users (
 	status VARCHAR(16) NOT NULL, 
 	created_at BIGINT NOT NULL, 
 	operations_daily_limit INTEGER NOT NULL DEFAULT 20,
-	ai_daily_limit INTEGER NOT NULL DEFAULT 200,
+	ai_daily_limit INTEGER NOT NULL DEFAULT 5,
 	operations_remaining INTEGER NOT NULL DEFAULT 20,
-	ai_remaining INTEGER NOT NULL DEFAULT 200,
+	ai_remaining INTEGER NOT NULL DEFAULT 5,
 	operations_used INTEGER NOT NULL DEFAULT 0,
 	ai_used INTEGER NOT NULL DEFAULT 0,
 	usage_reset_at BIGINT NOT NULL DEFAULT 0,
@@ -177,5 +179,6 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     details JSON NOT NULL,
     created_at BIGINT NOT NULL,
     INDEX ix_audit_actor_created (actor_id, created_at),
-    INDEX ix_audit_action_created (action, created_at)
+    INDEX ix_audit_action_created (action, created_at),
+    INDEX ix_audit_created_id (created_at DESC, id)
 ) ENGINE=InnoDB CHARSET=utf8mb4 COLLATE utf8mb4_bin;

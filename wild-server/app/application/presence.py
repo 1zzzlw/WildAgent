@@ -36,12 +36,13 @@ class PresenceService:
         self.store = store or PresenceStore()
 
     async def register(self, *, display_name: object, masked_ip: str, region: str,
-                       user: dict | None = None) -> dict:
+                       user: dict | None = None, guest_session_id: str | None = None) -> dict:
         user = user or {}
         client = {"id": secrets.token_hex(16), "display_name": normalize_display_name(display_name),
                   "masked_ip": masked_ip, "region": region, "connected_at": int(time.time() * 1000),
                   "user_id": user.get("id"), "username": user.get("username"),
-                  "can_edit": user.get("role") == "editor", "session_id": None, "activity": "idle"}
+                  "can_edit": user.get("role") == "editor", "session_id": None, "activity": "idle",
+                  "_guest_session_id": guest_session_id}
         await self.store.register(client)
         return client
 
@@ -79,12 +80,20 @@ class PresenceService:
 
     async def snapshot(self) -> dict:
         """内部快照；出站前由 public_presence_snapshot 按接收账号过滤。"""
-        clients = await self.store.list_active()
+        account_ids = set()
+        editor_connections = []
+        guest_connections = {}
         now = int(time.time() * 1000)
-        for client in clients:
+        for client in await self.store.list_active():
             if now - client.get("_activity_at", 0) >= SESSION_IDLE_SECONDS * 1000:
                 client["activity"] = "idle"
-        return {"type": "presence_update", "online_count": len(clients), "clients": clients,
+            if account_id := client.get("user_id"):
+                account_ids.add(account_id)
+                editor_connections.append(client)
+            elif guest_session_id := client.get("_guest_session_id"):
+                guest_connections[guest_session_id] = client
+        clients = sorted([*editor_connections, *guest_connections.values()], key=lambda client: client["connected_at"])
+        return {"type": "presence_update", "online_count": len(account_ids) + len(guest_connections), "clients": clients,
                 "session_activity_supported": True}
 
 

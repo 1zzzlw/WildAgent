@@ -370,8 +370,11 @@ function updateInstanceMatrices(
   const quaternion = new THREE.Quaternion()
   const scale = new THREE.Vector3()
   const euler = new THREE.Euler()
+  const buffer = instanced.instanceMatrix.array
+  let changed = false
 
-  entries.forEach(({ meshData }, index) => {
+  for (let index = 0; index < entries.length; index++) {
+    const { meshData } = entries[index]
     position.fromArray(meshData.transform.position)
     euler.set(
       meshData.transform.rotation[0],
@@ -382,11 +385,21 @@ function updateInstanceMatrices(
     quaternion.setFromEuler(euler)
     scale.fromArray(meshData.transform.scale)
     matrix.compose(position, quaternion, scale)
+    const offset = index * 16
+    let same = true
+    for (let component = 0; component < 16; component++) {
+      if (Math.fround(matrix.elements[component]) === buffer[offset + component]) continue
+      same = false
+      break
+    }
+    if (same) continue
     instanced.setMatrixAt(index, matrix)
-  })
-  instanced.instanceMatrix.needsUpdate = true
-  instanced.computeBoundingSphere()
-  instanced.computeBoundingBox()
+    changed = true
+  }
+  // 重建其他构件时保留已有实例缓冲及其剔除边界。
+  if (changed) instanced.instanceMatrix.needsUpdate = true
+  if (changed || !instanced.boundingSphere) instanced.computeBoundingSphere()
+  if (changed || !instanced.boundingBox) instanced.computeBoundingBox()
 }
 
 function populateSceneGroup(

@@ -8,6 +8,11 @@ interface DynamicCollider {
   tree: Octree
 }
 
+interface RayHit {
+  distanceSquared: number
+  triangle: THREE.Triangle | null
+}
+
 /** 只读取宿主提供的显示网格，既不修改几何，也不拥有它的GPU资源。 */
 export class RoamingCollisionWorld {
   readonly meshes: THREE.Mesh[] = []
@@ -15,7 +20,16 @@ export class RoamingCollisionWorld {
   readonly groundY: number
   private readonly fixed = new Octree()
   private readonly moving: DynamicCollider[] = []
+  private readonly platforms: DynamicCollider[] = []
   private readonly trees: Octree[] = [this.fixed]
+  private readonly rayPoint = new THREE.Vector3()
+  private readonly rayNormal = new THREE.Vector3()
+  private readonly rayHit: RayHit = { distanceSquared: 0, triangle: null }
+  private readonly rayTriangles = new Set<THREE.Triangle>()
+  private readonly floorRay = new THREE.Ray(new THREE.Vector3(), new THREE.Vector3(0, -1, 0))
+  private readonly platformBounds = new THREE.Box3()
+  private readonly platformOrigin = new THREE.Vector3()
+  private readonly platformOffset = new THREE.Vector3()
 
   constructor(root: THREE.Object3D, groundY: number) {
     this.groundY = groundY
@@ -34,7 +48,12 @@ export class RoamingCollisionWorld {
         const tree = new Octree()
         this.addMesh(tree, object)
         this.buildTree(tree)
-        this.moving.push({ mesh: object, matrix: object.matrixWorld.clone(), tree })
+        const collider = { mesh: object, matrix: object.matrixWorld.clone(), tree }
+        this.moving.push(collider)
+        if (object.name === object.userData.interaction.groupId + '__cab') {
+          if (!object.geometry.boundingBox) object.geometry.computeBoundingBox()
+          this.platforms.push(collider)
+        }
         this.trees.push(tree)
       } else {
         this.addMesh(this.fixed, object)
@@ -91,17 +110,15 @@ export class RoamingCollisionWorld {
   /** 用上一帧的平台平面确认支撑，再携带乘客；上行与下行都无需靠碰撞挤推。 */
   carryPlatform(capsule: Capsule): void {
     const feet = capsule.start.y - capsule.radius
-    for (const item of this.moving) {
-      if (item.mesh.name !== item.mesh.userData.interaction?.groupId + '__cab') continue
-      item.mesh.geometry.computeBoundingBox()
-      const previous = item.mesh.geometry.boundingBox!.clone().applyMatrix4(item.matrix)
+    for (const item of this.platforms) {
+      const previous = this.platformBounds.copy(item.mesh.geometry.boundingBox!).applyMatrix4(item.matrix)
       if (Math.abs(feet - previous.max.y) > 0.08
         || capsule.start.x < previous.min.x || capsule.start.x > previous.max.x
         || capsule.start.z < previous.min.z || capsule.start.z > previous.max.z) continue
       item.mesh.updateWorldMatrix(true, false)
-      const before = new THREE.Vector3().setFromMatrixPosition(item.matrix)
-      const after = new THREE.Vector3().setFromMatrixPosition(item.mesh.matrixWorld)
-      capsule.translate(after.sub(before))
+      this.platformOrigin.setFromMatrixPosition(item.matrix)
+      this.platformOffset.setFromMatrixPosition(item.mesh.matrixWorld).sub(this.platformOrigin)
+      capsule.translate(this.platformOffset)
       return
     }
   }
@@ -142,14 +159,38 @@ export class RoamingCollisionWorld {
     return { grounded, wall }
   }
 
+  /** 相机与落脚射线只遍历最近命中之前的子节点。 */
+  private traceRay(tree: Octree, ray: THREE.Ray, hit: RayHit): void {
+    if (!tree.box) return
+    if (!tree.box.containsPoint(ray.origin)) {
+      const entry = ray.intersectBox(tree.box, this.rayPoint)
+      if (!entry || entry.distanceToSquared(ray.origin) > hit.distanceSquared) return
+    }
+    for (const triangle of tree.triangles) {
+      if (this.rayTriangles.has(triangle)) continue
+      this.rayTriangles.add(triangle)
+      const point = ray.intersectTriangle(triangle.a, triangle.b, triangle.c, true, this.rayPoint)
+      if (!point) continue
+      const distanceSquared = point.distanceToSquared(ray.origin)
+      if (distanceSquared < hit.distanceSquared) {
+        hit.distanceSquared = distanceSquared
+        hit.triangle = triangle
+      }
+    }
+    for (const child of tree.subTrees) this.traceRay(child, ray, hit)
+  }
+
   rayDistance(ray: THREE.Ray, limit: number, walkableOnly = false): number {
     let distance = limit
     for (const tree of this.trees) {
-      if (!tree.box || !ray.intersectsBox(tree.box)) continue
-      const hit = tree.rayIntersect(ray) as false | { distance: number; triangle: THREE.Triangle }
-      if (!hit || hit.distance > distance) continue
-      if (walkableOnly && hit.triangle.getNormal(new THREE.Vector3()).y < 0.55) continue
-      distance = hit.distance
+      this.rayHit.distanceSquared = distance * distance
+      this.rayHit.triangle = null
+      this.traceRay(tree, ray, this.rayHit)
+      this.rayTriangles.clear()
+      const triangle = this.rayHit.triangle
+      if (!triangle) continue
+      if (walkableOnly && triangle.getNormal(this.rayNormal).y < 0.55) continue
+      distance = Math.sqrt(this.rayHit.distanceSquared)
     }
     if (walkableOnly && ray.direction.y < 0) {
       const groundDistance = (this.groundY - ray.origin.y) / ray.direction.y
@@ -159,8 +200,8 @@ export class RoamingCollisionWorld {
   }
 
   floorHeight(position: THREE.Vector3, drop: number): number | null {
-    const ray = new THREE.Ray(position, new THREE.Vector3(0, -1, 0))
-    const distance = this.rayDistance(ray, drop, true)
+    this.floorRay.origin.copy(position)
+    const distance = this.rayDistance(this.floorRay, drop, true)
     return distance < drop ? position.y - distance : null
   }
 
@@ -168,6 +209,7 @@ export class RoamingCollisionWorld {
     this.fixed.clear()
     for (const item of this.moving) item.tree.clear()
     this.moving.length = 0
+    this.platforms.length = 0
     this.meshes.length = 0
     this.trees.length = 0
   }

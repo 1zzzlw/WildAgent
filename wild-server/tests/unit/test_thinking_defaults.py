@@ -67,3 +67,24 @@ def test_object_design_also_uses_only_the_design_switch(monkeypatch, choice):
     assert result["design_document"]["decisions"]["kind"] == "object"
     assert result["object_design_diag"]["used_fallback"] is False
     assert settings == [{"enable_thinking": choice is True, "streaming": False}]
+
+
+@pytest.mark.parametrize("model", ["deepseek-flash", "deepseek-v4-flash"])
+@pytest.mark.parametrize("enabled, budget, expected", [
+    (False, 4096, {"thinking": {"type": "disabled"}}),
+    (True, 0, {"thinking": {"type": "enabled"}}),
+    (True, 4096, {"thinking": {"type": "enabled"}, "reasoning_effort": "low"}),
+    (True, 8192, {"thinking": {"type": "enabled"}, "reasoning_effort": "high"}),
+])
+def test_deepseek_flash_applies_the_switch_and_effort(monkeypatch, model, enabled, budget, expected):
+    from app.infrastructure.llm import creator
+    from app.infrastructure.llm.factory import create_llm
+    from config import ModelConfig
+
+    monkeypatch.setattr(creator, "ReasoningChatOpenAI", SimpleNamespace)
+    model_cfg = ModelConfig(
+        name=model, provider="auto", base_url="https://api.deepseek.com/v1",
+        api_key="test-key", thinking_budget=budget,
+    )
+    llm = create_llm(model_cfg, enable_thinking=enabled, streaming=enabled)
+    assert llm.extra_body == expected

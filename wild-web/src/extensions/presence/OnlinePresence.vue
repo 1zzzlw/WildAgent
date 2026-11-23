@@ -3,37 +3,35 @@
     placement="bottom-end"
     :width="320"
     trigger="click"
-    :disabled="!presenceStore.isConnected || !presenceStore.supported"
+    :disabled="!canShowPeople"
   >
     <template #reference>
-      <el-tag
+      <button
+        type="button"
         class="presence-tag"
-        :class="{ clickable: presenceStore.isConnected }"
-        :type="presenceStore.isConnected ? 'success' : 'info'"
-        effect="plain"
-        size="small"
-        round
-        title="查看当前在线连接"
+        :aria-disabled="!canShowPeople"
+        :aria-label="canShowPeople ? presenceText + '，查看在线用户' : '在线状态：' + presenceText"
+        :title="canShowPeople ? '查看当前在线用户' : '在线状态：' + presenceText"
       >
-        <span class="presence-dot" :class="{ online: presenceStore.isConnected }"></span>
-        {{ presenceText }}
-      </el-tag>
+        <span class="presence-dot" :class="{ online: canShowPeople }" aria-hidden="true"></span>
+        <span>{{ presenceText }}</span>
+      </button>
     </template>
 
     <div class="presence-panel">
       <div class="presence-panel-title">
-        <span>当前在线访客</span>
-        <span>{{ presenceStore.onlineCount }} 个</span>
+        <span>当前在线用户</span>
+        <span>{{ presenceStore.onlineCount }} 人</span>
       </div>
-      <div class="presence-self">
+      <div v-if="auth.user" class="presence-self">
         <span>我的名称：{{ presenceStore.visitorName }}</span>
         <el-button link type="primary" size="small" @click="changeVisitorName">修改</el-button>
       </div>
-      <div v-if="presenceStore.onlineClients.length === 0" class="presence-empty">
-        暂无在线连接信息
+      <div v-if="onlinePeople.length === 0" class="presence-empty">
+        暂无在线用户
       </div>
       <div v-else class="presence-list">
-        <div v-for="client in presenceStore.onlineClients" :key="client.id" class="presence-client">
+        <div v-for="client in onlinePeople" :key="client.user_id || client.id" class="presence-client">
           <span class="presence-client-dot"></span>
           <div class="presence-client-main">
             <span class="presence-client-name">{{ client.display_name || '访客' }}</span>
@@ -50,15 +48,22 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { ElMessageBox } from 'element-plus'
+import { useAuthStore } from '../../stores/authStore'
 import { MAX_VISITOR_NAME_LENGTH } from './types'
 import { normalizeVisitorName, usePresenceStore } from './store'
 
 const presenceStore = usePresenceStore()
+const auth = useAuthStore()
+const canShowPeople = computed(() => presenceStore.isConnected && presenceStore.supported)
+const onlinePeople = computed(() => {
+  const people = new Map(presenceStore.onlineClients.map(client => [client.user_id || client.id, client]))
+  return [...people.values()].sort((a, b) => a.connected_at - b.connected_at)
+})
 const presenceText = computed(() => {
-  if (presenceStore.connectionStatus === 'connecting') return '在线状态连接中'
-  if (presenceStore.connectionStatus === 'reconnecting') return '在线状态重连中'
-  if (!presenceStore.isConnected) return '在线状态离线'
-  if (!presenceStore.supported) return '在线人数暂不可用'
+  if (presenceStore.connectionStatus === 'connecting') return '连接中'
+  if (presenceStore.connectionStatus === 'reconnecting') return '重连中'
+  if (!presenceStore.isConnected) return '离线'
+  if (!presenceStore.supported) return '在线未知'
   return `${presenceStore.onlineCount} 人在线`
 })
 
@@ -99,24 +104,35 @@ async function changeVisitorName() {
   flex: none;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
+  min-height: 32px;
+  padding: 0 7px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--studio-muted);
+  font: inherit;
+  font-size: 12px;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
-.presence-tag.clickable {
+.presence-tag[aria-disabled="false"] {
+  color: var(--studio-accent);
   cursor: pointer;
 }
 
+.presence-tag[aria-disabled="false"]:hover { background: var(--studio-hover); }
+
 .presence-dot {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
-  background: var(--studio-surface);
+  background: var(--studio-muted);
 }
 
 .presence-dot.online {
-  background: var(--studio-hover);
-  box-shadow: 0 0 6px rgba(41, 76, 61, 0.12);
+  background: var(--el-color-success);
 }
 
 .presence-panel-title,

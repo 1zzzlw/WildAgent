@@ -83,6 +83,11 @@ def _validation_reason(exc: Exception) -> str:
                 )
                 if path.startswith("/roof/volumes/"):
                     message += '；数组项应写对象，例如 {"volume": "体量ID", "type": "自拟屋型"}，引用字段名为 volume'
+                if path.startswith("/roofs/") and path.endswith("/geometry/outline"):
+                    message = (
+                        '屋面轮廓须为区域对象，例如 {"type":"profile_region","profile":"轮廓ID"}；'
+                        "体量并集截面使用 volume_union_section，宿主支承截面使用 host_section"
+                    )
                 if path.startswith("/components/") and "/size/" in path:
                     from app.domain.design.contracts import ComponentPlacement
 
@@ -215,15 +220,17 @@ def build_design_document_or_error(
             except ValidationError:
                 pass
             else:
-                conflicts = volume_conflicts(
-                    [v.model_dump(mode="json") for v in volumes],
-                    massing.model_dump(mode="json"),
-                )
-                reasons.extend(
-                    reason
-                    for reason in _coordinate_reasons(conflicts)
-                    if reason not in reasons[0]
-                )
+                # 旧矩形诊断依赖 x/z 等字段。新图纸的体量由空间契约验收。
+                if all(volume.geometry is None for volume in volumes):
+                    conflicts = volume_conflicts(
+                        [volume.model_dump(mode="json") for volume in volumes],
+                        massing.model_dump(mode="json"),
+                    )
+                    reasons.extend(
+                        reason
+                        for reason in _coordinate_reasons(conflicts)
+                        if reason not in reasons[0]
+                    )
         raise DesignContractError("；".join(reasons)) from exc
 
 
@@ -266,16 +273,21 @@ async def architecture_planner(state: GenerationState) -> dict:
         "建筑设计步骤与关系复核 需求形制 体量标高 功能交通 围护开口 屋面附属 材料搭配 字段落地",
         {"entity_name": "architecture_design_process"},
     )
-    rag_started = _time.time()
-    spec_result = await asyncio.to_thread(
-        agent_runtime.spec_loader.load_many_result,
-        [
-            detail_query,
-            process_query,
-            SpecQuery(
-                f"{message} 建筑设计表达 体量围护 开敞 门窗宿主 平面布局",
-                {"entity_name": "architecture_design_expression"},
-            ),
+    queries = [
+        detail_query,
+        process_query,
+        SpecQuery(
+            f"{message} 建筑设计表达 体量围护 开敞 室内房间 内墙 通行 门窗宿主 平面布局",
+            {"entity_name": "architecture_design_expression"},
+        ),
+    ]
+    if complexity["level"] == "minimal":
+        queries.append(SpecQuery(
+            f"{message} {profile_id} 体量组织 楼层标高 逐层轮廓 屋面覆盖",
+            {"entity_name": "massing_composition_rules"},
+        ))
+    else:
+        queries.extend([
             SpecQuery(
                 f"{message} 室内房间 内墙 内门 通行路径 独立柱位 平面图纸",
                 {"entity_name": "architecture_design_expression"},
@@ -284,7 +296,11 @@ async def architecture_planner(state: GenerationState) -> dict:
                 f"{message} {profile_id} 建筑形制 形态表达 空间组织 构件组合",
                 {"doc_type": "component", "topic": "composition"},
             ),
-        ],
+        ])
+    rag_started = _time.time()
+    spec_result = await asyncio.to_thread(
+        agent_runtime.spec_loader.load_many_result,
+        queries,
         per_query=2,
         include_base=False,
     )

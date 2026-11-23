@@ -2,7 +2,7 @@
 
 from typing import Literal
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from starlette.concurrency import run_in_threadpool
 
@@ -90,10 +90,29 @@ def logs(
     until: int | None = Query(default=None, ge=0),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
+    include_details: bool = True,
 ):
     return repository.list_activity(
-        user_id, action, query, since, until, page, page_size
+        user_id,
+        action,
+        query,
+        since,
+        until,
+        page,
+        page_size,
+        include_details=include_details,
     )
+
+
+@router.get("/logs/{log_id}")
+def log_details(
+    log_id: str = Path(min_length=1, max_length=64),
+    user: dict = Depends(administrator),
+):
+    record = repository.get_activity(log_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="找不到对应的操作记录")
+    return record
 
 
 @router.get("/blueprints")

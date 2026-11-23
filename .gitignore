@@ -4,6 +4,7 @@ __pycache__/
 .venv/
 .env
 wild-server/storage/chroma/
+wild-server/storage/tmp/
 wild-server/storage/scenes/
 wild-server/storage/sessions/
 wild-server/storage/designs/

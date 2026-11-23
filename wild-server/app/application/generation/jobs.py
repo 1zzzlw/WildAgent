@@ -64,6 +64,10 @@ class GenerationJob:
     error: str | None = None
 
 
+class GenerationJobNotFound(ValueError):
+    """指定请求未登记为当前会话的持久任务。"""
+
+
 class DurableEventSink:
     """实现 WebSocket 的 send_json 接口，同时持久化并广播事件。"""
 
@@ -234,7 +238,7 @@ class GenerationJobService:
             async with self._event_locks.setdefault(request_id, asyncio.Lock()):
                 job = await self.get_job(request_id)
                 if job is None or job.session_id != session_id:
-                    raise ValueError("找不到当前会话的任务")
+                    raise GenerationJobNotFound("找不到当前会话的任务")
                 if subscriber is not None:
                     await self.attach(request_id, subscriber)
                 event = versioned_event({
@@ -283,11 +287,9 @@ class GenerationJobService:
     ) -> GenerationJob | None:
         """重新附着连接，必要时恢复任务，并补发断线期间的关键事件。"""
         await self.initialize()
-        job = await self.get_job(request_id) if request_id else None
+        job = await self.get_job(request_id) if request_id else await self.get_active_job_for_session(session_id)
         if job is not None and job.session_id != session_id:
             raise ValueError("任务不属于当前会话")
-        if job is None:
-            job = await self.get_active_job_for_session(session_id)
         if job is None:
             return None
         if job.status in {"running", "waiting_review"} and not self._uses_current_pipeline(job):

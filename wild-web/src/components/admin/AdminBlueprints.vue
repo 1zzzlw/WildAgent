@@ -1,20 +1,20 @@
 <template>
-  <section class="admin-card" aria-labelledby="blueprints-heading">
-    <header class="admin-card-heading"><div><h2 id="blueprints-heading">蓝图管理</h2><p>锁定后，所有账号都不能编辑、覆盖或删除。管理员也需要先解锁。</p></div></header>
+  <section class="admin-card" aria-label="蓝图列表">
+    <p class="admin-hint admin-list-note">锁定后，所有账号都不能编辑、覆盖或删除该蓝图。</p>
     <form class="admin-filters" @submit.prevent="load(1)">
       <label>搜索蓝图<input v-model.trim="query" type="search" placeholder="蓝图名称、文件名或所属用户" maxlength="128" /></label>
       <label>锁定状态<select v-model="lockFilter"><option value="">全部状态</option><option value="true">已锁定</option><option value="false">未锁定</option></select></label>
       <button class="admin-button primary" :disabled="loading">{{ loading ? '查询中…' : '查询' }}</button>
     </form>
     <p v-if="error" class="admin-error" role="alert">{{ error }} <button class="admin-link" @click="load(page)">重试</button></p>
-    <div class="admin-table-scroll" :aria-busy="loading"><table class="admin-table"><thead><tr><th scope="col">蓝图 / 所属用户</th><th scope="col">内容</th><th scope="col">状态</th><th scope="col">更新时间</th><th scope="col">操作</th></tr></thead>
+    <div class="admin-table-scroll" :aria-busy="loading"><table class="admin-table" role="table"><thead><tr><th scope="col">蓝图 / 所属用户</th><th scope="col">内容</th><th scope="col">状态</th><th scope="col">更新时间</th><th scope="col">操作</th></tr></thead>
       <tbody><tr v-for="blueprint in rows" :key="blueprint.filename">
         <td><strong>{{ blueprint.name }}</strong><small>{{ blueprint.owner_name || '共享资料' }}</small><small class="admin-code">{{ blueprint.filename }}</small></td>
-        <td>{{ blueprint.elements_count }} 元素 · {{ blueprint.components_count }} 构件</td>
-        <td><span :class="['admin-badge', { warning: blueprint.locked }]">{{ blueprint.locked ? '已锁定 · 只读' : '可编辑' }}</span></td>
-        <td>{{ displayTime(blueprint.updated_at) }}</td>
-        <td><div class="admin-actions"><button class="admin-link" @click="viewDetails(blueprint)">查看详情</button><a class="admin-link" :href="sceneUrl(blueprint.filename)" :download="blueprint.filename.split('/').pop()">导出 WILD</a><button class="admin-link" :disabled="busy" @click="toggleLock(blueprint)">{{ blueprint.locked ? '解锁' : '锁定' }}</button><button class="admin-link danger" :disabled="busy || blueprint.locked" :title="blueprint.locked ? '请先解锁蓝图' : '删除蓝图'" @click="remove(blueprint)">删除</button></div></td>
-      </tr><tr v-if="!rows.length && !loading"><td colspan="5" class="admin-empty">没有符合条件的蓝图</td></tr></tbody>
+        <td data-label="内容">{{ blueprint.elements_count }} 元素 · {{ blueprint.components_count }} 构件</td>
+        <td data-label="状态"><span :class="['admin-badge', { warning: blueprint.locked }]">{{ blueprint.locked ? '已锁定 · 只读' : '可编辑' }}</span></td>
+        <td data-label="更新时间">{{ displayTime(blueprint.updated_at) }}</td>
+        <td class="admin-row-actions"><div class="admin-actions"><button class="admin-link" @click="viewDetails(blueprint)">查看详情</button><a class="admin-link" :href="sceneUrl(blueprint.filename)" :download="blueprint.filename.split('/').pop()">导出 WILD</a><button class="admin-link" :disabled="busy" @click="toggleLock(blueprint)">{{ blueprint.locked ? '解锁' : '锁定' }}</button><button class="admin-link danger" :disabled="busy || blueprint.locked" :title="blueprint.locked ? '请先解锁蓝图' : '删除蓝图'" @click="remove(blueprint)">删除</button></div></td>
+      </tr><tr v-if="!rows.length"><td colspan="5" class="admin-empty">{{ loading ? '正在加载蓝图…' : error ? '加载失败，请重试' : '没有符合条件的蓝图' }}</td></tr></tbody>
     </table></div>
     <AdminPagination :page="page" :total="total" :busy="loading" @change="load" />
     <ElDialog :model-value="Boolean(selected)" title="蓝图详情" width="min(620px, calc(100vw - 32px))" @update:model-value="selected = undefined">

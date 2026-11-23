@@ -857,6 +857,26 @@ def test_audit_pagination_keeps_large_details_out_of_sort_and_preserves_filters(
     assert len(detail_queries) == 2, "只按本页 ID 读取详情，空页不读取详情"
     assert all("audit_logs.id in" in statement and "order by" not in statement for statement in detail_queries)
 
+    summary = client.get("/api/admin/logs", params={
+        "include_details": False,
+        "user_id": seeded["designer"]["id"],
+        "action": "ai.agent_reply",
+        "query": "large-record-",
+        "since": 9,
+        "until": 10,
+        "page_size": 2,
+    })
+    assert summary.status_code == 200
+    preview_rows = summary.json()["items"]
+    assert [row["id"] for row in preview_rows] == ["large-a", "large-c"]
+    assert all(row["preview"] == details["content"][:180] for row in preview_rows)
+    assert all("details" not in row for row in preview_rows)
+    full = client.get("/api/admin/logs/large-a")
+    assert full.status_code == 200 and full.json()["details"] == details
+    assert client.get("/api/admin/logs/unknown-log").status_code == 404
+    login(client, "designer")
+    assert client.get("/api/admin/logs/large-a").status_code == 403
+
 
 def test_blueprint_pagination_never_reads_large_json(management):
     client, seeded, storage = management

@@ -200,6 +200,7 @@ const weatherClock = new THREE.Clock()
 const lightingCenter = new THREE.Vector3()
 const sceneBoundsCenter = new THREE.Vector3()
 const sceneBoundsSize = new THREE.Vector3(8, 4, 8)
+const renderSize = new THREE.Vector2()
 const raycaster = new THREE.Raycaster()
 const pointer = new THREE.Vector2()
 const instanceMatrix = new THREE.Matrix4()
@@ -214,7 +215,6 @@ let hasSceneBounds = false
 let hasFramedScene = false
 let hasNavigatedScene = false
 let needsRender = true
-let hasWaterSurface = false
 let pointerDownPosition: { x: number; y: number } | null = null
 let lastPointerSelectionId: string | null = null
 let selectionHelpers: THREE.Box3Helper[] = []
@@ -236,6 +236,7 @@ let unsubscribeWorldEffects: (() => void) | null = null
 let effectClock = 0
 let fpsSmoothed = 60
 let lastShadowDirtyTime = 0
+let shadowRefreshPending = false
 const SHADOW_DIRTY_THROTTLE_MS = 120
 // 拖动结束时补一次阴影刷新用的尾沿定时器。
 let trailingShadowDirtyTimer: ReturnType<typeof setTimeout> | null = null
@@ -546,7 +547,7 @@ function initThreeJS() {
   scene.background = new THREE.Color(0xb9c9d8)
   worldLookRuntime.setActivationContext({ renderer, scene })
 
-  const aspect = containerRef.value.clientWidth / containerRef.value.clientHeight
+  const aspect = Math.max(1, containerRef.value.clientWidth) / Math.max(1, containerRef.value.clientHeight)
   camera = new THREE.PerspectiveCamera(CAMERA_PRESETS.front.fov, aspect, 0.1, 2000)
   camera.position.set(12, 10, 12)
 
@@ -699,6 +700,9 @@ function handleResize() {
   if (!containerRef.value || !renderer || !camera) return
   const width = containerRef.value.clientWidth
   const height = containerRef.value.clientHeight
+  if (!width || !height) return
+  renderer.getSize(renderSize)
+  if (renderSize.x === width && renderSize.y === height) return
   camera.aspect = width / height
   camera.updateProjectionMatrix()
   renderer.setSize(width, height)
@@ -732,17 +736,23 @@ function renderFrame() {
   if (characterAnimating || mechanismAnimating || entranceAnimating) needsRender = true
   // 锁鼠只代表相机仍需逐帧响应，不代表世界几何发生变化。
   // 第一视角隐藏人物后，转头/行走不应反复重画整栋建筑和室内灯的阴影。
-  if ((characterAnimating && characterRoaming?.avatar.visible) || avatarVisibilityChanged || mechanismAnimating || entranceAnimating) {
+  const shadowCastersAnimating = (characterAnimating && characterRoaming?.avatar.visible) || mechanismAnimating || entranceAnimating
+  if (shadowCastersAnimating || avatarVisibilityChanged) {
     waterReflection?.invalidate()
     const now = performance.now()
     if (avatarVisibilityChanged || now - lastShadowDirtyTime >= SHADOW_DIRTY_THROTTLE_MS
       || entranceAnimating && !assemblyRuntime?.active) {
       lastShadowDirtyTime = now
       markShadowsDirty()
+    } else {
+      shadowRefreshPending = true
     }
+  } else if (shadowRefreshPending) {
+    markShadowsDirty()
   }
   const effects = getWorldEffectState()
-  const waterAnimating = hasWaterSurface && !!camera && !!waterReflection?.hasVisibleSurface(camera)
+  const visibleWaterLevel = camera ? waterReflection?.getVisibleWaterLevel(camera) ?? null : null
+  const waterAnimating = visibleWaterLevel !== null
   const effectsAnimating = effects.clouds || effects.ripples || waterAnimating
   if (effectsAnimating) {
     effectClock += Math.min(0.05, Math.max(0, delta))
@@ -763,14 +773,15 @@ function renderFrame() {
     const renderStarted = performance.now()
     renderer.info.reset()
     if (fixtureLighting.update(camera, qualityLevel.value)) renderer.shadowMap.needsUpdate = true
-    waterReflection?.update(camera)
+    waterReflection?.update(camera, false, visibleWaterLevel)
     if (postProcessing) postProcessing.render()
     else renderer.render(scene, camera)
     renderSubmitMs = performance.now() - renderStarted
     needsRender = false
     publishRenderStats()
   }
-  continuousFrame = entranceAnimating || mechanismAnimating || behaviorAnimating || characterAnimating || controlsAnimating || weatherAnimating || effectsAnimating || needsRender
+  continuousFrame = entranceAnimating || mechanismAnimating || behaviorAnimating || characterRoaming?.locked === true
+    || controlsAnimating || weatherAnimating || effectsAnimating || needsRender
   if (continuousFrame) {
     scheduleRenderFrame()
   }
@@ -810,7 +821,6 @@ function updateScene() {
   roaming.stop()
   const previousApproach = buildingApproach
   buildingApproach = null
-  hasWaterSurface = false
 
   const entity = sceneStore.reconstructed
   if (!entity) {
@@ -832,16 +842,13 @@ function updateScene() {
     applyEdgeMode()
     syncSelectionHighlights()
     syncComponentTransformControl()
-    markNeedsRender()
+    markShadowsDirty()
     return
   }
 
   worldRuntime?.updateInstance('editor:active-blueprint', entity)
   fixtureLighting.setRoot(sceneGroup)
   waterReflection?.setRoot(sceneGroup)
-  sceneGroup.traverse(object => {
-    if (object instanceof THREE.Mesh && (Array.isArray(object.material) ? object.material : [object.material]).some(material => material.userData.wildWaterSurface)) hasWaterSurface = true
-  })
   markShadowsDirty()
 
   // 空场景（0 个构件）：重置相机到初始位置，防止上次的 camera 位置导致 grid 不可见
@@ -2088,6 +2095,7 @@ async function takeScreenshot() {
 
 function markShadowsDirty() {
   if (!renderer || !directionalLight) return
+  shadowRefreshPending = false
   renderer.shadowMap.needsUpdate = true
   directionalLight.shadow.needsUpdate = true
   fixtureLighting.invalidateShadows()

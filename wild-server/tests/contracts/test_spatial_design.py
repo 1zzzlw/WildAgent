@@ -251,11 +251,25 @@ def test_invalid_geometry_and_references_are_rejected(mutation):
 def test_prompt_schema_omits_history_and_keeps_field_descriptions():
     schema = architecture_output_schema()
     assert "facades" not in schema["properties"]
+    assert "coordinate_system" not in schema["properties"]
+    assert {"massing", "levels", "profiles", "volumes"} <= set(schema["required"])
     assert "x" not in schema["$defs"]["VolumeDecision"]["properties"]
     assert schema["properties"]["walls"]["description"]
     assert schema["$defs"]["ComponentPlacement"]["properties"]["elevation"][
         "description"
     ]
+
+
+@pytest.mark.parametrize("outline", ["outline", ["outline"]])
+def test_roof_outline_type_is_checked_before_projection(outline):
+    plan = spatial_plan()
+    plan["roofs"] = [{
+        "id": "roof", "host": "main", "support": {"level": "RF"},
+        "geometry": {"type": "flat", "outline": outline},
+    }]
+    with pytest.raises(ValidationError) as exc:
+        document(plan)
+    assert any(error["loc"] == ("roofs", 0, "geometry", "outline") for error in exc.value.errors())
 
 
 @pytest.mark.parametrize("kind", ["rectangle", "circle", "loft"])
@@ -552,8 +566,9 @@ def test_construct_systems_orders_hosts_before_named_opening_tasks(kind):
     assert not state.pending
 
 
+@pytest.mark.parametrize("draft_issue", [None, "missing_massing", "roof_outline"])
 def test_actual_architecture_node_accepts_spatial_schema_without_legacy_fields(
-    monkeypatch,
+    monkeypatch, draft_issue,
 ):
     import asyncio
     import json
@@ -563,17 +578,33 @@ def test_actual_architecture_node_accepts_spatial_schema_without_legacy_fields(
     from app.infrastructure.llm.invocation import LlmResult
 
     plan = spatial_plan("circle")
+    first = deepcopy(plan)
+    responses = [first]
+    if draft_issue == "missing_massing":
+        responses.append({"operations": [
+            {"op": "add", "path": "/massing", "value": first.pop("massing")},
+        ]})
+    elif draft_issue == "roof_outline":
+        first["roofs"] = [{
+            "id": "roof", "host": "main", "support": {"level": "RF"},
+            "geometry": {"type": "flat", "outline": "outline"},
+        }]
+        responses.append({"operations": [
+            {"op": "replace", "path": "/roofs/0/geometry/outline",
+             "value": {"type": "host_section", "level": "RF"}},
+        ]})
     calls = []
 
     async def reply(_model, messages, **_kwargs):
         calls.append(messages)
-        return LlmResult(content=json.dumps(plan, ensure_ascii=False))
+        return LlmResult(content=json.dumps(responses[len(calls) - 1], ensure_ascii=False))
 
     monkeypatch.setattr(
         agent_runtime.spec_loader,
         "load_many_result",
         lambda *_a, **_kw: SimpleNamespace(text="", hits=[]),
     )
+    monkeypatch.setattr(agent_runtime.spec_loader, "load_many", lambda *_a, **_kw: "")
     monkeypatch.setattr(architecture, "get_reasoning_callback", lambda: None)
     monkeypatch.setattr(drafting, "create_llm", lambda **_kw: object())
     monkeypatch.setattr(drafting, "invoke_llm", reply)
@@ -589,7 +620,14 @@ def test_actual_architecture_node_accepts_spatial_schema_without_legacy_fields(
         )
     )
     assert result.get("error") is None, result.get("error")
-    assert len(calls) == 1
+    assert len(calls) == len(responses)
+    if draft_issue == "missing_massing":
+        assert result["architecture_diag"]["repairs"][0]["validated"]
+        assert '允许修改的范围：["/massing"]' in calls[1][0]["content"]
+        assert '"required_fields"' in calls[1][0]["content"]
+    elif draft_issue == "roof_outline":
+        assert result["architecture_diag"]["repairs"][0]["validated"]
+        assert "/roofs/0/geometry/outline" in calls[1][0]["content"]
     assert result["design_document"]["schema_version"] == "design/1.0"
     assert result["architecture_plan"]["volumes"][0]["geometry"]["type"] == "extrusion"
     assert result["resolved_design"]["body_geometry"]["elements"]

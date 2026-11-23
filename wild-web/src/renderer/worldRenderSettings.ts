@@ -21,7 +21,7 @@ export function applyWorldRenderQuality(renderer: THREE.WebGLRenderer, post: Wor
   lighting: WorldLightingRig | null, quality: QualityLevel, time: TimeOfDay, devicePixelRatio = 1): void {
   const preset = QUALITY_PRESETS[quality]
   const ratio = Math.min(devicePixelRatio, preset.pixelRatio)
-  renderer.setPixelRatio(ratio)
+  if (ratio !== renderer.getPixelRatio()) renderer.setPixelRatio(ratio)
   post.setPixelRatio(ratio)
   post.setMsaaSamples(4)
   post.output.material.uniforms.worldSharpen.value = quality === 'high' ? .16 : quality === 'medium' ? .1 : 0

@@ -3,15 +3,16 @@ import json
 import asyncio
 import time
 import re
+from hashlib import sha256
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
 from loguru import logger
 from config import config
 from app.application.generation.events import AGENT_PROTOCOL_VERSION
 from app.domain.access import access_context_from_headers
-from app.application.generation.jobs import generation_job_service
+from app.application.generation.jobs import GenerationJobNotFound, generation_job_service
 from app.api.websocket.connections import presence_service
 from app.api.websocket.heartbeat import WebSocketHeartbeat
-from app.api.dependencies import current_user
+from app.api.dependencies import COOKIE_NAME, current_user
 from app.application.access import check_session
 from app.application.errors import ApplicationError
 from app.infrastructure.persistence.repositories.activity import record_activity
@@ -22,6 +23,14 @@ from app.api.websocket.presenter import is_disconnected as _websocket_disconnect
 
 
 router = APIRouter()
+
+
+async def _send_job_not_found(ws: WebSocket, request_id: str, session_id: str) -> None:
+    await _send_event(ws, {
+        "type": "error", "code": "generation_not_found",
+        "request_id": request_id, "session_id": session_id,
+        "error": "服务端没有这次生成的任务记录，请重新发送请求。",
+    })
 
 
 @router.websocket("/ws/agent")
@@ -70,7 +79,13 @@ async def agent_websocket(ws: WebSocket):
     # ---------- 消息接收循环 ----------
     try:
         await heartbeat.start(on_heartbeat_timeout)
-        await presence_service.connect(ws, user=await asyncio.to_thread(current_user, ws))
+        connected_user = await asyncio.to_thread(current_user, ws)
+        guest_session_id = None
+        if (connected_user or {}).get("role") == "guest":
+            token = ws.cookies.get(COOKIE_NAME)
+            if token:
+                guest_session_id = sha256(f"wild-presence:{token}".encode()).hexdigest()
+        await presence_service.connect(ws, user=connected_user, guest_session_id=guest_session_id)
         while connection_alive and not _websocket_disconnected(ws):
             # receive_text 在没有消息时挂起，但不占用事件循环线程。
             raw = await ws.receive_text()
@@ -127,15 +142,16 @@ async def agent_websocket(ws: WebSocket):
                 request_id = str(data.get("request_id") or "")
                 if (not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", session_id)
                         or (request_id and not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", request_id))):
-                    await _send_event(ws, {"type": "error", "code": "invalid_request", "error": "无效的会话或任务标识"})
+                    await _send_event(ws, {"type": "error", "code": "invalid_request", "request_id": request_id,
+                                           "session_id": session_id, "error": "无效的会话或任务标识"})
                     continue
+                if msg_type == "user_message":
+                    logger.info(f"[{request_id}] 收到 Agent 生成请求，session_id={session_id}")
                 try:
                     await asyncio.to_thread(check_session, session_id, user)
                     previous = await generation_job_service.get_job(request_id) if request_id else None
                     if previous is not None and previous.session_id != session_id:
                         raise HTTPException(status_code=404, detail="任务不存在")
-                    if msg_type == "user_message":
-                        await asyncio.to_thread(conversations.ensure, session_id, user["id"])
                 except (HTTPException, ApplicationError):
                     await _send_event(ws, {"type": "error", "code": "permission_denied", "request_id": request_id,
                                            "session_id": session_id, "error": "会话或任务不存在"})
@@ -156,15 +172,31 @@ async def agent_websocket(ws: WebSocket):
                 )
 
             elif msg_type == "user_message":
-                # 进入后台任务或持久化队列前，由服务端覆盖身份并脱敏输入。
-                data = _prepare_server_request(data, access_context)
-                data["_server_user_id"] = user["id"]
-                await asyncio.to_thread(record_activity, user["id"], "ai.request",
-                                       session_id=data.get("session_id"), request_id=data.get("request_id"),
-                                       key="ai.request:" + str(data.get("request_id")),
-                                       details={"message": data.get("message", "")[:12000]})
-                job, created = await generation_job_service.start_job(data, ws)
+                try:
+                    await asyncio.to_thread(conversations.ensure, session_id, user["id"])
+                    # 进入后台任务或持久化队列前，由服务端覆盖身份并脱敏输入。
+                    data = _prepare_server_request(data, access_context)
+                    data["_server_user_id"] = user["id"]
+                    await asyncio.to_thread(record_activity, user["id"], "ai.request",
+                                           session_id=session_id, request_id=request_id,
+                                           key="ai.request:" + request_id,
+                                           details={"message": data["message"][:12000]})
+                    job, created = await generation_job_service.start_job(data, ws)
+                except Exception:
+                    logger.exception(f"[{request_id}] 创建 Agent 任务失败，session_id={session_id}")
+                    await _send_event(ws, {
+                        "type": "error", "code": "generation_start_failed",
+                        "request_id": request_id, "session_id": session_id,
+                        "error": "生成任务未能启动，请重新发送请求。",
+                    })
+                    continue
                 if not created:
+                    if job.request_id != request_id:
+                        await _send_event(ws, {
+                            "type": "error", "code": "generation_already_running",
+                            "request_id": request_id, "session_id": session_id,
+                            "error": "当前会话已有生成任务，正在恢复已有任务的进度。",
+                        })
                     await generation_job_service.resume_or_replay(
                         ws,
                         request_id=job.request_id,
@@ -178,6 +210,8 @@ async def agent_websocket(ws: WebSocket):
                         ws, request_id=str(data.get("request_id") or ""),
                         session_id=str(data.get("session_id") or ""),
                     )
+                except GenerationJobNotFound:
+                    await _send_job_not_found(ws, request_id, session_id)
                 except ValueError as exc:
                     await _send_event(ws, {
                         "type": "error", "code": "generation_stop_rejected",
@@ -186,12 +220,15 @@ async def agent_websocket(ws: WebSocket):
                     })
 
             elif msg_type == "resume_generation":
-                await generation_job_service.resume_or_replay(
+                job = await generation_job_service.resume_or_replay(
                     ws,
-                    request_id=data.get("request_id"),
-                    session_id=str(data.get("session_id") or ""),
+                    request_id=request_id or None,
+                    session_id=session_id,
                     after_seq=int(data.get("last_event_seq") or 0),
                 )
+                if request_id and job is None:
+                    await _send_job_not_found(ws, request_id, session_id)
+                    await generation_job_service.resume_or_replay(ws, request_id=None, session_id=session_id)
 
             else:
                 await _send_event(ws, {

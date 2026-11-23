@@ -106,6 +106,11 @@ try {
     assert(await store.loadBlueprint(large),'大场景重建失败');await nextTick()
     assert(store.reconstructed.meshes.length===1205,'大场景丢失网格')
     const largeMeshes=[...s.sceneGroup.children],originalEntity=s.sceneStore.reconstructed
+    const instances=largeMeshes.filter(mesh=>mesh.isInstancedMesh)
+    assert(instances.length>0,'大场景应包含可复用的实例批次')
+    const matrixVersions=instances.map(mesh=>mesh.instanceMatrix.version)
+    s.updateScene()
+    assert(instances.every((mesh,i)=>mesh.instanceMatrix.version===matrixVersions[i]),'未变化的实例矩阵被重新提交')
     await store.reconstruct();await nextTick()
     assert(largeMeshes.every((mesh,i)=>mesh===s.sceneGroup.children[i]),'大场景重建未复用网格')
     assert(s.sceneStore.reconstructed===originalEntity,'未变化的蓝图没有复用重建缓存')

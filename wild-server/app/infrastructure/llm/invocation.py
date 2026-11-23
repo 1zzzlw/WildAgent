@@ -202,8 +202,12 @@ async def stream_llm(llm, messages, *, on_reasoning_delta=None) -> LlmResult:
                 if llm_timeout > 0 and (text or delta):
                     deadline.reschedule(asyncio.get_running_loop().time() + llm_timeout)
                 if text:
+                    if not content_parts:
+                        call_metadata["first_content_ms"] = round((time.perf_counter() - started) * 1000)
                     content_parts.append(text)
                 if delta:
+                    if not reasoning_parts:
+                        call_metadata["first_reasoning_ms"] = round((time.perf_counter() - started) * 1000)
                     reasoning_parts.append(delta)
                     if on_reasoning_delta is not None:
                         await on_reasoning_delta(delta)

@@ -8,7 +8,9 @@ export class WaterReflectionRuntime {
   private surfaces: THREE.Mesh[] = []
   private materials = new Set<THREE.Material>()
   private worldBox = new THREE.Box3()
+  private instanceWorld = new THREE.Matrix4()
   private inverse = new THREE.Matrix4()
+  private reflectionMatrix = new THREE.Matrix4()
   private frameSize = new THREE.Vector2()
   private projection = new THREE.Matrix4()
   private frustum = new THREE.Frustum()
@@ -50,9 +52,10 @@ export class WaterReflectionRuntime {
 
   invalidate(): void { this.dirty = true }
 
-  hasVisibleSurface(camera: THREE.Camera): boolean { return this.visibleWaterLevel(camera) !== null }
+  hasVisibleSurface(camera: THREE.Camera): boolean { return this.getVisibleWaterLevel(camera) !== null }
 
-  private visibleWaterLevel(camera: THREE.Camera): number | null {
+  getVisibleWaterLevel(camera: THREE.Camera): number | null {
+    if (!this.surfaces.length) return null
     camera.updateMatrixWorld()
     this.projection.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse)
     this.frustum.setFromProjectionMatrix(this.projection)
@@ -62,38 +65,46 @@ export class WaterReflectionRuntime {
       for (let object: THREE.Object3D | null = mesh; object; object = object.parent) if (!object.visible) { visible = false; break }
       if (!visible) continue
       mesh.updateWorldMatrix(true, false)
-      if (this.up.set(0, 1, 0).transformDirection(mesh.matrixWorld).y < 0.999) continue
       if (!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox()
-      this.worldBox.copy(mesh.geometry.boundingBox!).applyMatrix4(mesh.matrixWorld)
-      if (!this.frustum.intersectsBox(this.worldBox)) continue
-      const area = (this.worldBox.max.x - this.worldBox.min.x) * (this.worldBox.max.z - this.worldBox.min.z)
-      if (area > largestArea) { largestArea = area; height = this.worldBox.max.y }
+      const count = mesh instanceof THREE.InstancedMesh ? mesh.count : 1
+      for (let index = 0; index < count; index++) {
+        let matrix = mesh.matrixWorld
+        if (mesh instanceof THREE.InstancedMesh) {
+          mesh.getMatrixAt(index, this.instanceWorld)
+          matrix = this.instanceWorld.premultiply(mesh.matrixWorld)
+        }
+        if (this.up.set(0, 1, 0).transformDirection(matrix).y < 0.999) continue
+        this.worldBox.copy(mesh.geometry.boundingBox!).applyMatrix4(matrix)
+        if (!this.frustum.intersectsBox(this.worldBox)) continue
+        const area = (this.worldBox.max.x - this.worldBox.min.x) * (this.worldBox.max.z - this.worldBox.min.z)
+        if (area > largestArea) { largestArea = area; height = this.worldBox.max.y }
+      }
     }
     return largestArea ? height : null
   }
 
-  update(camera: THREE.Camera, force = false): void {
+  update(camera: THREE.Camera, force = false, visibleLevel?: number | null): void {
     this.active = false
     for (const material of this.materials) getWaterReflectionUniforms(material).strength.value = 0
     if (!this.enabled || !this.surfaces.length) return
-    const height = this.visibleWaterLevel(camera)
+    const height = visibleLevel === undefined ? this.getVisibleWaterLevel(camera) : visibleLevel
     if (height === null || this.cameraPosition.setFromMatrixPosition(camera.matrixWorld).y <= height) return
     this.renderer.getDrawingBufferSize(this.frameSize)
     const scale = Math.min(0.5, 1024 / Math.max(this.frameSize.x, this.frameSize.y))
     const width = Math.max(1, Math.round(this.frameSize.x * scale)), heightPx = Math.max(1, Math.round(this.frameSize.y * scale))
     if (!this.reflector) this.reflector = new Reflector(new THREE.PlaneGeometry(1, 1), { textureWidth: width, textureHeight: heightPx, clipBias: 0.003, multisample: 0 })
     const reflector = this.reflector
-    if (reflector.getRenderTarget().width !== width || reflector.getRenderTarget().height !== heightPx) {
-      reflector.getRenderTarget().setSize(width, heightPx)
-      this.invalidate()
-    }
-    reflector.position.set(0, height, 0)
-    reflector.rotation.x = -Math.PI / 2
-    reflector.updateMatrixWorld(true)
+    const target = reflector.getRenderTarget()
+    const sizeChanged = target.width !== width || target.height !== heightPx
+    if (sizeChanged) target.setSize(width, heightPx)
     const changed = this.dirty || height !== this.capturedHeight || !this.cameraMatrix.equals(camera.matrixWorld)
       || !this.cameraProjection.equals(camera.projectionMatrix)
     // 水纹只改变采样法线。静止视图复用捕获；变化时最多每秒捕获 30 次。
-    if ((force || changed) && (force || this.captureCount === 0 || performance.now() - this.lastCapture >= 1000 / 30)) {
+    // 调整尺寸会清空纹理，必须在本帧重新填充。
+    if (force || sizeChanged || (changed && performance.now() - this.lastCapture >= 1000 / 30)) {
+      reflector.position.set(0, height, 0)
+      reflector.rotation.x = -Math.PI / 2
+      reflector.updateMatrixWorld(true)
       // 捕获时排除所有水面，避免递归/采样正在写入的纹理，也排除编辑辅助物。
       const hidden: Array<[THREE.Object3D, boolean]> = [...this.surfaces, ...this.scene.children.filter(object => object instanceof THREE.Line || object.type === 'TransformControls' || object.name === 'SelectionEdges')]
         .map(object => [object, object.visible])
@@ -103,6 +114,8 @@ export class WaterReflectionRuntime {
       } finally {
         hidden.forEach(([object, visible]) => { object.visible = visible })
       }
+      const matrix = (reflector.material as THREE.ShaderMaterial).uniforms.textureMatrix!.value as THREE.Matrix4
+      this.reflectionMatrix.copy(matrix).multiply(this.inverse.copy(reflector.matrixWorld).invert())
       this.cameraMatrix.copy(camera.matrixWorld)
       this.cameraProjection.copy(camera.projectionMatrix)
       this.capturedHeight = height
@@ -110,13 +123,12 @@ export class WaterReflectionRuntime {
       this.dirty = false
       this.captureCount++
     }
-    const matrix = (reflector.material as THREE.ShaderMaterial).uniforms.textureMatrix!.value as THREE.Matrix4
-    this.inverse.copy(reflector.matrixWorld).invert()
     for (const material of this.materials) {
       const uniforms = getWaterReflectionUniforms(material)
-      uniforms.map.value = reflector.getRenderTarget().texture
-      uniforms.matrix.value.copy(matrix).multiply(this.inverse)
-      uniforms.height.value = height
+      uniforms.map.value = target.texture
+      uniforms.matrix.value.copy(this.reflectionMatrix)
+      // 限帧期间继续使用本次捕获对应的水位，其他水位由材质回退到环境反射。
+      uniforms.height.value = this.capturedHeight
       uniforms.texel.value.set(1 / width, 1 / heightPx)
       uniforms.strength.value = 0.85
     }

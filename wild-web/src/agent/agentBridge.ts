@@ -158,6 +158,7 @@ export class AgentBridge {
 
   /** 初始化连接 */
   connect() {
+    if (this.ws && (this.ws.readyState === WebSocket.CONNECTING || this.ws.readyState === WebSocket.OPEN)) return
     const agentStore = useAgentStore()
     const presenceStore = usePresenceStore()
 
@@ -245,6 +246,7 @@ export class AgentBridge {
 
       this.ws.onclose = () => {
         if (this.ws !== connection) return
+        this.ws = null
         console.log('[AgentBridge] WebSocket 已断开')
         this.activityTracker?.dispose()
         this.activityTracker = null
@@ -683,6 +685,13 @@ export class AgentBridge {
           void this.syncConversationState(sessionId)
           break
         }
+        if (message.code === 'generation_not_found') {
+          const turn = agentStore.getTurnsForSession(sessionId).find(item => item.request_id === message.request_id)
+          if (turn?.status !== 'running' && turn?.status !== 'waiting_review') {
+            this.requestContexts.delete(message.request_id)
+            break
+          }
+        }
         if (message.code === 'model_service_error') {
           agentStore.addSystemMessageForTurn(
             sessionId,
@@ -696,7 +705,7 @@ export class AgentBridge {
           break
         }
         agentStore.addSystemMessageForTurn(sessionId, message.request_id, `错误: ${message.error}`)
-        agentStore.completeTurn(sessionId, message.request_id, 'error')
+        agentStore.completeTurn(sessionId, message.request_id, 'error', message.error)
         if (sessionId === agentStore.currentSessionId) agentStore.setProcessing(false)
         void this.syncConversationState(sessionId)
         this.requestContexts.delete(message.request_id)
@@ -1279,10 +1288,7 @@ export class AgentBridge {
     this.activityTracker?.dispose()
     this.activityTracker = null
     // 判定连接已死，强制关闭并重连
-    if (this.ws) {
-      this.ws.close()
-      this.ws = null
-    }
+    this.ws?.close()
     this.stopHeartbeat()
 
     const agentStore = useAgentStore()

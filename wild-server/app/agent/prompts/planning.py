@@ -55,7 +55,7 @@ def build_architecture_plan_prompt(
 ) -> str:
     """字段定义来自同一份设计契约；不再维护另一份矩形建筑输出模板。"""
     import json
-    from app.domain.components.names import component_reference_prompt
+    from app.domain.components.names import component_naming_prompt
     from app.domain.design.architecture.profile import resolve_complexity_profile
     from app.domain.design.contracts import architecture_output_schema
     from app.domain.design.contracts import RoofDecision
@@ -76,11 +76,12 @@ def build_architecture_plan_prompt(
 design_intent 中选定的特征必须有相应数据，不能仅靠文字表达。
 
 只返回一个完整建筑设计方案 JSON。封装设计文档和 schema_version=design/1.0 由程序完成。
+先输出必填的 massing、levels、profiles、volumes，再声明与本次设计有关的其他字段。
 下面是字段的 JSON Schema；字段中文说明、坐标语义和必填约束均以此为准：
 {schema}
 
 使用新空间字段，不输出历史矩形字段 volume.x/z/width/depth、facades、roof：
-- coordinate_system：米、弧度、Y向上、XZ平面、右手系。
+- 统一使用米、弧度、Y向上、XZ平面、右手系，coordinate_system 由程序填写。
 - levels：每个实际建模楼面使用稳定ID和世界标高；屋面标高 kind=roof。massing 只控制总体包络、层数与概念，不生成实际几何。
 - profiles：闭合轮廓；矩形、圆、椭圆、多边形、连续线/圆弧/三次Bezier曲线均可。轮廓边使用稳定ID。孔洞通过轮廓ID引用。
 - volumes：placement 指定局部原点和绕+Y转角；geometry 选择 extrusion 或 section_loft。倾斜、收分、扭转通过多个有序截面表达；对应截面保持相同边ID和孔洞拓扑。
@@ -91,7 +92,7 @@ design_intent 中选定的特征必须有相应数据，不能仅靠文字表达
 - 门窗 host 引用 walls 的逻辑ID。placement.mode=wall，anchor=bottom_left，offset 是沿有向墙路径的弧长，elevation 给洞口下沿标高，normal_offset 是沿局部法线偏移。门窗宽高写 size。不要猜测世界坐标。
 - 独立构件 mode=world、position、anchor；宿主锚点定位用 mode=anchor、host_anchor/self_anchor/anchor_offset。surface 定位为扩展能力，未有执行支持时会报告缺口。
 - 楼梯、阳台按需求选用；不用为填字段而新增。选用楼梯时声明 floor_connections.from_level/to_level，footprint/opening/access 引用轮廓或留洞，并给出形式、尺寸和出入口。竖向交通必须与楼板留洞一致。
-- roofs 是明确的屋面清单；host 引用体量或墙，geometry 写具体屋型、范围和参数；无独立屋面时使用 []，而不是自动补屋顶。
+- roofs 声明实际屋面；host 引用体量或墙，geometry 写具体屋型和参数。屋面采用额外轮廓时，outline 写区域对象，引用轮廓 ID 放在对象的 profile 字段。无独立屋面时使用 []。
   geometry.ridge_axis沿用共享屋面约定：{RoofDecision.model_fields['ridge_axis'].description}
 - components 用稳定ID、type、system、host、size、placement、form 表达构件；共享参数放 systems，实例差异放 parameters。
 - relations 记录 supported_by/connects_spaces/aligned 等引用关系。materials.roles 可声明自定义角色；同一角色对应同一种材质，材料由后续材质节点落实。
@@ -99,8 +100,8 @@ design_intent 中选定的特征必须有相应数据，不能仅靠文字表达
 可声明 parameters，尺寸共享与重复使用参数协议。确定版本只保存展开后的数值：
 {PARAMETRIC_PROTOCOL}
 首次设计不要引用尚未生成的 facts.current_design。构造深化只补充已选构件的实现参数，不改变空间设计。
-type 使用稳定英文 snake_case，具体形式、色彩和材料写 description/form：
-{component_reference_prompt()}
+type 使用稳定英文 snake_case，具体形式、色彩和材料写 description/form。常用命名允许按需求扩展：
+{component_naming_prompt()}
 
 参考资料提供设计方法与构造知识，不改变用户要求或上述坐标协议。
 当前方案：{current}

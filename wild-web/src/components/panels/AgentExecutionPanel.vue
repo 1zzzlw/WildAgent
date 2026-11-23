@@ -162,7 +162,7 @@
         </div>
       </details>
 
-      <div v-if="turn.steps.length === 0" class="execution-empty">正在准备执行计划…</div>
+      <div v-if="turn.status === 'running' && turn.steps.length === 0" class="execution-empty">正在等待 Agent 返回进度…</div>
 
       <details v-if="turn.validation_steps.length" class="validation-details">
         <summary>
@@ -316,8 +316,9 @@ const summaryTitle = computed(() => {
 const summaryMeta = computed(() => {
   const completed = props.turn.steps.filter(step => step.status === 'done').length
   const total = props.turn.steps.length
-  const count = total ? `${completed}/${total} 步` : '准备中'
-  return `${count} · ${formatDuration(durationMs.value)}`
+  const duration = formatDuration(durationMs.value)
+  if (total) return `${completed}/${total} 步 · ${duration}`
+  return props.turn.status === 'running' ? `准备中 · ${duration}` : duration
 })
 
 const validationErrorCount = computed(() =>

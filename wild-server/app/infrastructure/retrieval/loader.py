@@ -1661,6 +1661,10 @@ class RAGSpecLoader(SpecLoader):
             # Loader 生命周期内复用同一 Chroma collection 与持久化客户端。
             return self._collection
 
+        # CLI 建库也走此入口；必须在原生 SQLite 初始化之前处理临时目录。
+        from app.infrastructure.temporary import ensure_writable_temp_directory
+
+        ensure_writable_temp_directory()
         try:
             import chromadb
         except ImportError as exc:

@@ -1,7 +1,16 @@
 <template>
   <header class="editor-header">
-    <button class="brand" type="button" aria-label="打开场景树" @click="ui.openPanel('sceneTree')"><span>W</span> WildAgent
-      <small>STUDIO</small></button>
+    <div class="workspace-heading">
+      <button class="brand" type="button" aria-label="打开场景树" title="打开场景树" @click="ui.openPanel('sceneTree')">
+        <span class="brand-mark">W</span><span class="brand-name">WildAgent</span>
+      </button>
+      <div class="document-title" :title="scene.document?.name">
+        <span class="document-name">{{ scene.document?.name || '建筑工作台' }}</span>
+        <span :class="['save-state', { dirty: scene.document?.dirty }]" role="status">
+          {{ workspace.isSaving ? '保存中…' : scene.document?.dirty ? '未保存' : scene.document?.savedAt ? '已保存' : '本地预览' }}
+        </span>
+      </div>
+    </div>
     <nav class="file-toolbar" aria-label="文件操作">
       <button v-if="auth.canEdit" aria-label="新建场景" title="新建场景" :disabled="busy" @click="workspace.newScene()"><el-icon>
           <DocumentAdd />
@@ -36,28 +45,29 @@
     </nav>
     <input ref="fileInput" class="file-input" type="file" accept=".wild,.json" aria-label="导入 WILD 文件"
       @change="importFile" />
-    <div class="document-title" :title="scene.document?.name">
-      <span>{{ scene.document?.name || '建筑工作台' }}</span>
-      <span :class="['save-state', { dirty: scene.document?.dirty }]" role="status">
-        {{ workspace.isSaving ? '正在保存…' : scene.document?.dirty ? '未保存' : scene.document?.savedAt ? '已保存到服务器' : '本地预览'
-        }}
-      </span>
+    <div class="header-actions">
+      <UsageStatus />
+      <OnlinePresence />
+      <RouterLink v-if="auth.isAdmin" class="header-action" to="/admin" aria-label="管理后台" title="管理后台">
+        <el-icon><Setting /></el-icon><span>管理后台</span>
+      </RouterLink>
+      <RouterLink class="header-action" to="/business-plan" aria-label="商业计划书" title="商业计划书">
+        <el-icon><Tickets /></el-icon><span>商业计划书</span>
+      </RouterLink>
+      <button class="header-action" type="button" :aria-label="theme.isDark ? '切换为亮色主题' : '切换为暗色主题'" :title="theme.isDark ? '亮色主题' : '暗色主题'" @click="theme.toggle()">
+        <el-icon><Sunny v-if="theme.isDark" /><Moon v-else /></el-icon>
+      </button>
+      <button class="header-action account-button" type="button" aria-label="退出登录" :title="accountName + ' · 退出登录'" @click="logout">
+        <span>{{ accountName }}</span><el-icon><SwitchButton /></el-icon>
+      </button>
     </div>
-    <UsageStatus />
-    <RouterLink v-if="auth.isAdmin" class="business-plan-link" to="/admin">管理后台</RouterLink>
-    <RouterLink class="business-plan-link" to="/business-plan">商业计划书 ↗</RouterLink>
-    <button class="theme-toggle" type="button" :aria-label="theme.isDark ? '切换为亮色主题' : '切换为暗色主题'" :title="theme.isDark ? '亮色主题' : '暗色主题'" @click="theme.toggle()">
-      <el-icon><Sunny v-if="theme.isDark" /><Moon v-else /></el-icon>
-    </button>
-    <OnlinePresence />
-    <button class="account-button" type="button" aria-label="退出登录" @click="logout">{{ auth.isGuest ? '游客 · 只读' : auth.user?.username }} · 退出</button>
   </header>
 </template>
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { RouterLink } from 'vue-router'
-import { DocumentAdd, FolderOpened, Upload, Download, Box, RefreshLeft, RefreshRight, Switch, Sunny, Moon } from '@element-plus/icons-vue'
+import { DocumentAdd, FolderOpened, Upload, Download, Box, RefreshLeft, RefreshRight, Switch, Sunny, Moon, Setting, Tickets, SwitchButton } from '@element-plus/icons-vue'
 import { useHistoryStore } from '../../stores/historyStore'
 import { useSceneStore } from '../../stores/sceneStore'
 import { useUIStore } from '../../stores/uiStore'
@@ -77,6 +87,7 @@ const history = useHistoryStore()
 const render = useRenderPanelStore()
 const fileInput = ref<HTMLInputElement>()
 const busy = computed(() => workspace.isSaving || workspace.isImporting || scene.isCommitting)
+const accountName = computed(() => auth.isGuest ? '游客 · 只读' : auth.user?.username || '账号')
 async function importFile(event: Event) {
   // 获取 wild 文件内容
   const input = event.target as HTMLInputElement
@@ -113,198 +124,155 @@ async function logout() {
 </script>
 <style scoped>
 .editor-header {
-  height: 50px;
-  display: flex;
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: minmax(175px, 1fr) auto auto;
   align-items: center;
-  gap: 24px;
-  padding: 0 18px 0 12px;
+  gap: 12px;
+  min-height: 54px;
+  padding: 0 12px;
   border-bottom: 1px solid var(--studio-border);
   background: var(--studio-surface);
-  flex-shrink: 0;
-  min-width: 0
 }
-
-.brand {
+.workspace-heading, .brand, .header-actions {
   display: flex;
   align-items: center;
-  gap: 9px;
-  background: none;
-  border: 0;
-  color: var(--studio-text);
-  font-size: 15px;
-  font-weight: 650;
-  cursor: pointer;
-  white-space: nowrap
 }
-
-.brand>span {
+.workspace-heading { gap: 12px; min-width: 0; }
+.brand {
+  flex-shrink: 0;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--studio-text);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.brand-mark {
   display: grid;
   place-items: center;
-  width: 28px;
-  height: 28px;
-  border: 1px solid var(--studio-border);
+  width: 31px;
+  height: 31px;
   border-radius: 8px;
-  background: var(--studio-hover);
-  color: var(--studio-accent);
-  font-family: Georgia, serif;
-  font-size: 21px
+  background: var(--studio-accent);
+  color: var(--studio-bg);
+  font: 600 20px Georgia, serif;
 }
-
-.brand small {
-  font-size: 9px;
-  letter-spacing: 2px;
-  color: var(--studio-muted);
-  font-weight: 500
-}
-
 .document-title {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  flex: 1;
+  display: grid;
+  gap: 2px;
   min-width: 0;
-  overflow: hidden;
-  font-size: 12px;
-  color: var(--studio-text)
+  padding-left: 12px;
+  border-left: 1px solid var(--studio-border);
+  color: var(--studio-text);
 }
-
-.document-title>span:first-child {
+.document-name {
   overflow: hidden;
   white-space: nowrap;
-  text-overflow: ellipsis
+  text-overflow: ellipsis;
+  font-size: 13px;
+  font-weight: 600;
 }
-
 .save-state {
-  font-size: 10px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--studio-muted);
+  font-size: 11px;
   white-space: nowrap;
-  color: var(--studio-muted)
 }
-
-.save-state.dirty {
-  color: var(--studio-orange)
+.save-state::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
 }
-
+.save-state.dirty { color: var(--studio-orange); }
 .file-toolbar {
   display: flex;
   align-items: center;
   gap: 3px;
   min-width: 0;
+  padding: 3px;
+  border: 1px solid var(--studio-border);
+  border-radius: 9px;
+  background: var(--studio-bg);
   overflow-x: auto;
-  scrollbar-width: none
+  scrollbar-width: none;
 }
-
-.file-toolbar button {
-  flex-shrink: 0;
-  display: flex;
+.file-toolbar button, .header-action {
+  display: inline-flex;
   align-items: center;
+  justify-content: center;
+  flex: none;
   gap: 6px;
-  padding: 8px;
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0 8px;
   border: 1px solid transparent;
-  border-radius: 7px;
+  border-radius: 6px;
   background: transparent;
   color: var(--studio-muted);
-  cursor: pointer;
-  font-size: 11px;
-  white-space: nowrap
-}
-
-.file-toolbar button:hover:not(:disabled) {
-  background: var(--studio-hover);
-  color: var(--studio-text)
-}
-
-.file-toolbar button:disabled {
-  opacity: .3;
-  cursor: not-allowed
-}
-
-.file-toolbar .save-button {
-  color: var(--studio-text);
-  background: var(--studio-hover);
-  border-color: var(--studio-border)
-}
-
-.toolbar-divider {
-  height: 18px;
-  width: 1px;
-  background: var(--studio-border);
-  margin: 0 5px
-}
-
-.file-input {
-  display: none
-}
-
-.business-plan-link {
-  flex-shrink: 0;
-  padding: 7px 11px;
-  border: 1px solid var(--studio-border);
-  border-radius: 3px;
-  color: var(--studio-accent);
-  font-size: 11px;
-  text-decoration: none;
+  font-size: 12px;
+  line-height: 1;
   white-space: nowrap;
+  cursor: pointer;
 }
-.business-plan-link:hover { background: var(--studio-hover) }
-.theme-toggle { flex-shrink: 0; display: grid; place-items: center; width: 31px; height: 31px; border: 1px solid var(--studio-border); border-radius: 3px; background: transparent; color: var(--studio-accent); cursor: pointer }
-.theme-toggle:hover { background: var(--studio-hover) }
-.account-button { flex-shrink: 0; border: 1px solid var(--studio-border); border-radius: 6px; background: transparent; color: var(--studio-muted); padding: 7px 9px; font-size: 11px; cursor: pointer; white-space: nowrap }
-
-@media(max-width:1000px) {
-  .brand small {
-    display: none
-  }
-
-  .editor-header {
-    gap: 12px
-  }
-
-  .save-state {
-    display: none
-  }
+.file-toolbar button .el-icon, .header-action .el-icon { font-size: 15px; }
+.file-toolbar button:hover:not(:disabled), .header-action:hover {
+  background: var(--studio-hover);
+  color: var(--studio-text);
 }
-
-@media(max-width:620px) {
-  .brand {
-    font-size: 0 !important;
-    gap: 0
-  }
-
-  .file-toolbar button>span {
-    display: none
-  }
-
-  .file-toolbar button {
-    padding: 8px
-  }
-
-  .document-title {
-    font-size: 11px
-  }
-
-  .editor-header {
-    padding: 0 8px;
-    gap: 8px
-  }
+.file-toolbar button:focus-visible { outline-offset: -2px; }
+.file-toolbar button:disabled { opacity: .45; cursor: not-allowed; }
+.file-toolbar .save-button {
+  background: var(--studio-hover);
+  border-color: var(--studio-accent-border);
+  color: var(--studio-accent);
+  font-weight: 650;
 }
+.toolbar-divider { flex: none; width: 1px; height: 16px; margin: 0 2px; background: var(--studio-border); }
+.file-input { display: none; }
+.header-actions { gap: 5px; }
+.header-action { text-decoration: none; }
+.header-action:focus-visible { outline: 2px solid var(--studio-accent); outline-offset: 1px; }
+.account-button {
+  gap: 7px;
+  border-color: var(--studio-border);
+  color: var(--studio-text);
+}
+.account-button span { max-width: 86px; overflow: hidden; text-overflow: ellipsis; }
 
-@media(max-width:700px) {
-  .business-plan-link { display: none }
-  .file-toolbar { flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none }
-  .file-toolbar button { flex-shrink: 0 }
-  .document-title { display: none }
+@media (max-width: 1320px) {
+  .header-actions a > span, .file-toolbar button:not(.save-button) > span { display: none; }
+}
+@media (max-width: 980px) {
   .editor-header {
-    gap: 10px;
-    padding: 0 10px
+    grid-template-columns: minmax(0, 1fr) auto;
+    row-gap: 6px;
+    padding: 7px 10px;
   }
-
-  .brand small,
-  .save-state {
-    display: none
-  }
-
-  .brand {
-    font-size: 12px
-  }
+  .file-toolbar { grid-row: 2; grid-column: 1 / -1; }
+  .file-toolbar button:not(.save-button) > span { display: inline; }
+  .header-actions { grid-column: 2; grid-row: 1; }
+}
+@media (max-width: 600px) {
+  .editor-header { column-gap: 6px; padding-inline: 8px; }
+  .workspace-heading { gap: 6px; }
+  .document-title { padding-left: 0; border: 0; }
+  .document-name { font-size: 12px; }
+  .save-state { display: block; overflow: hidden; text-overflow: ellipsis; }
+  .save-state::before { display: none; }
+  .header-actions { gap: 3px; }
+  .header-action { padding-inline: 6px; }
+  .file-toolbar { gap: 2px; padding: 2px; }
+  .toolbar-divider { margin-inline: 1px; }
+  .file-toolbar button { min-width: 34px; min-height: 38px; padding-inline: 6px; }
+  .file-toolbar button > span, .file-toolbar button:not(.save-button) > span,
+  .brand-name, .account-button span { display: none; }
 }
 </style>

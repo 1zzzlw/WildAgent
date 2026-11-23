@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator, with_config
+from typing_extensions import TypedDict
 
 Number = Annotated[float, Field(strict=True, allow_inf_nan=False)]
 Positive = Annotated[float, Field(strict=True, gt=0, allow_inf_nan=False)]
@@ -430,12 +431,25 @@ class ConstructionSystem(SpatialContract):
         return self
 
 
+class RoofHostSection(SpatialContract):
+    type: Literal["host_section"] = "host_section"
+    level: str | None = Field(default=None, description="宿主截面使用屋面支承标高")
+
+
+RoofOutline = Annotated[ProfileRegion | VolumeRegion | RoofHostSection, Field(discriminator="type")]
+
+
+@with_config(ConfigDict(extra="allow"))
+class RoofGeometry(TypedDict, total=False):
+    outline: Annotated[RoofOutline | None, Field(description="屋面覆盖区域；省略时使用宿主的支承截面")]
+
+
 class DesignRoof(Identified):
     """一片独立屋面；区分支承/檐口标高、rise及实际覆盖，不使用体量包围盒兜底。"""
 
     host: str = Field(min_length=1, description="负责覆盖的体量或明确支承实体ID")
     support: ElevationReference = Field(description="屋面支承或檐口基准的世界标高引用")
-    geometry: dict[str, Any] = Field(
+    geometry: RoofGeometry = Field(
         description="明确屋型、真实outline、overhang、rise、thickness；未知几何报告能力缺口"
     )
     material_role: str | None = Field(default=None, description="屋面材料角色ID")

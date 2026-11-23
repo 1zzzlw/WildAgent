@@ -78,12 +78,17 @@ function compactSessionTitle(name: string, maxLength = 16): string {
     : `${firstClause.slice(0, maxLength)}…`
 }
 
-function loadDetailLevel(): BuildingDetailLevel {
-  return BUILDING_DETAIL_LEVELS.find(level => level.value === localStorage.getItem(STORAGE_KEY_DETAIL_LEVEL))?.value || 'minimal'
+function loadAgentPreference(key: string): string | null {
+  try { return localStorage.getItem(key) } catch { return null }
 }
 
-function loadProceduralMaterialsEnabled(): boolean {
-  return localStorage.getItem(STORAGE_KEY_PROCEDURAL_MATERIALS) === 'true'
+function saveAgentPreference(key: string, value: string) {
+  try { localStorage.setItem(key, value) } catch { /* 当前页面继续使用内存里的设置。 */ }
+}
+
+function loadDetailLevel(): BuildingDetailLevel {
+  const saved = loadAgentPreference(STORAGE_KEY_DETAIL_LEVEL)
+  return BUILDING_DETAIL_LEVELS.find(level => level.value === saved)?.value || 'minimal'
 }
 
 // ── 消息持久化工具 ──
@@ -212,7 +217,7 @@ export const useAgentStore = defineStore('agent', () => {
 
   /** 模型接口实际返回的思考内容 */
   const detailLevel = ref<BuildingDetailLevel>(loadDetailLevel())
-  const thinkingMode = ref(localStorage.getItem(STORAGE_KEY_THINKING_MODE) === 'true')
+  const thinkingMode = ref(loadAgentPreference(STORAGE_KEY_THINKING_MODE) === 'true')
   const thinkingContent = ref('')
   const thinkingStatus = ref<ThinkingStatus>('idle')
   const thinkingNotice = ref('')
@@ -237,7 +242,7 @@ export const useAgentStore = defineStore('agent', () => {
   const lastBlueprintPath = ref<string>('')
 
   /** AI 是否允许自动选择程序化 Shader；默认关闭，由用户显式开启。 */
-  const proceduralMaterialsEnabled = ref(loadProceduralMaterialsEnabled())
+  const proceduralMaterialsEnabled = ref(loadAgentPreference(STORAGE_KEY_PROCEDURAL_MATERIALS) === 'true')
 
   /** 节点生成进度列表 */
   const generatingNodes = ref<GeneratingNode[]>([])
@@ -663,12 +668,12 @@ export const useAgentStore = defineStore('agent', () => {
 
   function setDetailLevel(level: BuildingDetailLevel) {
     detailLevel.value = level
-    localStorage.setItem(STORAGE_KEY_DETAIL_LEVEL, level)
+    saveAgentPreference(STORAGE_KEY_DETAIL_LEVEL, level)
   }
 
   function setThinkingMode(enabled: boolean) {
     thinkingMode.value = enabled
-    localStorage.setItem(STORAGE_KEY_THINKING_MODE, String(enabled))
+    saveAgentPreference(STORAGE_KEY_THINKING_MODE, String(enabled))
   }
 
   function appendThinkingContent(delta: string, nodeName?: string) {
@@ -948,7 +953,7 @@ export const useAgentStore = defineStore('agent', () => {
 
   function setProceduralMaterialsEnabled(enabled: boolean) {
     proceduralMaterialsEnabled.value = enabled
-    localStorage.setItem(STORAGE_KEY_PROCEDURAL_MATERIALS, String(enabled))
+    saveAgentPreference(STORAGE_KEY_PROCEDURAL_MATERIALS, String(enabled))
   }
 
   function updateGeneratingNode(

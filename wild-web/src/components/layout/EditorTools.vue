@@ -1,6 +1,5 @@
 <template>
   <div class="editor-tools">
-    <LLMConfigDialog v-if="auth.isAdmin" :visible="ui.modelConfigVisible" @update:visible="ui.modelConfigVisible = $event" />
     <ElDialog v-model="ui.shortcutsVisible" title="快捷键与操作" width="min(520px, calc(100vw - 28px))" append-to-body>
       <dl class="shortcut-list"><template v-for="shortcut in shortcuts" :key="shortcut[0]"><dt>{{ shortcut[0] }}</dt><dd>{{ shortcut[1] }}</dd></template></dl>
       <p class="tool-hint">{{ auth.canEdit ? '输入文字时保留输入框自身的快捷键；Ctrl+S 始终保存场景。' : '游客模式只读，可浏览建筑、体验交互并导出 GLB。' }}</p>
@@ -8,12 +7,11 @@
   </div>
 </template>
 <script setup lang="ts">
-import { computed, defineAsyncComponent } from 'vue'
+import { computed } from 'vue'
 import { ElDialog } from 'element-plus'
 import 'element-plus/es/components/dialog/style/css'
 import { useUIStore } from '../../stores/uiStore'
 import { useAuthStore } from '../../stores/authStore'
-const LLMConfigDialog = defineAsyncComponent(() => import('./LLMConfigDialog.vue'))
 const ui = useUIStore()
 const auth = useAuthStore()
 const shortcuts = computed(() => [
