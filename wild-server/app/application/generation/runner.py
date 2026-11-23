@@ -2,8 +2,8 @@
 import asyncio
 from loguru import logger
 from config import config
-from app.agent.routing import detect_target_kind
 from app.domain.design.architecture import resolve_complexity_profile
+from app.domain.design.architecture.target_kind import detect_target_kind
 from app.infrastructure.observability.trace import rag_trace_scope
 from app.domain.blueprint.artifacts import retain_generation_blueprint
 from app.application.generation.jobs import generation_job_service

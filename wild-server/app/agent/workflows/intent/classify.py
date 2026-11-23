@@ -8,13 +8,13 @@ from typing import Any
 
 from loguru import logger
 
+from app.agent.prompts.intent import CLASSIFIER_PROMPT
 from app.agent.runtime import create_llm
 from app.infrastructure.llm.invocation import invoke_llm
 
 from app.agent.workflows.intent.decision import IntentDecision
 from app.agent.workflows.intent.decision import IntentOutputError
 from app.agent.workflows.intent.decision import normalize_intent_decision
-from app.agent.workflows.intent.prompt import CLASSIFIER_PROMPT
 
 
 def _normalized_recent_messages(
@@ -92,7 +92,7 @@ async def classify_intent_decision(
     raw = llm_result.content
     try:
         # 解析校验模型返回的结果，并把非法结果转成 IntentOutputError 抛出
-        decision = normalize_intent_decision(raw, message, has_current_scene)
+        decision = normalize_intent_decision(raw, has_current_scene)
     except IntentOutputError as exc:
         logger.error(f"[classifier] {exc}\n模型原始输出: {raw!r}")
         raise

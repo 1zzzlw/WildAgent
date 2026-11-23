@@ -6,7 +6,6 @@
 agent/
 ├── graph.py                  # 注册节点、连接边和条件路由
 ├── state.py                  # 持久化图状态与状态合并
-├── routing.py                # 路由判定
 ├── runtime.py                # 不写入 checkpoint 的资源引用和请求回调
 ├── nodes/                    # 图节点薄入口
 ├── workflows/

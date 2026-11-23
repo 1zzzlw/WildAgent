@@ -12,8 +12,6 @@ from typing import Any, Literal, cast
 from app.agent.state import IntentName
 from app.agent.state import TargetKind
 
-from app.agent.workflows.intent.rules import is_explanatory_question
-
 
 class IntentOutputError(ValueError):
     """模型调用成功，但分类结果无法使用。"""
@@ -77,7 +75,6 @@ def _json_object(raw: str) -> dict[str, Any] | None:
 
 def normalize_intent_decision(
     raw: str,
-    message: str,
     has_current_scene: bool,
 ) -> IntentDecision:
     """解析并校验模型 JSON；非法结果不进入后续节点。"""
@@ -92,9 +89,6 @@ def normalize_intent_decision(
         raise IntentOutputError(
             f"intent 必须是 generate、edit 或 chat，实际为 {payload.get('intent')!r}"
         )
-
-    if intent != "chat" and is_explanatory_question(message):
-        raise IntentOutputError("用户正在询问方法、原理或原因，分类结果却要求变更场景")
 
     if intent == "edit" and not has_current_scene:
         raise IntentOutputError("分类结果要求修改场景，但当前没有可编辑场景")

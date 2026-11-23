@@ -1,4 +1,5 @@
 """建筑：图纸 → 材质解析与版本确定 → 标记任务 → 最终编译；物件沿用骨架链。"""
+
 from langgraph.graph import END, StateGraph
 from loguru import logger
 
@@ -21,6 +22,7 @@ from app.domain.planning.store import poll_runnable
 from app.domain.planning.store import refresh_statuses
 from app.agent.state import GenerationInput
 from app.agent.state import GenerationState
+
 
 def plan_recursion_limit(plan_item_count: int, max_retries: int = 3) -> int:
     """按任务/标记数估算图步骤：最多五次 execute/replanner 和对应装配检查。"""
@@ -63,7 +65,11 @@ def _classifier_dispatch(state: GenerationState):
     if intent == "edit":
         return "patch"
     if intent == "generate":
-        return "object_design" if state.get("intent_target_kind") == "object" else "architecture"
+        return (
+            "object_design"
+            if state.get("intent_target_kind") == "object"
+            else "architecture"
+        )
     return "chat"
 
 
@@ -129,7 +135,9 @@ def _after_replanner(state: GenerationState) -> str:
     if plan.iterations >= int(budget.get("iterations", 5)):
         logger.info(f"[graph] 达到迭代上限 {plan.iterations}，收尾交付")
         return _execution_end(state)
-    if plan.no_progress_rounds >= MAX_NO_PROGRESS_ROUNDS and not any(i.params.get("design_markers") for i in plan.items):
+    if plan.no_progress_rounds >= MAX_NO_PROGRESS_ROUNDS and not any(
+        i.params.get("design_markers") for i in plan.items
+    ):
         logger.info(f"[graph] 连续 {plan.no_progress_rounds} 轮无进展，收尾交付")
         return _execution_end(state)
     if plan.llm_budget_exhausted():
@@ -145,10 +153,16 @@ def _final_validate_dispatch(state: GenerationState) -> str:
 
     if state.get("terminal_model_error"):
         return "__end__"
-    if (state.get("design_document") or {}).get("decisions", {}).get("kind") == "architecture":
+    if (state.get("design_document") or {}).get("decisions", {}).get(
+        "kind"
+    ) == "architecture":
         return "__end__"
     if (state.get("repair_audit") or {}).get("stop_reason") in {
-        "design_revision_required", "repeated_candidate", "incomplete_candidate", "no_change", "no_action",
+        "design_revision_required",
+        "repeated_candidate",
+        "incomplete_candidate",
+        "no_change",
+        "no_action",
     }:
         return "__end__"
     if state.get("status") != "partial":
@@ -211,27 +225,63 @@ def build_generation_graph(enable_callback: bool = False, *, checkpointer=None):
     graph.add_edge("chat", END)
     graph.add_edge("patch", END)
 
-    graph.add_conditional_edges("architecture", _after_architecture,
-                                {"material_plan": "material_plan", "__end__": END})
-    graph.add_conditional_edges("object_design", _after_object_design,
-                                {"material_plan": "material_plan", "__end__": END})
-    graph.add_conditional_edges("material_plan", _after_material_plan,
-                                {"skeleton": "skeleton", "plan": "plan", "__end__": END})
-    graph.add_conditional_edges("skeleton", _after_skeleton,
-                                {"plan": "plan", "__end__": END})
+    graph.add_conditional_edges(
+        "architecture",
+        _after_architecture,
+        {"material_plan": "material_plan", "__end__": END},
+    )
+    graph.add_conditional_edges(
+        "object_design",
+        _after_object_design,
+        {"material_plan": "material_plan", "__end__": END},
+    )
+    graph.add_conditional_edges(
+        "material_plan",
+        _after_material_plan,
+        {"skeleton": "skeleton", "plan": "plan", "__end__": END},
+    )
+    graph.add_conditional_edges(
+        "skeleton", _after_skeleton, {"plan": "plan", "__end__": END}
+    )
     # 装配完成后使用同一候选做最终校验。
     graph.add_edge("compile", "final_validate")
 
-    graph.add_conditional_edges("plan", _after_plan,
-                                {"execute": "execute", "final_validate": "final_validate", "compile": "compile", "__end__": END})
-    graph.add_conditional_edges("execute", _after_execute,
-                                {"replanner": "replanner", "compile": "compile", "final_validate": "final_validate"})
-    graph.add_conditional_edges("replanner", _after_replanner,
-                                {"execute": "execute", "final_validate": "final_validate", "compile": "compile", "__end__": END})
+    graph.add_conditional_edges(
+        "plan",
+        _after_plan,
+        {
+            "execute": "execute",
+            "final_validate": "final_validate",
+            "compile": "compile",
+            "__end__": END,
+        },
+    )
+    graph.add_conditional_edges(
+        "execute",
+        _after_execute,
+        {
+            "replanner": "replanner",
+            "compile": "compile",
+            "final_validate": "final_validate",
+        },
+    )
+    graph.add_conditional_edges(
+        "replanner",
+        _after_replanner,
+        {
+            "execute": "execute",
+            "final_validate": "final_validate",
+            "compile": "compile",
+            "__end__": END,
+        },
+    )
 
     if enable_callback:
-        graph.add_conditional_edges("final_validate", _final_validate_dispatch,
-                                    {"callback": "callback", "__end__": END})
+        graph.add_conditional_edges(
+            "final_validate",
+            _final_validate_dispatch,
+            {"callback": "callback", "__end__": END},
+        )
     else:
         graph.add_edge("final_validate", END)
 
@@ -251,7 +301,10 @@ _graphs: dict[tuple[bool, int | None], object] = {}
 
 def get_graph(enable_callback: bool = False, *, checkpointer=None):
     """获取编译后的图单例，支持 callback 开关。"""
-    cache_key = (enable_callback, id(checkpointer) if checkpointer is not None else None)
+    cache_key = (
+        enable_callback,
+        id(checkpointer) if checkpointer is not None else None,
+    )
     if cache_key not in _graphs:
         _graphs[cache_key] = build_generation_graph(
             enable_callback=enable_callback,
