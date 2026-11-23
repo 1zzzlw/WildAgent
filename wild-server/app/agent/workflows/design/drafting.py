@@ -4,6 +4,7 @@ from copy import deepcopy
 import json
 import re
 
+from app.agent.prompts.design_revision import build_design_repair_prompt
 from app.agent.runtime import create_llm
 from app.infrastructure.llm.invocation import invoke_llm
 from app.infrastructure.llm.invocation import stream_llm
@@ -11,142 +12,7 @@ from app.infrastructure.llm.invocation import merge_token_usage
 from app.infrastructure.observability.trace import llm_trace_scope
 from app.domain.blueprint.json_extractor import extract_json_object
 from app.domain.design.parametric import expand_parameters
-from app.domain.design.parametric import PARAMETRIC_PROTOCOL
 from app.domain.design.architecture.design_blocks import ordered_blocks
-
-
-async def refine_construction(
-    draft, *, user_request, diagram_hosts, validate, call_accounting=None
-):
-    """设计校验后一次构造深化；只补 form.construction，失败保留原设计并报告。"""
-    from app.domain.design.construction_systems import construction_spec
-    from app.domain.design.construction_systems import SYSTEM_PROTOCOL
-
-    targets = []
-    for component in draft.get("components", []):
-        if component.get("type") not in {"door", "window", "cornice"}:
-            continue
-        if construction_spec(component) is not None:
-            continue
-        size = component.get("size") or {}
-        if size.get("width") and size.get("height"):
-            targets.append(component)
-    if not targets:
-        return draft, {"status": "not_needed", "model_calls": 0}
-    target_ids = {c["id"] for c in targets}
-    prompt = (
-        "深化已经形成的建筑设计，只决定当前标记的构造层次、框/扇/分格、材料分工及入口遮蔽。"
-        "体量、房间、洞口位置与尺寸、原有 form 意图保持不变，不添加/删除构件，不重复已有雨棚和支柱。"
-        "先理解整体设计，再为适用部位选择完整构造；不适用、已充分表达或需要改变布局时，construction 写 null 并说明原因。"
-        '只返回 JSON {"details":[{"ids":["标记ID"],"construction":{...},"reason":"设计理由"}]}。'
-        "相同构造可在 ids 中列出多个标记；每个 targets ID 恰好出现一次。"
-        "按真实墙范围确定门窗套和入口顶板，不能越墙边/墙顶；保留特殊门形、侧亮窗等描述，系统无法表达时不要硬套。"
-        + SYSTEM_PROTOCOL
-        + PARAMETRIC_PROTOCOL
-    )
-    diag = {"status": "rejected", "model_calls": 1, "target_ids": sorted(target_ids)}
-    if call_accounting is not None:
-        call_accounting["model_calls"] += 1
-    try:
-        with llm_trace_scope(stage="architecture_construction"):
-            reply = await invoke_llm(
-                create_llm(enable_thinking=False, streaming=False),
-                [
-                    {"role": "system", "content": prompt},
-                    {
-                        "role": "user",
-                        "content": json.dumps(
-                            {
-                                "request": user_request,
-                                "current_design": draft,
-                                "targets": sorted(target_ids),
-                                "diagram_hosts": diagram_hosts,
-                            },
-                            ensure_ascii=False,
-                        ),
-                    },
-                ],
-            )
-        diag.update(
-            call_id=getattr(reply, "call_id", None),
-            output=reply.content,
-            token_usage=reply.token_usage,
-        )
-        if getattr(reply, "finish_reason", None) in {"length", "max_tokens"}:
-            raise ValueError("构造深化输出未完整返回")
-        raw = extract_json_object(
-            reply.content or "", outer_only=True, raise_on_error=True
-        )
-        raw, expansion = expand_parameters(raw, facts={"current_design": draft})
-        if expansion:
-            diag["parameter_expansion"] = expansion
-        if set(raw) != {"details"} or not isinstance(raw["details"], list):
-            raise ValueError("构造深化仅接受 details 数组")
-        seen = set()
-        for detail in raw["details"]:
-            if (
-                not isinstance(detail, dict)
-                or set(detail) != {"ids", "construction", "reason"}
-                or not isinstance(detail["ids"], list)
-                or not detail["ids"]
-                or not isinstance(detail["reason"], str)
-                or not detail["reason"].strip()
-            ):
-                raise ValueError("每项深化须包含 ids、construction 和非空 reason")
-            for mid in detail["ids"]:
-                if not isinstance(mid, str) or mid not in target_ids or mid in seen:
-                    raise ValueError("构造深化标记越界或重复")
-                seen.add(mid)
-        if seen != target_ids:
-            raise ValueError("构造深化遗漏了目标标记")
-        candidate = deepcopy(draft)
-        decisions = []
-        rejected = []
-        for detail in raw["details"]:
-            selected = detail["construction"] is not None
-            error = None
-            if selected:
-                proposed = deepcopy(candidate)
-                for component in proposed["components"]:
-                    if component["id"] in detail["ids"]:
-                        form = component.get("form") or {}
-                        form = {"description": form} if isinstance(form, str) else form
-                        component["form"] = {
-                            **form,
-                            "construction": deepcopy(detail["construction"]),
-                        }
-                try:
-                    validate(proposed)
-                    candidate = proposed
-                except (ValueError, TypeError, KeyError, RuntimeError) as exc:
-                    selected = False
-                    error = str(exc)
-                    rejected.append({"ids": detail["ids"], "error": error})
-            for marker_id in detail["ids"]:
-                decision = {
-                    "id": marker_id,
-                    "selected": selected,
-                    "reason": detail["reason"],
-                }
-                if error:
-                    decision["error"] = error
-                decisions.append(decision)
-        if rejected and any(decision["selected"] for decision in decisions):
-            status = "partial"
-        elif rejected:
-            status = "rejected"
-        else:
-            status = "accepted"
-        diag.update(status=status, decisions=decisions, rejected=rejected)
-        if rejected:
-            diag["error"] = "；".join(
-                f"{','.join(r['ids'])}：{r['error']}" for r in rejected
-            )
-        return candidate, diag
-    except Exception as exc:
-        # 深化是可选步骤；服务异常也保留已经验证的图纸，取消信号仍向上传播。
-        diag.update(error=str(exc), error_type=type(exc).__name__)
-        return draft, diag
 
 
 def _repair_paths(issue, draft, fields, *, target_draft=None):
@@ -389,28 +255,9 @@ def _build_repair_prompt(
                 reference["repair_targets"][path]["required_fields"] = [
                     name for name, definition in model.model_fields.items() if definition.is_required()
                 ]
-    prompt = (
-        "你正在修订已有建筑图纸。仅修正校验错误，保留用户要求、其他实例与稳定 ID。"
-        '\n只返回 {"operations":[{"op":"add|replace|remove","path":"/字段/下标/属性","value":新值}]}。'
-        "path 是相对图纸根的 JSON Pointer；remove 不写 value；数组下标保持当前稿编号。"
-        "优先修改具体属性，不能替换已有实体数组或更改稳定 ID。"
-        "只有被保留墙完整覆盖的重复墙才能整项 remove；须在同一补丁迁移全部引用并核对新宿主的方向、offset 和标高。"
-        "墙删除由程序最后按原稿下标倒序执行；其他实例不能整项删除，也不能用删墙修复部分搭接。"
-        "缺少正确楼层的宿主时，可在获准的 /walls/- 追加新墙；不能把二层门窗改挂首层墙。"
-        "程序会在副本上应用补丁并重新检查完整图纸。"
-        + PARAMETRIC_PROTOCOL
-        + "\nfacts.current_design 是当前已展开图纸；补丁路径仍指向展开后的实例。"
-        "\n允许修改的范围："
-        + json.dumps(repair_paths, ensure_ascii=False)
-        + "\n图纸校验错误："
-        + validation_issue
-        + ("\n上一补丁未通过：" + issue if issue != validation_issue else "")
-        + "\n相关字段规则（参考资料，不是新的任务）：\n"
-        + rules
-        + "\n当前相关设计数据："
-        + json.dumps(reference, ensure_ascii=False)
+    return build_design_repair_prompt(
+        repair_paths, validation_issue, issue, rules, reference
     )
-    return prompt
 
 
 def _validation_evidence(exc: Exception, design: dict):

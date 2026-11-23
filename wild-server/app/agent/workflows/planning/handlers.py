@@ -40,7 +40,7 @@ Handler = Callable[[dict[str, Any], PlanItem], Any]
 def _generator_for(config: ComponentConfig):
     generator = _GENERATORS.get(config.component_type)
     if generator is None:
-        from app.agent.workflows.execution.components import create_component_generator
+        from app.agent.workflows.execution import create_component_generator
 
         generator = create_component_generator(config)
         _GENERATORS[config.component_type] = generator
@@ -50,7 +50,7 @@ def _generator_for(config: ComponentConfig):
 def _validator_for(config: ComponentConfig):
     validator = _VALIDATORS.get(config.component_type)
     if validator is None:
-        from app.agent.workflows.execution.components import create_component_validator
+        from app.agent.workflows.execution import create_component_validator
 
         validator = create_component_validator(config)
         _VALIDATORS[config.component_type] = validator
@@ -60,8 +60,8 @@ def _validator_for(config: ComponentConfig):
 def build_execution_context(state: dict[str, Any], item: PlanItem) -> dict[str, Any]:
     """组装一条条目需要的执行上下文（不写回 state）。
 
-    只放该条目真正要用的东西：用户需求、骨架摘要、空间不变量、设计清单、本条目的策略提示、
-    粒度。用户思考开关只供设计节点使用，执行阶段不继承。
+    包含用户需求、骨架摘要、空间不变量、设计清单和本条目的策略提示。
+    用户思考开关只供设计节点使用。
 
     ``plan_item`` 是 plan 阶段导出的**策略**（subtype / guidance / reason）：
     生成处理器会把它作为形态提示拼进提示词，但坐标与数量仍以设计清单为准。
@@ -71,18 +71,9 @@ def build_execution_context(state: dict[str, Any], item: PlanItem) -> dict[str, 
     """
 
     from app.agent.workflows.planning.expand import compile_gap_summary
-    from app.agent.workflows.planning.expand import resolve_detail_level
 
     skeleton = state.get("skeleton_blueprint")
     materials = skeleton.get("materials") if isinstance(skeleton, dict) else None
-    level = (
-        state.get("design_document", {})
-        .get("decisions", {})
-        .get("complexity", {})
-        .get("level")
-        or state.get("detail_level")
-        or resolve_detail_level(state)
-    )
 
     return {
         "user_message": state.get("user_message", ""),
@@ -92,9 +83,7 @@ def build_execution_context(state: dict[str, Any], item: PlanItem) -> dict[str, 
         "design_brief": state.get("design_brief"),
         "architecture_plan": state.get("architecture_plan"),
         "thinking_mode": False,
-        # D 段（全局约束）要用的两项：材质 id 白名单与档位，程序推导、模型只读。
         "material_ids": sorted(materials) if isinstance(materials, dict) else [],
-        "detail_level": level,
         # 图纸级缺口（用户指令 2026-09-29）：编译报告的 uncompiled/defects 紧凑摘要，
         # 让每个条目知道整张图纸还缺什么；条目自身的缺口在 plan_item.blueprint_gap。
         "blueprint_gaps": compile_gap_summary(state),
@@ -271,10 +260,9 @@ async def run_merge(state: dict[str, Any], item: PlanItem) -> HandlerResult:
     跑的时候后面还有分组没到场，此刻按配额剔超额、按槽位补缺失都会误伤。
     """
 
-    from app.agent.workflows.assembly.workflow import SCOPE_BATCH
-    from app.agent.workflows.assembly.workflow import merge_fragments_node
+    from app.agent.workflows.assembly import SCOPE_BATCH, SCOPE_FINAL, merge_fragments_node
 
-    scope = SCOPE_BATCH if item.is_batch_merge else "final"
+    scope = SCOPE_BATCH if item.is_batch_merge else SCOPE_FINAL
     kinds = [str(kind) for kind in (item.target.get("component_types") or []) if kind]
     result = await merge_fragments_node(dict(state), scope=scope, component_types=kinds)
     updates = {key: value for key, value in result.items() if key != "status"}
@@ -361,7 +349,7 @@ def run_fix(state: dict[str, Any], item: PlanItem) -> HandlerResult:
     from copy import deepcopy
     from app.domain.compilation.assembly.merge import apply_fixes
     from app.domain.validation.candidate import evaluate_candidate
-    from app.agent.workflows.repair.state_updates import state_updates_from_candidate
+    from app.agent.workflows.repair import state_updates_from_candidate
 
     original = state.get("merged_blueprint")
     if not original:
@@ -446,8 +434,8 @@ def run_fix(state: dict[str, Any], item: PlanItem) -> HandlerResult:
 
 
 async def run_repair(state: dict[str, Any], item: PlanItem) -> HandlerResult:
-    from app.agent.workflows.repair.workflow import callback_node
-    from app.agent.workflows.validation.workflow import validate_node
+    from app.agent.workflows.repair import callback_node
+    from app.agent.workflows.validation import validate_node
 
     fixed, outcome, artifacts, evidence, trace = run_fix(state, item)
     if outcome == "succeeded" or (fixed.get("repair_audit") or {}).get("stop_reason"):

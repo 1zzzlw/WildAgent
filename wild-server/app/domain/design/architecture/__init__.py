@@ -8,7 +8,6 @@ from app.domain.design.architecture.facade import conform_roofs_to_slots
 from app.domain.design.architecture.facade import resolve_facade_layout
 from app.domain.design.architecture.planning import normalize_architecture_plan
 from app.domain.design.architecture.profile import is_architecture_request
-from app.domain.design.architecture.profile import resolve_complexity_profile
 from app.domain.design.architecture.skeleton import build_deterministic_skeleton
 from app.domain.design.architecture.skeleton import evaluate_skeleton_complexity
 from app.domain.design.architecture.target_kind import TargetKind
@@ -25,7 +24,6 @@ __all__ = [
     "evaluate_skeleton_complexity",
     "is_architecture_request",
     "normalize_architecture_plan",
-    "resolve_complexity_profile",
     "resolve_facade_layout",
     "TargetKind",
 ]

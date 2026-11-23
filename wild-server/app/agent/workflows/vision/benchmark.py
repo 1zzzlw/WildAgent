@@ -68,17 +68,26 @@ class Task:
     capability_boundary: str = ""
 
 
-def _r(rid: str, kind: RequirementKind, desc: str, check: str | None = None,
-       expect_unsupported: bool = False) -> Requirement:
+def _r(
+    rid: str,
+    kind: RequirementKind,
+    desc: str,
+    check: str | None = None,
+    expect_unsupported: bool = False,
+) -> Requirement:
     return Requirement(rid, kind, desc, check, expect_unsupported)
 
 
 #: 四项人工视觉评价项（与 P7-B 的可见问题闭集同源，但作为**成对比较**维度）。
-_HUMAN_CRITERIA = ("massing_hierarchy", "entrance_legibility",
-                   "facade_rhythm", "material_harmony")
+_HUMAN_CRITERIA = (
+    "massing_hierarchy",
+    "entrance_legibility",
+    "facade_rhythm",
+    "material_harmony",
+)
 
 #: 8 类任务。顺序即 :data:`REDUCTION_ORDER` 的缩减顺序。
-#: 🔴 这是**数据**，不是代码：改这里等于改答案标准，报告必须同步更新摘要。
+#:  这是**数据**，不是代码：改这里等于改答案标准，报告必须同步更新摘要。
 TASKS: tuple[Task, ...] = (
     Task(
         id=1,
@@ -127,7 +136,12 @@ TASKS: tuple[Task, ...] = (
         prompt="设计一栋建筑，正立面有一段无窗实墙，另一段是开敞柱廊。",
         requirements=(
             _r("has_solid_segment", "machine", "存在无开口的墙段", "has_blank_wall"),
-            _r("has_colonnade", "machine", "柱廊已表达（柱或连续开敞段）", "has_colonnade"),
+            _r(
+                "has_colonnade",
+                "machine",
+                "柱廊已表达（柱或连续开敞段）",
+                "has_colonnade",
+            ),
             _r("compiles", "machine", "编译无 error 缺陷", "compile_ok"),
             _r("visual_quality", "human", "四项人工视觉评价"),
         ),
@@ -139,8 +153,18 @@ TASKS: tuple[Task, ...] = (
         name="明确入口宽度与指定立面窗宽",
         prompt="设计一栋两层住宅，入口门宽 1.2 米，正立面一层的窗宽 1.5 米。",
         requirements=(
-            _r("door_width", "machine", "入口门宽 ≈ 1.2m（容差 0.15）", "door_width_1_2"),
-            _r("window_width", "machine", "正立面窗宽 ≈ 1.5m（容差 0.15）", "window_width_1_5"),
+            _r(
+                "door_width",
+                "machine",
+                "入口门宽 ≈ 1.2m（容差 0.15）",
+                "door_width_1_2",
+            ),
+            _r(
+                "window_width",
+                "machine",
+                "正立面窗宽 ≈ 1.5m（容差 0.15）",
+                "window_width_1_5",
+            ),
             _r("compiles", "machine", "编译无 error 缺陷", "compile_ok"),
             _r("fulfills", "machine", "批准设计全部兑现", "fulfillment_all_satisfied"),
         ),
@@ -150,13 +174,29 @@ TASKS: tuple[Task, ...] = (
     Task(
         id=6,
         name="无PBR 资产的材质设计",
-        prompt=("设计一栋两层住宅。外墙用浅灰矿物质感、深色金属收边、暖木色入口。"
-                "本机没有任何 PBR 贴图可用。"),
+        prompt=(
+            "设计一栋两层住宅。外墙用浅灰矿物质感、深色金属收边、暖木色入口。"
+            "本机没有任何 PBR 贴图可用。"
+        ),
         requirements=(
-            _r("no_fake_asset", "machine", "没有编造的 assetId/URL", "no_fabricated_asset"),
-            _r("params_used", "machine", "用 baseColor/roughness/metallic 表达材质",
-               "parameter_material_used"),
-            _r("user_palette", "machine", "外墙浅灰、金属深色、入口暖木", "palette_follows_request"),
+            _r(
+                "no_fake_asset",
+                "machine",
+                "没有编造的 assetId/URL",
+                "no_fabricated_asset",
+            ),
+            _r(
+                "params_used",
+                "machine",
+                "用 baseColor/roughness/metallic 表达材质",
+                "parameter_material_used",
+            ),
+            _r(
+                "user_palette",
+                "machine",
+                "外墙浅灰、金属深色、入口暖木",
+                "palette_follows_request",
+            ),
             _r("compiles", "machine", "编译无 error 缺陷", "compile_ok"),
             _r("visual_quality", "human", "四项人工视觉评价"),
         ),
@@ -181,10 +221,19 @@ TASKS: tuple[Task, ...] = (
         name="超出现有引擎支持范围的形态要求",
         prompt="设计一栋建筑，要求主楼螺旋扭转并带倾斜柱阵。",
         requirements=(
-            _r("reports_boundary", "machine", "明确报告能力边界（unsupported/needs_review）",
-               "capability_feedback_reported", expect_unsupported=True),
-            _r("no_silent_fake", "machine", "没有用近似构件冒充（不改引擎硬造）",
-               "no_engine_bypass"),
+            _r(
+                "reports_boundary",
+                "machine",
+                "明确报告能力边界（unsupported/needs_review）",
+                "capability_feedback_reported",
+                expect_unsupported=True,
+            ),
+            _r(
+                "no_silent_fake",
+                "machine",
+                "没有用近似构件冒充（不改引擎硬造）",
+                "no_engine_bypass",
+            ),
             _r("still_deliverable", "machine", "仍产出可交付蓝图", "compile_ok"),
         ),
         human_criteria=(),
@@ -192,7 +241,7 @@ TASKS: tuple[Task, ...] = (
     ),
 )
 
-#: 判定函数注册表。🔴 名称必须与 :class:`Requirement.check` 一一对应，
+#: 判定函数注册表。 名称必须与 :class:`Requirement.check` 一一对应，
 #: 且**集中在这里** —— 散落在各处就等于标准跟着实现漂移。
 CHECKS: dict[str, str] = {
     "floors_at_least_2": "楼层数 ≥ 2",
@@ -220,7 +269,7 @@ CHECKS: dict[str, str] = {
 def task_spec_digest() -> str:
     """任务集内容摘要（sha256 前 16 位）。
 
-    放进每份报告。🔴 标准被改动 ⇒ 摘要变化 ⇒ 前后两份报告不可直接比较。
+    放进每份报告。 标准被改动 ⇒ 摘要变化 ⇒ 前后两份报告不可直接比较。
     这比"记得别改标准"这种约定可靠。
     """
 
@@ -230,10 +279,17 @@ def task_spec_digest() -> str:
             "runsPerTask": RUNS_PER_TASK,
             "tasks": [
                 {
-                    "id": t.id, "name": t.name, "prompt": t.prompt,
+                    "id": t.id,
+                    "name": t.name,
+                    "prompt": t.prompt,
                     "requirements": [
-                        {"id": r.id, "kind": r.kind, "description": r.description,
-                         "check": r.check, "expectUnsupported": r.expect_unsupported}
+                        {
+                            "id": r.id,
+                            "kind": r.kind,
+                            "description": r.description,
+                            "check": r.check,
+                            "expectUnsupported": r.expect_unsupported,
+                        }
                         for r in t.requirements
                     ],
                     "humanCriteria": list(t.human_criteria),
@@ -243,7 +299,8 @@ def task_spec_digest() -> str:
             ],
             "checks": CHECKS,
         },
-        sort_keys=True, ensure_ascii=False,
+        sort_keys=True,
+        ensure_ascii=False,
     )
     return hashlib.sha256(blob.encode("utf-8")).hexdigest()[:16]
 
@@ -258,7 +315,7 @@ def human_requirements(task: Task) -> tuple[Requirement, ...]:
 
 @dataclass
 class ScoreCard:
-    """一组运行的指标。🔴 **没有 ``overall`` 字段** —— 指标不得合成总分。"""
+    """一组运行的指标。 **没有 ``overall`` 字段** —— 指标不得合成总分。"""
 
     group: str
     task_id: int
@@ -281,8 +338,8 @@ class ScoreCard:
     def satisfaction_rate(self) -> float | None:
         """用户明确要求满足率。``None`` = 不可判定（如全部 unsupported）。
 
-        🔴 分母只算**可判定**的要求项。``unsupported`` / ``needs_review``
-           单独计数（:attr:`by_status`），不混进分母也不从统计里删掉。
+        分母只算**可判定**的要求项。``unsupported`` / ``needs_review``
+          单独计数（:attr:`by_status`），不混进分母也不从统计里删掉。
         """
 
         decidable = [v for v in self.satisfied.values()]
@@ -339,8 +396,10 @@ def significance_claim(sample_size: int) -> str:
     if sample_size <= 0:
         return "未运行，无可观测。"
     if sample_size < 5:
-        return (f"样本量 {sample_size}，**只能给观察，不能声称统计显著**。"
-                "任何差异都可能是运行间随机波动。")
+        return (
+            f"样本量 {sample_size}，**只能给观察，不能声称统计显著**。"
+            "任何差异都可能是运行间随机波动。"
+        )
     if sample_size < 30:
         return f"样本量 {sample_size}，可给出方向性观察，仍不建议声称统计显著。"
     return f"样本量 {sample_size}，可做统计检验；仍需报告效应量而非仅 p 值。"
@@ -356,8 +415,10 @@ def coverage_note(completed: set[int], total: int = len(TASKS)) -> str:
     if len(done) >= total:
         return f"全部 {total} 类任务均已运行。"
     missing = sorted(set(range(1, total + 1)) - set(done))
-    return (f"已运行 {len(done)}/{total} 类（任务 {done}）；"
-            f"**未运行** {missing}。按 §4 缩减顺序，未运行项须在报告中写明原因。")
+    return (
+        f"已运行 {len(done)}/{total} 类（任务 {done}）；"
+        f"**未运行** {missing}。按 §4 缩减顺序，未运行项须在报告中写明原因。"
+    )
 
 
 __all__ = [

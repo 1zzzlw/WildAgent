@@ -380,7 +380,7 @@ def _planned_roof_slots(
                 ],
                 "span": round(roof_x1 - roof_x0, 3),
                 "depth": round(roof_z1 - roof_z0, 3),
-                # 🔴 P5-A：逐体量的形态与体量 id 随槽位一起下发。缺了它们
+                #  P5-A：逐体量的形态与体量 id 随槽位一起下发。缺了它们
                 # `conform_roofs_to_slots` 只能把一个模板盖到所有槽位上 ——
                 # 那正是"主楼坡顶 + 侧翼平顶"退化成整栋同一种屋型的通道。
                 "roofType": roof_type,
@@ -1446,7 +1446,7 @@ def conform_roofs_to_slots(
     模型只负责"这块屋顶长什么样"（roofType / height / thickness / material），
     位置与尺度由体量槽位决定 —— 模型无需、也无法输出多块屋顶。
 
-    🔴 P5-A：模板提供**风格**（厚度/材质/默认形态），槽位上的 ``roofType``
+     P5-A：模板提供**风格**（厚度/材质/默认形态），槽位上的 ``roofType``
     优先 —— 逐体量覆盖就是在这里落地的。没写 ``roofType`` 的槽位沿用模板形态，
     与引入本字段之前的产物完全一致。
     """

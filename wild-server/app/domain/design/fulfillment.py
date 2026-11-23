@@ -6,7 +6,7 @@
 ``/decisions/massing/floors`` 写了 2 就判 ``satisfied``。它证明"设计文档里这么写了"，
 **不证明**蓝图里真的长出两层。编译降级、修复环改动、宿主解析失败都会让实体偏离设计，
 所以同一条要求需要**两份证据**：设计层一份、实现层一份。
-🔴 **设计层 satisfied 不能直接复制成最终通过** —— 那是本阶段存在的唯一理由。
+ **设计层 satisfied 不能直接复制成最终通过** —— 那是本阶段存在的唯一理由。
 
 ## 三条边界
 
@@ -23,6 +23,7 @@
 （:func:`path_schema` / :func:`value_matches`，P2A 已在用）—— 同一份实现，
 不复制第二套字段目录，也不建第二套要求对象。
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -50,7 +51,9 @@ _OPENING_TYPES = frozenset({"door", "window", "bay_window"})
 def _entities(blueprint: dict, kind: str) -> list[dict]:
     geometry = blueprint.get("geometry") or {}
     if kind == "element":
-        return [item for item in geometry.get("elements") or [] if isinstance(item, dict)]
+        return [
+            item for item in geometry.get("elements") or [] if isinstance(item, dict)
+        ]
     return [item for item in geometry.get("components") or [] if isinstance(item, dict)]
 
 
@@ -58,7 +61,10 @@ def _by_type(blueprint: dict, *types: str) -> list[dict]:
     wanted = set(types)
     return [
         item
-        for item in (*_entities(blueprint, "element"), *_entities(blueprint, "component"))
+        for item in (
+            *_entities(blueprint, "element"),
+            *_entities(blueprint, "component"),
+        )
         if item.get("type") in wanted
     ]
 
@@ -66,7 +72,7 @@ def _by_type(blueprint: dict, *types: str) -> list[dict]:
 def _bbox(blueprint: dict) -> tuple[float, float, float, float] | None:
     """建筑轮廓的 XZ 包围盒；**只取墙**，没有墙时退回楼板。
 
-    🔴 屋顶**不能**参与：出檐本来就比墙体外扩（`overhang` 默认 0.55m），
+     屋顶**不能**参与：出檐本来就比墙体外扩（`overhang` 默认 0.55m），
     把它算进去会让"设计 width=18"永远判不满足。阳台/雨篷同理，故一律不取。
     """
     for kinds in (("wall",), ("wall", "floor"), ("floor", "column")):
@@ -74,9 +80,13 @@ def _bbox(blueprint: dict) -> tuple[float, float, float, float] | None:
         for item in _by_type(blueprint, *kinds):
             for key in ("from", "to"):
                 vector = item.get(key)
-                if isinstance(vector, list) and len(vector) == 3 and all(
-                    isinstance(value, (int, float)) and not isinstance(value, bool)
-                    for value in vector
+                if (
+                    isinstance(vector, list)
+                    and len(vector) == 3
+                    and all(
+                        isinstance(value, (int, float)) and not isinstance(value, bool)
+                        for value in vector
+                    )
                 ):
                     points.append((float(vector[0]), float(vector[2])))
         if points:
@@ -101,19 +111,26 @@ def _floor_levels(blueprint: dict) -> list[float]:
 def _facing(element: dict, bbox: tuple[float, float, float, float] | None) -> str:
     """轴对齐墙的外向面：front=最小 Z、back=最大 Z、left=最小 X、right=最大 X。
 
-    🔴 这是**几何推导**，不是设计意图：L 形建筑的"内院侧墙"会按它离包围盒中心
+     这是**几何推导**，不是设计意图：L 形建筑的"内院侧墙"会按它离包围盒中心
     的方向被判成某个面。判定因此只用于"该面开口数是否达到 bays"这类**计数**核对，
     且推不出面时返回空串（调用方降级为 ``needs_review``），不硬凑。
     """
     start, end = element.get("from"), element.get("to")
-    if not (isinstance(start, list) and isinstance(end, list) and len(start) == 3 and len(end) == 3):
+    if not (
+        isinstance(start, list)
+        and isinstance(end, list)
+        and len(start) == 3
+        and len(end) == 3
+    ):
         return ""
     if bbox is None:
         return ""
     min_x, min_z, max_x, max_z = bbox
     center_x, center_z = (min_x + max_x) / 2, (min_z + max_z) / 2
     dx, dz = float(end[0]) - float(start[0]), float(end[2]) - float(start[2])
-    mid_x, mid_z = (float(start[0]) + float(end[0])) / 2, (float(start[2]) + float(end[2])) / 2
+    mid_x, mid_z = (float(start[0]) + float(end[0])) / 2, (
+        float(start[2]) + float(end[2])
+    ) / 2
     if abs(dx) >= abs(dz):
         return "front" if mid_z < center_z else "back"
     return "left" if mid_x < center_x else "right"
@@ -127,7 +144,9 @@ def _openings_by_facing(blueprint: dict) -> dict[str, dict[float, list[dict]]]:
     两层的开口加起来去比 ``bays``，2 层住宅必然误判。楼层取**宿主墙的底标高**
     （开口自身的 ``from[1]`` 带窗台高，取整会漂）。
     """
-    walls = {item.get("id"): item for item in _by_type(blueprint, "wall") if item.get("id")}
+    walls = {
+        item.get("id"): item for item in _by_type(blueprint, "wall") if item.get("id")
+    }
     bbox = _bbox(blueprint)
     grouped: dict[str, dict[float, list[dict]]] = {}
     for opening in _by_type(blueprint, *_OPENING_TYPES):
@@ -138,7 +157,9 @@ def _openings_by_facing(blueprint: dict) -> dict[str, dict[float, list[dict]]]:
         base = parent.get("from")
         if not facing or not (isinstance(base, list) and len(base) == 3):
             continue
-        grouped.setdefault(facing, {}).setdefault(round(float(base[1]), 2), []).append(opening)
+        grouped.setdefault(facing, {}).setdefault(round(float(base[1]), 2), []).append(
+            opening
+        )
     return grouped
 
 
@@ -152,8 +173,13 @@ def _close(actual: float, expected: float) -> bool:
 def _numeric_check(actual: float | None, expected: Any, check: str) -> str:
     """数值判据；``actual is None`` 表示实体侧量不出来（→ 交给调用方标 needs_review）。"""
     from math import isfinite
-    if (actual is None or not isinstance(expected, (int, float))
-            or isinstance(expected, bool) or not isfinite(expected)):
+
+    if (
+        actual is None
+        or not isinstance(expected, (int, float))
+        or isinstance(expected, bool)
+        or not isfinite(expected)
+    ):
         return "needs_review"
     if check == "minimum":
         return "satisfied" if actual >= float(expected) else "open"
@@ -176,21 +202,37 @@ def _entity_check(
     if len(tokens) < 2 or tokens[0] != "decisions":
         return "unsupported", None, f"{target} 不是设计决策路径，实体侧无对应物"
     root = tokens[1]
-    if root in {"levels","profiles","systems","walls","slabs","voids"}:
+    if root in {"levels", "profiles", "systems", "walls", "slabs", "voids"}:
         from app.domain.design.spatial import resolve_geometry
 
         facts = resolve_geometry(document.decisions.model_dump(mode="json"))
         if facts["capability_gaps"]:
-            return "unsupported",facts["capability_gaps"],"设计保留了尚未落实的高级几何能力"
-        index = {entity["id"]:entity for entity in _entities(blueprint,"element")}
+            return (
+                "unsupported",
+                facts["capability_gaps"],
+                "设计保留了尚未落实的高级几何能力",
+            )
+        index = {entity["id"]: entity for entity in _entities(blueprint, "element")}
         expected_entities = facts["body_geometry"]["elements"]
         if not expected_entities:
-            return "needs_review",None,"没有可核对的确定性主体，不以字段存在证明实体完成"
-        missing = [entity["id"] for entity in expected_entities
-                   if entity["id"] not in index or not value_matches(index[entity["id"]],entity)]
-        return ("open" if missing else "satisfied"),missing,"按共享解析结果逐项核对真实主体、楼板与留洞；偏离实体ID清单"
-    if root in {"roofs","relations"}:
-        return "needs_review",None,"引用合法性已核对，所选屋面或实体关系仍须单独验收"
+            return (
+                "needs_review",
+                None,
+                "没有可核对的确定性主体，不以字段存在证明实体完成",
+            )
+        missing = [
+            entity["id"]
+            for entity in expected_entities
+            if entity["id"] not in index
+            or not value_matches(index[entity["id"]], entity)
+        ]
+        return (
+            ("open" if missing else "satisfied"),
+            missing,
+            "按共享解析结果逐项核对真实主体、楼板与留洞；偏离实体ID清单",
+        )
+    if root in {"roofs", "relations"}:
+        return "needs_review", None, "引用合法性已核对，所选屋面或实体关系仍须单独验收"
 
     # ── 体量：层数 / 尺寸 ──
     if root == "massing":
@@ -266,11 +308,11 @@ def _envelope_check(
 ) -> tuple[str, Any, str]:
     """``/decisions/facades/<面>/<pattern>``：能不能核对应的那一面**有没有墙**。
 
-    🔴 判据只能来自几何：某个朝向在**该 pattern 对应的楼层**上一根墙都没有 ⇒ 开敞。
+     判据只能来自几何：某个朝向在**该 pattern 对应的楼层**上一根墙都没有 ⇒ 开敞。
     这是"有墙 vs 无墙"在实体上唯一能测出来的差别；反过来"有墙"推不出"这一格是
     有墙无洞还是开了窗"（那要按槽位逐个核对），所以只判开敞这一侧。
 
-    🔴 **必须按楼层筛**：``ground_pattern`` 只管首层。写"首层开敞"而上层照常有墙是
+     **必须按楼层筛**：``ground_pattern`` 只管首层。写"首层开敞"而上层照常有墙是
     正常设计，不筛楼层会把上层那堵墙算成"没兑现"（实测：背面首层开敞时被上层
     ``wall_back_2`` 判成 open）。楼层取墙自己的 ``from[1]`` 底标高。
     """
@@ -282,7 +324,11 @@ def _envelope_check(
     if not isinstance(pattern, list) or not pattern:
         return "needs_review", None, f"facades.{face}.{field} 不在设计契约里，无法核对"
     if check != "equals" or not value_matches(pattern, expected):
-        return "needs_review", pattern, "当前立面声明与要求不一致或判据不适用，不能据此证明实体履约"
+        return (
+            "needs_review",
+            pattern,
+            "当前立面声明与要求不一致或判据不适用，不能据此证明实体履约",
+        )
     wants_open = is_open_side(pattern)
     bbox = _bbox(blueprint)
     floors = _floor_levels(blueprint)
@@ -291,7 +337,11 @@ def _envelope_check(
         if _facing(item, bbox) != face:
             continue
         base = item.get("from")
-        if not (isinstance(base, list) and len(base) == 3 and isinstance(base[1], (int, float))):
+        if not (
+            isinstance(base, list)
+            and len(base) == 3
+            and isinstance(base[1], (int, float))
+        ):
             continue
         level = round(float(base[1]), 2)
         if field == "ground_pattern" and floors and level != floors[0]:
@@ -299,22 +349,25 @@ def _envelope_check(
         if field == "upper_pattern" and floors and level <= floors[0]:
             continue  # 首层墙不属于 upper_pattern 的管辖范围
         walls.append(item)
-    # 🔴 只判"声明开敞"这一侧：声明有墙而实体无墙，可能是修复环删了墙（几何门禁
+    #  只判"声明开敞"这一侧：声明有墙而实体无墙，可能是修复环删了墙（几何门禁
     # 会报），也可能是朝向推导不出（L 形内院面）——两种都判不了，不猜。
     if not wants_open:
         return (
-            "needs_review", len(walls),
+            "needs_review",
+            len(walls),
             f"facades.{face}.{field} 声明为有墙（该面可判定为 {face} 的墙 {len(walls)} 根）；"
             "「哪一格是有墙无洞」需要逐槽核对，实体侧无对应字段",
         )
     if walls:
         return (
-            "open", len(walls),
+            "open",
+            len(walls),
             f"facades.{face}.{field} 声明开敞无墙，但实体在该朝向仍有 {len(walls)} 根墙："
             f"{[item.get('id') for item in walls]}",
         )
     return (
-        "satisfied", 0,
+        "satisfied",
+        0,
         f"facades.{face}.{field} 声明开敞无墙，实体在该朝向确无墙",
     )
 
@@ -332,7 +385,7 @@ def _roof_volume_check(
     证据是编译下发的 ``design_brief.roof_slots``：槽位序即屋面元素序
     （``conform_roofs_to_slots`` 按 ``enumerate(slots, start=1)`` 命名
     ``roof_planned_NN``），所以第 i 条槽位对应 ``roof_planned_{i+1}``。
-    🔴 不靠这个**约定**去反推体量——槽位自带 ``volume`` 字段，直接按体量 id 找，
+     不靠这个**约定**去反推体量——槽位自带 ``volume`` 字段，直接按体量 id 找，
     序只是把体量映射到实体 id 的手段；槽位不在场就 needs_review。
     """
 
@@ -344,34 +397,53 @@ def _roof_volume_check(
     overrides = getattr(document.decisions, "roof", None)
     entries = list(getattr(overrides, "volumes", None) or [])
     if index >= len(entries):
-        return "needs_review", None, f"图纸只声明了 {len(entries)} 条逐体量覆盖，第 {index} 条不存在"
+        return (
+            "needs_review",
+            None,
+            f"图纸只声明了 {len(entries)} 条逐体量覆盖，第 {index} 条不存在",
+        )
     entry = entries[index]
     volume = str(getattr(entry, "volume", "") or "")
     if field not in {"type", "overhang"}:
-        return "unsupported", None, f"roof.volumes.<i>.{field} 不在逐体量覆盖的可表态范围内"
+        return (
+            "unsupported",
+            None,
+            f"roof.volumes.<i>.{field} 不在逐体量覆盖的可表态范围内",
+        )
     if not roof_slots:
         return (
-            "needs_review", None,
+            "needs_review",
+            None,
             f"体量 {volume} 的逐体量覆盖没有对应的编译槽位证据（roof_slots 为空），"
             "无法确认这一块屋面是否独立生成",
         )
-    slot = next((item for item in roof_slots if isinstance(item, dict) and item.get("volume") == volume), None)
+    slot = next(
+        (
+            item
+            for item in roof_slots
+            if isinstance(item, dict) and item.get("volume") == volume
+        ),
+        None,
+    )
     if slot is None:
         return (
-            "needs_review", None,
+            "needs_review",
+            None,
             f"体量 {volume} 没有独立屋面槽位（可能是非顶层体量或形态不可分段），"
             "这条覆盖无从核对",
         )
     roof = _entity_by_id(blueprint, f"roof_planned_{roof_slots.index(slot) + 1:02d}")
     if roof is None:
         return (
-            "needs_review", None,
+            "needs_review",
+            None,
             f"体量 {volume} 的槽位在最终 Blueprint 里找不到对应屋面元素（修复环可能改过产物）",
         )
     if field == "type":
         actual = str(roof.get("roofType") or "")
         return (
-            ("satisfied" if actual == str(expected) else "open"), actual,
+            ("satisfied" if actual == str(expected) else "open"),
+            actual,
             f"体量 {volume} 的屋面 {roof.get('id')} roofType = {actual!r}"
             f"（跨度 {roof.get('span')}×{roof.get('depth')}）",
         )
@@ -384,15 +456,26 @@ def _roof_volume_check(
     actual = {key: roof.get(key) for key in ("position", "span", "depth")}
     matched = all(value_matches(actual[key], slot.get(key)) for key in actual)
     status = _numeric_check(intent, expected, check) if matched else "open"
-    return status, actual, f"体量 {volume} 出檐 {intent}m 的目标轮廓与最终屋面核对；相邻体量接缝不外扩"
+    return (
+        status,
+        actual,
+        f"体量 {volume} 出檐 {intent}m 的目标轮廓与最终屋面核对；相邻体量接缝不外扩",
+    )
 
 
 def _aggregate(rows: list[tuple]) -> tuple[str, Any, str]:
     if not rows:
         return "needs_review", [], "没有可核对的子项"
     statuses = [r[0] for r in rows]
-    status = next((s for s in ("open", "unsupported", "needs_review") if s in statuses), "satisfied")
-    return status, [{"status": s, "actual": a, "evidence": e} for s, a, e in rows], "逐子项核对；未知子项不被成功项覆盖"
+    status = next(
+        (s for s in ("open", "unsupported", "needs_review") if s in statuses),
+        "satisfied",
+    )
+    return (
+        status,
+        [{"status": s, "actual": a, "evidence": e} for s, a, e in rows],
+        "逐子项核对；未知子项不被成功项覆盖",
+    )
 
 
 def _instance_check(
@@ -404,13 +487,14 @@ def _instance_check(
 ) -> tuple[str, Any, str]:
     """``/decisions/components/<i>[/字段]`` 的实体侧核对。
 
-    🔴 证据只认编译器给的 ``instance_entities``（实例索引 → 产出实体 id + 宿主意图）。
+     证据只认编译器给的 ``instance_entities``（实例索引 → 产出实体 id + 宿主意图）。
     本层**不自己解析** ``main_L2_roof`` 这类体量级宿主拼法 —— 那是编译器的解析规则，
     这里重写一遍必然分叉；映射不在就 ``needs_review``，不按"看起来对"判过。
     """
     if not instance_entities:
         return (
-            "needs_review", None,
+            "needs_review",
+            None,
             "实例级宿主/位置证据需要实例→实体 ID 映射（compile_report.instance_entities），"
             "当前实体侧只有类型级证据，不足以判定这条要求",
         )
@@ -420,17 +504,20 @@ def _instance_check(
     index = int(raw_index)
     field = "/".join(tokens[3:])
     entry = next(
-        (item for item in instance_entities if item.get("index") == index), None,
+        (item for item in instance_entities if item.get("index") == index),
+        None,
     )
     if entry is None:
         return (
-            "needs_review", None,
+            "needs_review",
+            None,
             f"第 {index} 条实例在编译记录里查不到（编译报告只覆盖实例清单命中的类型）",
         )
     label = f"第 {index} 条实例（图纸类型 {entry.get('declared_type')}）"
     if entry.get("outcome") == "dropped":
         return (
-            "open", None,
+            "open",
+            None,
             f"{label}整条未落地：宿主 {entry.get('declared_host') or '未指定'} 解析不到，"
             "编译期已丢弃（见 compile_report.instance_dropped）",
         )
@@ -438,7 +525,8 @@ def _instance_check(
     entity = _entity_by_id(blueprint, entity_id)
     if entity is None:
         return (
-            "open", entity_id,
+            "open",
+            entity_id,
             f"{label}在编译期映射到实体 {entity_id}，但最终 Blueprint 里找不到这条实体"
             "（修复环改动过产物或映射已过期），不能判它兑现",
         )
@@ -447,18 +535,33 @@ def _instance_check(
         rows = []
         for key, value in expected.items():
             if key == "size" and isinstance(value, dict):
-                rows.extend(_instance_check(blueprint, tokens[:3]+["size", k], v, check, instance_entities)
-                            for k, v in value.items())
+                rows.extend(
+                    _instance_check(
+                        blueprint, tokens[:3] + ["size", k], v, check, instance_entities
+                    )
+                    for k, v in value.items()
+                )
             else:
-                rows.append(_instance_check(blueprint, tokens[:3]+[key], value, check, instance_entities))
+                rows.append(
+                    _instance_check(
+                        blueprint, tokens[:3] + [key], value, check, instance_entities
+                    )
+                )
         return _aggregate(rows)
     if not field:
         return "needs_review", entity_id, "实例要求不是可逐字段核对的对象"
     if field == "id":
-        return ("satisfied" if entity_id == expected else "open"), entity_id, "核对稳定实例实体 ID"
+        return (
+            ("satisfied" if entity_id == expected else "open"),
+            entity_id,
+            "核对稳定实例实体 ID",
+        )
     if field == "relation":
         from app.domain.design.relations import evaluate_support
-        if not isinstance(expected, dict) or not value_matches(entry.get("relation"), expected):
+
+        if not isinstance(expected, dict) or not value_matches(
+            entry.get("relation"), expected
+        ):
             return "open", entry.get("relation"), "支撑关系声明不符合要求"
         evidence = evaluate_support(blueprint, entity_id, expected)
         return evidence["status"], evidence, evidence["reason"]
@@ -467,11 +570,19 @@ def _instance_check(
         actual = entity.get("type")
         if check == "contains":
             return (
-                ("satisfied" if isinstance(actual, str) and isinstance(expected, str) and expected in actual else "open"), actual,
+                (
+                    "satisfied"
+                    if isinstance(actual, str)
+                    and isinstance(expected, str)
+                    and expected in actual
+                    else "open"
+                ),
+                actual,
                 f"{label}实体 {entity_id} 的 type = {actual!r}",
             )
         return (
-            ("satisfied" if actual == expected else "open"), actual,
+            ("satisfied" if actual == expected else "open"),
+            actual,
             f"{label}实体 {entity_id} 的 type = {actual!r}（图纸声明 {expected!r}）",
         )
 
@@ -479,7 +590,8 @@ def _instance_check(
         declared = entry.get("declared_host")
         if declared is None:
             return (
-                "needs_review", None,
+                "needs_review",
+                None,
                 f"{label}没有声明宿主，这条要求无法在实体侧核对",
             )
         intent = entry.get("host_intent")
@@ -488,47 +600,75 @@ def _instance_check(
             return "needs_review", actual, f"宿主检查 {check} 尚无实体侧判据"
         if intent == "resolved" and entry.get("relation"):
             evidence = _entity_by_id(blueprint, declared)
-            return ("satisfied" if declared == expected and evidence else "open"), declared, "核对关系实例的真实宿主引用"
+            return (
+                ("satisfied" if declared == expected and evidence else "open"),
+                declared,
+                "核对关系实例的真实宿主引用",
+            )
         if intent == "resolved":
             return (
-                ("satisfied" if expected == declared and actual == entry.get("entity_host")
-                 and _entity_by_id(blueprint, actual) is not None else "open"), actual,
+                (
+                    "satisfied"
+                    if expected == declared
+                    and actual == entry.get("entity_host")
+                    and _entity_by_id(blueprint, actual) is not None
+                    else "open"
+                ),
+                actual,
                 f"{label}宿主 {declared} 按原意解析到实体 {entity_id} 的 "
                 f"{entry.get('entity_host_field')} = {actual}",
             )
         if intent == "fallback":
             return (
-                "open", actual,
+                "open",
+                actual,
                 f"{label}宿主 {declared} 没解析到，退用了第 {entry.get('host_sequence')} 条同类派生结果："
                 f"实体 {entity_id} 实际挂在 {entry.get('entity_host_field')} = {actual} 上（错位）",
             )
         return (
-            "needs_review", actual,
+            "needs_review",
+            actual,
             f"{label}声明了宿主 {declared}，但该类型不按宿主对齐（编译器记为 host_intent={intent}），"
             "实体侧无从判断这条要求",
         )
 
     if field.startswith("form/"):
         from app.domain.compilation.compile import _INSTANCE_FORM_ROUTES
+
         key = field.split("/", 1)[1]
         route, mapped = _INSTANCE_FORM_ROUTES.get(key, ("field", key))
-        container = entity.get("interaction", {}) if route in {"interaction", "interaction_fn"} else entity
+        container = (
+            entity.get("interaction", {})
+            if route in {"interaction", "interaction_fn"}
+            else entity
+        )
         if route == "interaction_fn":
             mapped = "mode"
         if mapped not in container:
             return "needs_review", None, "该形态字段没有可核对的实体值"
         actual = container[mapped]
-        return ("satisfied" if value_matches(actual, expected) else "open"), actual, "核对最终实体形态字段"
+        return (
+            ("satisfied" if value_matches(actual, expected) else "open"),
+            actual,
+            "核对最终实体形态字段",
+        )
     if field == "form" and isinstance(expected, dict):
         if not expected:
             return "satisfied", {}, "未声明额外形态约束"
-        return _aggregate([_instance_check(blueprint, tokens[:3]+["form", k], v, check, instance_entities)
-                           for k, v in expected.items()])
+        return _aggregate(
+            [
+                _instance_check(
+                    blueprint, tokens[:3] + ["form", k], v, check, instance_entities
+                )
+                for k, v in expected.items()
+            ]
+        )
     if field.startswith("size/"):
         key = field.split("/", 1)[1]
         if key not in entity:
             return (
-                "unsupported", None,
+                "unsupported",
+                None,
                 f"{label}实体 {entity_id} 没有 {key} 字段，尺寸无法核对",
             )
         actual = entity[key]
@@ -538,10 +678,15 @@ def _instance_check(
             status = "satisfied"
         else:
             status = "open"
-        return status, actual, f"{label}实体 {entity_id}.{key} = {actual!r}（图纸声明 {expected!r}）"
+        return (
+            status,
+            actual,
+            f"{label}实体 {entity_id}.{key} = {actual!r}（图纸声明 {expected!r}）",
+        )
 
     return (
-        "needs_review", None,
+        "needs_review",
+        None,
         f"/decisions/components/<i>/{field} 在实体侧没有判据（实例映射只覆盖 type / host / size）",
     )
 
@@ -570,12 +715,17 @@ def evaluate_fulfillment(
     ``roof_slots`` 是逐体量屋面槽位（P5-A），缺它时 ``/decisions/roof/volumes/*``
     同样 needs_review。
     """
-    if isinstance(getattr(document, "decisions", None), ObjectDecisions) or not isinstance(blueprint, dict):
+    if isinstance(
+        getattr(document, "decisions", None), ObjectDecisions
+    ) or not isinstance(blueprint, dict):
         return []
 
     gaps: list[DesignGap] = []
     for constraint in document.constraints:
-        if constraint.id == "request.source" or constraint.kind in {"engine_hard", "system_required"}:
+        if constraint.id == "request.source" or constraint.kind in {
+            "engine_hard",
+            "system_required",
+        }:
             continue
         if constraint.adoption == "superseded":
             continue
@@ -587,32 +737,47 @@ def evaluate_fulfillment(
             expected=constraint.expected,
         )
         if constraint.check == "manual" or constraint.adoption == "proposed":
-            gaps.append(DesignGap(
-                id="gap.impl." + constraint.id, status="needs_review", actual=None,
-                evidence=f"{constraint.expression}：没有可靠的自动判定方法（check={constraint.check}，"
-                         f"adoption={constraint.adoption}），需要人工确认",
-                **base,
-            ))
+            gaps.append(
+                DesignGap(
+                    id="gap.impl." + constraint.id,
+                    status="needs_review",
+                    actual=None,
+                    evidence=f"{constraint.expression}：没有可靠的自动判定方法（check={constraint.check}，"
+                    f"adoption={constraint.adoption}），需要人工确认",
+                    **base,
+                )
+            )
             continue
         # 目标字段必须真的存在于设计契约里，否则是"能力不支持"而不是"没做到"。
         if path_schema(document, constraint.target) is None:
-            gaps.append(DesignGap(
-                id="gap.impl." + constraint.id, status="unsupported", actual=None,
-                evidence=f"{constraint.target}：目标字段不在当前设计契约中，无法核对",
-                **base,
-            ))
+            gaps.append(
+                DesignGap(
+                    id="gap.impl." + constraint.id,
+                    status="unsupported",
+                    actual=None,
+                    evidence=f"{constraint.target}：目标字段不在当前设计契约中，无法核对",
+                    **base,
+                )
+            )
             continue
         status, actual, evidence = _entity_check(
-            blueprint, document, constraint.target, constraint.expected, constraint.check,
-            instance_entities, roof_slots,
+            blueprint,
+            document,
+            constraint.target,
+            constraint.expected,
+            constraint.check,
+            instance_entities,
+            roof_slots,
         )
-        gaps.append(DesignGap(
-            id="gap.impl." + constraint.id,
-            status=status,
-            actual=actual,
-            evidence=f"{constraint.expression}：{evidence}",
-            **base,
-        ))
+        gaps.append(
+            DesignGap(
+                id="gap.impl." + constraint.id,
+                status=status,
+                actual=actual,
+                evidence=f"{constraint.expression}：{evidence}",
+                **base,
+            )
+        )
     return gaps
 
 
@@ -628,14 +793,16 @@ def fulfillment_summary(
     for gap in gaps:
         counts[gap.status] = counts.get(gap.status, 0) + 1
         if gap.status != "satisfied":
-            outstanding.append({
-                "id": gap.id,
-                "target": gap.target,
-                "status": gap.status,
-                "expected": gap.expected,
-                "actual": gap.actual,
-                "evidence": gap.evidence,
-            })
+            outstanding.append(
+                {
+                    "id": gap.id,
+                    "target": gap.target,
+                    "status": gap.status,
+                    "expected": gap.expected,
+                    "actual": gap.actual,
+                    "evidence": gap.evidence,
+                }
+            )
     decided = counts["satisfied"] + counts["open"]
     return {
         "version": FULFILLMENT_VERSION,
@@ -746,7 +913,7 @@ def _check_roof_entities(blueprint, document, tokens, expected, check, roof_slot
         )
     if check != "equals":
         return "needs_review", actual, f"屋顶形态检查 {check} 不适用"
-    # 🔴 P5-A：图纸声明了逐体量覆盖时，``roof.type`` 是**模板**而不是"整栋唯一形态"。
+    #  P5-A：图纸声明了逐体量覆盖时，``roof.type`` 是**模板**而不是"整栋唯一形态"。
     # 判据不是"覆盖条数 < 屋面条数"（那是数数，不是语义），而是**每个与模板不同的
     # 形态都能被某条已声明的覆盖解释**：解释得了就是兑现了另一条要求，不该在这里
     # 再报一次缺失；解释不了的（凭空冒出第三种形态）才是真缺口。

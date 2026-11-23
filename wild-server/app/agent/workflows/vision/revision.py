@@ -8,7 +8,7 @@ P7-C 的五条要求与本模块的对应关系：
 2. **走既有受控变更接口，不绕过编译器**
    修订只经``draft_design(only_blocks=…)``，产出仍然要过
    ``normalize_architecture_plan`` → ``compile_document``。
-   🔴 本模块**不接触 three.js、不改渲染代码、不直接改蓝图**。
+    本模块**不接触 three.js、不改渲染代码、不直接改蓝图**。
 3. **能力缺失只标记不阻断**：视觉评价不通过**绝不**让生成失败。
    ``stop_reason`` 会如实记账，但 ``final_blueprint`` 恒为可用产物。
 4. **每次候选必须重跑共享解析 + 几何校验 + 履约验收**
@@ -17,7 +17,7 @@ P7-C 的五条要求与本模块的对应关系：
    :class:`RevisionLedger` 逐版留档（哈希、截图、指标、结论），
    :func:`pick_best` 按**同一套判据**选最优版本，而不是"最后一版"。
 
-🔴 **不做的事**（P7-B 的诚实边界在本模块继续生效）：
+ **不做的事**（P7-B 的诚实边界在本模块继续生效）：
     - ``missing`` 的评价项**不进修订队列** —— 数据不足不是设计问题，
       拿它去改设计是在修一个不存在的问题；
     - ``confidence == "low"`` 的意见**只记录不自动改**（P7 第 4 条）；
@@ -34,10 +34,10 @@ from typing import Any, Awaitable, Callable
 
 from loguru import logger
 
+from app.agent.prompts.design_revision import VISUAL_REVISION_PROMPT
+from app.agent.tools.vision import VISIBLE_CRITERIA, proxy_evaluate
 from app.domain.design.contracts import DesignDocument
 from app.agent.workflows.vision.evaluation import CONFIDENCE_LEVELS
-from app.agent.workflows.vision.evaluation import VISIBLE_CRITERIA
-from app.agent.workflows.vision.evaluation import proxy_evaluate
 
 #: 思考流回调：``(通道名, 文本) -> await``。与 ``design_workflow`` 同一口径。
 ReasoningEmitter = Callable[[str, str], Awaitable[None]]
@@ -55,7 +55,7 @@ _CALL_BUDGET = 4
 _MAX_NO_PROGRESS = 2
 
 #: 自动修订的**最低置信度**门限。低于它的意见只进 ledger，不驱动修订。
-#: 🔴 这是"只标记不阻断"在视觉侧的具体落点：宁可少改，不可乱改。
+#:  这是"只标记不阻断"在视觉侧的具体落点：宁可少改，不可乱改。
 _AUTO_CONFIDENCE = ("high", "medium")
 
 #: 停止原因闭集。诊断、报告与测试都按这张表判，不要用自由文本。
@@ -63,33 +63,19 @@ STOP_REASONS = (
     "time_budget",
     "review_required",
     "render_error",
-    "no_issues",          # 没有够格驱动修订的问题
-    "satisfied",          # 修完了
-    "max_rounds",         # 轮数用尽
-    "no_progress",        # 连续无进展
-    "model_budget",       # 调用预算用尽
-    "model_error",        # 模型故障
+    "no_issues",  # 没有够格驱动修订的问题
+    "satisfied",  # 修完了
+    "max_rounds",  # 轮数用尽
+    "no_progress",  # 连续无进展
+    "model_budget",  # 调用预算用尽
+    "model_error",  # 模型故障
     "invalid_candidate",  # 候选没过校验/履约，且无可回退的历史更优版本
     "approval_required",  # 涉及设计语义变化，按 P7-C 第 3 条要人工确认
 )
 
-_REVISION_PROMPT = """你正在按**可见效果**修订一份已经定稿的建筑设计图纸。
-
-上一版被程序化视觉检查指出了具体问题。证据里写清了"哪个评价项不达标、证据是什么、
-该改图纸的哪一项"。你的任务是**只重出受影响的块**，把可见问题消掉。
-
-四条要求：
-- 只改证据指到的字段，其余保持原样；
-- **不许牺牲用户硬要求来让指标好看** —— 几何有效性与履约验收的权重高于视觉指标，
-  任何让校验变差或让已满足要求变得不满足的改动都会被直接拒绝；
-- 不要发明新的体量、新的立面或新的构件类型——那会制造新的问题；
-- 改完之后，同一批字段仍必须满足块契约（会有检查，不过会带证据让你重出）。
-"""
-
-
 # ── 评价项 → 设计字段 的映射 ─────────────────────────────────────────
 #
-# 🔴 P7 第 4 条："找不到字段映射的意见只记录，不自动猜测并修改"。
+#  P7 第 4 条："找不到字段映射的意见只记录，不自动猜测并修改"。
 #    所以这张表是**闭集**：映射不到的 criterion 一律只记录。
 #    值是 `block_of_design_field` 认识的 design_field 前缀 —— 与
 #    `app/agent/generation/architecture/design_blocks.py` 同口径，不另立一套。
@@ -123,7 +109,9 @@ def build_vision_evidence(evaluation: dict[str, Any]) -> list[dict[str, Any]]:
     里 compile 缺陷的证据形状一致，同一套下游能吃。
     """
 
-    if evaluation.get("source") not in {"human", "vision"} or not evaluation.get("complete"):
+    if evaluation.get("source") not in {"human", "vision"} or not evaluation.get(
+        "complete"
+    ):
         return []
     picked: list[dict[str, Any]] = []
     for item in evaluation.get("items") or []:
@@ -141,16 +129,18 @@ def build_vision_evidence(evaluation: dict[str, Any]) -> list[dict[str, Any]]:
         target = vision_design_field(criterion)
         if not target or target not in evidence.get("relatedFields", []):
             continue
-        picked.append({
-            "id": f"vision:{criterion}",
-            "layer": "design",
-            "category": "visibility",
-            "target": target,
-            "criterion": criterion,
-            "confidence": confidence,
-            "evidence": evidence,
-            "detail": str(item.get("detail") or ""),
-        })
+        picked.append(
+            {
+                "id": f"vision:{criterion}",
+                "layer": "design",
+                "category": "visibility",
+                "target": target,
+                "criterion": criterion,
+                "confidence": confidence,
+                "evidence": evidence,
+                "detail": str(item.get("detail") or ""),
+            }
+        )
     return picked
 
 
@@ -172,7 +162,7 @@ def recorded_only(evaluation: dict[str, Any]) -> list[dict[str, Any]]:
         if confidence not in _AUTO_CONFIDENCE:
             reasons.append(f"置信度 {confidence or '未标'} 低于自动修订门槛")
         if criterion not in VISIBLE_CRITERIA:
-            # 🔴 闭集外的评价项**也要出现在报告里**，否则意见凭空消失。
+            #  闭集外的评价项**也要出现在报告里**，否则意见凭空消失。
             #    评价器闭集（VISIBLE_CRITERIA）与修订映射闭集（_VISION_FIELD_MAP）
             #    是两件事：前者限定"评什么"，后者限定"改什么"。
             reasons.append(f"评价项 {criterion or '(未命名)'} 不在可见问题闭集内")
@@ -180,25 +170,35 @@ def recorded_only(evaluation: dict[str, Any]) -> list[dict[str, Any]]:
             reasons.append("找不到设计字段映射")
         if not reasons:
             continue
-        out.append({
-            "criterion": criterion,
-            "status": status,
-            "confidence": confidence,
-            "detail": str(item.get("detail") or ""),
-            "recordOnlyReasons": reasons,
-            "evidence": item.get("evidence") if isinstance(item.get("evidence"), dict) else {},
-        })
+        out.append(
+            {
+                "criterion": criterion,
+                "status": status,
+                "confidence": confidence,
+                "detail": str(item.get("detail") or ""),
+                "recordOnlyReasons": reasons,
+                "evidence": (
+                    item.get("evidence")
+                    if isinstance(item.get("evidence"), dict)
+                    else {}
+                ),
+            }
+        )
     return out
 
 
 def visible_issue_count(evaluation: dict[str, Any]) -> int:
     """未解决项数量；missing 不能通过删除可测实体伪装成进步。"""
 
-    return sum(1 for item in evaluation.get("items") or []
-               if item.get("status") in {"needs_review", "missing"})
+    return sum(
+        1
+        for item in evaluation.get("items") or []
+        if item.get("status") in {"needs_review", "missing"}
+    )
 
 
 # ── 候选校验：三条一起跑，缺一条不许采纳 ──────────────────────────────
+
 
 @dataclass
 class CandidateVerdict:
@@ -235,7 +235,7 @@ def candidate_verdict(
 ) -> CandidateVerdict:
     """判定一个候选能不能采纳。
 
-    🔴 P7-C 第 4 条："不能靠牺牲用户硬要求让画面看起来更好"。
+     P7-C 第 4 条："不能靠牺牲用户硬要求让画面看起来更好"。
 
     因此采纳门槛是**合取**，视觉指标只是其中一项：
 
@@ -249,72 +249,131 @@ def candidate_verdict(
     """
 
     compile_errors = sum(
-        1 for d in getattr(result, "defects", []) if getattr(d, "severity", "") == "error"
+        1
+        for d in getattr(result, "defects", [])
+        if getattr(d, "severity", "") == "error"
     )
     gaps = list(getattr(fulfillment, "design_gaps", []) or [])
-    open_now = sum(1 for g in gaps if getattr(g, "status", "") in {"open", "unsupported"})
+    open_now = sum(
+        1 for g in gaps if getattr(g, "status", "") in {"open", "unsupported"}
+    )
     issues = visible_issue_count(evaluation or {})
 
     if compile_errors:
         return CandidateVerdict(
-            False, "编译出现 error 缺陷", compile_errors, pipeline_errors,
-            open_now, issues, {"defects": [d.to_dict() for d in result.defects
-                                           if getattr(d, "severity", "") == "error"][:5]},
+            False,
+            "编译出现 error 缺陷",
+            compile_errors,
+            pipeline_errors,
+            open_now,
+            issues,
+            {
+                "defects": [
+                    d.to_dict()
+                    for d in result.defects
+                    if getattr(d, "severity", "") == "error"
+                ][:5]
+            },
         )
     if pipeline_errors:
         return CandidateVerdict(
-            False, "几何校验流水线报 error", compile_errors, pipeline_errors, open_now, issues)
-    if not evaluation or not evaluation.get("complete") or evaluation.get("source") not in {"human", "vision"}:
-        return CandidateVerdict(False, "候选尚未完成真实截图评价", compile_errors, pipeline_errors, open_now, issues)
-    current_gaps = {g.id: g.status for g in gaps}
-    new_failures = {key for key, status in current_gaps.items() if status in {"open", "unsupported"}} - {
-        key for key, status in (baseline_fulfillment or {}).items() if status in {"open", "unsupported"}
-    }
-    if baseline_fulfillment is None or new_failures or any(
-        status == "satisfied" and current_gaps.get(key) != "satisfied"
-        for key, status in (baseline_fulfillment or {}).items()
+            False,
+            "几何校验流水线报 error",
+            compile_errors,
+            pipeline_errors,
+            open_now,
+            issues,
+        )
+    if (
+        not evaluation
+        or not evaluation.get("complete")
+        or evaluation.get("source") not in {"human", "vision"}
     ):
         return CandidateVerdict(
-            False, "履约缺口变多（牺牲了已满足的要求）",
-            compile_errors, pipeline_errors, open_now, issues)
+            False,
+            "候选尚未完成真实截图评价",
+            compile_errors,
+            pipeline_errors,
+            open_now,
+            issues,
+        )
+    current_gaps = {g.id: g.status for g in gaps}
+    new_failures = {
+        key for key, status in current_gaps.items() if status in {"open", "unsupported"}
+    } - {
+        key
+        for key, status in (baseline_fulfillment or {}).items()
+        if status in {"open", "unsupported"}
+    }
+    if (
+        baseline_fulfillment is None
+        or new_failures
+        or any(
+            status == "satisfied" and current_gaps.get(key) != "satisfied"
+            for key, status in (baseline_fulfillment or {}).items()
+        )
+    ):
+        return CandidateVerdict(
+            False,
+            "履约缺口变多（牺牲了已满足的要求）",
+            compile_errors,
+            pipeline_errors,
+            open_now,
+            issues,
+        )
     if baseline_issues is not None and issues > baseline_issues:
         return CandidateVerdict(
-            False, "可见问题数变多", compile_errors, pipeline_errors, open_now, issues)
-    reason = "采纳" if (baseline_issues is None or issues < baseline_issues) else "持平采纳"
+            False, "可见问题数变多", compile_errors, pipeline_errors, open_now, issues
+        )
+    reason = (
+        "采纳" if (baseline_issues is None or issues < baseline_issues) else "持平采纳"
+    )
     return CandidateVerdict(
-        True, reason, compile_errors, pipeline_errors, open_now, issues)
+        True, reason, compile_errors, pipeline_errors, open_now, issues
+    )
 
 
 # ── 版本留档与回退 ────────────────────────────────────────────────────
+
 
 @dataclass
 class RevisionLedger:
     """逐版留档。P7-C 第 5 条："旧 Blueprint、截图和验收结果保留可追踪引用，不覆盖唯一证据"。
 
-    🔴 每一条都带 ``design_hash``：截图与蓝图对应到具体设计版本，
-       否则"这张图是哪一版渲的"永远说不清。
+    每一条都带 ``design_hash``：截图与蓝图对应到具体设计版本，
+      否则"这张图是哪一版渲的"永远说不清。
     """
 
     entries: list[dict[str, Any]] = field(default_factory=list)
 
-    def record(self, *, label: str, design_hash: str, blueprint: dict[str, Any] | None,
-               evaluation: dict[str, Any] | None, verdict: CandidateVerdict | None,
-               screenshot: str | None = None, manifest: str | None = None,
-               document: dict[str, Any] | None = None) -> None:
-        self.entries.append({
-            "label": label,
-            "designHash": design_hash,
-            "issues": visible_issue_count(evaluation or {}),
-            "blueprintRef": _blueprint_ref(blueprint),
-            "blueprint": deepcopy(blueprint),
-            "evaluation": evaluation,
-            "verdict": verdict.to_dict() if verdict else None,
-            "screenshot": screenshot,
-            "manifest": manifest,
-            # 🔴 文档本体必须留：回退要靠它。蓝图**不能**反解回设计文档
-            #    （编译器是单向过程），所以这一份是唯一的回退依据。
-            "document": document,
-        })
+    def record(
+        self,
+        *,
+        label: str,
+        design_hash: str,
+        blueprint: dict[str, Any] | None,
+        evaluation: dict[str, Any] | None,
+        verdict: CandidateVerdict | None,
+        screenshot: str | None = None,
+        manifest: str | None = None,
+        document: dict[str, Any] | None = None,
+    ) -> None:
+        self.entries.append(
+            {
+                "label": label,
+                "designHash": design_hash,
+                "issues": visible_issue_count(evaluation or {}),
+                "blueprintRef": _blueprint_ref(blueprint),
+                "blueprint": deepcopy(blueprint),
+                "evaluation": evaluation,
+                "verdict": verdict.to_dict() if verdict else None,
+                "screenshot": screenshot,
+                "manifest": manifest,
+                #  文档本体必须留：回退要靠它。蓝图**不能**反解回设计文档
+                #    （编译器是单向过程），所以这一份是唯一的回退依据。
+                "document": document,
+            }
+        )
 
     def of(self, label: str) -> dict[str, Any] | None:
         for entry in self.entries:
@@ -332,8 +391,8 @@ class RevisionLedger:
 def _blueprint_ref(blueprint: dict[str, Any] | None) -> dict[str, Any]:
     """蓝图的**引用**而不是全文。
 
-    🔴 一个 session 可能留十几版蓝图，全量塞进诊断会让 state 爆掉；
-       但只留哈希又会"证据不可追"。折中：留可定位的坐标 + 实体计数 + 内容哈希。
+    一个 session 可能留十几版蓝图，全量塞进诊断会让 state 爆掉；
+      但只留哈希又会"证据不可追"。折中：留可定位的坐标 + 实体计数 + 内容哈希。
     """
 
     if not isinstance(blueprint, dict):
@@ -375,7 +434,7 @@ def pick_best(
 ) -> str:
     """从候选里挑最优版本的标签。
 
-    🔴 **不能返回"最后一个"** —— 最后一轮可能是变差的那版。
+     **不能返回"最后一个"** —— 最后一轮可能是变差的那版。
        排序键（依次比）：可见问题数少 → 履约缺口少 → 编译 error 少。
        平手时取**较早**出现的版本：先到先得，避免无谓地采纳更复杂的图纸。
 
@@ -393,7 +452,11 @@ def pick_best(
         gaps = gaps if isinstance(gaps, int) else 0
         compile_errors = evaluation.get("compileErrors")
         compile_errors = compile_errors if isinstance(compile_errors, int) else 0
-        if index and (evaluation.get("accepted") is not True or compile_errors or evaluation.get("pipelineErrors")):
+        if index and (
+            evaluation.get("accepted") is not True
+            or compile_errors
+            or evaluation.get("pipelineErrors")
+        ):
             continue
         key = (issues, gaps, compile_errors, index)
         if best_key is None or key < best_key:
@@ -405,9 +468,9 @@ def pick_best(
 class RevisionOutcome:
     """有界修订的最终产物。
 
-    🔴 ``document`` / ``blueprint`` **恒为可用产物** —— 哪怕一处没改进。
-       视觉评价不通过绝不让生成失败（用户红线：能力缺失只标记不阻断）。
-       失败信息全在 ``diag`` 里如实记账。
+    ``document`` / ``blueprint`` **恒为可用产物** —— 哪怕一处没改进。
+      视觉评价不通过绝不让生成失败（用户红线：能力缺失只标记不阻断）。
+      失败信息全在 ``diag`` 里如实记账。
     """
 
     document: dict[str, Any]
@@ -453,7 +516,7 @@ async def revise_by_visibility(
 
     from app.domain.design.compilation import compile_document
     from app.domain.design.resolver import architecture_plan_from_document
-    from app.agent.workflows.design.drafting import draft_design
+    from app.agent.workflows.design import draft_design
     from app.domain.design.architecture.revision_patch import apply_design_patch
 
     draft_blocks = draft_blocks or draft_design
@@ -516,7 +579,7 @@ async def revise_by_visibility(
         or not validate_connected
         or not (base_evaluation or {}).get("complete")
     ):
-        # 🔴 没渲染就没有"可见"。拿几何数据编一个评价出来就是 P7-B 明令禁止的
+        #  没渲染就没有"可见"。拿几何数据编一个评价出来就是 P7-B 明令禁止的
         #   "假装做视觉判断"，所以这里直接停，并如实说明原因。
         run.stop_reason = "review_required"
         diag = _diag(
@@ -587,7 +650,7 @@ async def revise_by_visibility(
         try:
             patch, block_diag = await asyncio.wait_for(
                 draft_blocks(
-                    base_prompt=_REVISION_PROMPT
+                    base_prompt=VISUAL_REVISION_PROMPT
                     + "\n本轮任务与完成条件：\n"
                     + _tasks_json(evidence, allowed_blocks, current),
                     user_request=user_message,
@@ -696,7 +759,7 @@ async def revise_by_visibility(
             "fulfillmentOpen": verdict.fulfillment_open,
         }
         history.append((label, candidate_blueprint, scored))
-        # 🔴截图列表可能为空（渲染回调没给图）。直接取 [0] 会在**候选刚通过
+        # 截图列表可能为空（渲染回调没给图）。直接取 [0] 会在**候选刚通过
         #   校验之后**抛 IndexError，把一次成功的修订变成崩溃 —— 恰恰是最不该
         #   崩的时刻。取不到就留None，报告里显示"无截图"，不假装有。
         shots = ((candidate_evaluation or {}).get("render") or {}).get("shots") or []
@@ -781,18 +844,26 @@ async def revise_by_visibility(
     )
 
 
-def _tasks_json(evidence: list[dict[str, Any]], blocks: list[str], document: Any) -> str:
+def _tasks_json(
+    evidence: list[dict[str, Any]], blocks: list[str], document: Any
+) -> str:
     import json
 
     from app.domain.design.architecture.design_blocks import block_of_design_field
 
-    tasks = [{
-        "id": item["id"], "block": block_of_design_field(item["target"]).name,
-        "evidence": item["evidence"], "detail": item.get("detail"),
-        "criterion": item["criterion"], "target": item["target"],
-        "confidence": item["confidence"],
-        "completion_condition": "该项可见问题消失，且编译/几何校验/履约都不变差",
-    } for item in evidence]
+    tasks = [
+        {
+            "id": item["id"],
+            "block": block_of_design_field(item["target"]).name,
+            "evidence": item["evidence"],
+            "detail": item.get("detail"),
+            "criterion": item["criterion"],
+            "target": item["target"],
+            "confidence": item["confidence"],
+            "completion_condition": "该项可见问题消失，且编译/几何校验/履约都不变差",
+        }
+        for item in evidence
+    ]
     return json.dumps(
         {"base_revision": getattr(document, "revision", 1), "tasks": tasks},
         ensure_ascii=False,
@@ -809,9 +880,9 @@ def resolved_hash(document: Any) -> str:
 class _Run:
     """一次修订运行的可变账本。
 
-    🔴 不用 ``locals()`` 把局部变量传给诊断函数：那样一改函数签名，
-       诊断就会**静默**拿到 ``None``，报告全错但测试照样绿。
-       显式字段让"漏传"变成 ``AttributeError``，立刻炸。
+    不用 ``locals()`` 把局部变量传给诊断函数：那样一改函数签名，
+      诊断就会**静默**拿到 ``None``，报告全错但测试照样绿。
+      显式字段让"漏传"变成 ``AttributeError``，立刻炸。
     """
 
     rounds: list[dict[str, Any]] = field(default_factory=list)
@@ -822,8 +893,13 @@ class _Run:
 
 
 def _diag(
-    run: _Run, *, max_rounds: int, call_budget: int, max_no_progress: int,
-    start: float, now: Callable[[], float],
+    run: _Run,
+    *,
+    max_rounds: int,
+    call_budget: int,
+    max_no_progress: int,
+    start: float,
+    now: Callable[[], float],
 ) -> dict[str, Any]:
     return {
         "stopReason": run.stop_reason,

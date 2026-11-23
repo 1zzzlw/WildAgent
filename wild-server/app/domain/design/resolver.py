@@ -547,7 +547,7 @@ def _object_plan_from_document(
 
 
 def resolve_design(document: DesignDocument | dict[str, Any]) -> ResolvedDesign:
-    """建筑投影同一确定性编译结果；物件保持原有示意解析。"""
+    """解析设计文档，供计划按图纸标记落实。"""
 
     doc = (
         document
@@ -564,6 +564,8 @@ def resolve_design(document: DesignDocument | dict[str, Any]) -> ResolvedDesign:
 
 def _resolve_object_design(doc: DesignDocument, d: ObjectDecisions) -> ResolvedDesign:
     """物件场景的可执行视图：没有标高、没有体量、没有立面槽位。"""
+    from app.domain.design.compilation import RESOLVER_VERSION
+    from app.domain.design.markers import component_markers
 
     quantities: dict[str, int] = {}
     for item in d.objects:
@@ -584,6 +586,8 @@ def _resolve_object_design(doc: DesignDocument, d: ObjectDecisions) -> ResolvedD
         design_id=doc.design_id,
         design_revision=doc.revision,
         design_hash=_stable_hash(doc),
+        resolver_version=RESOLVER_VERSION,
+        component_markers=component_markers(doc),
         bounds={
             "width": width,
             "depth": round(max(max_depth, 0.1), 3),

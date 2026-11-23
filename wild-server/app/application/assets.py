@@ -2,8 +2,7 @@
 from typing import Any
 from app.infrastructure.storage.assets import LocalAssetStorage
 from app.infrastructure.storage.assets import asset_storage
-from app.agent.workflows.assets.graph import asset_workflow
-from app.agent.workflows.assets.graph import AssetWorkflowState
+from app.agent.workflows.assets import AssetWorkflowState, asset_workflow
 from app.infrastructure.storage.assets import AssetStorageError
 from app.application.errors import ApplicationError
 

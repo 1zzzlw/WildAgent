@@ -11,7 +11,7 @@ from loguru import logger
 
 from app.domain.planning.contracts import PlanDocument
 from app.domain.planning.contracts import PlanItem
-from app.agent.workflows.planning.expand import expand_plan
+from app.agent.workflows.planning.expand import expand_design_markers
 from app.agent.workflows.planning.handlers import HANDLERS
 from app.agent.workflows.planning.reconcile import ensure_artifact_consistency
 from app.agent.workflows.planning.reconcile import reconcile
@@ -25,7 +25,6 @@ from app.domain.planning.store import poll_runnable
 from app.domain.planning.store import record_result
 from app.domain.planning.store import refresh_statuses
 from app.domain.planning.store import terminal_stats
-from app.agent.workflows.planning.strategy import request_plan_strategy
 from app.agent.runtime import get_reasoning_callback
 from app.agent.runtime import bind_reasoning_callback
 from app.agent.runtime import reset_reasoning_callback
@@ -159,148 +158,72 @@ async def _execute_one(state: dict[str, Any], item: PlanItem):
 
 
 async def plan_node(state: dict[str, Any]) -> dict[str, Any]:
-    """建筑按批准图纸展开任务；物件保留模型分组策略。"""
+    """从已确认图纸展开标记任务，并准备统一装配使用的初始蓝图。"""
+    from app.domain.design.contracts import DesignDocument, ObjectDecisions
+    from app.domain.design.objects import build_object_skeleton, object_design_brief
+    from app.domain.design.resolver import architecture_plan_from_document, resolve_design
 
     started = time.time()
-
-    # 取当前运行时的 "思考回调"。
     callback = get_reasoning_callback()
-
     if callback:
-        # 必须带 `:progress` 后缀走「执行说明」通道。
-        await callback("plan:progress", "正在把已批准方案拆成可执行的工作条目……\n")
+        await callback("plan:progress", "正在把已确认方案拆成可执行的工作条目……\n")
 
-    document_data = state.get("design_document") or {}
-    if document_data.get("decisions", {}).get("kind") == "architecture":
-        from app.domain.design.contracts import DesignDocument
-        from app.domain.design.compilation import project_drawing
-        from app.domain.design.compilation import RESOLVER_VERSION
+    document = DesignDocument.model_validate(state.get("design_document"))
+    resolved = resolve_design(document)
+    reviewed = state.get("resolved_design") or {}
+    if (
+        reviewed.get("resolver_version") != resolved.resolver_version
+        or reviewed.get("design_hash") != resolved.design_hash
+    ):
+        return {
+            "status": "failed",
+            "error": "任务设计版本与已确定图纸不一致，请重新生成，已有片段仍保留。",
+        }
 
-        document = DesignDocument.model_validate(document_data)
-        resolved = project_drawing(document)
-        reviewed = state.get("resolved_design") or {}
-        if (
-            reviewed.get("resolver_version") != RESOLVER_VERSION
-            or reviewed.get("design_hash") != resolved.design_hash
-        ):
-            return {
-                "status": "failed",
-                "error": "任务设计版本与已确定图纸不一致，请重新生成，已有片段仍保留。",
-            }
-        design_state = {**state, "resolved_design": resolved.model_dump(mode="json")}
-        plan = expand_plan(design_state)
-        material_plan = document.decisions.materials.resolved_plan
+    resolved_data = resolved.model_dump(mode="json")
+    plan = expand_design_markers({**state, "resolved_design": resolved_data})
+    design_brief = {}
+    if isinstance(document.decisions, ObjectDecisions):
+        object_plan = architecture_plan_from_document(document)
+        scaffold = build_object_skeleton(object_plan, state.get("user_message", ""))
+        design_brief = object_design_brief(object_plan)
+    else:
         scaffold = {
             "meta": {
                 "version": "1.0",
                 "type": "building",
                 "name": document.decisions.concept or "建筑",
-                "designHash": resolved.design_hash,
-                "designRevision": document.revision,
             },
             "geometry": {"elements": [], "components": []},
             "materials": {},
             "assets": {},
         }
-        if material_plan:
-            scaffold["materials"] = {
-                r.materialId: dict(r.material) for r in material_plan.roles
-            }
-            scaffold["assets"] = dict(material_plan.resolvedAssets)
-        return {
-            "plan": plan.model_dump(mode="json"),
-            "plan_events": _events_for(plan),
-            "resolved_design": resolved.model_dump(mode="json"),
-            "drawing_hosts": resolved.projection_elements,
-            "skeleton_blueprint": scaffold,
-            "design_brief": {},
-            "merged_blueprint": {},
-            "current_item_id": None,
-            "plan_diag": {
-                "source": "drawing_implementation",
-                "model_calls": 0,
-                "marker_count": len(resolved.component_markers),
-                "total_ms": int((time.time() - started) * 1000),
-            },
-        }
-
-    strategy, diag = await request_plan_strategy(state)
-
-    # 如果 diag 里带了 terminal_model_error（说明模型服务调不通，是故障不是输出差），直接终止整轮
-    if isinstance(diag.get("terminal_model_error"), dict):
-        logger.warning("[plan] 策略模型不可用，终止本轮生成")
-        return {
-            "plan_diag": {**diag, "total_ms": int((time.time() - started) * 1000)},
-            "terminal_model_error": diag["terminal_model_error"],
-            "error": diag["terminal_model_error"].get("user_message")
-            or diag.get("error")
-            or "模型服务不可用",
-            "status": "failed",
-        }
-
-    # 1. 把策略确定性展开成条目列表（PlanDocument） 2. 给计划累加 1 次模型调用计数
-    plan = expand_plan(state, strategy=strategy).add_llm_calls(1)
-
-    # 看这次计划多少条、各终态多少，供日志和播报用
-    stats = terminal_stats(plan)
-
-    # 取第一条当前可执行的条目（status=ready 且没成功过）。用来设定 current_item_id 这是 trace 和事件要挂载的 "当前条目"
-    first = poll_runnable(plan)
-
-    # 策略要的 ≠ 实际派发的：产物里已有的类型会被 ``expand_plan`` 抑制掉。诊断如实记两边，
-    # 否则"模型点名了门却没派门"在审计里看不出来。
-    dispatched_kinds = sorted(
-        {item.kind for item in plan.items if item.op == "generate"}
+    scaffold["meta"].update(
+        designHash=resolved.design_hash, designRevision=document.revision
     )
-
-    logger.info(
-        f"[plan] 策略来源 {strategy.source}（要求 {len(strategy.kinds)} 类 → "
-        f"派发 {dispatched_kinds}）→ 展开 {stats['total']} 条条目"
-        f"（档位 {plan.detail_level}）：{[item.label for item in plan.items[:6]]}"
-        + ("..." if stats["total"] > 6 else "")
-    )
-
-    if callback:
-        unsupported = stats["unsupported"]
-        # 只播报**真的进了计划**的类型：被抑制的类型播出去等于对用户撒谎。
-        planned = [
-            entry for entry in strategy.kinds if entry.kind in set(dispatched_kinds)
-        ]
-        parallel_groups = {
-            entry.parallel_group
-            for entry in planned
-            if entry.execution_mode == "parallel" and entry.parallel_group
-        }
-        batch_notes = [
-            f"{entry.kind}：{entry.batch_reason}"
-            for entry in planned
-            if entry.batch_reason
-        ]
-        await callback(
-            "plan:progress",
-            f"计划已展开：{stats['total']} 条工作条目"
-            + (
-                f"，{len(parallel_groups)} 个安全并发组"
-                if parallel_groups
-                else "，其余按依赖串行"
-            )
-            + (f"，其中 {unsupported} 条因能力缺失标记为不支持" if unsupported else "")
-            + "。\n"
-            + ("批次依据：" + "；".join(batch_notes) + "。\n" if batch_notes else ""),
-        )
+    scaffold.setdefault("assets", {})
+    material_plan = document.decisions.materials.resolved_plan
+    if material_plan:
+        scaffold["materials"].update({
+            role.materialId: dict(role.material) for role in material_plan.roles
+        })
+        scaffold["assets"] = dict(material_plan.resolvedAssets)
 
     return {
         "plan": plan.model_dump(mode="json"),
         "plan_events": _events_for(plan),
+        "resolved_design": resolved_data,
+        "drawing_hosts": resolved.projection_elements,
+        "skeleton_blueprint": scaffold,
+        "design_brief": design_brief,
+        "merged_blueprint": {},
+        "current_item_id": None,
         "plan_diag": {
-            **diag,
-            "items": stats["total"],
-            "dispatched_kinds": dispatched_kinds,
-            "terminal_stats": stats,
-            "model_calls": 1,
+            "source": "drawing_implementation",
+            "model_calls": 0,
+            "marker_count": len(resolved.component_markers),
             "total_ms": int((time.time() - started) * 1000),
         },
-        "current_item_id": first.id if first is not None else None,
     }
 
 

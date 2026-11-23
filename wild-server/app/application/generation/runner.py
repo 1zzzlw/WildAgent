@@ -2,7 +2,6 @@
 import asyncio
 from loguru import logger
 from config import config
-from app.domain.design.architecture import resolve_complexity_profile
 from app.domain.design.architecture.target_kind import detect_target_kind
 from app.infrastructure.observability.trace import rag_trace_scope
 from app.domain.blueprint.artifacts import retain_generation_blueprint
@@ -67,9 +66,7 @@ async def execute_graph(ws: EventSink, data: dict, *, resume: bool = False):
                 charge_ai_request, account["id"], run.request_id, run.session_id
             )
         await generation_job_service.initialize()
-        run.graph = get_graph(
-            enable_callback=True, checkpointer=generation_job_service.checkpointer
-        )
+        run.graph = get_graph(checkpointer=generation_job_service.checkpointer)
         graph_input = run.initial_state
         if resume:
             graph_input = await _restore_graph_checkpoint(run)
@@ -181,10 +178,7 @@ async def execute_graph(ws: EventSink, data: dict, *, resume: bool = False):
         and run.final_state
         and run.final_state.get("plan")
         and "compile" not in run.node_outputs
-        and (run.final_state.get("design_document") or {})
-        .get("decisions", {})
-        .get("kind")
-        == "architecture"
+        and run.final_state.get("design_document")
     ):
         # 图或 checkpoint 意外中断也要走相同编译入口，避免已收到的分片直接报废。
         try:
@@ -273,9 +267,6 @@ async def _initialize_generation_request(run):
     run.current_blueprint = run.data.get("blueprint")
     run.selection = run.data.get("selection", [])
     run.session_id = run.data.get("session_id", run.request_id)
-    run.detail_level = resolve_complexity_profile(
-        run.data.get("detail_level") or "minimal"
-    )["level"]
     # 开关只控制设计思考及其状态提示，普通执行摘要仍始终推送。
     run.thinking_mode = run.data.get("thinking_mode") is True
 
@@ -296,7 +287,7 @@ async def _initialize_generation_request(run):
         "recent_messages": run.data.get("recent_messages", []),
         "workflow_state": str(run.data.get("workflow_state") or "idle"),
         "thinking_mode": run.data.get("thinking_mode") is True,
-        "detail_level": run.detail_level,
+        "detail_level": run.data.get("detail_level", "minimal"),
         "procedural_materials_enabled": run.data.get("procedural_materials_enabled")
         is True,
         "max_retries": 3,
@@ -363,6 +354,19 @@ async def _restore_graph_checkpoint(run):
             )
         run.resolved_intent = snapshot.values.get("intent")
         run.suggested_components = snapshot.values.get("suggested_components", [])
+        document = snapshot.values.get("design_document") or {}
+        resolved = snapshot.values.get("resolved_design") or {}
+        obsolete_steps = {"object_design", "skeleton", "callback"}
+        if snapshot.next and (
+            obsolete_steps.intersection(snapshot.next)
+            or (
+                document.get("decisions", {}).get("kind") == "object"
+                and resolved.get("resolver_version") in {None, "legacy"}
+            )
+        ):
+            error = "该任务的断点来自旧版生成流程，请重新发起生成。"
+            run.final_state = {**snapshot.values, "status": "failed", "error": error}
+            return None
         if snapshot.next:
             graph_input = None
             logger.info(

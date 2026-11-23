@@ -19,8 +19,6 @@ def test_generation_finishes_without_review_interrupt(monkeypatch, kind):
         return {"design_document": {"decisions": {"kind": kind}, "status": "draft"}}
     async def material(state):
         return {"design_document": {**state["design_document"], "status": "approved"}}
-    async def skeleton(_state):
-        return {"skeleton_blueprint": {"geometry": {"elements": [], "components": []}}}
     async def plan(_state):
         return {"plan": {"items": []}}
     async def compile_result(_state):
@@ -28,7 +26,7 @@ def test_generation_finishes_without_review_interrupt(monkeypatch, kind):
     async def validate(_state):
         return {"status": "complete"}
     for name, function in {"classifier_node": classifier, "architecture_planner": design,
-        "object_planner": design, "material_planner": material, "skeleton_generator": skeleton,
+        "material_planner": material,
         "plan_node": plan, "compile_node": compile_result, "validate_node": validate}.items():
         monkeypatch.setattr(workflow, name, function)
 
@@ -37,13 +35,7 @@ def test_generation_finishes_without_review_interrupt(monkeypatch, kind):
         config = {"configurable": {"thread_id": "auto-"+kind}}
         events = [event async for event in graph.astream({"user_message": "生成场景"}, config, stream_mode="updates")]
         nodes = [node for event in events for node in event]
-        expected = ["classifier", "architecture" if kind == "architecture" else "object_design", "material_plan"]
-        if kind == "object":
-            expected.append("skeleton")
-        expected.append("plan")
-        if kind == "architecture":
-            expected.append("compile")
-        assert nodes == [*expected, "final_validate"]
+        assert nodes == ["classifier", "architecture", "material_plan", "plan", "compile", "final_validate"]
         snapshot = await graph.aget_state(config)
         assert snapshot.next == ()
         assert snapshot.values["status"] == "complete"

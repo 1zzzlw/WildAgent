@@ -92,6 +92,6 @@ def test_original_output_replays_through_actual_architecture_node(monkeypatch, n
 
 def test_prompt_uses_shared_roof_field_description():
     from app.agent.prompts.planning import build_architecture_plan_prompt
-    prompt = build_architecture_plan_prompt("", "villa", {"level": "minimal"})
+    prompt = build_architecture_plan_prompt("", "villa", detail_level="minimal")
     assert RoofDecision.model_fields["ridge_axis"].description in prompt
     assert "审核前" not in prompt and "校验和审核" not in prompt

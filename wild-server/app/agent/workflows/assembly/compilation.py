@@ -158,7 +158,6 @@ def _assemble_with_relations(document, state):
 
 
 async def compile_node(state: GenerationState) -> dict:
-    import json
     from app.domain.design.contracts import DesignDocument
     from app.domain.design.resolver import _stable_hash
     from app.domain.validation.candidate import evaluate_candidate
@@ -183,13 +182,12 @@ async def compile_node(state: GenerationState) -> dict:
                 blueprint,
             )
             report["missing_markers"] = missing
-            brief = {
-                "realization": document.decisions.massing.model_dump(mode="json"),
-                "implementation": {
-                    "design_hash": _stable_hash(document),
-                    "records": records,
-                },
+            brief["implementation"] = {
+                "design_hash": _stable_hash(document),
+                "records": records,
             }
+            if document.decisions.kind == "architecture":
+                brief["realization"] = document.decisions.massing.model_dump(mode="json")
         evaluation = evaluate_candidate(
             blueprint,
             design_document=state["design_document"],
@@ -274,11 +272,13 @@ async def compile_node(state: GenerationState) -> dict:
         and feedback["entity_ids"]
         and not feedback["requires_design_revision"]
     ):
-        from app.agent.prompts import build_patch_system_prompt
+        from app.agent.prompts.common import build_compile_repair_user_message
+        from app.agent.prompts.common import build_patch_system_prompt
+        from app.agent.prompts.implementation import build_marker_output_protocol
         from app.agent.runtime import get_reasoning_callback
         from app.agent.runtime import create_llm
         from app.infrastructure.llm.invocation import invoke_llm
-        from app.agent.workflows.editing.service import _extract_patch_artifact
+        from app.agent.workflows.editing import extract_patch_artifact
         from app.domain.blueprint.editing import _validate_scene_patch_operations
         from app.domain.blueprint.editing import _apply_patch_to_blueprint
         from app.domain.validation.issues import compare_issue_sets
@@ -307,7 +307,6 @@ async def compile_node(state: GenerationState) -> dict:
                 streaming=False,
             )
             from app.domain.components.capability import load_engine_schema
-            from app.agent.workflows.planning.implementation import _output_protocol
 
             schema = load_engine_schema()
             if schema is None:
@@ -316,7 +315,7 @@ async def compile_node(state: GenerationState) -> dict:
             for geometry_bucket in ("elements", "components"):
                 for entity in geometry.get(geometry_bucket, []):
                     markers[entity["id"]] = {"type": entity["type"]}
-            protocol = _output_protocol(schema, markers, "", {})
+            protocol = build_marker_output_protocol(schema, markers, "", {})
             failed_implementations = {}
             for diagnostic in (state.get("component_diagnostics") or {}).values():
                 for marker_id, failed_row in (
@@ -327,40 +326,30 @@ async def compile_node(state: GenerationState) -> dict:
                 {"role": "system", "content": build_patch_system_prompt(protocol)},
                 {
                     "role": "user",
-                    "content": (
-                        "修复本次编译错误，只返回 ScenePatch。仅修改错误相关片段，保留已有实体 ID 和正确几何；"
-                        "不能通过删除实体、改变建筑形制或忽略图纸尺寸消除错误。缺失构件仅按本次图纸补充。"
-                        "repair_feedback.entity_ids 是允许修改的实体范围；其余实体及其共享材质、资产只读。"
-                        "新增实体使用 repair_feedback.marker_ids 中对应标记ID作为前缀，纳入该标记复验。"
-                        "数值先计算，返回完整 JSON。只有这一次修复机会，不重新生成整栋建筑。\n"
-                        + json.dumps(
-                            {
-                                "errors": errors,
-                                "repair_feedback": feedback,
-                                "blueprint": blueprint,
-                                "design_document": state.get("design_document"),
-                                "failed_implementations": failed_implementations,
-                                "references": list(
-                                    dict.fromkeys(
-                                        diag["references"]
-                                        for diag in (
-                                            state.get("component_diagnostics") or {}
-                                        ).values()
-                                        if diag.get("references")
-                                    )
-                                ),
-                            },
-                            ensure_ascii=False,
-                        )
+                    "content": build_compile_repair_user_message(
+                        {
+                            "errors": errors,
+                            "repair_feedback": feedback,
+                            "blueprint": blueprint,
+                            "design_document": state.get("design_document"),
+                            "failed_implementations": failed_implementations,
+                            "references": list(
+                                dict.fromkeys(
+                                    diag["references"]
+                                    for diag in (
+                                        state.get("component_diagnostics") or {}
+                                    ).values()
+                                    if diag.get("references")
+                                )
+                            ),
+                        },
                     ),
                 },
             ]
             repair["model_calls"] = 1
             new_model_calls = 1
             response = await invoke_llm(llm, messages, max_retries=0)
-            patch, source = _extract_patch_artifact(
-                response.content, response.reasoning
-            )
+            patch, source = extract_patch_artifact(response.content, response.reasoning)
             repair.update(patch=patch, structured_source=source)
             if patch is None:
                 raise ValueError("模型未返回可解析的局部修复；保留修复前蓝图")

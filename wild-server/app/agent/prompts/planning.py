@@ -1,5 +1,15 @@
 """执行计划、建筑方案与材质计划提示词。"""
 
+from app.domain.design.types import DetailLevel
+
+
+DETAIL_LEVEL_GUIDANCE: dict[DetailLevel, str] = {
+    "minimal": "低：完成建筑主体、必要的门窗、屋顶、按功能选择的交通和基础照明。采用简洁构造与材质表达，默认不增加装饰构件、家具或陈设。",
+    "simple": "中：在基础建筑上，按功能与风格适量设计阳台、露台、雨棚、栏杆和入口构件，完善基本立面与材质层次。默认不配置家具或大量装饰。",
+    "standard": "高：完整设计建筑外观与构造细节，包括开口分格、檐口、门廊、柱饰、屋面节点和分层材质；按功能与风格选择构件，默认不做全套室内家具。",
+    "detailed": "极高：在完整外观与构造细节上，设计室内功能分区、通行空间及家具陈设，如客厅沙发与茶几、餐桌椅、卧室床与柜体、厨房橱柜及卫浴设施；按建筑用途安排，并补充室内外照明、入口与场地细节。家具逐件或按组合写成有位置、尺寸和造型的构件标记，不能只写在文字说明里。",
+}
+
 
 def build_material_optimization_prompt(selection: list[str]) -> str:
     """限制文本模型只优化已有材质参数，不接触图片或几何。"""
@@ -48,30 +58,39 @@ def _style_preference_section(style_preference: list[str] | None) -> str:
 def build_architecture_plan_prompt(
     spec_text: str,
     profile_id: str,
-    complexity_profile: dict | None = None,
+    detail_level: DetailLevel = "minimal",
     current_plan: dict | None = None,
     revision_feedback: str = "",
     style_preference: list[str] | None = None,
+    *,
+    object_scene: bool = False,
 ) -> str:
     """字段定义来自同一份设计契约；不再维护另一份矩形建筑输出模板。"""
+    if object_scene:
+        return _build_object_design_prompt(
+            spec_text, current_plan=current_plan, revision_feedback=revision_feedback
+        )
+
     import json
     from app.domain.components.names import component_naming_prompt
-    from app.domain.design.architecture.profile import resolve_complexity_profile
+    from app.domain.design.construction_systems import SYSTEM_PROTOCOL
     from app.domain.design.contracts import architecture_output_schema
     from app.domain.design.contracts import RoofDecision
     from app.domain.design.parametric import PARAMETRIC_PROTOCOL
 
-    complexity = resolve_complexity_profile(
-        (complexity_profile or {}).get("level", "simple")
-    )
-    current = json.dumps(current_plan, ensure_ascii=False) if current_plan else "无"
+    guidance = DETAIL_LEVEL_GUIDANCE[detail_level]
+    construction = SYSTEM_PROTOCOL if detail_level in ("standard", "detailed") else ""
+    previous_drawing = {
+        key: value for key, value in (current_plan or {}).items() if key != "complexity"
+    }
+    current = json.dumps(previous_drawing, ensure_ascii=False) if previous_drawing else "无"
     schema = json.dumps(
         architecture_output_schema(), ensure_ascii=False, separators=(",", ":")
     )
     return f"""
 你负责建筑设计选择；程序负责坐标变换、轮廓切片、重复展开、引用解析与约束检查。
 建筑类型线索：{profile_id}。用户要求优先于类型默认值。
-设计粒度：{complexity['reason']}。
+设计粒度：{guidance}
 按需求、空间与体量、楼面、围护开口、屋面附属、材料组织设计。
 design_intent 中选定的特征必须有相应数据，不能仅靠文字表达。
 
@@ -99,7 +118,8 @@ design_intent 中选定的特征必须有相应数据，不能仅靠文字表达
 
 可声明 parameters，尺寸共享与重复使用参数协议。确定版本只保存展开后的数值：
 {PARAMETRIC_PROTOCOL}
-首次设计不要引用尚未生成的 facts.current_design。构造深化只补充已选构件的实现参数，不改变空间设计。
+首次设计不要引用尚未生成的 facts.current_design。
+{construction}
 type 使用稳定英文 snake_case，具体形式、色彩和材料写 description/form。常用命名允许按需求扩展：
 {component_naming_prompt()}
 
@@ -112,28 +132,20 @@ type 使用稳定英文 snake_case，具体形式、色彩和材料写 descripti
 """
 
 
-def build_object_design_prompt(
+def _build_object_design_prompt(
     spec_text: str,
-    subtype_catalog: list[dict] | None = None,
-    material_ids: list[str] | None = None,
     current_plan: dict | None = None,
     revision_feedback: str = "",
 ) -> str:
-    """物件场景第一阶段：只做"做几件、多大、怎么摆"，不做建筑。
-
-    与 `build_architecture_plan_prompt` 是**并列**的两条方案提示词，不是它的分支：
-    建筑方案必须给 massing/volumes/facades/roof，物件方案给这些字段是错的——
-    交付物不是建筑时，"补齐体量"就是把用户没要的房子塞回给他。
-    """
+    """生成独立物件的图纸字段和摆位要求。"""
 
     import json as _json
+    from app.domain.design.objects.subtypes import subtype_catalog
 
     #: 图鉴预设表（`subtype` 的闭集）。通道说明与示例都直接引用这里，
     #: 不另写一份 —— 预设增删时提示词自动跟着变。
-    catalog_text = _json.dumps(subtype_catalog or [], ensure_ascii=False, indent=2)
-    materials = (
-        ", ".join(material_ids or []) or "wood, metal, glass, stone, fabric, accent"
-    )
+    catalog_text = _json.dumps(subtype_catalog(), ensure_ascii=False, indent=2)
+    materials = "wood, metal, glass, stone, fabric, accent"
     revision_section = ""
     if current_plan and revision_feedback:
         revision_section = f"""

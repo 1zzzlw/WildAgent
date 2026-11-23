@@ -73,14 +73,14 @@ def evaluate_candidate(blueprint: dict, *, design_document=None, design_brief=No
         from app.domain.design.resolver import _stable_hash
         from app.domain.design.markers import IMPLEMENTATION_STAGES
         from app.domain.design.markers import body_floor_errors
-        from app.domain.design.compilation import project_drawing
+        from app.domain.design.resolver import resolve_design
         from app.domain.design.fulfillment import evaluate_fulfillment
         from app.domain.design.fulfillment import fulfillment_summary
 
         document = DesignDocument.model_validate(design_document)
         design_hash, revision = _stable_hash(document), document.revision
-        if not isinstance(document.decisions, ObjectDecisions):
-            implementation = (design_brief or {}).get("implementation") or {}
+        implementation = (design_brief or {}).get("implementation") or {}
+        if implementation or not isinstance(document.decisions, ObjectDecisions):
             if implementation.get("design_hash") != design_hash:
                 append("implementation_version", ["落实记录与设计版本不一致"])
             records = implementation.get("records") or {}
@@ -88,7 +88,7 @@ def evaluate_candidate(blueprint: dict, *, design_document=None, design_brief=No
             for bucket in ("elements", "components"):
                 for entity in blueprint.get("geometry", {}).get(bucket, []):
                     actual[entity["id"]] = entity
-            markers = project_drawing(document).component_markers
+            markers = resolve_design(document).component_markers
             geometry_reviews = {}
             for marker in markers:
                 record = records.get(marker["id"]) or {}

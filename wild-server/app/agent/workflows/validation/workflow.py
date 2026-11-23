@@ -73,15 +73,6 @@ async def validate_node(state: GenerationState) -> dict:
         merge_diag["approved_design_changes"] = evaluation["approved_design_changes"]
         merge_diag["design_fulfillment"] = fulfillment
 
-        from app.agent.workflows.vision.evaluation import proxy_evaluate
-        merge_diag["visual_review"] = {
-            "blueprint_fingerprint": current_fingerprint,
-            "proxy": proxy_evaluate(merged_blueprint, state.get("design_document")),
-            "complete": False,
-            "blockedBy": ["render", "human_review"],
-            "entrypoint": "python -m app.agent.workflows.vision.workflow",
-        }
-
         # 提取最终错误（修复后的 recheck 覆盖初检错误）
         final_errors = _final_errors(pipeline_results)
         # 统计
@@ -118,10 +109,8 @@ async def validate_node(state: GenerationState) -> dict:
                 failed_component_ids.add(related_id)
         passed_component_ids = [cid for cid in all_component_ids if cid not in failed_component_ids]
         
-        architectural = (state.get("design_document") or {}).get("decisions", {}).get("kind") == "architecture"
-        # 建筑实现已在 compile 完成全部尝试；最终拒绝不再转入另一套修复循环。
         if final_errors:
-            status = "failed" if architectural else "partial"  # 部分通过
+            status = "failed" if state.get("compile_report") else "partial"
             error_summary = f"校验发现 {len(final_errors)} 个错误: " + "; ".join(
                 f"{r.name}" for r in final_errors
             )

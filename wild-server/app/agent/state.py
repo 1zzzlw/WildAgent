@@ -92,7 +92,7 @@ class GenerationState(TypedDict, total=False):
     patch_diag: dict  # ScenePatch 模型调用、解析和校验诊断。
 
     # ── Layer 0: 骨架 ──
-    skeleton_blueprint: dict  # skeleton 节点生成的主体 Blueprint，尚未合并组件分片。
+    skeleton_blueprint: dict  # Plan 准备的初始 Blueprint，尚未合并构件分片。
     skeleton_summary: str  # 主体骨架生成结果的简短说明。
     wall_bounding_box: dict  # 主体墙体的空间包围盒，供组件放置和校验参考。
     spatial_invariants: dict  # 从主体提取的楼层、边界、宿主等空间不变量。
@@ -100,7 +100,6 @@ class GenerationState(TypedDict, total=False):
     design_brief: (
         dict  # 骨架输出的设计清单（facade_plan + component_quota + rag_reference）
     )
-    skeleton_diag: dict  # 主体骨架模型调用、解析、恢复和校验诊断。
     compile_report: dict  # 装配计数、编译错误与一次局部修复的原稿、操作和复检记录。
 
     # ── Layer 1: 组件分片 ──

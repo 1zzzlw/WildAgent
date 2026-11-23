@@ -34,7 +34,7 @@ class PatchResult:
     structured_recovery_used: bool = False
 
 
-def _extract_patch_artifact(content: str, reasoning: str) -> tuple[dict | None, str | None]:
+def extract_patch_artifact(content: str, reasoning: str) -> tuple[dict | None, str | None]:
     for source, text in (("content", content), ("reasoning", reasoning)):
         patch = extract_patch_from_text(text) if text else None
         if patch is not None:
@@ -158,7 +158,7 @@ class PatchService:
         else:
             response = await invoke_llm(llm, messages)
         reply = response.content
-        patch_data, structured_source = _extract_patch_artifact(reply, response.reasoning)
+        patch_data, structured_source = extract_patch_artifact(reply, response.reasoning)
         recovery_used = False
         if patch_data is None:
             logger.warning("[patch] 首次回复未提取到 ScenePatch，执行一次定向格式恢复")

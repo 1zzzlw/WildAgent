@@ -11,8 +11,8 @@ import subprocess
 
 from app.domain.design.contracts import DesignDocument
 from app.domain.design.compilation import compile_document
+from app.agent.tools.vision import proxy_evaluate
 from app.agent.workflows.vision.evaluation import human_review_template
-from app.agent.workflows.vision.evaluation import proxy_evaluate
 from app.agent.workflows.vision.evaluation import validated_review
 
 

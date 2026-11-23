@@ -23,7 +23,6 @@ from app.domain.design.architecture.profile import _requested_floors
 from app.domain.design.architecture.profile import _requested_plan_dimensions
 from app.domain.design.architecture.profile import _requested_shape
 from app.domain.design.architecture.profile import coerce_shape_label
-from app.domain.design.architecture.profile import resolve_complexity_profile
 
 
 def _note(notes: list[str] | None, message: str) -> None:
@@ -217,9 +216,6 @@ def normalize_architecture_plan(
         validated = ArchitectureDecisions.model_validate(fields)
         return {**deepcopy(raw), **validated.model_dump(mode="json", exclude_none=True)}
     source = raw
-    complexity = deepcopy(
-        complexity_profile or source.get("complexity") or resolve_complexity_profile()
-    )
     profile_id = str(source.get("profile") or "custom")
     requested_required = source.get("required_components")
     explicit_base = (

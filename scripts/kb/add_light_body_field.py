@@ -38,7 +38,7 @@ BODY_SCHEMA = {
 }
 
 #: 灯体段专用形状：与 primitive 同构，但去掉 `type` / `id`（编译期生成，调用方不写）。
-#: 🔴 不能用 `"id": False` / `"type": False` 这种写法 —— JSON Schema 里布尔schema 等价于
+#:  不能用 `"id": False` / `"type": False` 这种写法 —— JSON Schema 里布尔schema 等价于
 #: `{"not": {}}`（几乎永不通过），**并不能取消 required**，primitive 的 required 照样会报
 #: "'id' is a required property"。要"不要求且不接受"只能用 not/oneOf 排除或单开一份 defs。
 BODY_PART_DEF = {
@@ -61,7 +61,12 @@ BODY_PART_DEF = {
         "profile": {
             "type": "array",
             "minItems": 2,
-            "items": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"type": "number"}},
+            "items": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 2,
+                "items": {"type": "number"},
+            },
         },
         "path": {"type": "array", "minItems": 2, "items": {"$ref": "#/$defs/vec3"}},
         "closedProfile": {"type": "boolean", "default": True},
@@ -116,7 +121,7 @@ def main() -> int:
         if not patch(schema):
             print(f"skip (already patched): {path}")
             continue
-        #沿用原文件的缩进与尾随换行，避免产生无意义的全文件 diff
+        # 沿用原文件的缩进与尾随换行，避免产生无意义的全文件 diff
         indent = 2 if raw.startswith("{\n  ") else 4
         text = json.dumps(schema, ensure_ascii=False, indent=indent)
         if raw.endswith("\n"):

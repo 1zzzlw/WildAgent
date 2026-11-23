@@ -18,6 +18,7 @@ from app.agent.workflows.execution.processing import validate_fragments
 from app.agent.prompts import build_component_prompt
 from app.agent.prompts import build_component_recovery_messages
 from app.agent.prompts import build_component_user_message
+from app.agent.prompts.generation import COMPONENT_KNOWLEDGE_HINT
 from app.agent.runtime import create_llm
 from app.infrastructure.llm.invocation import invoke_llm
 from app.infrastructure.llm.errors import classify_model_error
@@ -33,26 +34,6 @@ from app.domain.geometry.rotation import coerce_element_rotation
 
 # 全局 LLM 并发信号量
 _LLM_SEMAPHORE = asyncio.Semaphore(3)
-
-#: 工具型条目的检索指令（用户决策 2026-09-29，开放集构件通道配套）：
-#: 预取 RAG 可能空手、类型可能没有专属注册配置——必须明确告诉模型
-#: "不清楚就先调 search_knowledge，不要凭空编造字段"。
-_KB_TOOL_NUDGE = (
-
-    "\n\n# 知识检索工具（本条目可用）\n"
-    "- 你可以调用 search_knowledge(query, kind) 检索构件知识库，本条目最多 2 次；\n"
-    "  kind 传构件类型（如 \"column\"），query 用一句话描述你要查的契约点。\n"
-    "- 当你不确定该构件的字段契约、坐标语义、必填参数或能力边界时，"
-    "**必须先检索再输出**，不要凭空编造字段名或坐标语义。\n"
-    "- 检索结果与你的记忆冲突时，以知识库为准；检索后仍不确定，"
-    "就输出保守、合法的最小实现，并在 JSON 之外用一句话说明不确定点。\n"
-    "-  **放弃是最后手段**（用户规则 2026-09-29）：只有当你 ① 对照本提示词里的"
-    "蓝图语言规则（字段表、槽位规则、坐标语义）确认没有该构件/字段的契约，"
-    "**且** ② 调 search_knowledge 检索知识库也查不到它的描述时，才允许放弃——"
-    "此时必须在 JSON 之外用一句话写明放弃原因与两条核查的结论，"
-    "**不许静默跳过**，更不许凭印象认定\"做不到\"。"
-)
-
 
 def _coerce_fragment_rotations(fragments: list) -> int:
     """对一批片段做 `rotation` 单位迁移，返回被改动的条数。
@@ -153,7 +134,6 @@ def create_component_generator(config: ComponentConfig):
             design_brief=design_brief,
             plan_hint=_plan_hint(state.get("plan_item")),
             material_ids=list(state.get("material_ids") or []),
-            detail_level=str(state.get("detail_level") or ""),
         )
         prompt_chars = len(system_prompt)
 
@@ -182,7 +162,7 @@ def create_component_generator(config: ComponentConfig):
         if item_tools:
             # 开放集构件通道（用户决策 2026-09-29）：模型可能拿到注册表之外的类型，
             # 预取 RAG 也可能空手——必须明确告诉它"不清楚就先检索，不要编造"。
-            system_prompt = system_prompt + _KB_TOOL_NUDGE
+            system_prompt = system_prompt + COMPONENT_KNOWLEDGE_HINT
 
         try:
             if item_tools:

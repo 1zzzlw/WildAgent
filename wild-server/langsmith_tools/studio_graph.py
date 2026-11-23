@@ -6,7 +6,7 @@ from app.bootstrap.resources import initialize_agent_resources
 
 
 initialize_agent_resources()
-graph = build_generation_graph(enable_callback=True).with_config({
+graph = build_generation_graph().with_config({
     # 条目数在 plan 节点跑完前未知：按「构件类型数 × 3（generate/merge/validate）」估上界，
     # 与 application.generation.runner 的运行期口径保持一致。
     "recursion_limit": plan_recursion_limit(

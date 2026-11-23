@@ -285,9 +285,3 @@ def tools_for(item: Any) -> list[ToolSpec]:
         if spec.enabled and _scope_matches(spec, op, kind)
     ]
     return sorted(selected, key=lambda spec: (spec.category, spec.name))
-
-
-def tool_names_for(item: Any) -> list[str]:
-    """给提示词与审计用的工具名列表（顺序与 ``tools_for`` 一致）。"""
-
-    return [spec.name for spec in tools_for(item)]

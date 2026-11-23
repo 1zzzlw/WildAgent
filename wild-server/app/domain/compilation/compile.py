@@ -55,8 +55,10 @@ from app.domain.design.architecture import conform_railings_to_slots
 from app.domain.design.architecture import conform_roofs_to_slots
 from app.domain.design.architecture import normalize_architecture_plan
 from app.domain.design.architecture import resolve_facade_layout
+
 #: 外法向与入口雨棚/灯具共用同一墙两侧体量占用判据。
 from app.domain.design.architecture.facade import _plan_winding
+
 #: 屋顶合法类型闭集。从既有定义导入而不是复制——闭集写两份就一定会分叉。
 from app.domain.design.architecture.profile import _SUPPORTED_ROOF_TYPES
 from app.domain.components.registry import COMPONENT_REGISTRY
@@ -119,8 +121,14 @@ _ROOF_EAVES: dict[str, tuple[tuple[str, int], ...]] = {
 #: 檐口参考截面（8 点，抄自知识库《檐口 cornice》的示例）。
 #: X 是水平外挑量、Y 是竖向偏移；点的顺序构成闭合轮廓（``closedProfile``）。
 _CORNICE_PROFILE: tuple[tuple[float, float], ...] = (
-    (-0.16, -0.14), (0.16, -0.14), (0.16, -0.07), (0.10, -0.07),
-    (0.10, 0.0), (0.05, 0.0), (0.05, 0.08), (-0.16, 0.08),
+    (-0.16, -0.14),
+    (0.16, -0.14),
+    (0.16, -0.07),
+    (0.10, -0.07),
+    (0.10, 0.0),
+    (0.05, 0.0),
+    (0.05, 0.08),
+    (-0.16, 0.08),
 )
 
 #: 烟囱是**设备尺寸**：按层数缩放，**不**按建筑宽深缩放（与核心筒井道同一口径）。
@@ -178,7 +186,8 @@ def _roofless_volume_ids(plan: dict[str, Any]) -> set[str]:
     return {
         str(item.get("volume"))
         for item in (_roof_plan(plan).get("volumes") or [])
-        if isinstance(item, dict) and str(item.get("type") or "").lower() in {"none", "open"}
+        if isinstance(item, dict)
+        and str(item.get("type") or "").lower() in {"none", "open"}
     }
 
 
@@ -228,7 +237,10 @@ def _apply_pitched_heights(elements: list[dict[str, Any]]) -> int:
         if span <= 0 or depth <= 0:
             continue
         element["height"] = round(
-            max(_PITCHED_ROOF_HEIGHT_MIN, _PITCHED_ROOF_HEIGHT_RATIO * min(span, depth)), 3
+            max(
+                _PITCHED_ROOF_HEIGHT_MIN, _PITCHED_ROOF_HEIGHT_RATIO * min(span, depth)
+            ),
+            3,
         )
         changed += 1
     return changed
@@ -247,9 +259,14 @@ def _single_roof(plan: dict[str, Any], materials: dict[str, Any]) -> dict[str, A
     span = round(width + 2 * overhang, 3)
     span_depth = round(depth + 2 * overhang, 3)
     height = (
-        0.0 if roof_type == _FLAT_ROOF
+        0.0
+        if roof_type == _FLAT_ROOF
         else round(
-            max(_PITCHED_ROOF_HEIGHT_MIN, _PITCHED_ROOF_HEIGHT_RATIO * min(span, span_depth)), 3
+            max(
+                _PITCHED_ROOF_HEIGHT_MIN,
+                _PITCHED_ROOF_HEIGHT_RATIO * min(span, span_depth),
+            ),
+            3,
         )
     )
     return {
@@ -300,7 +317,11 @@ def _millimetre_inward(value: float) -> float:
 
 
 def _roofs_of(elements: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    return [item for item in elements if isinstance(item, dict) and item.get("type") == "roof"]
+    return [
+        item
+        for item in elements
+        if isinstance(item, dict) and item.get("type") == "roof"
+    ]
 
 
 def _cornice_candidates(
@@ -343,19 +364,27 @@ def _cornice_candidates(
             # 路径跨满整条檐边（与 KB 示例一致）；截面自带外挑，转角自然搭接。
             if axis == "x":
                 fixed = round(sign * half_w, 3)
-                path = [[fixed, local_y, round(-half_d, 3)], [fixed, local_y, round(half_d, 3)]]
+                path = [
+                    [fixed, local_y, round(-half_d, 3)],
+                    [fixed, local_y, round(half_d, 3)],
+                ]
             else:
                 fixed = round(sign * half_d, 3)
-                path = [[round(-half_w, 3), local_y, fixed], [round(half_w, 3), local_y, fixed]]
-            candidates.append({
-                "type": "cornice",
-                "id": f"cornice_{roof.get('id')}_{axis}{'p' if sign > 0 else 'n'}",
-                "parentRoof": str(roof.get("id") or ""),
-                "path": path,
-                "profile": [[float(x), float(y)] for x, y in _CORNICE_PROFILE],
-                "closedProfile": True,
-                "material": material,
-            })
+                path = [
+                    [round(-half_w, 3), local_y, fixed],
+                    [round(half_w, 3), local_y, fixed],
+                ]
+            candidates.append(
+                {
+                    "type": "cornice",
+                    "id": f"cornice_{roof.get('id')}_{axis}{'p' if sign > 0 else 'n'}",
+                    "parentRoof": str(roof.get("id") or ""),
+                    "path": path,
+                    "profile": [[float(x), float(y)] for x, y in _CORNICE_PROFILE],
+                    "closedProfile": True,
+                    "material": material,
+                }
+            )
     return candidates
 
 
@@ -392,7 +421,9 @@ def _chimney_candidates(
         if roof_type not in _ROOF_LOCAL_ATTACH:
             continue
         try:
-            depth = float(roof.get("span" if roof.get("ridgeAxis") == "x" else "depth") or 0.0)
+            depth = float(
+                roof.get("span" if roof.get("ridgeAxis") == "x" else "depth") or 0.0
+            )
         except (TypeError, ValueError):
             continue
         if depth <= 0:
@@ -403,18 +434,24 @@ def _chimney_candidates(
                 round(_CHIMNEY_RIDGE_OFFSET * depth / 2, 3),
                 _millimetre_inward(depth / 2),
             )
-        candidates.append({
-            "type": "chimney",
-            "id": f"chimney_{roof.get('id')}",
-            "parentRoof": str(roof.get("id") or ""),
-            "position": [offset, 0.0, 0.0] if roof.get("ridgeAxis") == "x" else [0.0, 0.0, offset],
-            "width": size,
-            "depth": size,
-            "height": height,
-            "wallThickness": _CHIMNEY_WALL_THICKNESS,
-            "capHeight": _CHIMNEY_CAP_HEIGHT,
-            "material": material,
-        })
+        candidates.append(
+            {
+                "type": "chimney",
+                "id": f"chimney_{roof.get('id')}",
+                "parentRoof": str(roof.get("id") or ""),
+                "position": (
+                    [offset, 0.0, 0.0]
+                    if roof.get("ridgeAxis") == "x"
+                    else [0.0, 0.0, offset]
+                ),
+                "width": size,
+                "depth": size,
+                "height": height,
+                "wallThickness": _CHIMNEY_WALL_THICKNESS,
+                "capHeight": _CHIMNEY_CAP_HEIGHT,
+                "material": material,
+            }
+        )
     return candidates
 
 
@@ -459,7 +496,9 @@ def _light_candidates(
     在这里再算一遍就是同一件事两个实现。
     """
 
-    facade_plan = brief.get("facade_plan") if isinstance(brief.get("facade_plan"), dict) else {}
+    facade_plan = (
+        brief.get("facade_plan") if isinstance(brief.get("facade_plan"), dict) else {}
+    )
     walls = {
         str(item.get("id")): item
         for item in (blueprint.get("geometry") or {}).get("elements") or []
@@ -467,7 +506,11 @@ def _light_candidates(
     }
     doors: dict[str, dict[str, Any]] = {}
     for slot in brief.get("opening_slots") or []:
-        if isinstance(slot, dict) and slot.get("type") == "door" and slot.get("wall_id"):
+        if (
+            isinstance(slot, dict)
+            and slot.get("type") == "door"
+            and slot.get("wall_id")
+        ):
             doors.setdefault(str(slot["wall_id"]), slot)
 
     facing_order = {"front": 0, "back": 1, "left": 2, "right": 3}
@@ -497,26 +540,33 @@ def _light_candidates(
         try:
             base_y = min(float(frm[1]), float(to[1]))
             top_y = max(float(frm[1]), float(to[1]))
-            length = math.hypot(float(to[0]) - float(frm[0]), float(to[2]) - float(frm[2]))
+            length = math.hypot(
+                float(to[0]) - float(frm[0]), float(to[2]) - float(frm[2])
+            )
         except (TypeError, ValueError):
             continue
         door = doors.get(wall_id)
         if door is not None:
-            along = float((door.get("from") or [0.0])[0]) + float(door.get("width") or 0.0) / 2
+            along = (
+                float((door.get("from") or [0.0])[0])
+                + float(door.get("width") or 0.0) / 2
+            )
         else:
             along = length / 2
         along = max(0.15, min(along, max(0.15, length - 0.15)))
-        candidates.append({
-            "type": "light",
-            "id": f"light_synthesized_{index:02d}",
-            "position": [
-                round(float(frm[0]) + ux * along + nx * _LIGHT_WALL_OFFSET, 3),
-                round(min(base_y + _LIGHT_MOUNT_HEIGHT, top_y - 0.3), 3),
-                round(float(frm[2]) + uz * along + nz * _LIGHT_WALL_OFFSET, 3),
-            ],
-            "fixtureType": "bulb",
-            "initiallyOn": True,
-        })
+        candidates.append(
+            {
+                "type": "light",
+                "id": f"light_synthesized_{index:02d}",
+                "position": [
+                    round(float(frm[0]) + ux * along + nx * _LIGHT_WALL_OFFSET, 3),
+                    round(min(base_y + _LIGHT_MOUNT_HEIGHT, top_y - 0.3), 3),
+                    round(float(frm[2]) + uz * along + nz * _LIGHT_WALL_OFFSET, 3),
+                ],
+                "fixtureType": "bulb",
+                "initiallyOn": True,
+            }
+        )
         brief.setdefault("light_hosts", {})[candidates[-1]["id"]] = wall_id
     return candidates
 
@@ -577,7 +627,7 @@ def _derive_elevators(
 ) -> list[dict[str, Any]]:
     """电梯派生：从骨架核心筒确定性生成电梯组件。
 
-    前置条件：骨架必须有 ``wall_core_*`` 井道围合（即 ``vertical_strategy`` 为 
+    前置条件：骨架必须有 ``wall_core_*`` 井道围合（即 ``vertical_strategy`` 为
     ``core_and_stair``）。无井道时返回空列表并标记为 ``uncompiled``，
     由模型通道补（或标记为能力缺失）。
 
@@ -617,19 +667,21 @@ def _derive_elevators(
         cab_depth = min(_ELEVATOR_DEPTH_DEFAULT, available_depth)
         cab_height = floor_height - _ELEVATOR_CAB_CLEARANCE
 
-        candidates.append({
-            "type": "elevator",
-            "id": f"elevator_{idx:02d}",
-            "position": [center_x, 0.0, center_z],
-            "dimensions": {
-                "width": round(cab_width, 3),
-                "depth": round(cab_depth, 3),
-                "height": round(cab_height, 3),
-            },
-            "floorHeight": floor_height,
-            "floorCount": floor_count,
-            "initialFloor": 0,
-        })
+        candidates.append(
+            {
+                "type": "elevator",
+                "id": f"elevator_{idx:02d}",
+                "position": [center_x, 0.0, center_z],
+                "dimensions": {
+                    "width": round(cab_width, 3),
+                    "depth": round(cab_depth, 3),
+                    "height": round(cab_height, 3),
+                },
+                "floorHeight": floor_height,
+                "floorCount": floor_count,
+                "initialFloor": 0,
+            }
+        )
 
     # 应用下限门：配额要 N 台但只能放 M < N 台 → 一台都不产
     return candidates if len(candidates) >= minimum else []
@@ -694,7 +746,9 @@ def _resolve_instance_materials(
 
 
 def _opening_expression(
-    inst: dict[str, Any], walls: dict[str, Any], plan: dict[str, Any] | None = None,
+    inst: dict[str, Any],
+    walls: dict[str, Any],
+    plan: dict[str, Any] | None = None,
 ) -> tuple[str | None, int]:
     """解析实例 ``host`` → ``(墙 id, 同墙第几条)``。
 
@@ -738,8 +792,14 @@ def _opening_expression(
     if "_L" in host and plan:
         volume_id, _, suffix = host.rpartition("_L")
         level, _, face = suffix.partition("_")
-        volume = next((v for v in plan.get("volumes", []) if v.get("id") == volume_id), None)
-        if not volume or not level.isdigit() or face not in {"front", "back", "left", "right"}:
+        volume = next(
+            (v for v in plan.get("volumes", []) if v.get("id") == volume_id), None
+        )
+        if (
+            not volume
+            or not level.isdigit()
+            or face not in {"front", "back", "left", "right"}
+        ):
             return None, occurrence
         floor = int(level)
         if not int(volume["start_floor"]) <= floor <= int(volume["end_floor"]):
@@ -755,7 +815,12 @@ def _opening_expression(
         matches = []
         for wall_id, wall in walls.items():
             frm, to = wall.get("from"), wall.get("to")
-            if not isinstance(frm, list) or not isinstance(to, list) or len(frm) != 3 or len(to) != 3:
+            if (
+                not isinstance(frm, list)
+                or not isinstance(to, list)
+                or len(frm) != 3
+                or len(to) != 3
+            ):
                 continue
             if (
                 abs(min(frm[1], to[1]) - base_y) <= tolerance
@@ -831,19 +896,41 @@ def _positive_float(value: Any, fallback: float) -> float:
 #: 当前屋顶元素的 ``ridgeAxis`` 由 roof 决策编译；``overhang`` 编译为跨度，
 #: 两者不从实例 form 再开第二条控制路径。旧 WILD 缺省 ridgeAxis 仍沿 Z。
 _INSTANCE_FORM_FIELDS: dict[str, frozenset[str]] = {
-    "door": frozenset({
-        "mode", "hingeSide", "openAngle", "frameWidth", "frameDepth",
-        "leafDepth", "leafMaterial", "leafRows",
-    }),
-    "window": frozenset({
-        "verticalMullions", "horizontalMullions",
-        "frameWidth", "frameDepth", "glassDepth", "glassMaterial",
-    }),
-    "balcony": frozenset({"slabThickness", "railingHeight", "postSpacing", "railingMaterial"}),
-    "railing": frozenset({
-        "postSpacing", "postRadius", "railRadius", "railLevels",
-        "infillType", "infillMaterial",
-    }),
+    "door": frozenset(
+        {
+            "mode",
+            "hingeSide",
+            "openAngle",
+            "frameWidth",
+            "frameDepth",
+            "leafDepth",
+            "leafMaterial",
+            "leafRows",
+        }
+    ),
+    "window": frozenset(
+        {
+            "verticalMullions",
+            "horizontalMullions",
+            "frameWidth",
+            "frameDepth",
+            "glassDepth",
+            "glassMaterial",
+        }
+    ),
+    "balcony": frozenset(
+        {"slabThickness", "railingHeight", "postSpacing", "railingMaterial"}
+    ),
+    "railing": frozenset(
+        {
+            "postSpacing",
+            "postRadius",
+            "railRadius",
+            "railLevels",
+            "infillType",
+            "infillMaterial",
+        }
+    ),
     "roof": frozenset({"roofType", "ridgeHeight"}),
     "column": frozenset({"style", "flutes", "entasis"}),
     "canopy": frozenset({"depth", "thickness", "supportCount", "supportSize"}),
@@ -866,8 +953,10 @@ _INSTANCE_FORM_ROUTES: dict[str, tuple[str, str]] = {
 
 def _instance_size_field(component_type: str, field: str) -> str | None:
     """设计尺寸到引擎数值尺寸；板的 height 表示板厚，不表示安装标高。"""
-    target = {("balcony", "height"): "slabThickness",
-              ("canopy", "height"): "thickness"}.get((component_type, field), field)
+    target = {
+        ("balcony", "height"): "slabThickness",
+        ("canopy", "height"): "thickness",
+    }.get((component_type, field), field)
     prop = _form_target_schema(component_type, target)
     return target if prop and prop.get("type") == "number" else None
 
@@ -992,7 +1081,9 @@ def _apply_instance_form(
             # （2026-10-08 已从白名单删除）。留着这条分支是为了**将来漂移**也能被看见。
             unverified.append(key)
         else:
-            reason = _form_value_error(component_type, target, value, container=container)
+            reason = _form_value_error(
+                component_type, target, value, container=container
+            )
             if reason:
                 rejected[key] = reason
                 ignored.append(key)
@@ -1008,7 +1099,9 @@ def _apply_instance_form(
     if "mode" in form and "mode" in allowed:
         from app.domain.design.architecture.facade import _apply_opening_form
 
-        _apply_opening_form(component, str(form["mode"]), str(component.get("id") or "instance"))
+        _apply_opening_form(
+            component, str(form["mode"]), str(component.get("id") or "instance")
+        )
         if "mode" not in applied:
             applied.append("mode")
     return applied, ignored, rejected, unverified
@@ -1056,7 +1149,11 @@ def _roof_host_aliases(
     plan = plan if isinstance(plan, dict) else {}
     volumes = [item for item in (plan.get("volumes") or []) if isinstance(item, dict)]
     raw_slots = brief.get("roof_slots") if isinstance(brief, dict) else None
-    slots = [item for item in raw_slots if isinstance(item, dict)] if isinstance(raw_slots, list) else []
+    slots = (
+        [item for item in raw_slots if isinstance(item, dict)]
+        if isinstance(raw_slots, list)
+        else []
+    )
 
     aliases: dict[str, str] = {}
     for roof in roofs:
@@ -1098,7 +1195,9 @@ def _roof_host_aliases(
     elif len(roofs) == 1 and len(volumes) == 1:
         # 无槽位的单块屋面（`chinese_curved` 等整块形制、或单一体量）：
         # 只有一个体量时"体量 id"才无歧义，多体量不猜。
-        _bind(str(volumes[0].get("id") or ""), str(roofs[0].get("id") or ""), volumes[0])
+        _bind(
+            str(volumes[0].get("id") or ""), str(roofs[0].get("id") or ""), volumes[0]
+        )
     return aliases
 
 
@@ -1157,7 +1256,7 @@ def _railing_instance_defaults(
 ) -> dict[str, Any] | None:
     """栏杆实例**追加**时的最小几何：按宿主体量边缘算一条闭合路径。
 
-    🔴 ``path`` 是**世界坐标**，绝不能让图纸写 —— 模型算不出体量边界在哪，
+     ``path`` 是**世界坐标**，绝不能让图纸写 —— 模型算不出体量边界在哪，
     写出来的栏杆会飘在空中或跨过整栋楼。宿主认这几种写法（都归到"哪个体量的哪一层"）：
 
     - ``<volume_id>`` —— 该体量顶层的临空边缘；
@@ -1170,7 +1269,7 @@ def _railing_instance_defaults(
 
     host = str(inst.get("host") or "").strip()
     if host.startswith("railing:"):
-        host = host[len("railing:"):]
+        host = host[len("railing:") :]
     level: int | None = None
     if "_L" in host:
         head, _, tail = host.rpartition("_L")
@@ -1185,14 +1284,13 @@ def _railing_instance_defaults(
     volumes = [
         item for item in (plan or {}).get("volumes", []) if isinstance(item, dict)
     ]
-    volume = next(
-        (item for item in volumes if str(item.get("id") or "") == host), None
-    )
+    volume = next((item for item in volumes if str(item.get("id") or "") == host), None)
     if not isinstance(volume, dict):
         # 只给了一个面（`main_front`）时按体量 id 再试一次。
         volume = next(
             (
-                item for item in volumes
+                item
+                for item in volumes
                 if str(item.get("id") or "") and host.startswith(f"{item['id']}_")
             ),
             None,
@@ -1202,7 +1300,8 @@ def _railing_instance_defaults(
     # floor_height 只在 ``brief["realization"]`` 里（brief 顶层是槽位表），别读错位置。
     realization = (brief or {}).get("realization") if isinstance(brief, dict) else None
     floor_height = _positive_float(
-        realization.get("floor_height") if isinstance(realization, dict) else None, 3.2,
+        realization.get("floor_height") if isinstance(realization, dict) else None,
+        3.2,
     )
     if level is None:
         level = int(volume.get("end_floor") or 1)
@@ -1627,18 +1726,23 @@ def _apply_instance_overrides(
             kind = str(item["type"])
             replaced_kinds[kind] = replaced_kinds.get(kind, 0) + 1
 
-    return components, elements, {
-        "explicit": explicit_kinds,
-        "replaced": replaced_kinds,
-        "kept_derived": sorted(declared_types - set(explicit_kinds)),
-    }
+    return (
+        components,
+        elements,
+        {
+            "explicit": explicit_kinds,
+            "replaced": replaced_kinds,
+            "kept_derived": sorted(declared_types - set(explicit_kinds)),
+        },
+    )
 
 
 def _compose(
     plan: dict[str, Any],
     user_message: str,
     material_plan: dict[str, Any] | None = None,
-    *, normalized_input: bool = False,
+    *,
+    normalized_input: bool = False,
 ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
     """把既有确定性部件串成一次编译，返回 ``(blueprint, design_brief, stats)``。
 
@@ -1649,13 +1753,24 @@ def _compose(
     它点名的那几类（见 ``_apply_instance_overrides``）。
     """
 
-    complexity = plan.get("complexity") if isinstance(plan.get("complexity"), dict) else None
+    complexity = (
+        plan.get("complexity") if isinstance(plan.get("complexity"), dict) else None
+    )
     normalization_changes: list[dict] = []
-    normalized = deepcopy(plan) if normalized_input else normalize_architecture_plan(
-        plan, user_message, complexity, normalization_changes=normalization_changes,
+    normalized = (
+        deepcopy(plan)
+        if normalized_input
+        else normalize_architecture_plan(
+            plan,
+            user_message,
+            complexity,
+            normalization_changes=normalization_changes,
+        )
     )
 
-    blueprint = build_deterministic_skeleton(normalized, user_message, normalized_input=True)
+    blueprint = build_deterministic_skeleton(
+        normalized, user_message, normalized_input=True
+    )
     # 已批准的材质方案必须落地在**任何按材质取名的步骤之前**：
     # `conform_openings_to_slots` / `_derive_lights` / `_roof_material` 都从
     # `blueprint["materials"]` 取名字，晚一步它们拿到的就是骨架硬编码的那 6 个
@@ -1669,15 +1784,21 @@ def _compose(
     brief = resolve_facade_layout(blueprint, normalized)
     brief["design_intent"] = deepcopy(normalized.get("design_intent"))
     brief["design_notes"] = list(normalized.get("design_rationale") or [])
-    materials = blueprint.get("materials") if isinstance(blueprint.get("materials"), dict) else {}
+    materials = (
+        blueprint.get("materials")
+        if isinstance(blueprint.get("materials"), dict)
+        else {}
+    )
     materials = materials or {}
     geometry = blueprint.setdefault("geometry", {})
     elements = list(geometry.get("elements") or [])
-    
+
     # §3.4: 检查是否有实例清单
     component_instances = normalized.get("components") or []
-    use_instance_list = isinstance(component_instances, list) and len(component_instances) > 0
-    
+    use_instance_list = (
+        isinstance(component_instances, list) and len(component_instances) > 0
+    )
+
     components: list[dict[str, Any]] = []  # ← 模型产出置空：编译器不依赖任何模型输出
 
     # 派生是**默认**，无论有没有实例清单都先跑一遍：`conform_openings_to_slots` 把立面
@@ -1687,35 +1808,46 @@ def _compose(
     # 灯具先落位，再由既有的入口吸附器把入口墙那盏对齐到门轴线（顺序不能倒）。
     lights = _derive_lights(normalized, blueprint, brief, components)
     components = [*components, *lights]
-    components, entrance_layout = conform_entrance_accessories(components, brief, blueprint)
+    components, entrance_layout = conform_entrance_accessories(
+        components, brief, blueprint
+    )
     components, balcony_layout = conform_balconies_to_slots(components, brief)
     components, railing_layout = conform_railings_to_slots(components, brief)
 
-    quota = brief.get("component_quota") if isinstance(brief.get("component_quota"), dict) else {}
+    quota = (
+        brief.get("component_quota")
+        if isinstance(brief.get("component_quota"), dict)
+        else {}
+    )
     quota = quota or {}
     roof_slots = brief.get("roof_slots") or []
     roof_min = int((quota.get("roof") or {}).get("min") or 0)
     roofless_volumes = _roofless_volume_ids(normalized)
-    single_volume = (normalized.get("volumes") or [])
+    single_volume = normalized.get("volumes") or []
     roof_type = _roof_type(normalized)
     single_roof_disabled = (
-        len(single_volume) == 1
-        and str(single_volume[0].get("id")) in roofless_volumes
+        len(single_volume) == 1 and str(single_volume[0].get("id")) in roofless_volumes
     )
     roof_layout = {"split": 0, "synthesized": 0}
     if roof_slots:
         elements, roof_layout = conform_roofs_to_slots(
             [*elements, _roof_style(normalized, materials)], brief
         )
-    elif roof_min > 0 and len(single_volume) == 1 and not single_roof_disabled \
-            and roof_type in _SUPPORTED_ROOF_TYPES:
+    elif (
+        roof_min > 0
+        and len(single_volume) == 1
+        and not single_roof_disabled
+        and roof_type in _SUPPORTED_ROOF_TYPES
+    ):
         # 无屋盖场景（quota.min == 0）不生成——判据取自图纸配额，不在这里另判一次。
         elements = [*elements, _single_roof(normalized, materials)]
         roof_layout = {"split": 0, "synthesized": 1}
     _apply_pitched_heights(elements)
 
     # 檐口/烟囱要读**已成形的屋顶**，所以必须排在屋盖落地之后。
-    attachments = _derive_attachments(normalized, brief, elements, components, materials)
+    attachments = _derive_attachments(
+        normalized, brief, elements, components, materials
+    )
     components = [*components, *attachments]
 
     # 电梯要读**骨架核心筒**（wall_core_*），所以必须排在骨架之后。
@@ -1730,7 +1862,14 @@ def _compose(
             component_instances,
             # 宿主查找要看到**当前**已落地的构件与元素：屋顶在 `elements` 里，
             # 雨篷/檐口/烟囱的宿主按定义就是门窗或屋顶，晚一步就一个都解析不到。
-            {**blueprint, "geometry": {**geometry, "components": components, "elements": elements}},
+            {
+                **blueprint,
+                "geometry": {
+                    **geometry,
+                    "components": components,
+                    "elements": elements,
+                },
+            },
             materials,
             plan=normalized,
             # 屋顶槽位只活在 design_brief 里（`roof:<volume_id>` → `roof_planned_NN`
@@ -1752,7 +1891,11 @@ def _compose(
         renamed = brief.pop("instance_id_map", {})
         for entity in [*elements, *components]:
             for key, value in list(entity.items()):
-                if key.startswith("parent") and isinstance(value, str) and value in renamed:
+                if (
+                    key.startswith("parent")
+                    and isinstance(value, str)
+                    and value in renamed
+                ):
                     entity[key] = renamed[value]
 
     # 配额上限剔除已删除（用户决策 2026-09-29）：max 只是参考值，产物数量
@@ -1772,7 +1915,9 @@ def _compose(
             if isinstance(item, dict) and item.get("role") and item.get("materialId")
         }
         region_stats = apply_material_regions(
-            blueprint, _material_regions(normalized), role_material_ids,
+            blueprint,
+            _material_regions(normalized),
+            role_material_ids,
         )
         # 绑定可能改写了最后一批构件的材质引用，重新读回（下面 stats 要按真实材质计数）。
         elements = list(geometry.get("elements") or [])
@@ -1984,7 +2129,11 @@ def _validator_defects(
                 target="blueprint",
                 evidence=text,
                 design_field=_DESIGN_FIELD.get(named)
-                or (f"decisions.components[type={named}]" if named in COMPONENT_REGISTRY else ""),
+                or (
+                    f"decisions.components[type={named}]"
+                    if named in COMPONENT_REGISTRY
+                    else ""
+                ),
             )
         )
     return defects
@@ -2008,10 +2157,12 @@ def _material_regions(plan: dict[str, Any]) -> list[dict[str, Any]]:
     return out
 
 
-def _roof_override_defects(plan: dict[str, Any], brief: dict[str, Any]) -> list[CompileDefect]:
+def _roof_override_defects(
+    plan: dict[str, Any], brief: dict[str, Any]
+) -> list[CompileDefect]:
     """P5-A：逐体量屋顶覆盖的**引用完整性与冲突**——恒 ``warn``，只标记不阻断。
 
-    🔴 为什么是 warn 而不是 error：体量覆盖写错（引用了不存在的体量、两条覆盖打架）
+     为什么是 warn 而不是 error：体量覆盖写错（引用了不存在的体量、两条覆盖打架）
     编译器**有兜底**（退回整栋模板，产物仍然合法可渲染）。按「能力缺失只标记、
     不阻断」与「契约层不能比编译器严」两条，这属于"这一步表态没落地"，
     必须出得来，不许把合法的整栋房子拦下来。
@@ -2021,7 +2172,9 @@ def _roof_override_defects(plan: dict[str, Any], brief: dict[str, Any]) -> list[
     """
 
     roof = plan.get("roof") if isinstance(plan.get("roof"), dict) else {}
-    raw_entries = [item for item in (roof.get("volumes") or []) if isinstance(item, dict)]
+    raw_entries = [
+        item for item in (roof.get("volumes") or []) if isinstance(item, dict)
+    ]
     if not raw_entries:
         return []
     known = {
@@ -2034,44 +2187,65 @@ def _roof_override_defects(plan: dict[str, Any], brief: dict[str, Any]) -> list[
     for entry in raw_entries:
         volume = str(entry.get("volume") or "")
         if known and volume not in known:
-            defects.append(CompileDefect(
-                code="roof_override_unknown_volume", severity="warn", target=volume or "roof",
-                evidence=(
-                    f"逐体量屋顶覆盖引用了不存在的体量 {volume!r}；"
-                    f"本次体量 id 为 {sorted(known)}。该条覆盖未生效，其余按整栋模板派生"
-                ),
-                design_field="decisions.roof.volumes",
-            ))
+            defects.append(
+                CompileDefect(
+                    code="roof_override_unknown_volume",
+                    severity="warn",
+                    target=volume or "roof",
+                    evidence=(
+                        f"逐体量屋顶覆盖引用了不存在的体量 {volume!r}；"
+                        f"本次体量 id 为 {sorted(known)}。该条覆盖未生效，其余按整栋模板派生"
+                    ),
+                    design_field="decisions.roof.volumes",
+                )
+            )
             continue
-        values = {key: entry[key] for key in ("type", "overhang") if entry.get(key) is not None}
+        values = {
+            key: entry[key]
+            for key in ("type", "overhang")
+            if entry.get(key) is not None
+        }
         if volume in seen and seen[volume] != values:
-            defects.append(CompileDefect(
-                code="roof_override_conflict", severity="warn", target=volume,
-                evidence=(
-                    f"体量 {volume} 的屋顶覆盖写了不止一次且取值不同："
-                    f"{seen[volume]} 与 {values}。按后者生效，但这次表态本身有歧义"
-                ),
-                design_field="decisions.roof.volumes",
-            ))
+            defects.append(
+                CompileDefect(
+                    code="roof_override_conflict",
+                    severity="warn",
+                    target=volume,
+                    evidence=(
+                        f"体量 {volume} 的屋顶覆盖写了不止一次且取值不同："
+                        f"{seen[volume]} 与 {values}。按后者生效，但这次表态本身有歧义"
+                    ),
+                    design_field="decisions.roof.volumes",
+                )
+            )
         seen[volume] = values
     for slot in brief.get("roof_slots") or []:
         if isinstance(slot, dict) and slot.get("override_conflict"):
-            defects.append(CompileDefect(
-                code="roof_override_conflict", severity="warn",
-                target=str(slot.get("volume") or slot.get("id") or "roof"),
-                evidence=f"体量 {slot.get('volume')} 的屋顶覆盖取值有歧义（见编译输入）",
-                design_field="decisions.roof.volumes",
-            ))
+            defects.append(
+                CompileDefect(
+                    code="roof_override_conflict",
+                    severity="warn",
+                    target=str(slot.get("volume") or slot.get("id") or "roof"),
+                    evidence=f"体量 {slot.get('volume')} 的屋顶覆盖取值有歧义（见编译输入）",
+                    design_field="decisions.roof.volumes",
+                )
+            )
     return defects
 
 
 def _roof_layout_evidence(plan: dict[str, Any], brief: dict[str, Any]) -> str:
     roof = _roof_plan(plan)
-    overrides = {str(item.get("volume")): str(item.get("type") or roof.get("type") or "").lower()
-                 for item in roof.get("volumes") or [] if isinstance(item, dict)}
+    overrides = {
+        str(item.get("volume")): str(item.get("type") or roof.get("type") or "").lower()
+        for item in roof.get("volumes") or []
+        if isinstance(item, dict)
+    }
     volumes = (brief.get("realization") or {}).get("volumes") or []
-    types = [overrides.get(str(volume.get("id")), str(roof.get("type") or "").lower())
-             for volume in volumes if isinstance(volume, dict)]
+    types = [
+        overrides.get(str(volume.get("id")), str(roof.get("type") or "").lower())
+        for volume in volumes
+        if isinstance(volume, dict)
+    ]
     if types and all(roof_type in {"none", "open"} for roof_type in types):
         return "所有体量都声明不单独建屋面，但设计仍要求屋顶；请核对屋面设计与配额"
     unsupported = sorted(set(types) - {"flat", "gable", "hip", "none", "open"})
@@ -2151,10 +2325,17 @@ def _capability_gaps(
     geometry = blueprint.get("geometry") or {}
     produced = {
         str(entity.get("type"))
-        for entity in [*(geometry.get("elements") or []), *(geometry.get("components") or [])]
+        for entity in [
+            *(geometry.get("elements") or []),
+            *(geometry.get("components") or []),
+        ]
         if isinstance(entity, dict)
     }
-    quota = brief.get("component_quota") if isinstance(brief.get("component_quota"), dict) else {}
+    quota = (
+        brief.get("component_quota")
+        if isinstance(brief.get("component_quota"), dict)
+        else {}
+    )
     unsupported: list[str] = []
     uncompiled: list[str] = []
     for component_type, limits in sorted((quota or {}).items()):
@@ -2175,10 +2356,10 @@ def _partial_roof_coverage(brief: dict) -> bool:
             if other["start_floor"] <= v["end_floor"]:
                 continue
             x0, z0 = max(v["x"], other["x"]), max(v["z"], other["z"])
-            x1 = min(v["x"]+v["width"], other["x"]+other["width"])
-            z1 = min(v["z"]+v["depth"], other["z"]+other["depth"])
-            area = max(0, x1-x0) * max(0, z1-z0)
-            if 0.001 < area < v["width"]*v["depth"]-0.001:
+            x1 = min(v["x"] + v["width"], other["x"] + other["width"])
+            z1 = min(v["z"] + v["depth"], other["z"] + other["depth"])
+            area = max(0, x1 - x0) * max(0, z1 - z0)
+            if 0.001 < area < v["width"] * v["depth"] - 0.001:
                 return True
     return False
 
@@ -2212,7 +2393,9 @@ def compile_design(
     if has_spatial_geometry(plan):
         return _compile_spatial_design(plan, mode, user_message, material_plan)
 
-    blueprint, brief, stats = _compose(plan, user_message, material_plan, normalized_input=normalized_input)
+    blueprint, brief, stats = _compose(
+        plan, user_message, material_plan, normalized_input=normalized_input
+    )
     unsupported, uncompiled = _capability_gaps(brief, blueprint)
     # 收缺陷的顺序即"从粗到细"：整图 schema → 逐构件必填/枚举 → 交付流水线 + 设计清单。
     # §2.5 的口径统一在这里：三处校验（skeleton 预检 / spatial_tools / final_validate）
@@ -2224,42 +2407,91 @@ def compile_design(
         *_validator_defects(blueprint, brief),
         # P5-A：逐体量屋顶覆盖的引用/冲突——同样恒 warn（有兜底就不阻断）。
         *_roof_override_defects(plan, brief),
-        *([CompileDefect(code="roof_type_unsupported", severity="error", target="roof",
-            evidence=f"图纸屋型 {_roof_type(plan)!r} 无法由单体量屋面编译器实现；需由 plan 单独落实",
-            design_field="decisions.roof.type")] if _quota_min(brief, "roof") > 0
+        *(
+            [
+                CompileDefect(
+                    code="roof_type_unsupported",
+                    severity="error",
+                    target="roof",
+                    evidence=f"图纸屋型 {_roof_type(plan)!r} 无法由单体量屋面编译器实现；需由 plan 单独落实",
+                    design_field="decisions.roof.type",
+                )
+            ]
+            if _quota_min(brief, "roof") > 0
             and len((brief.get("realization") or {}).get("volumes") or []) == 1
-            and _roof_type(plan) not in _SUPPORTED_ROOF_TYPES | {"none", "open"} else []),
-        *([CompileDefect(code="roof_design_conflict", severity="error", target="roof",
-            evidence="唯一体量明确不单独建屋面，但设计仍要求屋顶；请核对屋顶配额与逐体量覆盖",
-            design_field="decisions.roof.volumes")] if _quota_min(brief, "roof") > 0
+            and _roof_type(plan) not in _SUPPORTED_ROOF_TYPES | {"none", "open"}
+            else []
+        ),
+        *(
+            [
+                CompileDefect(
+                    code="roof_design_conflict",
+                    severity="error",
+                    target="roof",
+                    evidence="唯一体量明确不单独建屋面，但设计仍要求屋顶；请核对屋顶配额与逐体量覆盖",
+                    design_field="decisions.roof.volumes",
+                )
+            ]
+            if _quota_min(brief, "roof") > 0
             and len((brief.get("realization") or {}).get("volumes") or []) == 1
-            and str(((brief.get("realization") or {}).get("volumes") or [{}])[0].get("id"))
+            and str(
+                ((brief.get("realization") or {}).get("volumes") or [{}])[0].get("id")
+            )
             in _roofless_volume_ids(plan)
-            else []),
-        *([CompileDefect(code="roof_layout_unsupported", severity="error", target="roof",
-            evidence=_roof_layout_evidence(plan, brief),
-            design_field="decisions.roof")] if _quota_min(brief, "roof") > 0
+            else []
+        ),
+        *(
+            [
+                CompileDefect(
+                    code="roof_layout_unsupported",
+                    severity="error",
+                    target="roof",
+                    evidence=_roof_layout_evidence(plan, brief),
+                    design_field="decisions.roof",
+                )
+            ]
+            if _quota_min(brief, "roof") > 0
             and len((brief.get("realization") or {}).get("volumes") or []) > 1
-            and not brief.get("roof_slots") else []),
-        *([CompileDefect(code="roof_partial_coverage", severity="error", target="roof",
-            evidence="下层体量被上层部分覆盖，剩余局部屋面当前无法无损编译；需要设计修订",
-            design_field="decisions.volumes")] if _quota_min(brief, "roof") > 0 and _partial_roof_coverage(brief) else []),
-        *[CompileDefect(
-            code="material_region_unapplied", severity="warn",
-            target=str(item.get("target") or "materials"),
-            evidence=str(item.get("reason") or "材质绑定未落地"),
-            design_field=f"decisions.materials.regions[{index}]",
-        ) for index, item in enumerate(stats.get("material_regions") or []) if not item.get("applied")],
+            and not brief.get("roof_slots")
+            else []
+        ),
+        *(
+            [
+                CompileDefect(
+                    code="roof_partial_coverage",
+                    severity="error",
+                    target="roof",
+                    evidence="下层体量被上层部分覆盖，剩余局部屋面当前无法无损编译；需要设计修订",
+                    design_field="decisions.volumes",
+                )
+            ]
+            if _quota_min(brief, "roof") > 0 and _partial_roof_coverage(brief)
+            else []
+        ),
+        *[
+            CompileDefect(
+                code="material_region_unapplied",
+                severity="warn",
+                target=str(item.get("target") or "materials"),
+                evidence=str(item.get("reason") or "材质绑定未落地"),
+                design_field=f"decisions.materials.regions[{index}]",
+            )
+            for index, item in enumerate(stats.get("material_regions") or [])
+            if not item.get("applied")
+        ],
     ]
     for item in (stats.get("instance_overrides") or {}).get("instance_entities") or []:
         if item.get("outcome") == "dropped":
             index = item["index"]
-            defects.append(CompileDefect(
-                code="design_instance_uncompiled", severity="warn",
-                target=str(item.get("instance_id") or f"instance_{index}"),
-                evidence=f"设计实例 {item.get('declared_type')} 未落实，宿主 {item.get('declared_host')}；需核对当前设计编译表达能力",
-                design_field=f"decisions.components[{index}]",
-            ))
+            defects.append(
+                CompileDefect(
+                    code="design_instance_uncompiled",
+                    severity="warn",
+                    target=str(item.get("instance_id") or f"instance_{index}"),
+                    evidence=f"设计实例 {item.get('declared_type')} 未落实，宿主 {item.get('declared_host')}；需核对当前设计编译表达能力",
+                    design_field=f"decisions.components[{index}]",
+                )
+            )
     result = CompileResult(
         mode=mode,
         blueprint=blueprint if mode == MODE_FINAL else None,
@@ -2279,19 +2511,31 @@ __all__ = ["compile_design"]
 
 def _compile_spatial_design(plan, mode, user_message, material_plan):
     """新图纸复用空间解析和任务构造入口；无确定实现的任务如实列为uncompiled。"""
-    from app.domain.design.resolver import build_design_document, attach_material_plan, resolve_design
+    from app.domain.design.resolver import (
+        build_design_document,
+        attach_material_plan,
+        resolve_design,
+    )
     from app.domain.design.construction_systems import construct_system
     from app.domain.blueprint.materials.plan import resolve_material_plan
 
     materials = material_plan or resolve_material_plan(None, [], plan)
-    document = build_design_document(plan, session_id="offline", source_request=user_message or "离线编译设计图纸")
+    document = build_design_document(
+        plan, session_id="offline", source_request=user_message or "离线编译设计图纸"
+    )
     document = attach_material_plan(document, materials)
     resolved = resolve_design(document)
     blueprint = {
-        "meta": {"version":"1.0", "type":"building", "name":document.decisions.concept or "建筑"},
-        "geometry":{"elements":[],"components":[]},
-        "materials":{role["materialId"]:role["material"] for role in materials["roles"]},
-        "assets":materials.get("resolvedAssets", {}),
+        "meta": {
+            "version": "1.0",
+            "type": "building",
+            "name": document.decisions.concept or "建筑",
+        },
+        "geometry": {"elements": [], "components": []},
+        "materials": {
+            role["materialId"]: role["material"] for role in materials["roles"]
+        },
+        "assets": materials.get("resolvedAssets", {}),
     }
     uncompiled, defects = set(), []
     for marker in resolved.component_markers:
@@ -2302,18 +2546,32 @@ def _compile_spatial_design(plan, mode, user_message, material_plan):
         if fragment is None:
             uncompiled.add(marker["type"])
             continue
-        for bucket in ("elements","components"):
+        for bucket in ("elements", "components"):
             blueprint["geometry"][bucket].extend(fragment["geometry"].get(bucket, []))
     for gap in resolved.capability_gaps:
-        defects.append(CompileDefect(code=gap["code"], severity="error", target=gap["entity"],
-                                     evidence=str(gap["actual"]), design_field="decisions."+gap["field"]))
+        defects.append(
+            CompileDefect(
+                code=gap["code"],
+                severity="error",
+                target=gap["entity"],
+                evidence=str(gap["actual"]),
+                design_field="decisions." + gap["field"],
+            )
+        )
     defects.extend(_schema_defects(blueprint))
     defects.extend(_structure_defects(blueprint))
     return CompileResult(
-        mode=mode, blueprint=blueprint if mode == MODE_FINAL else None,
-        design_brief={"design_hash":resolved.design_hash} if mode == MODE_FINAL else None,
-        defects=defects, uncompiled=sorted(uncompiled),
-        stats={"markers":len(resolved.component_markers),"capability_gaps":resolved.capability_gaps},
+        mode=mode,
+        blueprint=blueprint if mode == MODE_FINAL else None,
+        design_brief=(
+            {"design_hash": resolved.design_hash} if mode == MODE_FINAL else None
+        ),
+        defects=defects,
+        uncompiled=sorted(uncompiled),
+        stats={
+            "markers": len(resolved.component_markers),
+            "capability_gaps": resolved.capability_gaps,
+        },
     )
 
 

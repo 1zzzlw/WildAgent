@@ -4,7 +4,6 @@ from copy import deepcopy
 from math import hypot, isfinite
 
 from app.domain.design.parametric import MAX_ITEMS
-from app.domain.design.parametric import PARAMETRIC_PROTOCOL
 from app.domain.design.parametric import expand_parameters
 
 
@@ -337,22 +336,3 @@ def expand_implementation(row, marker, context):
         output_hash=blueprint_fingerprint(result),
     )
     return result, evidence
-
-
-CONSTRUCTION_PROTOCOL = PARAMETRIC_PROTOCOL + """
-每个 implementations 项可单独声明 parameters；facts 是本次输入上下文，facts.marker 是本标记完整图纸。
-优先引用 facts.marker.entity、facts.native_size_targets、facts.stair_route_targets 等已计算结果。
-图纸尺寸的准确路径是 facts.marker.design.size，不是 facts.marker.size；墙起点用 ["from"] 访问。
-仅返回一个原生实体时，可省略图纸已确定的门窗宽高、阳台/雨棚尺寸及 parentWall/from；程序只补缺失字段。
-单个原生 furniture 可省略图纸已有的 dimensions 和 position；程序将图纸中心换为底部锚点，绕 Y 旋转不改变底标高。倾斜家具须明确锚点。
-单个未旋转缩放的 box 可省略图纸已有的 dimensions/position；单个自动 flat/gable/hip 屋面可省略体量已确定的 span/depth/position/roofType/ridgeAxis。
-图纸未确定的分格、形态、厚度、坡高和材质仍由你选择并返回；多个实体组合须自行表达组内几何，可用参数计算。
-自动单坡屋面若只返回一个单轴倾斜 box 且投影宽深正确，程序按批准体量及出檐统一安装 X/Z；标高与封闭支承仍须满足图纸。
-主体可用 walls:[{host:图纸墙ID,thickness:墙厚,material:材质ID}]，程序从 diagram_hosts 取完整墙端点；内墙保留图纸墙厚。
-主体可用 slabs:[{id:稳定ID,volume:体量ID,floor:语义楼层编号,thickness:板厚,material:材质ID}]。
-walls、slabs、parameters 与 geometry 同级。walls/slabs 条目没有 type，不可塞进 geometry.elements。
-主体回复结构：{"id":"building_body","parameters":{},"walls":[],"slabs":[],"geometry":{"elements":[],"components":[]},"materials":{},"assets":{}}。
-程序从该层楼面顶减板厚，按体量边界生成楼板、扣除显式挑空并消除同构造重叠板；不铺平庭院。
-walls/slabs 与 geometry 可共同使用，但不能重复声明同一实体或其他任务负责的构件。
-选择材料和厚度仍须遵循图纸；特殊曲墙、坡板及其他构造继续用原生 geometry，不能用简写改变形态。
-"""

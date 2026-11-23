@@ -4,6 +4,6 @@
 具体用例位于 ``design_flow.compile``。
 """
 
-from app.agent.workflows.assembly.compilation import compile_node
+from app.agent.workflows.assembly import compile_node
 
 __all__ = ["compile_node"]

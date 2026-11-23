@@ -2,6 +2,13 @@
 from copy import deepcopy
 
 IMPLEMENTATION_STAGES = ("generate", "repair_1", "repair_2")
+BUILDING_BODY_ENTITY_TYPES = frozenset({"wall", "floor", "column", "beam", "stair", "primitive"})
+
+
+class ImplementationValidationError(ValueError):
+    def __init__(self, issues):
+        self.issues = issues
+        super().__init__("；".join(issue["message"] for issue in issues[:12]))
 
 
 def body_floor_errors(entities, design):
@@ -45,8 +52,39 @@ def body_floor_errors(entities, design):
     return errors
 
 
+def _object_markers(decisions):
+    """每个物件实例拥有自己的实现标记，零件归属于该实例。"""
+    markers = []
+    for index, item in enumerate(decisions.objects):
+        for copy_index in range(item.count):
+            identity = f"object_{index + 1}_{copy_index + 1}"
+            design = item.model_dump(mode="json", exclude={"count", "placement"})
+            design["size"] = {
+                "width": item.width, "depth": item.depth, "height": item.height,
+            }
+            design["description"] = " ".join(filter(None, (
+                item.name or item.subtype or item.kind, item.placement,
+            )))
+            design["placement"] = {}
+            markers.append({
+                "id": identity,
+                "type": item.kind,
+                "host": "",
+                "depends_on": [],
+                "design_path": f"/decisions/objects/{index}",
+                "design": design,
+                "entity": {},
+            })
+    return markers
+
+
 def component_markers(document, geometry=None):
     """统一从已解析的墙、板和构件生成任务标记；历史立面只在输入转换中展开一次。"""
+    from app.domain.design.contracts import ObjectDecisions
+
+    if isinstance(document.decisions, ObjectDecisions):
+        return _object_markers(document.decisions)
+
     from math import hypot
     from shapely.geometry import LineString, Point
     from app.domain.components.names import resolve_component_name

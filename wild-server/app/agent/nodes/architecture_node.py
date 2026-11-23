@@ -4,6 +4,6 @@
 具体用例位于 ``generation.architecture.workflow``。
 """
 
-from app.agent.workflows.design.architecture import architecture_planner
+from app.agent.workflows.design import architecture_planner
 
 __all__ = ["architecture_planner"]

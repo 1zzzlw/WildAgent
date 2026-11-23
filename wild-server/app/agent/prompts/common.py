@@ -2,6 +2,8 @@
 拆分的 Prompt 片段，每个节点使用独立的 prompt
 """
 
+import json
+
 
 def build_patch_system_prompt(spec_text: str) -> str:
     """增量修改节点只生成 ScenePatch，意图已由图路由确定。"""
@@ -75,3 +77,12 @@ def build_patch_recovery_prompt(
 """
 
 
+def build_compile_repair_user_message(context: dict) -> str:
+    return (
+        "修复本次编译错误，只返回 ScenePatch。仅修改错误相关片段，保留已有实体 ID 和正确几何；"
+        "不能通过删除实体、改变建筑形制或忽略图纸尺寸消除错误。缺失构件仅按本次图纸补充。"
+        "repair_feedback.entity_ids 是允许修改的实体范围；其余实体及其共享材质、资产只读。"
+        "新增实体使用 repair_feedback.marker_ids 中对应标记ID作为前缀，纳入该标记复验。"
+        "数值先计算，返回完整 JSON。只有这一次修复机会，不重新生成整栋建筑。\n"
+        + json.dumps(context, ensure_ascii=False)
+    )

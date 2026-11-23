@@ -1,19 +1,19 @@
-"""建筑节点形成设计图纸；实现与 WILD 校验由 plan 负责。"""
+"""为生成请求起草并解析设计图纸。"""
 
 from __future__ import annotations
 
 import time as _time
 import asyncio
 import json
+from typing import get_args
 
 from pydantic import ValidationError
 
-from app.domain.design.architecture import resolve_complexity_profile
 from app.agent.workflows.design.drafting import draft_design
-from app.agent.workflows.design.drafting import refine_construction
 from app.agent.state import GenerationState
 from app.agent.prompts import build_architecture_plan_prompt
 from app.agent.runtime import get_reasoning_callback
+from app.domain.design.types import DetailLevel
 
 
 class DesignContractError(RuntimeError):
@@ -235,13 +235,14 @@ def build_design_document_or_error(
 
 
 async def architecture_planner(state: GenerationState) -> dict:
-    """一次完整设计，契约失败时局部修订；不通过则保留原因，不降级成默认建筑。"""
+    """建筑和独立物件共用的图纸起草入口。"""
     from app.domain.design.resolver import architecture_plan_from_document
     from app.infrastructure.llm.errors import model_failure_result
     from app.domain.blueprint.materials.plan import material_mentions
 
     started = _time.time()
     message = state["user_message"]
+    object_scene = state.get("intent_target_kind") == "object"
     previous = state.get("design_document")
     # 解析上轮设计图纸，或从 state 里取 architecture_plan 作为上轮设计方案。
     if isinstance(previous, dict):
@@ -253,50 +254,52 @@ async def architecture_planner(state: GenerationState) -> dict:
     else:
         previous_plan = state.get("architecture_plan")
 
-    # 使用 State 中已确定的设计粒度生成复杂度配置。
-    complexity = resolve_complexity_profile(state["detail_level"])
-    profile_id = (previous_plan or {}).get("profile") or state["intent_profile"]
+    detail_level = state.get("detail_level", "minimal")
+    if detail_level not in get_args(DetailLevel):
+        detail_level = "minimal"
+
+    if previous_plan and (previous_plan.get("target_kind") == "object") != object_scene:
+        previous_plan = None
+    profile_id = (
+        "object"
+        if object_scene
+        else (previous_plan or {}).get("profile") or state["intent_profile"]
+    )
 
     callback = get_reasoning_callback()
     if callback:
-        await callback("architecture:progress", "正在形成完整建筑图纸与构件标记……\n")
+        label = "独立物件图纸" if object_scene else "建筑图纸"
+        await callback("architecture:progress", f"正在设计{label}与构件标记……\n")
 
     from app.agent.runtime import agent_runtime
     from app.infrastructure.retrieval.loader import SpecQuery
 
-    detail_rule_entity = f"architecture_detail_{complexity['level']}"
-    detail_query = SpecQuery(
-        f"建筑设计粒度 {complexity['level']} 交付范围 允许省略 完成条件 {complexity['reason']}",
-        {"entity_name": detail_rule_entity},
-    )
-    process_query = SpecQuery(
-        "建筑设计步骤与关系复核 需求形制 体量标高 功能交通 围护开口 屋面附属 材料搭配 字段落地",
-        {"entity_name": "architecture_design_process"},
-    )
-    queries = [
-        detail_query,
-        process_query,
-        SpecQuery(
-            f"{message} 建筑设计表达 体量围护 开敞 室内房间 内墙 通行 门窗宿主 平面布局",
-            {"entity_name": "architecture_design_expression"},
-        ),
-    ]
-    if complexity["level"] == "minimal":
-        queries.append(SpecQuery(
-            f"{message} {profile_id} 体量组织 楼层标高 逐层轮廓 屋面覆盖",
-            {"entity_name": "massing_composition_rules"},
-        ))
-    else:
-        queries.extend([
+    if object_scene:
+        queries = [
             SpecQuery(
-                f"{message} 室内房间 内墙 内门 通行路径 独立柱位 平面图纸",
+                f"{message} 物件 参数 尺寸 摆位 形体组合",
+                {"doc_type": "component"},
+            )
+        ]
+    else:
+        queries = [
+            SpecQuery(
+                "建筑设计步骤与关系复核 需求形制 体量标高 功能交通 围护开口 屋面附属 材料搭配 字段落地",
+                {"entity_name": "architecture_design_process"},
+            ),
+            SpecQuery(
+                f"{message} 建筑设计表达 体量围护 开敞 室内房间 内墙 通行 门窗宿主 平面布局",
                 {"entity_name": "architecture_design_expression"},
+            ),
+            SpecQuery(
+                f"{message} {profile_id} 体量组织 楼层标高 逐层轮廓 屋面覆盖",
+                {"entity_name": "massing_composition_rules"},
             ),
             SpecQuery(
                 f"{message} {profile_id} 建筑形制 形态表达 空间组织 构件组合",
                 {"doc_type": "component", "topic": "composition"},
             ),
-        ])
+        ]
     rag_started = _time.time()
     spec_result = await asyncio.to_thread(
         agent_runtime.spec_loader.load_many_result,
@@ -305,11 +308,6 @@ async def architecture_planner(state: GenerationState) -> dict:
         include_base=False,
     )
     spec_text = spec_result.text
-    detail_rule_hits = [
-        hit.id
-        for hit in spec_result.hits
-        if hit.metadata.get("entity_name") == detail_rule_entity
-    ]
     design_process_hits = [
         hit.id
         for hit in spec_result.hits
@@ -319,9 +317,10 @@ async def architecture_planner(state: GenerationState) -> dict:
     prompt = build_architecture_plan_prompt(
         spec_text,
         profile_id,
-        complexity,
+        detail_level=detail_level,
         current_plan=previous_plan,
         style_preference=state.get("style_preference"),
+        object_scene=object_scene,
     )
     accepted = {}
 
@@ -330,9 +329,28 @@ async def architecture_planner(state: GenerationState) -> dict:
     # 检查失败：raise 抛出异常
     # raw：待检查的完整设计字典
     def validate(raw):
-        document, resolved = _validate_architecture_draft(
-            raw, state, profile_id, complexity, previous
-        )
+        if object_scene:
+            from app.domain.design.objects.planning import normalize_object_plan
+            from app.domain.design.resolver import resolve_design
+
+            if "objects" not in raw and "unsupported_objects" not in raw:
+                raise ValueError("物件图纸必须声明 objects 或 unsupported_objects")
+            plan = normalize_object_plan(raw, message)
+            document = build_design_document_or_error(
+                plan,
+                session_id=str(
+                    state.get("session_id") or state.get("request_id") or "unknown"
+                ),
+                source_request=message,
+                building_type="asset",
+                style_intent=list(state.get("style_preference") or []),
+                previous=previous,
+            )
+            resolved = resolve_design(document)
+        else:
+            document, resolved = _validate_architecture_draft(
+                raw, state, profile_id, previous
+            )
         accepted.update(document=document, resolved=resolved)
 
     repair_rag_ms = repair_rag_chars = 0
@@ -372,25 +390,6 @@ async def architecture_planner(state: GenerationState) -> dict:
             # 传入外层的计数字典。内部修改这个字典，外层也能看到修改后的次数。
             call_accounting=accounting,
         )
-        if raw and complexity["level"] in {"standard", "detailed"}:
-            raw, refinement = await refine_construction(
-                raw,
-                user_request=message,
-                diagram_hosts=accepted["resolved"].projection_elements,
-                validate=validate,
-                call_accounting=accounting,
-            )
-            diag["construction_refinement"] = refinement
-            diag["model_calls"] += refinement["model_calls"]
-            from app.infrastructure.llm.invocation import merge_token_usage
-
-            diag["token_usage"] = merge_token_usage(
-                diag.get("token_usage"), refinement.get("token_usage")
-            )
-            if refinement["status"] in {"partial", "rejected"}:
-                accepted["resolved"].warnings.append(
-                    "部分构造深化未采用，相关标记保留原设计：" + refinement["error"]
-                )
     except DesignContractError as exc:
         return {"status": "failed", "error": str(exc)}
     except Exception as exc:
@@ -408,9 +407,7 @@ async def architecture_planner(state: GenerationState) -> dict:
         rag_ms=rag_ms,
         repair_rag_ms=repair_rag_ms,
         repair_rag_chars=repair_rag_chars,
-        detail_level=complexity["level"],
-        detail_rule_entity=detail_rule_entity,
-        detail_rule_hits=detail_rule_hits,
+        detail_level=detail_level,
         design_process_hits=design_process_hits,
         total_ms=int((_time.time() - started) * 1000),
         profile=profile_id,
@@ -419,23 +416,22 @@ async def architecture_planner(state: GenerationState) -> dict:
     if not raw:
         return {
             "status": "failed",
-            "error": "建筑图纸未通过检查：" + diag["last_issue"],
+            "error": "设计图纸未通过检查：" + diag["last_issue"],
             "architecture_diag": diag,
         }
     document = accepted["document"]
     prior_strategy = (
         (previous or {}).get("decisions", {}).get("design_intent") or {}
     ).get("material_strategy")
-    strategy = (
-        document.decisions.design_intent.material_strategy
-        if document.decisions.design_intent
-        else ""
-    )
+    intent = getattr(document.decisions, "design_intent", None)
+    strategy = intent.material_strategy if intent else ""
     return {
+        "detail_level": detail_level,
         "architecture_plan": architecture_plan_from_document(document),
         "design_document": document.model_dump(mode="json"),
         "resolved_design": accepted["resolved"].model_dump(mode="json"),
-        "design_material_refresh": not previous
+        "design_material_refresh": object_scene
+        or not previous
         or prior_strategy != strategy
         or bool(material_mentions(message)),
         "architecture_diag": diag,
@@ -454,27 +450,23 @@ async def architecture_planner(state: GenerationState) -> dict:
     }
 
 
-def _validate_architecture_draft(raw, state, profile_id, complexity, previous):
+def _validate_architecture_draft(raw, state, profile_id, previous):
     """由统一契约检查字段与引用，再用共享空间解析结果检查设计关系。"""
     from app.domain.design.resolver import resolve_design
-    from app.domain.design.coordinates import component_dimension_conflicts, roof_span_conflicts
+    from app.domain.design.coordinates import (
+        component_dimension_conflicts,
+        roof_span_conflicts,
+    )
     from app.domain.design.spatial import execution_view
 
     material_errors = _material_role_conflicts(raw.get("components") or [])
-    plan = {
-        "profile": profile_id,
-        **raw,
-        "complexity": {
-            **complexity,
-            **(raw.get("complexity") or {}),
-            "level": complexity["level"],
-            "reason": complexity["reason"],
-        },
-    }
+    plan = {"profile": profile_id, **raw}
     try:
         document = build_design_document_or_error(
             plan,
-            session_id=str(state.get("session_id") or state.get("request_id") or "unknown"),
+            session_id=str(
+                state.get("session_id") or state.get("request_id") or "unknown"
+            ),
             source_request=state["user_message"],
             building_type=profile_id,
             style_intent=list(state.get("style_preference") or []),

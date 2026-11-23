@@ -14,7 +14,7 @@ from app.domain.blueprint.materials.surfaces import resolve_surface
 
 #: P6-A：用户提了材质/配色要求的**词面信号**。
 #:
-#: 🔴 这里刻意只判"有没有明确材质要求"，不判"有没有资产"——两件事曾经被绑成同一个
+#:  这里刻意只判"有没有明确材质要求"，不判"有没有资产"——两件事曾经被绑成同一个
 #: 条件（``elif catalog:``），于是**无纹理资产时用户提了配色也被完全无视**。
 #: 材质设计决策与资产匹配必须分开判断：没有资产时仍然可以有合法的参数材质
 #: （baseColor / roughness / metallic 全是参数，不需要贴图）。
@@ -54,7 +54,7 @@ _MATERIAL_INTENT_TERMS = (
 #: 用户**给反馈**时用的材质词。只收"明确在说材质"的决策词，**不收**"木""金属"
 #: 这类材质名词做子串匹配 ——
 #:
-#: 🔴 反例：反馈"把木梁换成混凝土柱"含"木"（名词）却是**几何/结构**变更，不该换材质；
+#:  反例：反馈"把木梁换成混凝土柱"含"木"（名词）却是**几何/结构**变更，不该换材质；
 #: 反馈"木门换成玻璃"不含下表任何词却是**明确材质**变更。两类句子靠同一张名词表
 #: 根本分不开，只能靠"这句话有没有在说材质"来判。
 _MATERIAL_FEEDBACK_TERMS = (
@@ -121,7 +121,7 @@ def material_mentions(text: str) -> list[str]:
 
 #: **表面类**角色的同义词（判"这句话在谈某表面的材质"时只用这张）。
 #:
-#: 🔴刻意**不含 structure**：反馈"把木梁换成混凝土柱"里有材质名"木/混凝土"，
+#: 刻意**不含 structure**：反馈"把木梁换成混凝土柱"里有材质名"木/混凝土"，
 #: 但它谈的是**结构构件更换**，不是表面材质决策。柱/梁/框架一进来，
 #: 这句就会被误判成材质变更，全楼颜色跟着重来一遍。
 _SURFACE_ROLE_WORDS = (
@@ -197,7 +197,7 @@ def needs_material_design(
     - 有资产或开了程序化配方 ⇒ 需要（要决定哪张贴图配哪个角色）；
     - 其余 ⇒ 不需要，直接走确定性角色表。
 
-    🔴 **不要在这里判断资产数量来代替判断设计需求**（旧代码就是这么写的）：
+     **不要在这里判断资产数量来代替判断设计需求**（旧代码就是这么写的）：
     "没有资产所以不需要设计"在无资产目录的机器上会静默吞掉全部配色要求。
     """
 
@@ -350,8 +350,14 @@ def material_role_specs(
     specs = dict(ROLE_SPECS)
     for role, intent in declared.items():
         base_role = intent.get("base_role", "facade_primary")
-        specs[role] = {**ROLE_SPECS.get(base_role, ROLE_SPECS["facade_primary"]),
-                       "materialId": ROLE_SPECS[role]["materialId"] if role in ROLE_SPECS else f"material_{role}"}
+        specs[role] = {
+            **ROLE_SPECS.get(base_role, ROLE_SPECS["facade_primary"]),
+            "materialId": (
+                ROLE_SPECS[role]["materialId"]
+                if role in ROLE_SPECS
+                else f"material_{role}"
+            ),
+        }
     return specs
 
 
@@ -694,7 +700,7 @@ def apply_material_regions(
 ) -> list[dict[str, Any]]:
     """P5-C：把「区域/构件 → 材质角色」的绑定落到已分配好的材质 id 上。
 
-    🔴 这一步**只换引用**，不新增材质：材质实体由 :func:`apply_resolved_material_plan`
+     这一步**只换引用**，不新增材质：材质实体由 :func:`apply_resolved_material_plan`
     按角色写好了，这里把某个区域/构件的 ``material`` 指向另一个角色的 ``materialId``。
     角色不在方案里 ⇒ **不动**那条构件（保持类型默认角色），并把原因返回给调用方记缺陷
     ——只标记不阻断：材质分区写错不该让整栋房子的墙消失。
@@ -712,7 +718,7 @@ def apply_material_regions(
         if not isinstance(region, dict):
             continue
         role = str(region.get("role") or "")
-        # 🔴 ``type`` 是**目标实体类型**（构件类如 railing/balcony，或元素类如
+        #  ``type`` 是**目标实体类型**（构件类如 railing/balcony，或元素类如
         # wall/floor/roof），不是"要不要按区域扫"的开关。判据是它在**哪张表**里：
         # 元素表（ELEMENT_ROLE）⇒ 只改那些元素；不在 ⇒ 改同名类型的构件。
         # 早先写成"没 type 就扫全部元素"会把 ``role='roof'`` 理解成"改所有元素"，

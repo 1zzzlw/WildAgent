@@ -7,6 +7,7 @@
 快照同时记录产物、设计版本、设计清单与校验器版本。最终门禁仍独立运行完整验收，
 不以合并或 callback 的旧结论替代当前内容检查。
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -30,10 +31,17 @@ def blueprint_fingerprint(blueprint: dict | None) -> str:
 
 def step_result_to_dict(result: Any) -> dict:
     """把 ``PipelineStepResult``（或同构 dict）序列化为可存盘的 dict。"""
-    get = result.get if isinstance(result, dict) else lambda key, default=None: getattr(result, key, default)
+    get = (
+        result.get
+        if isinstance(result, dict)
+        else lambda key, default=None: getattr(result, key, default)
+    )
     row = {
-        "step": get("step"), "name": get("name", "unknown"), "output": get("output", ""),
-        "has_error": bool(get("has_error", False)), "has_warning": bool(get("has_warning", False)),
+        "step": get("step"),
+        "name": get("name", "unknown"),
+        "output": get("output", ""),
+        "has_error": bool(get("has_error", False)),
+        "has_warning": bool(get("has_warning", False)),
     }
     if get("issues"):
         row["issues"] = get("issues")
@@ -78,7 +86,7 @@ class ValidationSnapshot:
     results: list = field(default_factory=list)  # PipelineStepResult
     design_errors: list = field(default_factory=list)
     issues: list = field(default_factory=list)  # 结构化 ValidationIssue
-    #: 🔴 P4 设计履约报告：**与几何校验分开记录**，不进 ``results``。
+    #:  P4 设计履约报告：**与几何校验分开记录**，不进 ``results``。
     #: 几何门禁决定"能不能保存"，履约报告决定"用户要的东西兑现了没有"——
     #: 两者混在一起会让"合法但不完整"变成"不许保存"。
     fulfillment: dict | None = None
@@ -87,13 +95,20 @@ class ValidationSnapshot:
     elapsed_ms: int = 0
     source: str = ""  # merge | final_validate | callback
 
-    def matches(self, blueprint: dict | None, *, design_hash: str = "",
-                design_revision: int | None = None, design_brief: dict | None = None) -> bool:
+    def matches(
+        self,
+        blueprint: dict | None,
+        *,
+        design_hash: str = "",
+        design_revision: int | None = None,
+        design_brief: dict | None = None,
+    ) -> bool:
         """全部上下文一致才匹配；带设计的旧快照不能按单一产物指纹复用。"""
         return (
             self.blueprint_fingerprint == blueprint_fingerprint(blueprint)
             and self.validator_version == VALIDATOR_VERSION
             and self.design_hash == design_hash
             and self.design_revision == design_revision
-            and self.design_brief_fingerprint in ("", blueprint_fingerprint(design_brief))
+            and self.design_brief_fingerprint
+            in ("", blueprint_fingerprint(design_brief))
         )

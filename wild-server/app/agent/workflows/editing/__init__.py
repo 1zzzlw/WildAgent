@@ -1,4 +1,6 @@
-"""Blueprint 增量修改（ScenePatch）能力。
+"""蓝图增量编辑。"""
 
-节点入口见 ``nodes/patch_node.py``（薄壳），路由与装配见 ``agent.graph``。
-"""
+from .service import extract_patch_artifact
+from .workflow import patch_node
+
+__all__ = ["extract_patch_artifact", "patch_node"]

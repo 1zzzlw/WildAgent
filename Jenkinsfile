@@ -10,7 +10,7 @@
 //   80 default_server →444 / 443 default_server → 444（拦 IP 与非本站域名）
 //   80 业务域名→ 301 跳 https + 放行 ACME challenge
 //   443 业务域名       → 静态文件 + /api /ws 反代
-// 🔴 **三处硬绑定，改任一项必须同批改其余两处**：
+//  **三处硬绑定，改任一项必须同批改其余两处**：
 //   1. wild-web/nginx.conf 的 ssl_certificate 路径（容器内 /etc/letsencrypt/...）
 //   2. 本文件 start_web() 的证书卷挂载（宿主机 /opt/wild-agent/certbot/... → 容器内）
 //   3. 本文件探活段（打 443 + 容忍 301/444，不能再期望 http 200）
@@ -401,7 +401,7 @@ start_server() {
 }
 
 # HTTPS 部署：80 只做 301 与 ACME challenge，业务在 443。
-# 🔴 两行证书卷挂载与 wild-web/nginx.conf 的 ssl_certificate 路径是**硬绑定**：
+#  两行证书卷挂载与 wild-web/nginx.conf 的 ssl_certificate 路径是**硬绑定**：
 #    少挂一行 ⇒ 容器内找不到证书 ⇒ nginx 启动失败 ⇒ 部署回滚。
 # ⚠️ 端口从 "${DEPLOY_WEB_PORT}:80" 改为固定 80:80 + 443:443：HTTP 现在只做 301，
 #    业务由 443 承担。
@@ -474,7 +474,7 @@ if ! start_web "$IMAGE_WEB_NAME"; then
 fi
 
 echo "=== 等待新版 wild-web 就绪（最多 60 秒） ==="
-# 🔴 判据必须带**域名 Host**（--header="Host: $DEPLOY_PUBLIC_HOST"），不能用裸 127.0.0.1：
+#  判据必须带**域名 Host**（--header="Host: $DEPLOY_PUBLIC_HOST"），不能用裸 127.0.0.1：
 #    443 default_server 是 `return 444`（专门拦 IP 直连），业务 server 块只匹配域名，
 #    `wget https://127.0.0.1/` 的 Host 是 127.0.0.1 ⇒ 落到 default_server ⇒ 恒 444
 #    ⇒ 误判"未就绪" ⇒ 回滚一个其实完全正常的部署（2026-10-14 实际发生过一次）。
@@ -553,7 +553,7 @@ if [ "$actual_web_image" != "$IMAGE_WEB_NAME" ]; then
   exit 1
 fi
 
-# 🔴 本段所有探活都必须带**域名 Host**。
+#  本段所有探活都必须带**域名 Host**。
 #    nginx.conf 的两个 default_server 都是 `return 444`（专门拦 IP 直连与非本站域名），
 #    业务 server 块只匹配 `server_name www.zzzlew.asia`。
 #    用 127.0.0.1 或 Host: IP 请求 ⇒ 落到 default_server ⇒ 恒 444 ⇒ 探活必然失败。

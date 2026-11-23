@@ -19,7 +19,6 @@ class GenerationExecution:
     message: str = ""
     current_blueprint: dict | None = None
     selection: list[str] = field(default_factory=list)
-    detail_level: str = "minimal"
     thinking_mode: bool = False
     initial_state: dict = field(default_factory=dict)
     component_configs: dict = field(default_factory=dict)

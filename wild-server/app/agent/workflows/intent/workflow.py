@@ -2,7 +2,6 @@
 意图分类节点入口。
 """
 
-from app.domain.design.architecture import resolve_complexity_profile
 from app.domain.blueprint.query import has_scene_content
 
 from app.agent.workflows.intent.classify import classify_intent_decision
@@ -18,11 +17,7 @@ async def classifier_node(state: dict) -> dict:
         workflow_state=str(state.get("workflow_state") or "idle"),
         selection=state.get("selection"),
     )
-    detail_level = resolve_complexity_profile(state.get("detail_level", "minimal"))[
-        "level"
-    ]
     result = {
-        "detail_level": detail_level,
         "thinking_mode": state.get("thinking_mode") is True,
         "style_preference": [],
         "intent": decision.intent,

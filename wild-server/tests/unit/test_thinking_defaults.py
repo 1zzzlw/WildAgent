@@ -51,21 +51,26 @@ def test_architecture_model_uses_the_design_switch(monkeypatch, choice):
 
 @pytest.mark.parametrize("choice", [None, False, True, "true"])
 def test_object_design_also_uses_only_the_design_switch(monkeypatch, choice):
-    from app.agent.workflows.design import objects as workflow
+    from app.agent.runtime import agent_runtime
+    from app.agent.workflows.design import architecture, drafting
     from app.infrastructure.llm.invocation import LlmResult
     settings = []
-    monkeypatch.setattr(workflow, "_furniture_spec", lambda _loader: "")
-    monkeypatch.setattr(workflow, "get_reasoning_callback", lambda: None)
-    monkeypatch.setattr(workflow, "create_llm", lambda **kwargs: settings.append(kwargs) or object())
+    monkeypatch.setattr(agent_runtime, "spec_loader", SimpleNamespace(
+        load_many_result=lambda *_args, **_kwargs: SimpleNamespace(text="", hits=[]),
+    ))
+    monkeypatch.setattr(architecture, "get_reasoning_callback", lambda: None)
+    monkeypatch.setattr(drafting, "create_llm", lambda **kwargs: settings.append(kwargs) or object())
     async def reply(*_args, **_kwargs):
         return LlmResult(content=json.dumps({"kind": "object", "concept": "桌子", "objects": [{
             "kind": "furniture", "subtype": "table", "count": 1, "width": 1.2, "depth": .7, "height": .75,
             "material": "wood", "placement": "居中"}]}))
-    monkeypatch.setattr(workflow, "invoke_llm", reply)
-    result = asyncio.run(workflow.object_planner({"user_message": "一张桌子", "thinking_mode": choice,
-                                                 "session_id": "thinking-object"}))
+    monkeypatch.setattr(drafting, "invoke_llm", reply)
+    result = asyncio.run(architecture.architecture_planner({
+        "user_message": "一张桌子", "thinking_mode": choice, "detail_level": "minimal",
+        "intent_target_kind": "object", "session_id": "thinking-object",
+    }))
     assert result["design_document"]["decisions"]["kind"] == "object"
-    assert result["object_design_diag"]["used_fallback"] is False
+    assert result["resolved_design"]["component_markers"][0]["type"] == "furniture"
     assert settings == [{"enable_thinking": choice is True, "streaming": False}]
 
 

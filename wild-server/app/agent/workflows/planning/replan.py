@@ -464,6 +464,21 @@ def _rewrite_run(plan: PlanDocument, item_id: str, *, evidence: str) -> PlanDocu
     return updated
 
 
+def _capability_catalog() -> list[dict]:
+    """从构件注册表生成重规划可用的能力。"""
+
+    return [
+        {
+            "kind": config.component_type,
+            "label": config.label,
+            "depends_on": list(config.dependencies),
+            "is_element": config.is_element,
+            "skip_keywords": list(config.skip_keywords),
+        }
+        for config in get_implemented_components()
+    ]
+
+
 async def request_replan(
     plan: PlanDocument,
     state: dict[str, Any],
@@ -478,7 +493,13 @@ async def request_replan(
 
     started = time.perf_counter()
     summary = replan_summary(plan, state)
-    prompt = build_prompt(plan)
+    from app.agent.prompts.plan import build_replan_prompt, build_replan_user_message
+
+    prompt = build_replan_prompt(
+        capability_catalog=_capability_catalog(),
+        revision=plan.revision,
+        revision_limit=MAX_REVISION,
+    )
     diag: dict[str, Any] = {
         "summary": summary,
         "problems": len(summary["problems"]),
@@ -520,7 +541,6 @@ async def request_replan(
     error = None
     token_usage = None
     llm_ms = 0
-    from app.agent.prompts import build_replan_user_message
 
     try:
         from app.agent.runtime import create_llm
@@ -575,19 +595,6 @@ async def request_replan(
         }
     )
     return decision, diag
-
-
-def build_prompt(plan: PlanDocument) -> str:
-    """本模块构建提示词的唯一入口（能力清单与追加预算都从 plan 现状取）。"""
-
-    from app.agent.workflows.planning.strategy import capability_catalog
-    from app.agent.prompts import build_replan_prompt
-
-    return build_replan_prompt(
-        capability_catalog=capability_catalog(),
-        revision=plan.revision,
-        revision_limit=MAX_REVISION,
-    )
 
 
 def replan(

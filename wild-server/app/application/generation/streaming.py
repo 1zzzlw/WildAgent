@@ -105,14 +105,7 @@ def _record_node_timing(run, node_name, node_output):
 
 
 def _collect_node_diagnostics(run, node_name, node_output):
-    """收集节点诊断、骨架建议和累计 token 用量。"""
-    if node_name == "skeleton":
-        run.suggested_components = node_output.get("suggested_components", [])
-        design_brief = node_output.get("design_brief", {})
-        logger.info(f"[{run.request_id}] 骨架建议组件: {run.suggested_components}")
-        if design_brief:
-            quota = design_brief.get("component_quota", {})
-            logger.info(f"[{run.request_id}] 设计清单配额: {quota}")
+    """收集节点诊断和累计 token 用量。"""
 
     # 收集诊断：每个节点把自己那层的诊断挂在 ``{node}_diag`` 下
     diag = node_output.get(f"{node_name}_diag", {})
@@ -237,17 +230,18 @@ async def _on_architecture_completed(run, node_name, label, node_output, diag):
         if node_output.get("error") or node_output.get("status") == "failed"
         else "done"
     )
-    await run.send_step(
-        "generating",
-        node_name,
-        stage,
-        label,
-        (node_output.get("error") or "建筑图纸未通过检查")
-        if stage == "error"
-        else "完整图纸 · "
-        f"{massing.get('width', '?')}×{massing.get('depth', '?')}m · "
-        f"{massing.get('floors', '?')}层 · {plan.get('roof', {}).get('type', '?')}屋顶",
-    )
+    objects = plan.get("objects")
+    if stage == "error":
+        summary = node_output.get("error") or "设计图纸未通过检查"
+    elif isinstance(objects, list):
+        count = sum(item["count"] for item in objects)
+        summary = f"物件图纸 · {len(objects)} 类 · 共 {count} 件"
+    else:
+        summary = (
+            f"建筑图纸 · {massing.get('width', '?')}×{massing.get('depth', '?')}m · "
+            f"{massing.get('floors', '?')}层 · {plan.get('roof', {}).get('type', '?')}屋顶"
+        )
+    await run.send_step("generating", node_name, stage, label, summary)
     await run.send_debug(
         "node",
         {
@@ -256,37 +250,9 @@ async def _on_architecture_completed(run, node_name, label, node_output, diag):
             "stage": stage,
             **diag,
             "concept": plan.get("concept"),
+            "objects": objects,
             "massing": massing,
             "roof": plan.get("roof"),
-        },
-    )
-
-
-async def _on_object_design_completed(run, node_name, label, node_output, diag):
-    """发送 object_design 节点完成后的进度与诊断。"""
-    plan = node_output.get("architecture_plan", {})
-    objects = plan.get("objects") if isinstance(plan, dict) else None
-    objects = objects if isinstance(objects, list) else []
-    piece_count = sum(
-        int(item.get("count") or 0) for item in objects if isinstance(item, dict)
-    )
-    await run.send_step(
-        "generating",
-        node_name,
-        "done",
-        label,
-        f"{len(objects)} 类物件 · 共 {piece_count} 件"
-        + (" · 使用确定性兜底" if diag.get("used_fallback") else ""),
-    )
-    await run.send_debug(
-        "node",
-        {
-            "node": node_name,
-            "label": label,
-            "stage": "done",
-            **diag,
-            "concept": plan.get("concept") if isinstance(plan, dict) else None,
-            "objects": objects,
         },
     )
 
@@ -324,42 +290,6 @@ async def _on_material_plan_completed(run, node_name, label, node_output, diag):
                 "document": document,
                 "resolved": node_output.get("resolved_design") or {},
                 "preview_url": f"/api/designs/{run.session_id}/preview.svg?revision={document['revision']}",
-            },
-        )
-
-
-async def _on_skeleton_completed(run, node_name, label, node_output, diag):
-    """发送 skeleton 节点完成后的进度与诊断。"""
-    if node_output.get("error"):
-        await run.send_step(
-            "generating",
-            node_name,
-            "error",
-            label,
-            node_output["error"],
-        )
-    else:
-        ec = diag.get("element_count", "?")
-        suggested = node_output.get("suggested_components") or []
-        await run.send_step(
-            "generating",
-            node_name,
-            "done",
-            label,
-            f"已生成 {ec} 个主体元素 · 建议 {len(suggested)} 类后续组件",
-        )
-        await run.send_debug(
-            "node",
-            {
-                "node": node_name,
-                "label": label,
-                "stage": "done",
-                "llm_ms": diag.get("llm_ms"),
-                "token_usage": diag.get("token_usage"),
-                "element_count": diag.get("element_count"),
-                "suggested_components": suggested,
-                "deterministic_fallback": diag.get("deterministic_fallback", False),
-                "total_ms": diag.get("total_ms"),
             },
         )
 
@@ -519,37 +449,6 @@ async def _on_plan_completed(run, node_name, label, node_output, diag):
     )
 
 
-async def _on_callback_completed(run, node_name, label, node_output, diag):
-    """发送 callback 节点完成后的进度与诊断。"""
-    retry_number = node_output.get("retry_count", 0)
-    if node_output.get("error"):
-        await run.send_step(
-            "generating",
-            node_name,
-            "error",
-            label,
-            f"修正失败：{node_output['error']}",
-        )
-    else:
-        await run.send_step(
-            "generating",
-            node_name,
-            "done",
-            label,
-            f"已发起第 {retry_number} 轮修复（每目标最多 "
-            f"{run.initial_state.get('max_retries', 3)} 次）",
-        )
-        await run.send_debug(
-            "node",
-            {
-                "node": node_name,
-                "label": label,
-                "stage": "done",
-                "retry_count": retry_number,
-            },
-        )
-
-
 async def _publish_plan_events(run, node_output):
     """发布完整计划和条目增量，保留后续追加的计划项。"""
     plan_payload = node_output.get("plan")
@@ -580,13 +479,10 @@ _NODE_COMPLETION_HANDLERS = {
     "chat": _on_chat_completed,
     "patch": _on_patch_completed,
     "architecture": _on_architecture_completed,
-    "object_design": _on_object_design_completed,
     "material_plan": _on_material_plan_completed,
-    "skeleton": _on_skeleton_completed,
     "compile": _on_compile_completed,
     "final_validate": _on_final_validate_completed,
     "execute": _on_execute_completed,
     "replanner": _on_replanner_completed,
     "plan": _on_plan_completed,
-    "callback": _on_callback_completed,
 }

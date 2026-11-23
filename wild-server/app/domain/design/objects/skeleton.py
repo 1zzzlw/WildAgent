@@ -96,12 +96,7 @@ def build_object_skeleton(plan: dict[str, Any], user_message: str = "") -> dict[
 def object_design_brief(plan: dict[str, Any]) -> dict[str, Any]:
     """物件场景的设计清单。
 
-    与建筑链 `resolve_facade_layout` 的输出**同形**（下游 `expand_plan` /
-    `strategy` / `build_skeleton_summary` 都按这几个键读），所以这两个模块不需要
-    为物件加分支。区别是物件没有任何槽位集合——家具的数量由 quota 表达。
-
-    刻意不调用 `resolve_facade_layout`：那个函数会从方案里推屋顶槽位与立面轴网，
-    对一张桌子做这件事只会产出虚假信息。
+    记录物件规格和数量供装配后的校验读取。宿主槽位留空。
     """
 
     quota: dict[str, dict[str, Any]] = {}

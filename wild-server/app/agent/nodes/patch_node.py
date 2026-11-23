@@ -5,6 +5,6 @@ ScenePatch 结果 → 写回 ``scene_patch`` / ``patch_reply`` / ``patch_diag``�
 具体用例位于 ``patch.workflow``。
 """
 
-from app.agent.workflows.editing.workflow import patch_node
+from app.agent.workflows.editing import patch_node
 
 __all__ = ["patch_node"]

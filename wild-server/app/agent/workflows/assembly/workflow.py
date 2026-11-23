@@ -724,9 +724,7 @@ async def _validate_merged_blueprint(
         if not accepted:
             merge_diag["stop_reason"] = "incomplete_candidate"
             break
-        from app.agent.workflows.repair.state_updates import (
-            state_updates_from_candidate,
-        )
+        from app.agent.workflows.repair import state_updates_from_candidate
         from app.domain.design.relations import entity_index
 
         old_entities, new_entities = (

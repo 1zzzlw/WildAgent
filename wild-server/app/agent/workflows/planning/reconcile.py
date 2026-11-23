@@ -16,7 +16,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.domain.components.registry import COMPONENT_REGISTRY
 from app.domain.planning.contracts import PlanDocument
 from app.domain.planning.contracts import PlanItem
 from app.domain.planning.store import refresh_statuses
@@ -45,12 +44,6 @@ def _produced_count(fragments: Any) -> int:
     if isinstance(fragments, dict):
         return 1
     return 0
-
-
-def _landed_count(kind: str, elements: list[dict], components: list[dict]) -> int:
-    config = COMPONENT_REGISTRY.get(kind)
-    bucket = elements if config is not None and config.is_element else components
-    return len([entry for entry in bucket if entry.get("type") == kind])
 
 
 def _slot_match(

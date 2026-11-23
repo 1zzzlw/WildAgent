@@ -6,7 +6,7 @@
  * 直接 `chrome.exe --remote-debugging-port` + WebSocket，浏览器版本由
  * ``CHROMIUM_PATH`` 显式指定，渲染结果只随仓库源码与这个路径变。
  *
- * 🔴 出图**必须**是引擎渲染：three 的 WebGLRenderer 在 Node 里没有 GL 上下文，
+ *  出图**必须**是引擎渲染：three 的 WebGLRenderer 在 Node 里没有 GL 上下文，
  * 软件光栅化替出来的图不是"实际引擎看到的图"。这里在真实 Chromium 里跑 three。
  *
  * 固定项（P7 第 2 条）：引擎（本地 wild-core 源码）、灯光、背景、相机规则、

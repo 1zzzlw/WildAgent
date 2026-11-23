@@ -574,6 +574,9 @@ def _normalize_body_item(raw: dict[str, Any], user_message: str) -> dict[str, An
     所以那里坚决不补。
     """
 
+    params = raw.get("params")
+    if isinstance(params, dict):
+        raw = {**params, **raw}
     height = _bounded(raw.get("height"), 0.5, 2.5, 1.7)
     build = str(raw.get("build") or "").strip().lower()
     head_shape = str(raw.get("headShape") or "").strip().lower()

@@ -429,7 +429,7 @@ class ResolvedMaterialPlan(ContractModel):
 class MaterialRegion(ContractModel):
     """区域/构件级材质绑定（P5-C）。
 
-    🔴 **只做最小表达**：一条绑定 = "**这一类实体**用这个材质角色"。
+     **只做最小表达**：一条绑定 = "**这一类实体**用这个材质角色"。
     ``type`` 是**目标实体类型**（构件类 ``balcony`` / ``railing`` / ``canopy``…，
     或元素类 ``wall`` / ``floor`` / ``roof`` / ``column``），``role`` 是材质方案里
     的角色名。落点因此是"按类型换引用"，不是"按区域函数/坐标刷"——

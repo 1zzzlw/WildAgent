@@ -97,7 +97,7 @@ uv run python -m langsmith_tools.evaluate_rag --dataset wildagent-rag --top-k 6 
 
 ## 4. Studio：architecture 调试图实验记录（已回退）
 
-> 2026-10-20：下述专用调试图已回退。当前 [studio_graph.py](studio_graph.py) 恢复导出 `build_generation_graph(enable_callback=True)`，使用原完整项目图，不再在 architecture 后设置本轮静态断点。下文保留作历史记录，见[代码回退记录](../../docs/10月20日优化/10-代码回退记录.md)。
+> 当前 [studio_graph.py](studio_graph.py) 导出 `build_generation_graph()`，使用完整项目图。下文保留作历史记录，见[代码回退记录](../../docs/10月20日优化/10-代码回退记录.md)。
 
 当前入口 [studio_graph.py](studio_graph.py) 是专门的设计调试图，直接复用现有 classifier 和 architecture 节点：
 
