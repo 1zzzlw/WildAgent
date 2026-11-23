@@ -8,11 +8,6 @@ interface DynamicCollider {
   tree: Octree
 }
 
-interface RayHit {
-  distanceSquared: number
-  triangle: THREE.Triangle | null
-}
-
 /** 只读取宿主提供的显示网格，既不修改几何，也不拥有它的GPU资源。 */
 export class RoamingCollisionWorld {
   readonly meshes: THREE.Mesh[] = []
@@ -24,7 +19,7 @@ export class RoamingCollisionWorld {
   private readonly trees: Octree[] = [this.fixed]
   private readonly rayPoint = new THREE.Vector3()
   private readonly rayNormal = new THREE.Vector3()
-  private readonly rayHit: RayHit = { distanceSquared: 0, triangle: null }
+  private rayHitDistanceSquared = 0
   private readonly rayTriangles = new Set<THREE.Triangle>()
   private readonly floorRay = new THREE.Ray(new THREE.Vector3(), new THREE.Vector3(0, -1, 0))
   private readonly platformBounds = new THREE.Box3()
@@ -160,37 +155,40 @@ export class RoamingCollisionWorld {
   }
 
   /** 相机与落脚射线只遍历最近命中之前的子节点。 */
-  private traceRay(tree: Octree, ray: THREE.Ray, hit: RayHit): void {
-    if (!tree.box) return
+  private traceRay(tree: Octree, ray: THREE.Ray): THREE.Triangle | null {
+    if (!tree.box) return null
     if (!tree.box.containsPoint(ray.origin)) {
       const entry = ray.intersectBox(tree.box, this.rayPoint)
-      if (!entry || entry.distanceToSquared(ray.origin) > hit.distanceSquared) return
+      if (!entry || entry.distanceToSquared(ray.origin) > this.rayHitDistanceSquared) return null
     }
+    let closest: THREE.Triangle | null = null
     for (const triangle of tree.triangles) {
       if (this.rayTriangles.has(triangle)) continue
       this.rayTriangles.add(triangle)
       const point = ray.intersectTriangle(triangle.a, triangle.b, triangle.c, true, this.rayPoint)
       if (!point) continue
       const distanceSquared = point.distanceToSquared(ray.origin)
-      if (distanceSquared < hit.distanceSquared) {
-        hit.distanceSquared = distanceSquared
-        hit.triangle = triangle
+      if (distanceSquared < this.rayHitDistanceSquared) {
+        this.rayHitDistanceSquared = distanceSquared
+        closest = triangle
       }
     }
-    for (const child of tree.subTrees) this.traceRay(child, ray, hit)
+    for (const child of tree.subTrees) {
+      const triangle = this.traceRay(child, ray)
+      if (triangle) closest = triangle
+    }
+    return closest
   }
 
   rayDistance(ray: THREE.Ray, limit: number, walkableOnly = false): number {
     let distance = limit
     for (const tree of this.trees) {
-      this.rayHit.distanceSquared = distance * distance
-      this.rayHit.triangle = null
-      this.traceRay(tree, ray, this.rayHit)
+      this.rayHitDistanceSquared = distance * distance
+      const triangle = this.traceRay(tree, ray)
       this.rayTriangles.clear()
-      const triangle = this.rayHit.triangle
       if (!triangle) continue
       if (walkableOnly && triangle.getNormal(this.rayNormal).y < 0.55) continue
-      distance = Math.sqrt(this.rayHit.distanceSquared)
+      distance = Math.sqrt(this.rayHitDistanceSquared)
     }
     if (walkableOnly && ray.direction.y < 0) {
       const groundDistance = (this.groundY - ray.origin.y) / ray.direction.y
