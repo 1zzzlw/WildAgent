@@ -6,7 +6,6 @@ from app.domain.design.contracts import ResolvedDesign
 from app.domain.design.resolver import architecture_plan_from_document
 from app.domain.design.resolver import build_design_document
 from app.domain.design.resolver import resolve_design
-from app.domain.design.resolver import render_design_svg
 
 __all__ = [
     "DesignDocument",
@@ -15,5 +14,4 @@ __all__ = [
     "architecture_plan_from_document",
     "build_design_document",
     "resolve_design",
-    "render_design_svg",
 ]

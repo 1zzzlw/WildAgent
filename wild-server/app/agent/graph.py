@@ -10,7 +10,6 @@ from app.agent.nodes.chat_node import chat_node
 from app.agent.nodes.classifier_node import classifier_node
 from app.agent.nodes.compile_node import compile_node
 from app.agent.nodes.execute_node import execute_node
-from app.agent.nodes.material_plan_node import material_planner
 from app.agent.nodes.patch_node import patch_node
 from app.agent.nodes.plan_node import plan_node
 from app.agent.nodes.replanner_node import replanner_node
@@ -78,10 +77,6 @@ def _classifier_dispatch(state: GenerationState):
 
 
 def _after_architecture(state: GenerationState) -> str:
-    return "__end__" if _terminal(state) else "material_plan"
-
-
-def _after_material_plan(state: GenerationState) -> str:
     return "__end__" if _terminal(state) else "plan"
 
 
@@ -143,7 +138,6 @@ def build_generation_graph(*, checkpointer=None):
     graph.add_node("chat", chat_node)
     graph.add_node("patch", patch_node)
     graph.add_node("architecture", architecture_planner)
-    graph.add_node("material_plan", material_planner)
     graph.add_node("plan", plan_node)
     graph.add_node("execute", execute_node)
     graph.add_node("replanner", replanner_node)
@@ -171,10 +165,7 @@ def build_generation_graph(*, checkpointer=None):
     graph.add_conditional_edges(
         "architecture",
         _after_architecture,
-        {"material_plan": "material_plan", "__end__": END},
-    )
-    graph.add_conditional_edges(
-        "material_plan", _after_material_plan, {"plan": "plan", "__end__": END}
+        {"plan": "plan", "__end__": END},
     )
     graph.add_edge("compile", "final_validate")
     graph.add_edge("final_validate", END)
@@ -208,7 +199,7 @@ def build_generation_graph(*, checkpointer=None):
 
     compiled = graph.compile(checkpointer=checkpointer)
     logger.info(
-        "LangGraph 图编译完成: classifier → architecture → material_plan → plan → "
+        "LangGraph 图编译完成: classifier → architecture → plan → "
         "(execute ⇄ replanner) → compile → final_validate"
     )
     return compiled

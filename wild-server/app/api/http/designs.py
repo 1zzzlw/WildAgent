@@ -1,7 +1,7 @@
-"""建筑设计文档、版本化 Patch、批准和 SVG 预览 API。"""
+"""建筑设计文档、版本化 Patch 和批准 API。"""
 
 from fastapi import APIRouter
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 from app.domain.design.contracts import DesignPatch
 import app.application.designs as use_cases
@@ -39,10 +39,3 @@ def patch_design(session_id: str, patch: DesignPatch):
 def approve_design(session_id: str, body: ApproveDesignRequest):
     result = use_cases.approve_design(session_id, body.base_revision)
     return JSONResponse(result)
-
-
-@router.get("/{session_id}/preview.svg")
-def get_design_preview(session_id: str, revision: int | None=None, floor: int | None=None):
-    result = use_cases.get_design_preview(session_id, revision, floor)
-    return Response(result, media_type='image/svg+xml', headers={'Cache-Control': 'no-store, max-age=0'})
-

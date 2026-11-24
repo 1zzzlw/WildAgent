@@ -63,7 +63,6 @@ export type AgentMessage =
   | ThinkingStatusResponse
   | PlanReadyResponse
   | PlanItemUpdatedResponse
-  | DesignReadyResponse
   | PatchProposalResponse
   | AgentReplyResponse
   | BlueprintGeneratedResponse
@@ -191,15 +190,6 @@ export interface PlanItemUpdatedResponse extends AgentProtocolEnvelope {
   request_id: string
   session_id: string
   item: PlanItemUpdate
-}
-
-export interface DesignReadyResponse extends AgentProtocolEnvelope {
-  type: 'design_ready'
-  request_id: string
-  session_id: string
-  document: DesignDocument
-  resolved: ResolvedDesign
-  preview_url: string
 }
 
 export interface GenerationResumedResponse extends AgentProtocolEnvelope {
@@ -357,7 +347,6 @@ export interface AgentTurn {
   plan?: PlanDocument
   design_document?: DesignDocument
   resolved_design?: ResolvedDesign
-  design_preview_url?: string
   steps: AgentTurnStep[]
   validation_steps: Array<{
     label: string

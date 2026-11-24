@@ -4,52 +4,12 @@ from __future__ import annotations
 
 from copy import deepcopy
 import json
-import re
 from typing import Any
 
 from app.domain.blueprint.materials.recipes import infer_brick_preset
 from app.domain.blueprint.materials.recipes import resolve_brick_preset
 from app.domain.blueprint.materials.surfaces import DEFAULT_SURFACE_BY_ROLE
 from app.domain.blueprint.materials.surfaces import resolve_surface
-
-#: P6-A：用户提了材质/配色要求的**词面信号**。
-#:
-#:  这里刻意只判"有没有明确材质要求"，不判"有没有资产"——两件事曾经被绑成同一个
-#: 条件（``elif catalog:``），于是**无纹理资产时用户提了配色也被完全无视**。
-#: 材质设计决策与资产匹配必须分开判断：没有资产时仍然可以有合法的参数材质
-#: （baseColor / roughness / metallic 全是参数，不需要贴图）。
-#: 用户**提需求**时用的材质词（含具体材质名）。判"这次要不要做材质设计"用。
-_MATERIAL_INTENT_TERMS = (
-    "材质",
-    "配色",
-    "色调",
-    "颜色",
-    "色系",
-    "主色",
-    "辅色",
-    "点缀",
-    "墙面色",
-    "外墙色",
-    "屋面色",
-    "地面色",
-    "石材",
-    "木色",
-    "砖色",
-    "涂料",
-    "红砖",
-    "青砖",
-    "清水混凝土",
-    "微水泥",
-    "防腐木",
-    "格栅",
-    "幕墙",
-    "material",
-    "color",
-    "colour",
-    "palette",
-    "texture",
-    "材质搭配",
-)
 
 #: 用户**给反馈**时用的材质词。只收"明确在说材质"的决策词，**不收**"木""金属"
 #: 这类材质名词做子串匹配 ——
@@ -101,9 +61,6 @@ _MATERIAL_NAMES = (
 def material_mentions(text: str) -> list[str]:
     """文本里出现过的**材质决策词**（给反馈路径用）。
 
-    与 :func:`material_intent_terms` 分开是因为两个场景的词表不同：提需求时
-    "红砖外墙"要能触发，判反馈时"红砖"不能触发（那是句子里恰好有的材质名）。
-
     **纯决策词覆盖不了"门改成玻璃的"这类句子** —— 它是明确的材质变更，却一个
     决策词都没有。补第二路判据：**材质名 + 角色词同时出现**才算（材质名单独出现
     不算，"把木梁换成混凝土柱"里有"木"和"混凝土"但没有角色词，仍然不算）。
@@ -145,73 +102,6 @@ _SURFACE_ROLE_WORDS = (
     "门框",
     "龙骨",
 )
-
-#: 材质角色的**同义表达** —— 用户说"外墙用红砖"时角色是 ``facade_primary``。
-#: 这张表是"用户语义 → 受控角色名"的唯一映射点，不要在别处再写一份。
-_ROLE_SYNONYMS: dict[str, tuple[str, ...]] = {
-    "facade_primary": ("外墙", "外立面", "墙面", "墙体", "立面", "外墙砖"),
-    "structure": ("结构", "柱", "梁", "框架", "混凝土", "水泥"),
-    "floor": ("楼板", "地面", "地板", "楼面"),
-    "roof": ("屋面", "屋顶", "檐口", "瓦"),
-    "frame": ("龙骨", "窗框", "门框", "金属框", "型材"),
-    "door": ("门", "门扇", "大门"),
-    "glass": ("玻璃", "幕墙玻璃"),
-}
-
-
-def material_intent_terms(user_message: str) -> list[str]:
-    """用户话里出现过的材质/配色关键词（去重、保序）。"""
-
-    text = str(user_message or "").lower()
-    return [term for term in _MATERIAL_INTENT_TERMS if term.lower() in text]
-
-
-def named_material_roles(user_message: str, role_specs: dict[str, Any]) -> list[str]:
-    """用户明确点名了哪些材质角色（"外墙用红砖"⇒ ``["facade_primary"]``）。
-
-    只认**角色同义词表里有的**说法，不做语义推断 —— 推断属于模型该干的活，
-    这里只判"有没有指名道姓"。用于判断"这次生成有没有真的材质变化"。
-    """
-
-    text = str(user_message or "")
-    return [
-        role
-        for role, words in _ROLE_SYNONYMS.items()
-        if role in role_specs and any(word in text for word in words)
-    ]
-
-
-def needs_material_design(
-    user_message: str,
-    role_specs: dict[str, Any],
-    *,
-    has_catalog: bool,
-    procedural_materials_enabled: bool = False,
-) -> tuple[bool, str]:
-    """这次生成**是否需要材质设计决策**（与"有没有资产可匹配"无关）。
-
-    返回 ``(需要, 原因)``。三个真值：
-
-    - 用户明确提了材质/配色要求 ⇒ 需要（哪怕一张贴图都没有：合法参数材质本身就
-      承载设计，忽略用户要求等于把"有墙无洞"式的静默降级又搬回材质层）；
-    - 有资产或开了程序化配方 ⇒ 需要（要决定哪张贴图配哪个角色）；
-    - 其余 ⇒ 不需要，直接走确定性角色表。
-
-     **不要在这里判断资产数量来代替判断设计需求**（旧代码就是这么写的）：
-    "没有资产所以不需要设计"在无资产目录的机器上会静默吞掉全部配色要求。
-    """
-
-    terms = material_intent_terms(user_message)
-    roles = named_material_roles(user_message, role_specs)
-    if terms or roles:
-        detail = "、".join((terms + roles)[:4])
-        return True, f"用户明确提到材质/配色（{detail}）"
-    if has_catalog:
-        return True, "有可匹配的 PBR 资产，需要决定资产与角色的对应"
-    if procedural_materials_enabled:
-        return True, "程序化材质已启用，需要决定配方与角色的对应"
-    return False, "没有材质要求、也没有可匹配资产，走确定性角色表"
-
 
 ROLE_SPECS: dict[str, dict[str, Any]] = {
     "facade_primary": {
@@ -383,40 +273,6 @@ def _element_material_role(
         return "structure"
     explicit_role = MATERIAL_ID_ROLE.get(str(element.get("material")))
     return explicit_role or ELEMENT_ROLE.get(element_type)
-
-
-def compact_asset_catalog(manifests: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """只把选择材质所需的可信元数据交给模型，不暴露 URL。"""
-    catalog: list[dict[str, Any]] = []
-    for manifest in manifests:
-        asset_id = manifest.get("assetId")
-        maps = manifest.get("maps")
-        if (
-            not isinstance(asset_id, str)
-            or manifest.get("kind") != "pbr_texture_set"
-            or not isinstance(maps, dict)
-            or "baseColor" not in maps
-        ):
-            continue
-        classification = manifest.get("classification") or {}
-        channels = sorted(maps)
-        catalog.append(
-            {
-                "assetId": asset_id,
-                "kind": "pbr_texture_set",
-                "name": str(manifest.get("name") or asset_id),
-                "materialClass": classification.get("materialClass", "other"),
-                "tags": list(classification.get("tags") or []),
-                "recommendedRoles": list(classification.get("recommendedRoles") or []),
-                "realWorldSizeMeters": manifest.get("realWorldSizeMeters", [1, 1]),
-                "defaults": manifest.get("defaults", {}),
-                "channels": channels,
-                "baseColorOnly": channels == ["baseColor"],
-                "sourceType": (manifest.get("source") or {}).get("type", "unknown"),
-                "license": manifest.get("license", ""),
-            }
-        )
-    return catalog[:80]
 
 
 def resolve_material_plan(

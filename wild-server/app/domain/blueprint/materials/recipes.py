@@ -89,26 +89,6 @@ _LEVELS: dict[str, dict[str, float]] = {
 _MORTAR_DEPTH = {"shallow": 0.003, "standard": 0.006, "deep": 0.009}
 
 
-def compact_procedural_catalog() -> list[dict[str, Any]]:
-    """返回只包含模型选择所需信息的内置配方目录。"""
-    return [
-        {
-            "presetId": preset_id,
-            "type": "brick",
-            "name": preset["name"],
-            "description": preset["description"],
-            "tags": list(preset["tags"]),
-            "recommendedRoles": ["facade_primary"],
-            "adjustments": [
-                "tone", "mortarDepth", "colorVariation", "roughnessVariation",
-                "edgeWear", "weathering", "efflorescence", "verticalStreaks",
-                "baseDampness", "cleanliness",
-            ],
-        }
-        for preset_id, preset in BRICK_RECIPES.items()
-    ]
-
-
 def resolve_brick_preset(
     preset_id: Any,
     adjustments: Any = None,

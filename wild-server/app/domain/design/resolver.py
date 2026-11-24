@@ -1,10 +1,9 @@
-"""把 DesignDocument 确定性解析成 SVG 与 Blueprint 可共用的数据。"""
+"""构建和解析 DesignDocument。"""
 
 from __future__ import annotations
 
 from copy import deepcopy
 from hashlib import sha256
-from html import escape
 import json
 from typing import Any
 
@@ -599,107 +598,3 @@ def _resolve_object_design(doc: DesignDocument, d: ObjectDecisions) -> ResolvedD
         component_quantities=quantities,
         warnings=[],
     )
-
-
-def _render_object_svg(doc: DesignDocument, result: ResolvedDesign) -> str:
-    """物件场景的审核图：逐件画正面轮廓与占地轮廓，并列出尺寸与摆位。
-
-    刻意不画"体量平面/主立面/侧立面"——那是建筑的语言。物件没有立面和层数，
-    画上去就是虚假信息。人机确认要审的是"做几件、多大、怎么摆"。
-    """
-
-    decisions = doc.decisions
-    assert isinstance(decisions, ObjectDecisions)
-    title = escape(decisions.concept or doc.requirements.source_request[:40])
-    parts = [
-        '<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="820" viewBox="0 0 1200 820" role="img">',
-        '<rect width="1200" height="820" fill="#171a20"/>',
-        f'<text x="38" y="42" fill="#f2f4f8" font-size="20" font-family="sans-serif">{title}</text>',
-        f'<text x="38" y="68" fill="#9da8b8" font-size="12" font-family="sans-serif">DesignDocument r{doc.revision} · {doc.status} · 物件场景 · {escape(result.design_hash[:22])}</text>',
-        '<text x="38" y="105" fill="#d8dde7" font-size="14" font-family="sans-serif">物件正面轮廓（按比例）</text>',
-        '<rect x="38" y="120" width="1122" height="330" fill="#20252d" stroke="#3b4655"/>',
-    ]
-
-    # 统一比例：最高的那件占 250px，总宽不超过 1040px。
-    total_w = sum(item.width for item in decisions.objects) or 1.0
-    max_h = max((item.height for item in decisions.objects), default=1.0)
-    sx = min(1040 / total_w, 250 / max(max_h, 0.1))
-    base_y = 420.0
-    cursor = 58.0
-    for index, item in enumerate(decisions.objects):
-        fill = "#487aa1" if index % 2 == 0 else "#5f7184"
-        w = item.width * sx
-        h = item.height * sx
-        parts.append(
-            f'<rect x="{cursor:.2f}" y="{base_y - h:.2f}" width="{w:.2f}" height="{h:.2f}" '
-            f'fill="{fill}" fill-opacity="0.7" stroke="#9bc3e0" '
-            f'data-design-path="/decisions/objects/{index}"/>'
-        )
-        parts.append(
-            f'<text x="{cursor:.2f}" y="{base_y + 18:.2f}" fill="#edf5fb" font-size="11" '
-            f'font-family="sans-serif">{escape(f"{item.kind}/{item.subtype or '-'}")}</text>'
-        )
-        parts.append(
-            f'<text x="{cursor:.2f}" y="{base_y + 34:.2f}" fill="#9da8b8" font-size="11" '
-            f'font-family="sans-serif">{escape(f"×{item.count}  {item.width:.2f}W")}</text>'
-        )
-        cursor += w + 24.0
-
-    parts.extend(
-        [
-            '<text x="38" y="505" fill="#d8dde7" font-size="14" font-family="sans-serif">尺寸与摆位</text>',
-            '<rect x="38" y="520" width="1122" height="275" fill="#20252d" stroke="#3b4655"/>',
-        ]
-    )
-    line_y = 552.0
-    for item in decisions.objects:
-        label = f"{item.kind}/{item.subtype or '-'} × {item.count}"
-        size = f"W{item.width:.2f} × D{item.depth:.2f} × H{item.height:.2f}m"
-        placement = item.placement or "未指定摆位"
-        parts.append(
-            f'<text x="58" y="{line_y:.2f}" fill="#edf5fb" font-size="13" '
-            f'font-family="sans-serif">{escape(label)}　{escape(size)}　{escape(placement[:70])}</text>'
-        )
-        line_y += 26.0
-        if line_y > 780:
-            break
-
-    if decisions.design_rationale:
-        parts.append(
-            f'<text x="58" y="{min(line_y + 8, 786):.2f}" fill="#9da8b8" font-size="12" '
-            f'font-family="sans-serif">{escape("；".join(decisions.design_rationale)[:150])}</text>'
-        )
-    parts.append("</svg>")
-    return "".join(parts)
-
-
-def render_design_svg(
-    document: DesignDocument | dict[str, Any],
-    resolved: ResolvedDesign | None = None,
-    *,
-    floor: int | None = None,
-) -> str:
-    """建筑按设计世界坐标展示逐层平面；物件保留轮廓与尺寸表。"""
-
-    doc = (
-        document
-        if isinstance(document, DesignDocument)
-        else DesignDocument.model_validate(document)
-    )
-    from app.domain.design.compilation import RESOLVER_VERSION
-
-    result = resolved
-    if (
-        result is None
-        or result.design_hash != _stable_hash(doc)
-        or (
-            not isinstance(doc.decisions, ObjectDecisions)
-            and result.resolver_version != RESOLVER_VERSION
-        )
-    ):
-        result = resolve_design(doc)
-    if isinstance(doc.decisions, ObjectDecisions):
-        return _render_object_svg(doc, result)
-    from app.domain.design.preview import render_drawing_svg
-
-    return render_drawing_svg(doc, result, floor=floor)

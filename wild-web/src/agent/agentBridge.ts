@@ -589,22 +589,6 @@ export class AgentBridge {
         agentStore.applyPlanItemUpdate(message.session_id, message.request_id, message.item)
         break
 
-      case 'design_ready':
-        agentStore.setDesignReady(
-          message.session_id,
-          message.request_id,
-          message.document,
-          message.resolved,
-          message.preview_url.startsWith('http')
-            ? message.preview_url
-            : `${this.httpBaseUrl}${message.preview_url}`,
-        )
-        void this.syncTurnsToServer(
-          message.session_id,
-          agentStore.getTurnsForSession(message.session_id),
-        )
-        break
-
       case 'thinking_delta':
         {
         const context = this.requestContexts.get(message.request_id)

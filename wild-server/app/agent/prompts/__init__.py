@@ -9,7 +9,6 @@ from app.agent.prompts.plan import build_replan_prompt
 from app.agent.prompts.plan import build_replan_user_message
 from app.agent.prompts.planning import build_architecture_plan_prompt
 from app.agent.prompts.planning import build_material_optimization_prompt
-from app.agent.prompts.planning import build_material_plan_prompt
 from app.agent.prompts.repair import build_callback_prompt
 from app.agent.prompts.recovery import build_component_recovery_messages
 
@@ -21,7 +20,6 @@ __all__ = [
     "build_component_user_message",
     "build_component_recovery_messages",
     "build_material_optimization_prompt",
-    "build_material_plan_prompt",
     "build_patch_recovery_prompt",
     "build_replan_prompt",
     "build_replan_user_message",

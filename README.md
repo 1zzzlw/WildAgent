@@ -356,7 +356,6 @@ docker compose logs -f server
 | 会话     | `GET/POST /api/sessions`                                    | 列出与创建会话                                                                   |
 | 会话     | `GET/POST /api/sessions/{id}/messages`                      | 读取与追加对话消息                                                               |
 | 会话     | `GET/PUT /api/sessions/{id}/turns`                          | 读取与回写 Agent Turn（按 `request_id` 归属，含中断恢复状态）                    |
-| 会话     | `GET /api/sessions/{id}/preview.svg`                        | 取当前设计图纸的 SVG 预览                                                        |
 | 会话     | `POST /api/sessions/{id}/approve`                           | 提交设计审核结论（批准 / 要求修改）                                              |
 | 场景     | `GET/PUT/DELETE /api/scenes/{date}/{filename}`              | 读写与删除 `.wild` 蓝图，按日期分目录存放                                        |
 | 配置     | `GET/POST /api/config/llm`、`POST /api/config/llm/test`     | 查询与保存全站模型配置；测试接口只探测输入框当前候选值，不写盘                   |

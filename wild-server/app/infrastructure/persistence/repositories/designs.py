@@ -142,32 +142,6 @@ class DesignRepository:
         data["updated_at"] = data["approved_at"]
         return self.save(DesignDocument.model_validate(data), expected_revision=current.revision)
 
-    def mark_compiled(
-        self,
-        session_id: str,
-        *,
-        revision: int,
-        design_hash: str,
-    ) -> tuple[DesignDocument, dict[str, Any]]:
-        """在 Blueprint 保存成功后，将完全相同的已批准设计标记为已编译。"""
-
-        current = self.get(session_id)
-        if current is None:
-            raise FileNotFoundError("设计文档不存在")
-        if current.revision != revision:
-            raise DesignConflictError(
-                f"设计版本冲突：当前 r{current.revision}，编译结果来自 r{revision}"
-            )
-        if current.status not in {"approved", "compiled"}:
-            raise DesignConflictError("只有已批准的设计才能标记为 compiled")
-        resolved = resolve_design(current)
-        if resolved.design_hash != design_hash:
-            raise DesignConflictError("Blueprint 的 designHash 与当前设计不一致")
-        data = current.model_dump(mode="json")
-        data["status"] = "compiled"
-        data["updated_at"] = utc_now_iso()
-        return self.save(DesignDocument.model_validate(data), expected_revision=current.revision)
-
     @staticmethod
     def _tokens(path: str) -> list[str]:
         return [token.replace("~1", "/").replace("~0", "~") for token in path.lstrip("/").split("/")]

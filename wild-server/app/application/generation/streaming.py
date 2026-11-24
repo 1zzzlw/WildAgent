@@ -257,43 +257,6 @@ async def _on_architecture_completed(run, node_name, label, node_output, diag):
     )
 
 
-async def _on_material_plan_completed(run, node_name, label, node_output, diag):
-    """发送 material_plan 节点完成后的进度与诊断。"""
-    material_diag = node_output.get("material_diag", {})
-    await run.send_step(
-        "generating",
-        node_name,
-        "done",
-        label,
-        f"PBR 资产 {material_diag.get('selected_asset_count', 0)} 个 · "
-        f"{'受控回退' if material_diag.get('used_fallback') else '审美方案已解析'}",
-    )
-    if material_diag:
-        run.all_diags[node_name] = material_diag
-        await run.send_debug(
-            "node",
-            {
-                "node": node_name,
-                "label": label,
-                "stage": "done",
-                **material_diag,
-            },
-        )
-    document = node_output.get("design_document")
-    if document:
-        await _send_event(
-            run.sink,
-            {
-                "type": "design_ready",
-                "request_id": run.request_id,
-                "session_id": run.session_id,
-                "document": document,
-                "resolved": node_output.get("resolved_design") or {},
-                "preview_url": f"/api/designs/{run.session_id}/preview.svg?revision={document['revision']}",
-            },
-        )
-
-
 async def _on_compile_completed(run, node_name, label, node_output, diag):
     """发送 compile 节点完成后的进度与诊断。"""
     report = node_output.get("compile_report") or {}
@@ -438,6 +401,9 @@ async def _on_replanner_completed(run, node_name, label, node_output, diag):
 
 async def _on_plan_completed(run, node_name, label, node_output, diag):
     """发送 plan 节点完成后的进度与诊断。"""
+    if node_output.get("status") == "failed":
+        await run.send_step("generating", node_name, "error", label, node_output["error"])
+        return
     total = len(node_output.get("plan_events") or [])
     budget = (node_output.get("plan") or {}).get("budget", {})
     await run.send_step(
@@ -479,7 +445,6 @@ _NODE_COMPLETION_HANDLERS = {
     "chat": _on_chat_completed,
     "patch": _on_patch_completed,
     "architecture": _on_architecture_completed,
-    "material_plan": _on_material_plan_completed,
     "compile": _on_compile_completed,
     "final_validate": _on_final_validate_completed,
     "execute": _on_execute_completed,

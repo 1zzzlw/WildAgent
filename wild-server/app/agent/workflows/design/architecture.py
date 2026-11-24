@@ -8,7 +8,6 @@ from app.agent.workflows.design.drafting import draft_design
 from app.agent.state import GenerationState
 from app.agent.prompts import build_architecture_plan_prompt
 from app.agent.runtime import get_reasoning_callback
-from app.agent.tools.design_validation import validate_design_draft
 from app.agent.workflows.design.react import build_design_request
 
 
@@ -18,7 +17,6 @@ async def architecture_planner(state: GenerationState) -> dict:
     from app.infrastructure.llm.errors import model_failure_result
 
     started = _time.time()
-    message = state["user_message"]
     object_scene = state.get("intent_target_kind") == "object"
     profile_id = "object" if object_scene else state["intent_profile"]
 
@@ -36,27 +34,17 @@ async def architecture_planner(state: GenerationState) -> dict:
         style_preference=state.get("style_preference"),
         object_scene=object_scene,
     )
-    accepted = {}
-
-    def validate(raw):
-        document, resolved = validate_design_draft(
-            raw,
-            state,
-            profile_id=profile_id,
-            object_scene=object_scene,
-        )
-        accepted.update(document=document, resolved=resolved)
-
     accounting = {"model_calls": 0}
     knowledge_trace = []
 
     try:
-        raw, diag = await draft_design(
+        document, resolved, diag = await draft_design(
+            state=state,
             base_prompt=prompt,
-            user_request=message,
+            profile_id=profile_id,
+            object_scene=object_scene,
             thinking_mode=state.get("thinking_mode") is True,
             on_reasoning_delta=callback,
-            validate=validate,
             request_draft=build_design_request(accounting, knowledge_trace, callback),
             call_accounting=accounting,
         )
@@ -77,21 +65,18 @@ async def architecture_planner(state: GenerationState) -> dict:
         detail_level=detail_level,
         total_ms=int((_time.time() - started) * 1000),
         profile=profile_id,
-        raw_plan=raw,
     )
-    if not raw:
+    if document is None:
         return {
             "status": "failed",
             "error": "设计图纸未通过检查：" + diag["last_issue"],
             "architecture_diag": diag,
         }
-    document = accepted["document"]
     return {
         "detail_level": detail_level,
         "architecture_plan": architecture_plan_from_document(document),
         "design_document": document.model_dump(mode="json"),
-        "resolved_design": accepted["resolved"].model_dump(mode="json"),
-        "design_material_refresh": True,
+        "resolved_design": resolved.model_dump(mode="json"),
         "architecture_diag": diag,
         "component_fragments": {
             k: [] for k in (state.get("component_fragments") or {})

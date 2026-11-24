@@ -75,12 +75,9 @@ class GenerationState(TypedDict, total=False):
     # ── Layer -0.5: 建筑方案（生成分支）──
     architecture_plan: dict  # DesignDocument 的只读兼容投影；设计修改回到文档。
     architecture_diag: dict  # 总体方案来源、RAG 和模型调用诊断（前端方案摘要消费）。
-    design_document: dict  # 带 revision 的结构化设计文档，材质确定后自动固定本次生成版本。
+    design_document: dict  # 本次生成使用的结构化设计文档。
     drawing_hosts: list[dict]  # 图纸中的宿主几何示意，供主体实现保持引用。
     resolved_design: dict  # 将 DesignDocument 默认值和引用解析后的可执行视图。
-    design_material_refresh: bool  # 本轮修订后是否需要重新生成材质方案。
-    material_plan: dict  # 材质角色、颜色和资产引用组成的受控材质方案。
-    material_diag: dict  # 材质检索、解析、校验和回退诊断（前端资产摘要消费）。
 
     # ── Layer -1: 知识问答输出 ──
     chat_reply: str  # 知识问答的文本回复

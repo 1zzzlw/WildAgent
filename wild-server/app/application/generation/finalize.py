@@ -289,27 +289,6 @@ async def deliver_blueprint(run: GenerationExecution) -> None:
     session_metrics["status"] = "complete" if delivery.validation_passed else "failed"
     session_metrics["validation_errors"] = delivery.validation.errors
     await run.send_debug("session_metrics", session_metrics)
-    design_document = run.final_state.get("design_document") or {}
-    meta = merged_blueprint.get("meta")
-    design_hash = meta.get("designHash") if isinstance(meta, dict) else None
-    if delivery.validation_passed and isinstance(design_document, dict) and design_hash:
-        try:
-            from app.infrastructure.persistence.repositories.designs import (
-                design_repository,
-            )
-
-            await asyncio.to_thread(
-                design_repository.mark_compiled,
-                run.session_id,
-                revision=int(design_document.get("revision") or 0),
-                design_hash=str(design_hash),
-            )
-        except Exception as exc:
-            # Blueprint 已成功原子保存；状态回写失败不应把已交付产物伪装成生成失败。
-            logger.warning(
-                f"[{run.request_id}] DesignDocument compiled 状态回写失败: {exc}"
-            )
-
     await _send_event(
         run.sink,
         {

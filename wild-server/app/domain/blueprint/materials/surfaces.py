@@ -14,10 +14,6 @@ DEFAULT_SURFACE_BY_ROLE = {
 }
 
 
-def surface_catalog() -> list[dict]:
-    return [{key: value for key, value in item.items() if key != "material"} for item in _CATALOG]
-
-
 def resolve_surface(preset_id: str | None, role: str) -> dict | None:
     preset = SURFACE_PRESETS.get(preset_id) if isinstance(preset_id, str) else None
     if preset and role in preset["recommendedRoles"]:

@@ -9,14 +9,12 @@ from app.domain.design.contracts import DesignPatch
 from app.infrastructure.persistence.repositories.designs import DesignConflictError
 from app.infrastructure.persistence.repositories.designs import design_repository
 from app.domain.design.resolver import resolve_design
-from app.domain.design.resolver import render_design_svg
 
 
 def _package(document: DesignDocument, resolved: dict) -> dict:
     return {
         "document": document.model_dump(mode="json"),
         "resolved": resolved,
-        "preview_url": f"/api/designs/{document.session_id}/preview.svg?revision={document.revision}",
     }
 
 
@@ -57,20 +55,3 @@ def approve_design(session_id: str, base_revision: int):
     except ValueError as exc:
         raise ApplicationError('invalid_data', str(exc)) from exc
     return _package(document, resolved)
-
-
-def get_design_preview(session_id: str, revision: int | None=None, floor: int | None=None):
-    try:
-        document = design_repository.get(session_id)
-    except ValueError as exc:
-        raise ApplicationError('invalid_input', str(exc)) from exc
-    if document is None:
-        raise ApplicationError('not_found', "设计预览不存在")
-    if revision is not None and revision != document.revision:
-        raise ApplicationError('conflict', "设计已更新，请刷新审核预览")
-    # Legacy SVG files carry no resolver version: regenerate from the current document.
-    try:
-        svg = render_design_svg(document, floor=floor)
-    except ValueError as exc:
-        raise ApplicationError('invalid_data', str(exc)) from exc
-    return svg

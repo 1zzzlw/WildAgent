@@ -158,35 +158,66 @@ async def _execute_one(state: dict[str, Any], item: PlanItem):
 
 
 async def plan_node(state: dict[str, Any]) -> dict[str, Any]:
-    """从已确认图纸展开标记任务，并准备统一装配使用的初始蓝图。"""
+    """按图纸拆分构件任务，准备统一装配使用的初始蓝图。"""
+    from app.domain.blueprint.materials.plan import resolve_material_plan
+    from app.domain.design.compilation import RESOLVER_VERSION
     from app.domain.design.contracts import DesignDocument, ObjectDecisions
     from app.domain.design.objects import build_object_skeleton, object_design_brief
-    from app.domain.design.resolver import architecture_plan_from_document, resolve_design
+    from app.domain.design.resolver import (
+        _stable_hash,
+        architecture_plan_from_document,
+        attach_material_plan,
+        resolve_design,
+    )
+    from app.infrastructure.storage.assets import asset_storage
 
     started = time.time()
     callback = get_reasoning_callback()
     if callback:
-        await callback("plan:progress", "正在把已确认方案拆成可执行的工作条目……\n")
+        await callback("plan:progress", "正在按图纸拆分构件任务……\n")
 
     document = DesignDocument.model_validate(state.get("design_document"))
-    resolved = resolve_design(document)
     reviewed = state.get("resolved_design") or {}
     if (
-        reviewed.get("resolver_version") != resolved.resolver_version
-        or reviewed.get("design_hash") != resolved.design_hash
+        reviewed.get("resolver_version") != RESOLVER_VERSION
+        or reviewed.get("design_hash") != _stable_hash(document)
     ):
         return {
             "status": "failed",
             "error": "任务设计版本与已确定图纸不一致，请重新生成，已有片段仍保留。",
         }
 
+    if document.decisions.materials.resolved_plan is None:
+        roles = []
+        for role, intent in document.decisions.materials.roles.items():
+            entry = {**intent, "role": role}
+            if "baseColor" not in entry and "color" in entry:
+                entry["baseColor"] = entry["color"]
+            roles.append(entry)
+        manifests = await asyncio.to_thread(asset_storage.list_manifests)
+        materials = resolve_material_plan(
+            {"roles": roles},
+            manifests,
+            architecture_plan_from_document(document),
+            document.requirements.source_request,
+            procedural_materials_enabled=state.get("procedural_materials_enabled") is True,
+        )
+        document = attach_material_plan(document, materials)
+
+    resolved = resolve_design(document)
+    if resolved.compile_blockers:
+        reasons = "；".join(item["evidence"] for item in resolved.compile_blockers)
+        return {"status": "failed", "error": f"图纸存在编译阻断：{reasons}"}
     resolved_data = resolved.model_dump(mode="json")
-    plan = expand_design_markers({**state, "resolved_design": resolved_data})
+    document_data = document.model_dump(mode="json")
+    architecture_plan = architecture_plan_from_document(document)
+    plan = expand_design_markers(
+        {**state, "design_document": document_data, "resolved_design": resolved_data}
+    )
     design_brief = {}
     if isinstance(document.decisions, ObjectDecisions):
-        object_plan = architecture_plan_from_document(document)
-        scaffold = build_object_skeleton(object_plan, state.get("user_message", ""))
-        design_brief = object_design_brief(object_plan)
+        scaffold = build_object_skeleton(architecture_plan, state.get("user_message", ""))
+        design_brief = object_design_brief(architecture_plan)
     else:
         scaffold = {
             "meta": {
@@ -210,6 +241,8 @@ async def plan_node(state: dict[str, Any]) -> dict[str, Any]:
         scaffold["assets"] = dict(material_plan.resolvedAssets)
 
     return {
+        "architecture_plan": architecture_plan,
+        "design_document": document_data,
         "plan": plan.model_dump(mode="json"),
         "plan_events": _events_for(plan),
         "resolved_design": resolved_data,

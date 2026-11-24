@@ -356,7 +356,7 @@ async def _restore_graph_checkpoint(run):
         run.suggested_components = snapshot.values.get("suggested_components", [])
         document = snapshot.values.get("design_document") or {}
         resolved = snapshot.values.get("resolved_design") or {}
-        obsolete_steps = {"object_design", "skeleton", "callback"}
+        obsolete_steps = {"object_design", "skeleton", "callback", "material_plan"}
         if snapshot.next and (
             obsolete_steps.intersection(snapshot.next)
             or (

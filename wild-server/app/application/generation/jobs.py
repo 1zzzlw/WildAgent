@@ -39,7 +39,6 @@ _PERSISTED_EVENT_TYPES = {
     "thinking_status",
     "plan_ready",
     "plan_item_updated",
-    "design_ready",
     "patch_proposal",
     "blueprint_generated",
     "agent_reply",

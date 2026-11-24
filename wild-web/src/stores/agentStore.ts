@@ -544,21 +544,6 @@ export const useAgentStore = defineStore('agent', () => {
     persistTurns(sessionId)
   }
 
-  function setDesignReady(
-    sessionId: string,
-    requestId: string,
-    document: NonNullable<AgentTurn['design_document']>,
-    resolved: NonNullable<AgentTurn['resolved_design']>,
-    previewUrl: string,
-  ) {
-    const turn = findTurn(sessionId, requestId)
-    if (!turn) return
-    turn.design_document = document
-    turn.resolved_design = resolved
-    turn.design_preview_url = previewUrl
-    persistTurns(sessionId)
-  }
-
   function setTurnMetrics(sessionId: string, requestId: string, metrics: SessionMetrics) {
     const turn = findTurn(sessionId, requestId)
     if (turn) turn.metrics = metrics
@@ -986,7 +971,6 @@ export const useAgentStore = defineStore('agent', () => {
     chat: '知识问答',
     patch: '场景修改',
     architecture: '设计图纸',
-    material_plan: '材质方案',
     design_convergence: '设计收敛',
     compile: '最终编译',
     planning_research: '计划研究',
@@ -1071,7 +1055,6 @@ export const useAgentStore = defineStore('agent', () => {
     setTurnDiagnostic,
     setTurnPlan,
     applyPlanItemUpdate,
-    setDesignReady,
     setTurnMetrics,
     setTurnThinkingStatus,
     setTurnStopRequested,

@@ -24,9 +24,9 @@ agent/
 └── tools/                    # 按需诊断工具和 LangChain 工具包装
 ```
 
-阅读主链从 `graph.py` 开始，通过 `nodes/*_node.py` 进入对应工作流。建筑和物件共用 `architecture → material_plan → plan → execute / replanner → compile → final_validate`。Plan 根据已确认图纸展开任务并准备初始蓝图。
+阅读主链从 `graph.py` 开始，通过 `nodes/*_node.py` 进入对应工作流。建筑和物件共用 `architecture → plan → execute / replanner → compile → final_validate`。Plan 按图纸展开任务，并把材质角色映射到初始蓝图。
 
-图纸与材质通过设计契约校验、保存并确定版本后自动继续。`design_ready` 事件用于展示，不创建人工审核中断。节点进度只说明流程走到哪里，不能代替业务验收和视觉确认；校验失败时可保留已有可编辑实体，同时明确返回失败状态。
+图纸通过设计契约校验后随工作流状态传到 Plan。节点进度只说明流程走到哪里，不能代替业务验收和视觉确认；校验失败时可保留已有可编辑实体，同时明确返回失败状态。
 
 依赖约定：
 

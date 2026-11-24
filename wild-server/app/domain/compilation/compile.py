@@ -2380,7 +2380,7 @@ def compile_design(
     :param mode: ``final`` 出蓝图；``dry_run`` / ``probe`` 只回诊断。
         ``probe`` 供设计节点当 tool 试算：它连蓝图都不回，模型污染不了产物。
     :param user_message: 透传给骨架归一化（尺寸/层数的需求解析）。
-    :param material_plan: 已批准的材质方案（``material_plan`` 节点产出）。
+    :param material_plan: 解析后的材质方案。
         不传则蓝图只用骨架的默认材质；传了就在这里落地——**必须在按材质取名的
         步骤之前**，详见 :func:`_compose` 内的说明。
     """

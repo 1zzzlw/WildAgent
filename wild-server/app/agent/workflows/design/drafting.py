@@ -7,11 +7,14 @@ import re
 
 from app.agent.prompts.design_revision import build_design_repair_prompt
 from app.agent.runtime import create_llm
+from app.agent.state import GenerationState
+from app.agent.tools.design_validation import validate_design_draft
 from app.infrastructure.llm.invocation import invoke_llm
 from app.infrastructure.llm.invocation import stream_llm
 from app.infrastructure.llm.invocation import merge_token_usage
 from app.infrastructure.observability.trace import llm_trace_scope
 from app.domain.blueprint.json_extractor import extract_json_object
+from app.domain.design.contracts import DesignDocument, ResolvedDesign
 from app.domain.design.parametric import expand_parameters
 
 _MAX_ATTEMPTS = 3
@@ -404,22 +407,19 @@ def _validation_evidence(exc: Exception, design: dict):
     return None
 
 
-# base_prompt：基础系统提示词
-# user_request：用户原始需求
-# thinking_mode：是否允许首轮开启思考
-# on_reasoning_delta：向外发送思考内容、进度的异步函数
-# call_accounting：调用方初始化的模型调用计数，与检索子图共享
-# validate：外层传入的校验函数
 async def draft_design(
     *,
+    state: GenerationState,
     base_prompt,
-    user_request,
+    profile_id: str,
+    object_scene: bool,
     call_accounting: dict[str, int],
     thinking_mode=False,
     on_reasoning_delta=None,
-    validate=None,
     request_draft=None,
-):
+) -> tuple[DesignDocument, ResolvedDesign, dict] | tuple[None, None, dict]:
+    """起草并校验图纸，返回正式文档、解析结果和诊断。"""
+    user_request = state["user_message"]
     prompt = base_prompt
 
     # 初始化整个过程需要的记录
@@ -486,9 +486,9 @@ async def draft_design(
         issue = ""
         try:
             # getattr()：动态获取对象的属性 / 方法
-            # - obj：目标对象
-            # - name：属性名字符串
-            # - default（可选）：找不到属性时返回这个；不填找不到直接抛 `AttributeError`
+            # obj：目标对象
+            # name：属性名字符串
+            # default（可选）：找不到属性时返回这个；不填找不到直接抛 AttributeError
             # finish_reason：模型输出结束的原因，可能是 "stop"、"length"、"max_tokens" 等
             if getattr(reply, "finish_reason", None) in {"length", "max_tokens"}:
                 raise ValueError("模型输出达到长度上限，图纸或补丁未完整返回")
@@ -500,7 +500,7 @@ async def draft_design(
             issue = str(exc)
 
         # raw：模型本轮返回的对象，可能是完整设计，也可能是补丁
-        # picked：本轮成功后实际返回的数据
+        # picked：解析失败或修订失败时供反馈使用的本轮数据
         # candidate：准备接受校验的候选图纸
         # checked：是否已经进入候选图纸的校验阶段
         # adopted：候选图纸是否被采纳为后续修订的基础
@@ -539,12 +539,16 @@ async def draft_design(
         # 如果没有错误进入校验阶段
         if not issue:
             checked = True
-            if validate is not None:
-                try:
-                    validate(candidate)
-                except (ValueError, TypeError, KeyError, RuntimeError) as exc:
-                    issue = str(exc)
-                    candidate_evidence = _validation_evidence(exc, candidate)
+            try:
+                document, resolved = validate_design_draft(
+                    candidate,
+                    state,
+                    profile_id=profile_id,
+                    object_scene=object_scene,
+                )
+            except (ValueError, TypeError, KeyError, RuntimeError) as exc:
+                issue = str(exc)
+                candidate_evidence = _validation_evidence(exc, candidate)
             improved = False
             if draft_evidence is not None and candidate_evidence is not None:
                 old_stage, old_problems = draft_evidence
@@ -581,7 +585,8 @@ async def draft_design(
             "call_id": getattr(reply, "call_id", None),
         }
         if not issue:
-            return picked, diag
+            diag["raw_plan"] = candidate
+            return document, resolved, diag
         rejected.append(
             {
                 "attempt": attempt,
@@ -634,4 +639,5 @@ async def draft_design(
                     ensure_ascii=False,
                 )
             )
-    return {}, diag
+    diag["raw_plan"] = {}
+    return None, None, diag

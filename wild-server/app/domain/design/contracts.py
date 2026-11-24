@@ -451,7 +451,7 @@ class MaterialIntent(ContractModel):
     keywords: list[str] = Field(default_factory=list)
     roles: dict[str, dict[str, Any]] = Field(
         default_factory=dict,
-        description="本次材料角色及描述，可用base_role引用默认用途；实际PBR由材料节点落实",
+        description="材质角色及参数，可用 base_role 引用默认用途",
     )
     resolved_plan: ResolvedMaterialPlan | None = None
     #: 区域/构件材质绑定（P5-C）。空列表 ⇒ 全部按类型默认角色，与引入前逐字段一致。

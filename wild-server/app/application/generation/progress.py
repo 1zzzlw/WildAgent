@@ -2,7 +2,6 @@
 
 _OUR_NODES = {
     "classifier", "chat", "patch", "architecture",
-    "material_plan",
     "compile",
     # plan 驱动链的循环三节点：条目级进度在它们的输出里，不在节点名里
     "plan", "execute", "replanner",
@@ -14,9 +13,8 @@ _NODE_START_DETAILS = {
     "chat": "RAG 检索知识库并生成回答",
     "patch": "分析当前场景并生成修改提案",
     "architecture": "生成并解析结构化设计图纸",
-    "material_plan": "解析材质角色并匹配受控 PBR 资产",
     "compile": "装配已落实的图纸标记，检查版本与完整性",
-    "plan": "从已批准设计展开构件任务与依赖",
+    "plan": "按图纸展开构件任务与依赖",
     "execute": "执行当前串行条目或安全并发组",
     "replanner": "对账本轮结果并决定下一轮",
     "final_validate": "执行最终校验流水线",
@@ -29,7 +27,6 @@ _NODE_LABELS = {
     "chat": "知识问答",
     "patch": "场景修改",
     "architecture": "设计图纸",
-    "material_plan": "材质方案",
     "compile": "最终编译",
     "plan": "执行计划",
     "execute": "执行计划条目",
