@@ -52,7 +52,7 @@ if mysql_port:
 else:
     database._engine = create_engine(f"sqlite:///{storage/'storage.sqlite3'}", connect_args={"check_same_thread":False})
     metadata.create_all(database.engine)
-    jobs = importlib.import_module("app.application.generation.jobs")
+    jobs = importlib.import_module("integration.generation.jobs")
     jobs.generation_job_service = jobs.GenerationJobService(storage/"jobs.sqlite3")
 
 prefix = "wild-browser:" + uuid4().hex + ":"

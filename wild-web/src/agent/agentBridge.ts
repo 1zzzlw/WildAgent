@@ -126,6 +126,7 @@ export class AgentBridge {
     sessionId: string
     turnId: string
     durable: boolean
+    submission?: { payload?: string; accountId: string; checkedAt: number }
   }>()
   /** 每个持久化请求最后处理的关键事件序号，用于补发去重。 */
   private lastEventSequences = new Map<string, number>()
@@ -199,6 +200,7 @@ export class AgentBridge {
       }
 
       this.ws.onmessage = (event) => {
+        if (this.ws !== connection) return
         try {
           const message: AgentMessage = JSON.parse(event.data)
 
@@ -360,6 +362,7 @@ export class AgentBridge {
       this.ws.close()
       this.ws = null
     }
+    for (const context of this.requestContexts.values()) delete context.submission
 
     const agentStore = useAgentStore()
     const presenceStore = usePresenceStore()
@@ -370,8 +373,10 @@ export class AgentBridge {
 
   /** 发送用户消息 */
   sendUserMessage(message: string): string | null {
-    if (!useAuthStore().canEdit) return null
-    if (!useAuthStore().hasQuota('ai')) {
+    const authStore = useAuthStore()
+    const accountId = authStore.user?.id
+    if (!authStore.canEdit || !accountId) return null
+    if (!authStore.hasQuota('ai')) {
       ElMessage.warning('今日 AI 次数已用完，明日北京时间零点恢复')
       return null
     }
@@ -414,6 +419,17 @@ export class AgentBridge {
       agentStore.thinkingMode,
     )
 
+    let payload: string
+    try {
+      payload = JSON.stringify(request)
+      // 先发送请求。创建 Turn 会同步触发在线状态上报。
+      this.ws.send(payload)
+    } catch (error) {
+      console.error('[AgentBridge] 发送 Agent 请求失败', error)
+      agentStore.addSystemMessage('Agent 请求发送失败，请重新发送。')
+      return null
+    }
+
     agentStore.clearPipelineSteps()
     agentStore.clearThinkingState()
     agentStore.clearExecutionState()
@@ -422,6 +438,7 @@ export class AgentBridge {
       turnId: request.request_id,
       // 服务端持久图托管任务，断线后恢复执行状态。
       durable: true,
+      submission: { payload, accountId, checkedAt: Date.now() },
     })
     this.lastEventSequences.set(request.request_id, 0)
     agentStore.startTurn(
@@ -433,8 +450,7 @@ export class AgentBridge {
       request.session_id,
       agentStore.getTurnsForSession(request.session_id),
     )
-    this.ws.send(JSON.stringify(request))
-    agentStore.setProcessing(true)
+    agentStore.setProcessing(true, '正在提交 Agent 请求…')
     return request.request_id
   }
 
@@ -448,6 +464,8 @@ export class AgentBridge {
       protocol_version: AGENT_PROTOCOL_VERSION, type: 'stop_generation',
       request_id: turn.request_id, session_id: turn.session_id,
     }
+    const context = this.requestContexts.get(turn.request_id)
+    if (context) delete context.submission
     agentStore.setTurnStopRequested(turn.session_id, turn.request_id, true)
     this.ws.send(JSON.stringify(request))
     void this.syncConversationState(turn.session_id)
@@ -466,11 +484,26 @@ export class AgentBridge {
   private handleMessage(message: AgentMessage) {
     const agentStore = useAgentStore()
     const presenceStore = usePresenceStore()
+    if ('request_id' in message && message.request_id
+      && !(message.type === 'error' && message.code === 'generation_not_found')) {
+      const context = this.requestContexts.get(message.request_id)
+      if (context) delete context.submission
+    }
     if (['agent_reply', 'error', 'blueprint_generated', 'patch_proposal'].includes(message.type)) {
       void useAuthStore().refresh().catch(() => {})
     }
 
     switch (message.type) {
+      case 'generation_accepted': {
+        const turn = agentStore.getTurnsForSession(message.session_id)
+          .find(item => item.request_id === message.request_id)
+        if (turn?.status === 'running' && turn.steps.length === 0
+          && message.session_id === agentStore.currentSessionId) {
+          agentStore.setProcessing(true, 'Agent 已接收，正在准备执行…')
+        }
+        break
+      }
+
       case 'generation_resumed':
         this.requestContexts.set(message.request_id, {
           sessionId: message.session_id,
@@ -671,6 +704,20 @@ export class AgentBridge {
         }
         if (message.code === 'generation_not_found') {
           const turn = agentStore.getTurnsForSession(sessionId).find(item => item.request_id === message.request_id)
+          const submission = context?.submission
+          if (context?.sessionId === sessionId && turn?.status === 'running' && !turn.stop_requested
+            && submission?.payload && submission.accountId === useAuthStore().user?.id
+            && this.ws?.readyState === WebSocket.OPEN) {
+            // 服务端确认没有任务后，用原 request_id 重发一次。
+            const payload = submission.payload
+            delete submission.payload
+            submission.checkedAt = Date.now()
+            this.ws.send(payload)
+            if (sessionId === agentStore.currentSessionId) {
+              agentStore.setProcessing(true, '正在重新提交 Agent 请求…')
+            }
+            break
+          }
           if (turn?.status !== 'running' && turn?.status !== 'waiting_review') {
             this.requestContexts.delete(message.request_id)
             break
@@ -753,13 +800,7 @@ export class AgentBridge {
 
     for (const [sessionId, target] of targets) {
       if (!sessionId) continue
-      this.ws.send(JSON.stringify({
-        protocol_version: AGENT_PROTOCOL_VERSION,
-        type: 'resume_generation',
-        request_id: target.requestId,
-        session_id: sessionId,
-        last_event_seq: target.lastEventSeq,
-      }))
+      this.requestGenerationState(sessionId, target.requestId, target.lastEventSeq)
       const turn = agentStore.getTurnsForSession(sessionId).find(t => t.request_id === target.requestId)
       if (turn?.stop_requested) {
         this.ws.send(JSON.stringify({
@@ -768,6 +809,17 @@ export class AgentBridge {
         } satisfies StopGenerationRequest))
       }
     }
+  }
+
+  private requestGenerationState(sessionId: string, requestId?: string, lastEventSeq = 0) {
+    if (this.ws?.readyState !== WebSocket.OPEN) return
+    this.ws.send(JSON.stringify({
+      protocol_version: AGENT_PROTOCOL_VERSION,
+      type: 'resume_generation',
+      request_id: requestId,
+      session_id: sessionId,
+      last_event_seq: lastEventSeq,
+    }))
   }
 
   /** 处理后端推送的网络错误（心跳超时等） */
@@ -1256,6 +1308,15 @@ export class AgentBridge {
   /** 处理 pong 响应 */
   private handlePong(_timestamp: number) {
     this.handleSocketActivity()
+    const now = Date.now()
+    const accountId = useAuthStore().user?.id
+    for (const [requestId, context] of this.requestContexts) {
+      const submission = context.submission
+      if (!submission || submission.accountId !== accountId
+        || now - submission.checkedAt < HEARTBEAT_CONFIG.timeout) continue
+      submission.checkedAt = now
+      this.requestGenerationState(context.sessionId, requestId)
+    }
   }
 
   /** 收到任意服务端消息都表示当前连接仍然活跃。 */

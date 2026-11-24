@@ -53,14 +53,14 @@ def main():
         parser.error("--top-k 必须大于 0")
 
     from dotenv import load_dotenv
-    from app.infrastructure.configuration import runtime_env_path
+    from common.configuration import runtime_env_path
 
     load_dotenv(runtime_env_path(), override=False)
     if not os.environ.get("LANGSMITH_API_KEY"):
         parser.error("请在 wild-server/.env 或进程环境中设置 LANGSMITH_API_KEY")
 
     from langsmith import evaluate, traceable
-    from config import config
+    from agent.llm.config import config
     from scripts.rag.eval_retrieval import build_loader, indexed_chunk_count
 
     if not config.rag.enabled or not config.embedding.api_key or not config.embedding.name:

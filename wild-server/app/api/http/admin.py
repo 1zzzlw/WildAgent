@@ -59,24 +59,23 @@ def users(
 
 @router.patch("/users/{user_id}")
 async def update_user(
-    user_id: str, body: UserUpdate, user: dict = Depends(administrator)
+    user_id: str, body: UserUpdate, request: Request, user: dict = Depends(administrator)
 ):
     result = await run_in_threadpool(
         use_cases.update_user, user, user_id, body.model_dump(exclude_unset=True)
     )
-    if result["status"] == "blocked":
-        from app.application.generation.jobs import generation_job_service
-
-        await generation_job_service.stop_account_jobs(user_id)
+    stop_jobs = getattr(request.app.state, "stop_account_jobs", None)
+    if result["status"] == "blocked" and stop_jobs is not None:
+        await stop_jobs(user_id)
     return result
 
 
 @router.delete("/users/{user_id}")
-async def delete_user(user_id: str, user: dict = Depends(administrator)):
-    from app.application.generation.jobs import generation_job_service
-
+async def delete_user(user_id: str, request: Request, user: dict = Depends(administrator)):
     result = await run_in_threadpool(use_cases.delete_user, user, user_id)
-    await generation_job_service.stop_account_jobs(user_id)
+    stop_jobs = getattr(request.app.state, "stop_account_jobs", None)
+    if stop_jobs is not None:
+        await stop_jobs(user_id)
     return result
 
 

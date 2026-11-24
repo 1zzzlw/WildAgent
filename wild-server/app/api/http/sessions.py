@@ -33,7 +33,10 @@ def update_session(session_id: str, request: Request, updates: dict=Body(...)):
 
 @router.delete("/{session_id}")
 async def delete_session(session_id: str, request: Request):
-    result = await use_cases.delete_session(session_id, getattr(request.state, "user", None))
+    result = await use_cases.delete_session(
+        session_id, getattr(request.state, "user", None),
+        delete_jobs=getattr(request.app.state, "delete_session_jobs", None),
+    )
     return result
 
 

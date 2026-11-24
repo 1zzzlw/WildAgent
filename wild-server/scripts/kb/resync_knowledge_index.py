@@ -18,7 +18,7 @@ sys.path.insert(0, str(SERVER_ROOT))
 
 
 def main() -> int:
-    from app.infrastructure.retrieval.resources import create_spec_loader
+    from agent.rag.resources import create_spec_loader
 
     loader = create_spec_loader()
     print(f"loader: {type(loader).__name__}")

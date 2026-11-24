@@ -6,7 +6,7 @@ from uuid import uuid4
 import json
 import re
 import unicodedata
-from app.paths import SERVER_ROOT
+from common.paths import SERVER_ROOT
 
 ITEM_ROOT = SERVER_ROOT / "storage" / "item_catalog"
 ITEMS_DIR = ITEM_ROOT / "items"

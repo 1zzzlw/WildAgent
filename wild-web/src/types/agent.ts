@@ -56,6 +56,7 @@ export interface AgentProtocolEnvelope {
 export type AgentMessage =
   | UserMessageRequest
   | ResumeGenerationRequest
+  | GenerationAcceptedResponse
   | GenerationResumedResponse
   | GenerationStoppedResponse
   | AgentStepResponse
@@ -190,6 +191,12 @@ export interface PlanItemUpdatedResponse extends AgentProtocolEnvelope {
   request_id: string
   session_id: string
   item: PlanItemUpdate
+}
+
+export interface GenerationAcceptedResponse extends AgentProtocolEnvelope {
+  type: 'generation_accepted'
+  request_id: string
+  session_id: string
 }
 
 export interface GenerationResumedResponse extends AgentProtocolEnvelope {

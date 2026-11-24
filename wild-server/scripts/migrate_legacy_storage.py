@@ -15,7 +15,7 @@ import pymysql
 from langgraph.checkpoint.sqlite import SqliteSaver
 from sqlalchemy import insert, select
 
-from app.domain.design.contracts import DesignDocument
+from agent.utils.design.contracts import DesignDocument
 from app.infrastructure.persistence.checkpoints import MySQLCheckpointSaver
 from app.infrastructure.persistence.database import database
 from app.infrastructure.persistence.schema import designs

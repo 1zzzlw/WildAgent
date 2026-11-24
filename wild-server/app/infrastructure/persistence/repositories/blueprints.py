@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import PurePosixPath
 import re
 
@@ -15,7 +16,6 @@ from app.infrastructure.persistence.repositories.activity import append_audit, c
 from app.infrastructure.persistence.repositories.blueprint_changes import content_fingerprint, describe_changes
 from app.infrastructure.persistence.repositories.locks import assert_row_unlocked, assert_session_unlocked
 from app.infrastructure.persistence.schema import audit_logs
-from app.infrastructure.persistence.repositories.ai_edits import is_verified_ai_edit
 
 SUMMARY_COLUMNS = [blueprints.c[key] for key in (
     "filename", "session_id", "name", "elements_count", "components_count", "locked", "locked_at", "created_at", "updated_at")]
@@ -79,7 +79,8 @@ class BlueprintRepository:
     def save(self, filename: str, blueprint: dict, *, session_id: str | None = None,
              owner_id: str | None = None, timestamp: int | None = None,
              actor_id: str | None = None, operation_id: str | None = None,
-             label: str = "保存蓝图", base_revision: int | None = None) -> str:
+             label: str = "保存蓝图", base_revision: int | None = None,
+             verify_ai_edit: Callable[..., bool] | None = None) -> str:
         validate_filename(filename)
         session_id = session_id or session_for_filename(filename)
         now = timestamp if timestamp is not None else now_ms()
@@ -99,7 +100,7 @@ class BlueprintRepository:
             assert_row_unlocked(current)
             if actor:
                 if not self._authorize_save(conn, actor, filename, blueprint, current, session_id,
-                                            operation_id, label, base_revision):
+                                            operation_id, label, base_revision, verify_ai_edit):
                     return filename
             if current:
                 conn.execute(update(blueprints).where(blueprints.c.filename == filename).values(**value))
@@ -110,7 +111,7 @@ class BlueprintRepository:
 
     @staticmethod
     def _authorize_save(conn, actor, filename, blueprint, current, session_id,
-                        operation_id, label, base_revision):
+                        operation_id, label, base_revision, verify_ai_edit):
         payload_hash = fingerprint(blueprint)
         if operation_id:
             previous = conn.execute(select(audit_logs).where(
@@ -125,7 +126,9 @@ class BlueprintRepository:
             revision = (before.get("editor") or {}).get("revision", 1)
             if revision != base_revision:
                 raise OperationConflict("蓝图已被其他操作更新，请重新加载后再修改")
-        ai_edit = changed and is_verified_ai_edit(conn, actor, session_id, operation_id, before, blueprint)
+        ai_edit = changed and verify_ai_edit is not None and verify_ai_edit(
+            conn, actor, session_id, operation_id, before, blueprint,
+        )
         if changed and not ai_edit:
             charge_usage(conn, actor, "operations")
         details = {"label": label[:200], "fingerprint": payload_hash,

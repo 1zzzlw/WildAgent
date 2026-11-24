@@ -18,9 +18,9 @@ SERVER_ROOT = Path(__file__).resolve().parents[2]
 if str(SERVER_ROOT) not in sys.path:
     sys.path.insert(0, str(SERVER_ROOT))
 
-from app.infrastructure.llm.client import create_llm
-from app.infrastructure.retrieval.rag.quality import judge_rag_answer
-from config import config
+from agent.llm.client import create_llm
+from agent.rag.index.quality import judge_rag_answer
+from agent.llm.config import config
 
 
 async def _run(input_path: Path, output_path: Path) -> None:

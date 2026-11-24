@@ -10,7 +10,7 @@ from fastapi import WebSocket
 from app.application.presence import presence_records, public_presence_snapshot
 from app.infrastructure.redis.events import realtime_bus
 
-from app.application.generation.events import versioned_event
+from common.websocket import versioned_event
 
 from app.infrastructure.geoip import extract_client_ip
 from app.infrastructure.geoip import geoip_resolver

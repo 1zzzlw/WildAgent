@@ -6,19 +6,7 @@ from app.infrastructure.persistence.database import database
 from app.infrastructure.redis.connection import cache
 from app.infrastructure.redis.events import realtime_bus
 from app.api.websocket.connections import presence_service
-from app.infrastructure.temporary import ensure_writable_temp_directory
-
-from app.bootstrap.resources import initialize_agent_resources
-from app.application.generation.runner import run_generation
-from app.application.generation.jobs import generation_job_service
-
-
-async def startup_generation_jobs():
-    await generation_job_service.startup(run_generation)
-
-
-async def shutdown_generation_jobs():
-    await generation_job_service.shutdown()
+from common.temporary import ensure_writable_temp_directory
 
 
 @asynccontextmanager
@@ -32,13 +20,10 @@ async def lifespan(app: FastAPI):
     ensure_writable_temp_directory()
     try:
         await init_connect()
-        await asyncio.to_thread(initialize_agent_resources)
         await realtime_bus.start()
         await presence_service.startup()
-        await startup_generation_jobs()
         yield
     finally:
-        await shutdown_generation_jobs()
         await presence_service.shutdown()
         await realtime_bus.close()
         await cache.aclose()

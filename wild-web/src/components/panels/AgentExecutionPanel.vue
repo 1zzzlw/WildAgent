@@ -137,7 +137,7 @@
         </div>
       </details>
 
-      <div v-if="turn.status === 'running' && turn.steps.length === 0" class="execution-empty">正在等待 Agent 返回进度…</div>
+      <div v-if="turn.status === 'running' && turn.steps.length === 0" class="execution-empty">{{ pendingProgress }}</div>
 
       <details v-if="turn.validation_steps.length" class="validation-details">
         <summary>
@@ -236,8 +236,15 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import MarkdownIt from 'markdown-it'
 import type { AgentTurn, PlanItem } from '../../types/agent'
 import { BUILDING_DETAIL_LEVELS } from '../../types/agent'
+import { useAgentStore } from '../../stores/agentStore'
 
 const props = defineProps<{ turn: AgentTurn }>()
+const agentStore = useAgentStore()
+const pendingProgress = computed(() => {
+  if (agentStore.connectionStatus !== 'connected') return '等待连接恢复后查询任务…'
+  return (props.turn.session_id === agentStore.currentSessionId
+    && agentStore.isProcessing && agentStore.currentStep) || '正在确认 Agent 请求…'
+})
 const clock = ref(Date.now())
 const planWindowOpen = ref(false)
 const planWindowMinimized = ref(false)

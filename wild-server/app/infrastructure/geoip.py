@@ -1,7 +1,7 @@
 """Presence 扩展专用的客户端 IP 提取、脱敏与本地 GeoIP 查询。"""
 
 from __future__ import annotations
-from app.paths import SERVER_ROOT
+from common.paths import SERVER_ROOT
 
 import ipaddress
 import os

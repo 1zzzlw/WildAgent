@@ -3,6 +3,7 @@
 import asyncio
 import re
 import time
+from collections.abc import Awaitable, Callable
 from uuid import uuid4
 from app.application.errors import ApplicationError
 
@@ -10,10 +11,23 @@ from app.application.errors import ApplicationError
 from app.infrastructure.persistence.repositories.blueprints import blueprint_repository
 from app.infrastructure.persistence.repositories.conversations import conversations
 from app.infrastructure.persistence.repositories.jobs import JobRepository
-from app.domain.blueprint.parser import compact_blueprint_title
 
 
 MAX_TURNS_PER_SESSION = 100
+
+
+def compact_blueprint_title(name: str, max_len: int = 16) -> str:
+    """把描述性 meta.name 压缩为适合会话列表和文件名的短标题。"""
+    normalized = re.sub(r"\s+", "", str(name or "")).strip()
+    if not normalized:
+        return "未命名建筑"
+    first_clause = next(
+        (part for part in re.split(r"[：:，,；;。\n]", normalized) if part),
+        normalized,
+    )
+    return (
+        first_clause if len(first_clause) <= max_len else first_clause[:max_len] + "…"
+    )
 
 
 def _safe_session_id(session_id: str) -> str:
@@ -73,8 +87,12 @@ def update_session(session_id: str, user: dict | None, updates: dict=None):
     return {"status": "ok"}
 
 
-async def delete_session(session_id: str, user: dict | None):
-    from app.application.generation.jobs import generation_job_service
+async def delete_session(
+    session_id: str,
+    user: dict | None,
+    *,
+    delete_jobs: Callable[[str], Awaitable[None]] | None = None,
+):
     from app.infrastructure.redis.events import session_lock
     from app.application.access import check_session
     _safe_session_id(session_id)
@@ -87,7 +105,8 @@ async def delete_session(session_id: str, user: dict | None):
 
                 require_admin(user)
                 await asyncio.to_thread(check_session_writable, session_id, user)
-            await generation_job_service.delete_session_jobs(session_id)
+            if delete_jobs is not None:
+                await delete_jobs(session_id)
             await asyncio.to_thread(conversations.delete, session_id)
     except ValueError as exc:
         raise ApplicationError('conflict', str(exc)) from exc

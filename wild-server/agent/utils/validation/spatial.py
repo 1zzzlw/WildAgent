@@ -1,0 +1,5033 @@
+"""
+Spatial Validation Tools —— 空间校验 + 自动修正工具
+
+每个工具都是 @tool 装饰的纯函数：
+  - 输入：完整的 Blueprint dict
+  - 输出：人类可读的校验结果文本
+  - 用途：
+      1. 注册给 LangChain Agent（LLM 可选调用）
+      2. 由 agent_runtime.run_validation_pipeline() 按固定顺序强制执行
+
+校验流水线顺序（Structure → Schema → Reference → Geometry → Fix → Collision）：
+  1. validate_blueprint_structure      — 顶层结构完整性、ID 唯一性
+  2. validate_element_required_fields  — 各构件必填字段 + 枚举值合法性
+  3. validate_reference_integrity      — 跨构件引用合法性（parentWall、templateId 等）
+  4. validate_opening_coords           — 门窗沿墙距离格式检查
+  5. validate_wall_junctions           — 墙体转角端点对齐检查
+  6. validate_stair_alignment          — 楼梯端点高度对齐检查
+  7. validate_roof_coverage            — 屋顶 span/depth 覆盖范围检查（roof → wall 单向）
+  7e. validate_roof_top_coverage       — 反向检查：每面墙的顶部是否有屋顶/楼板/上层墙盖住
+  8. validate_stacked_member_containment — 贯通构件（核心筒/电梯井/通高柱）收进逐层外墙轮廓
+  9. fix_opening_coords                — 自动修正疑似世界坐标的门窗 from[0]
+     → 修正后重跑 validate_opening_coords（由流水线调度，非工具自身）
+ 10. validate_collision                — 构件碰撞/穿插/悬空/重叠检测
+
+扩展方式：新增 def validate_xxx(bp: dict) -> str 并在 agent_runtime.PIPELINE 中注册。
+"""
+
+import math
+from agent.utils.geometry.stair_openings import cut_stair_openings
+from agent.utils.geometry.stair_openings import stair_opening_issues
+
+from agent.utils.geometry.geometry import curve_points
+from agent.utils.geometry.geometry import point_in_regions
+from agent.utils.geometry.geometry import shared_stair_layout
+
+# 门窗洞口必须与父墙中心面保持接近；超过该值通常意味着 LLM 把世界 X/Z
+# 误写进了局部法向偏移 from[2]。
+MAX_OPENING_NORMAL_OFFSET = 0.25
+
+# 这三类组件都会在父墙上切出真实洞口。校验和修复必须把它们作为同一类
+# 空间对象处理，否则凸窗节点可与门窗节点各自“校验通过”，合并后却重复切洞。
+WALL_OPENING_COMPONENT_TYPES = {"door", "window", "bay_window"}
+
+
+def _floor_regions_by_level(
+    elements: list[dict],
+) -> list[tuple[float, list[list[float]]]]:
+    grouped: dict[float, list[list[float]]] = {}
+    for item in elements:
+        if item.get("type") == "floor":
+            if item.get("shape") in {"circle", "polygon"}:
+                from agent.utils.geometry.floors import floor_region
+
+                try:
+                    region = floor_region(item)
+                    y = round(float(item["from"][1]) + float(item["thickness"]), 3)
+                except (ValueError, TypeError, KeyError):
+                    continue  # 参数校验另行报告无效楼板。
+                grouped.setdefault(y, []).append(
+                    {
+                        "outer": list(region.exterior.coords),
+                        "holes": [list(ring.coords) for ring in region.interiors],
+                    }
+                )
+                continue
+            start, end = item.get("from"), item.get("to")
+        elif (
+            item.get("type") == "primitive"
+            and item.get("shape") == "box"
+            and item.get("rotation", [0, 0, 0]) == [0, 0, 0]
+        ):
+            position, dimensions = item.get("position"), item.get("dimensions")
+            scale = item.get("scale", [1, 1, 1])
+            if not all(_is_finite_vector3(v) for v in (position, dimensions, scale)):
+                continue
+            w, h, d = [abs(v * s) for v, s in zip(dimensions, scale)]
+            if min(w, h, d) <= 0:
+                continue
+            x, y, z = position
+            start, end = [x - w / 2, y + h / 2, z - d / 2], [
+                x + w / 2,
+                y + h / 2,
+                z + d / 2,
+            ]
+        else:
+            continue
+        if not isinstance(start, list) or not isinstance(end, list):
+            continue
+        if len(start) != 3 or len(end) != 3:
+            continue
+        try:
+            y = round(
+                float(start[1])
+                + (
+                    float(item.get("thickness", 0))
+                    if item.get("type") == "floor"
+                    else 0
+                ),
+                3,
+            )
+            bounds = [
+                min(float(start[0]), float(end[0])),
+                min(float(start[2]), float(end[2])),
+                max(float(start[0]), float(end[0])),
+                max(float(start[2]), float(end[2])),
+            ]
+        except (TypeError, ValueError):
+            continue
+        grouped.setdefault(y, []).append(bounds)
+    return sorted(grouped.items())
+
+
+def _connected_landing(regions, start, end):
+    """拆板后的相接矩形仍是同一平台；点接触和实际间隙不构成通路。"""
+    if any(isinstance(region, dict) for region in regions):
+        from shapely.geometry import Point
+        from shapely.ops import unary_union
+        from agent.utils.geometry.floors import region_shape
+
+        combined = unary_union([region_shape(region) for region in regions])
+        pieces = [combined] if combined.geom_type == "Polygon" else combined.geoms
+        return any(
+            piece.buffer(0.001).covers(Point(start))
+            and piece.buffer(0.001).covers(Point(end))
+            for piece in pieces
+        )
+    reached = {
+        i for i, region in enumerate(regions) if point_in_regions(start, [region])
+    }
+    pending = list(reached)
+    while pending:
+        region = regions[pending.pop()]
+        if point_in_regions(end, [region]):
+            return True
+        for i, other in enumerate(regions):
+            if i in reached:
+                continue
+            dx = min(region[2], other[2]) - max(region[0], other[0])
+            dz = min(region[3], other[3]) - max(region[1], other[1])
+            if dx >= -1e-9 and dz >= -1e-9 and max(dx, dz) > 1e-9:
+                reached.add(i)
+                pending.append(i)
+    return False
+
+
+def collect_stair_placement_issues(blueprint: dict) -> list[dict[str, object]]:
+    """检查楼梯端点是否落在楼板上，以及相邻梯段是否在同一平台衔接。"""
+
+    elements = _get_elements(blueprint)
+    stairs = [item for item in elements if item.get("type") == "stair"]
+    floor_levels = _floor_regions_by_level(elements)
+    issues: list[dict[str, object]] = []
+    support_feedback = (
+        f"；已有承托标高 {[y for y, _ in floor_levels]}m。"
+        "若该标高缺少承托面，返回 floor 或 primitive.box 平台实体，顶面覆盖端点完整梯宽，不能只移动 X/Z；"
+        "若已有平台，则核对标高和覆盖范围；explanation 中描述平台不能代替实体"
+    )
+
+    def supported(point: tuple[float, float], y: float) -> bool:
+        matching = [
+            regions for level_y, regions in floor_levels if abs(level_y - y) <= 0.25
+        ]
+        return bool(matching) and any(
+            point_in_regions(point, regions) for regions in matching
+        )
+
+    valid_stairs: list[tuple[dict, list, list]] = []
+    for stair in stairs:
+        start, end = stair.get("from"), stair.get("to")
+        if not isinstance(start, list) or not isinstance(end, list):
+            continue
+        if len(start) != 3 or len(end) != 3:
+            continue
+        try:
+            start_y, end_y = float(start[1]), float(end[1])
+        except (TypeError, ValueError):
+            continue
+        run_x = float(end[0]) - float(start[0])
+        run_z = float(end[2]) - float(start[2])
+        run_length = math.hypot(run_x, run_z)
+        count = stair.get("stepCount")
+        if _is_positive_number(count):
+            for field, distance in (
+                ("stepDepth", run_length),
+                ("stepHeight", end_y - start_y),
+            ):
+                value = stair.get(field)
+                if _is_positive_number(value) and abs(count * value - distance) > 0.001:
+                    issues.append(
+                        {
+                            "code": "stair_step_span_mismatch",
+                            "entity_ids": (str(stair.get("id") or "?"),),
+                            "message": f"楼梯 {stair.get('id')} 的 stepCount×{field}={count*value:g}m，"
+                            f"from/to 实际{'水平投影' if field == 'stepDepth' else '高差'}={distance:g}m；"
+                            "核对整跑起终点与踏步，不能只移动一端使梯段转向或缩短",
+                        }
+                    )
+        half_width = max(0.0, float(stair.get("width") or 0.0) / 2)
+        if run_length > 0.001:
+            offset_x = -run_z / run_length * half_width
+            offset_z = run_x / run_length * half_width
+        else:
+            offset_x, offset_z = half_width, 0.0
+
+        def endpoint_supported(point: list, y: float) -> bool:
+            center_x, center_z = float(point[0]), float(point[2])
+            return all(
+                supported(
+                    (center_x + factor * offset_x, center_z + factor * offset_z), y
+                )
+                for factor in (-1.0, 0.0, 1.0)
+            )
+
+        stair_id = str(stair.get("id") or "?")
+        if not endpoint_supported(start, start_y):
+            start_regions = []
+            for floor_y, regions in floor_levels:
+                if abs(floor_y - start_y) <= 0.25:
+                    start_regions.extend(regions)
+            issues.append(
+                {
+                    "code": "stair_start_outside_floor",
+                    "message": (
+                        f"楼梯 {stair_id} 起点不在 {start_y:g}m 楼板或平台范围内；端点={start}，净宽={half_width * 2:g}m，"
+                        f"承托范围={start_regions}" + support_feedback
+                    ),
+                    "entity_ids": (stair_id,),
+                }
+            )
+        if not endpoint_supported(end, end_y):
+            end_regions = []
+            for floor_y, regions in floor_levels:
+                if abs(floor_y - end_y) <= 0.25:
+                    end_regions.extend(regions)
+            issues.append(
+                {
+                    "code": "stair_end_outside_floor",
+                    "message": (
+                        f"楼梯 {stair_id} 终点不在 {end_y:g}m 楼板或平台范围内；端点={end}，净宽={half_width * 2:g}m，"
+                        f"承托范围={end_regions}" + support_feedback
+                    ),
+                    "entity_ids": (stair_id,),
+                }
+            )
+        valid_stairs.append((stair, start, end))
+
+    valid_stairs.sort(key=lambda item: float(item[1][1]))
+    for previous, current in zip(valid_stairs, valid_stairs[1:]):
+        previous_stair, _, previous_end = previous
+        current_stair, current_start, _ = current
+        if abs(float(previous_end[1]) - float(current_start[1])) > 0.25:
+            continue
+        horizontal_gap = math.hypot(
+            float(previous_end[0]) - float(current_start[0]),
+            float(previous_end[2]) - float(current_start[2]),
+        )
+        shared_landing = any(
+            abs(level_y - float(previous_end[1])) <= 0.25
+            and _connected_landing(
+                regions,
+                (float(previous_end[0]), float(previous_end[2])),
+                (float(current_start[0]), float(current_start[2])),
+            )
+            for level_y, regions in floor_levels
+        )
+        if horizontal_gap > 0.35 and not shared_landing:
+            previous_id = str(previous_stair.get("id") or "?")
+            current_id = str(current_stair.get("id") or "?")
+            issues.append(
+                {
+                    "code": "disconnected_stair_flights",
+                    "message": (
+                        f"相邻梯段 {previous_id} 与 {current_id} 的平台错开 "
+                        f"{horizontal_gap:.2f}m"
+                    ),
+                    "entity_ids": (previous_id, current_id),
+                }
+            )
+    return issues
+
+
+# 辅助函数 —— 不对外暴露，只在本模块内复用
+def _get_elements(bp: dict) -> list[dict]:
+    """安全获取 elements 列表"""
+    if not isinstance(bp, dict):
+        return []
+    return bp.get("geometry", {}).get("elements", [])
+
+
+def _is_finite_vector3(value: object) -> bool:
+    """判断构件坐标是否能被空间工具安全地当作三维向量读取。"""
+    return (
+        isinstance(value, list)
+        and len(value) == 3
+        and all(
+            isinstance(coordinate, (int, float))
+            and not isinstance(coordinate, bool)
+            and math.isfinite(coordinate)
+            for coordinate in value
+        )
+    )
+
+
+def _safe_coords(vec, field_name: str = "") -> list[float]:
+    """将坐标或尺寸强制转为 float 列表，非数值元素抛可定位异常。
+
+    若 LLM 输出了字符串坐标（如 ``from: ["3","0","0"]``）
+    或嵌套数组（如 ``from: [[1,0],[2,0]]``），此函数抛出包含字段名
+    和具体索引的 ValueError，供上层工具将其转为 ❌ 诊断而非 TypeError 崩溃。
+    """
+    if not isinstance(vec, (list, tuple)):
+        raise ValueError(f"期望数组，实际为 {type(vec).__name__}: {vec!r}")
+    result: list[float] = []
+    prefix = f"{field_name} " if field_name else ""
+    for i, v in enumerate(vec):
+        if isinstance(v, (int, float)) and not isinstance(v, bool):
+            result.append(float(v))
+        else:
+            raise ValueError(
+                f"{prefix}坐标[{i}]={v!r}（类型 {type(v).__name__}）不是有效数值"
+            )
+    return result
+
+
+def _get_by_id(bp: dict, eid: str) -> dict | None:
+    """按 id 查找元素"""
+    for el in _get_elements(bp):
+        if el.get("id") == eid:
+            return el
+    return None
+
+
+def _component_opening_box(
+    component: dict,
+) -> tuple[str, float, float, float, float] | None:
+    """返回墙附着组件在父墙局部平面中的二维包围盒。"""
+    from_vec = component.get("from")
+    if not isinstance(from_vec, (list, tuple)) or len(from_vec) < 2:
+        return None
+    try:
+        wall_id = str(component.get("parentWall", ""))
+        along = float(from_vec[0])
+        base_y = float(from_vec[1])
+        width = float(component.get("width", 0))
+        height = float(component.get("height", 0))
+    except (TypeError, ValueError):
+        return None
+    if not wall_id or width <= 0 or height <= 0:
+        return None
+    return wall_id, along, base_y, width, height
+
+
+def _wall_openings_overlap(first: dict, second: dict, tolerance: float = 0.05) -> bool:
+    """判断两个组件是否在同一父墙的局部二维平面内实际重叠。"""
+    first_box = _component_opening_box(first)
+    second_box = _component_opening_box(second)
+    if first_box is None or second_box is None or first_box[0] != second_box[0]:
+        return False
+    _, first_x, first_y, first_w, first_h = first_box
+    _, second_x, second_y, second_w, second_h = second_box
+    horizontal = min(first_x + first_w, second_x + second_w) - max(first_x, second_x)
+    vertical = min(first_y + first_h, second_y + second_h) - max(first_y, second_y)
+    return horizontal > tolerance and vertical > tolerance
+
+
+def _resolve_wall_opening_component_conflicts(blueprint: dict) -> dict:
+    """按“门 > 凸窗 > 普通窗”的优先级消除墙洞重叠。
+
+    凸窗与门重叠时，优先占用一个安全的普通窗位置；找不到位置才删除凸窗。
+    凸窗占位后会替换同位置的普通窗，避免同一处被两套编译器重复切洞。
+    """
+    geometry = blueprint.get("geometry", {})
+    components = geometry.get("components", [])
+    if not isinstance(components, list):
+        return {
+            "relocated_bay_windows": [],
+            "replaced_windows": [],
+            "pruned_bay_windows": [],
+            "relocated_windows": [],
+            "pruned_windows": [],
+        }
+
+    walls = {
+        item.get("id"): item
+        for item in geometry.get("elements", [])
+        if isinstance(item, dict) and item.get("type") == "wall" and item.get("id")
+    }
+    doors = [item for item in components if item.get("type") == "door"]
+    windows = [item for item in components if item.get("type") == "window"]
+    bay_windows = [item for item in components if item.get("type") == "bay_window"]
+    removed_ids: set[int] = set()
+    kept_bays: list[dict] = []
+    relocated: list[str] = []
+    replaced: list[str] = []
+    pruned: list[str] = []
+    relocated_windows: list[str] = []
+    pruned_windows: list[str] = []
+
+    def available_window_candidates(bay: dict) -> list[dict]:
+        candidates = [
+            window
+            for window in windows
+            if id(window) not in removed_ids
+            and _component_opening_box(window) is not None
+            and not any(_wall_openings_overlap(window, door) for door in doors)
+            and not any(_wall_openings_overlap(window, kept) for kept in kept_bays)
+        ]
+        bay_box = _component_opening_box(bay)
+        bay_wall = bay_box[0] if bay_box else ""
+        bay_center = bay_box[1] + bay_box[3] / 2 if bay_box else 0.0
+        bay_y = bay_box[2] if bay_box else 0.0
+
+        def rank(window: dict) -> tuple[int, float, float, str]:
+            box = _component_opening_box(window)
+            assert box is not None
+            wall_id, along, base_y, width, _ = box
+            return (
+                0 if wall_id == bay_wall else 1,
+                abs(base_y - bay_y),
+                abs(along + width / 2 - bay_center),
+                str(window.get("id", "")),
+            )
+
+        return sorted(candidates, key=rank)
+
+    for bay in bay_windows:
+        conflicts_with_priority = any(
+            _wall_openings_overlap(bay, other) for other in [*doors, *kept_bays]
+        )
+        if conflicts_with_priority:
+            candidates = available_window_candidates(bay)
+            if not candidates:
+                removed_ids.add(id(bay))
+                pruned.append(str(bay.get("id", "?")))
+                continue
+            target = candidates[0]
+            bay["parentWall"] = target.get("parentWall")
+            bay["from"] = list(target.get("from", [0, 0, 0]))
+            bay["width"] = target.get("width")
+            bay["height"] = target.get("height")
+            removed_ids.add(id(target))
+            relocated.append(str(bay.get("id", "?")))
+            replaced.append(str(target.get("id", "?")))
+
+        for window in windows:
+            if id(window) in removed_ids:
+                continue
+            if _wall_openings_overlap(bay, window):
+                removed_ids.add(id(window))
+                replaced.append(str(window.get("id", "?")))
+        kept_bays.append(bay)
+
+    # 普通窗按原有顺序处理；若与先前普通窗冲突，优先在同一父墙寻找最近
+    # 的安全位置，短墙确实放不下时才删除后出现的窗。门/凸窗仍沿用上面的
+    # 专用优先级逻辑，避免扩大既有自动修复范围。
+    kept_windows: list[dict] = []
+
+    def relocate_plain_window(window: dict, blockers: list[dict]) -> bool:
+        box = _component_opening_box(window)
+        if box is None:
+            return False
+        wall_id, original_along, _, width, _ = box
+        wall = walls.get(wall_id)
+        if wall is None:
+            return False
+        max_along = _wall_length(wall) - width
+        if max_along < -1e-6:
+            return False
+
+        candidates = [0.1, max(0.0, max_along - 0.1)]
+        for blocker in blockers:
+            blocker_box = _component_opening_box(blocker)
+            if blocker_box is None or blocker_box[0] != wall_id:
+                continue
+            blocker_along, blocker_width = blocker_box[1], blocker_box[3]
+            candidates.extend(
+                [
+                    blocker_along + blocker_width + 0.1,
+                    blocker_along - width - 0.1,
+                ]
+            )
+
+        position = window.get("from")
+        if not isinstance(position, list) or len(position) != 3:
+            return False
+        for candidate in sorted(
+            {round(value, 3) for value in candidates},
+            key=lambda value: (abs(value - original_along), value),
+        ):
+            if candidate < -1e-6 or candidate > max_along + 1e-6:
+                continue
+            position[0] = max(0.0, min(max_along, candidate))
+            if not any(_wall_openings_overlap(window, blocker) for blocker in blockers):
+                return True
+        position[0] = original_along
+        return False
+
+    for window in windows:
+        if id(window) in removed_ids:
+            continue
+        blockers = list(kept_windows)
+        if any(_wall_openings_overlap(window, blocker) for blocker in blockers):
+            if relocate_plain_window(window, blockers):
+                relocated_windows.append(str(window.get("id", "?")))
+                kept_windows.append(window)
+            else:
+                removed_ids.add(id(window))
+                pruned_windows.append(str(window.get("id", "?")))
+            continue
+        kept_windows.append(window)
+
+    if removed_ids:
+        geometry["components"] = [
+            item for item in components if id(item) not in removed_ids
+        ]
+
+    return {
+        "relocated_bay_windows": relocated,
+        "replaced_windows": list(dict.fromkeys(replaced)),
+        "pruned_bay_windows": pruned,
+        "relocated_windows": relocated_windows,
+        "pruned_windows": pruned_windows,
+    }
+
+
+def _wall_length(wall: dict) -> float:
+    """计算墙体在 XZ 平面上的长度（沿墙距离）"""
+    f = wall.get("from", [0, 0, 0])
+    t = wall.get("to", [0, 0, 0])
+    if wall.get("curve"):
+        from agent.utils.geometry.geometry import curve_points
+        from agent.utils.geometry.geometry import path_length
+
+        return path_length(
+            curve_points(
+                [float(f[0]), float(f[2])],
+                [float(t[0]), float(t[2])],
+                wall["curve"],
+            )
+        )
+    dx = t[0] - f[0]
+    dz = t[2] - f[2]
+    return math.sqrt(dx * dx + dz * dz)
+
+
+def _wall_vertical_range(wall: dict) -> tuple[float, float]:
+    """返回墙体世界坐标中的底部和顶部 Y。"""
+    start = wall.get("from", [0, 0, 0])
+    end = wall.get("to", [0, 0, 0])
+    bottom = min(float(start[1]), float(end[1]))
+    height = wall.get("height")
+    if isinstance(height, (int, float)) and not isinstance(height, bool) and height > 0:
+        return bottom, bottom + float(height)
+    return bottom, max(float(start[1]), float(end[1]))
+
+
+def _wall_centerline_key(wall: dict, precision: int = 3) -> tuple | None:
+    """按无方向 XZ 中心线和竖向范围标识同一面墙。"""
+    start = wall.get("from")
+    end = wall.get("to")
+    if not _is_finite_vector3(start) or not _is_finite_vector3(end):
+        return None
+    endpoints = sorted(
+        (
+            (round(float(start[0]), precision), round(float(start[2]), precision)),
+            (round(float(end[0]), precision), round(float(end[2]), precision)),
+        )
+    )
+    bottom, top = _wall_vertical_range(wall)
+    return (
+        endpoints[0],
+        endpoints[1],
+        round(bottom, precision),
+        round(top, precision),
+    )
+
+
+def _infer_story_height(elements: list[dict]) -> float:
+    """从楼板标高和已有墙高中推断常用层高；信息不足时使用 3m。"""
+    candidates: list[float] = []
+    floor_heights = set()
+    for element in elements:
+        if element.get("type") != "floor":
+            continue
+        for coordinate in (element.get("from"), element.get("to")):
+            if _is_finite_vector3(coordinate):
+                floor_heights.add(float(coordinate[1]))
+    floor_levels = sorted(floor_heights)
+    candidates.extend(
+        upper - lower
+        for lower, upper in zip(floor_levels, floor_levels[1:])
+        if 1.8 <= upper - lower <= 6.0
+    )
+    for element in elements:
+        if element.get("type") != "wall":
+            continue
+        start = element.get("from")
+        end = element.get("to")
+        if not _is_finite_vector3(start) or not _is_finite_vector3(end):
+            continue
+        height = abs(float(end[1]) - float(start[1]))
+        if 1.8 <= height <= 6.0:
+            candidates.append(height)
+    if not candidates:
+        return 3.0
+    candidates.sort()
+    return candidates[len(candidates) // 2]
+
+
+def _infer_wall_top(elements: list[dict], bottom: float) -> float:
+    """优先对齐上一层楼板；顶层墙则沿用推断出的常用层高。"""
+    upper_heights = set()
+    for element in elements:
+        if element.get("type") != "floor":
+            continue
+        for coordinate in (element.get("from"), element.get("to")):
+            if (
+                _is_finite_vector3(coordinate)
+                and 0.1 < float(coordinate[1]) - bottom <= 50.0
+            ):
+                upper_heights.add(float(coordinate[1]))
+    upper_floors = sorted(upper_heights)
+    return upper_floors[0] if upper_floors else bottom + _infer_story_height(elements)
+
+
+def _is_structural_wall(wall: dict) -> bool:
+    """低矮、纤细的 wall 通常用于栏杆或装饰，不参与结构墙闭合检查。"""
+    bottom, top = _wall_vertical_range(wall)
+    return top - bottom >= 1.8 and float(wall.get("thickness", 0)) >= 0.1
+
+
+def _wall_direction_xz(wall: dict) -> tuple[float, float]:
+    """返回墙体在 XZ 平面上的单位方向向量"""
+    f = wall.get("from", [0, 0, 0])
+    t = wall.get("to", [0, 0, 0])
+    dx = t[0] - f[0]
+    dz = t[2] - f[2]
+    length = math.sqrt(dx * dx + dz * dz)
+    if length < 1e-6:
+        return (0.0, 0.0)
+    return (dx / length, dz / length)
+
+
+# 检测类 Tool —— 只查不改，返回问题列表
+
+
+def validate_blueprint_structure(blueprint: dict) -> str:
+    """
+    检查 Blueprint 顶层结构是否完整。
+    验证 meta、geometry、elements 等必需字段是否存在。
+
+    参数 blueprint: 完整的 Blueprint dict
+    """
+    issues: list[str] = []
+
+    if "meta" not in blueprint:
+        issues.append("❌ 缺少顶层字段 'meta'")
+    else:
+        meta = blueprint["meta"]
+        if "version" not in meta:
+            issues.append("❌ meta.version 缺失（当前规范为 '1.0'）")
+        elif meta["version"] not in {"1.0", "1.1"}:
+            issues.append(f"❌ meta.version='{meta['version']}' 不受支持")
+        if "type" not in meta:
+            issues.append("❌ meta.type 缺失（应为 building / avatar / asset / scene）")
+        elif meta["type"] not in {"building", "avatar", "asset", "scene"}:
+            issues.append(f"❌ meta.type='{meta['type']}' 不受支持")
+        if "name" not in meta:
+            issues.append("⚠️  meta.name 缺失（建议填写建筑名称）")
+
+    if "geometry" not in blueprint:
+        issues.append("❌ 缺少顶层字段 'geometry'")
+    else:
+        geo = blueprint["geometry"]
+        if "elements" not in geo:
+            issues.append("❌ geometry.elements 缺失")
+        else:
+            elements = geo["elements"]
+            components = geo.get("components", [])
+            if not isinstance(elements, list):
+                issues.append(
+                    f"❌ geometry.elements 应为数组，实际为 {type(elements).__name__}"
+                )
+                elements = []
+            if not isinstance(components, list):
+                issues.append(
+                    f"❌ geometry.components 应为数组，实际为 {type(components).__name__}"
+                )
+                components = []
+            if len(elements) == 0 and len(components) == 0:
+                issues.append("⚠️  geometry.elements 与 geometry.components 同时为空")
+            else:
+                # 检查 ID 唯一性
+                all_items = [
+                    item for item in [*elements, *components] if isinstance(item, dict)
+                ]
+                ids = [item.get("id", "") for item in all_items]
+                dupes = {eid for eid in ids if eid and ids.count(eid) > 1}
+                if dupes:
+                    issues.append(f"❌ 重复的构件 ID: {dupes}")
+
+                # 检查每个元素是否有 type
+                for el in elements:
+                    if "type" not in el:
+                        issues.append(
+                            f"❌ 元素缺少 'type' 字段: id={el.get('id', '?')}"
+                        )
+                    if "id" not in el:
+                        issues.append("❌ 元素缺少 'id' 字段")
+                for component in components:
+                    if not isinstance(component, dict):
+                        issues.append("❌ geometry.components 中的项目必须是对象")
+                        continue
+                    if component.get("type") not in {
+                        "door",
+                        "window",
+                        "railing",
+                        "canopy",
+                        "balcony",
+                        "ramp",
+                        "bay_window",
+                        "cornice",
+                        "chimney",
+                        "light",
+                        "elevator",
+                    }:
+                        issues.append(
+                            f"❌ 组合构件类型无效: {component.get('type', '?')}"
+                        )
+                    if not component.get("id"):
+                        issues.append("❌ 组合构件缺少非空 'id' 字段")
+
+    if not issues:
+        elements_count = len(_get_elements(blueprint))
+        types = set(el.get("type", "?") for el in _get_elements(blueprint))
+        return f"✅ 结构完整（{elements_count} 个构件，类型: {types}）"
+    return "\n".join(issues)
+
+
+def validate_opening_coords(blueprint: dict) -> str:
+    """
+    检查所有 opening（门窗洞口）的 from 字段是否正确使用了沿墙距离格式。
+
+    正确格式：from = [沿墙距离, 底部世界Y, 法向偏移]
+      沿墙距离：从 parentWall.from 点开始，沿墙体方向的偏移量（米）
+      底部世界Y：门窗底边在场景中的世界高度（米）
+      法向偏移：垂直于墙面的偏移，默认 0
+
+    错误格式：from = [世界坐标X, 高度Y, 世界坐标Z]
+
+    参数 blueprint: 完整的 Blueprint dict
+    """
+    elements = _get_elements(blueprint)
+    walls = {el["id"]: el for el in elements if el.get("type") == "wall"}
+    openings = [el for el in elements if el.get("type") == "opening"]
+    components = blueprint.get("geometry", {}).get("components", [])
+    door_windows = [
+        component
+        for component in components
+        if component.get("type") in {"door", "window"}
+    ]
+
+    if not openings and not door_windows:
+        return "✅ 没有 opening/门窗组件，跳过检查。"
+
+    issues: list[str] = []
+    for op in openings + door_windows:
+        oid = op.get("id", "?")
+        prefix = "component:" if op.get("type") in {"door", "window"} else ""
+        parent_id = op.get("parentWall", "")
+        from_vec = op.get("from", [0, 0, 0])
+
+        if not parent_id:
+            issues.append(f"❌ [{prefix}{oid}] 缺少 parentWall 字段")
+            continue
+
+        parent = walls.get(parent_id)
+        if not parent:
+            issues.append(
+                f"❌ [{prefix}{oid}] parentWall='{parent_id}' 不存在于 elements 中"
+            )
+            continue
+
+        wl = _wall_length(parent)
+        # 类型保护：将 from_vec 安全转为 float 列表，捕获 LLM 输出的非数值坐标
+        try:
+            coords = _safe_coords(from_vec, f"[{prefix}{oid}] from")
+            if len(coords) != 3:
+                raise ValueError(f"必须包含 3 个坐标，实际为 {len(coords)} 个")
+            along_dist = coords[0] if len(coords) >= 1 else 0.0
+            normal_offset = coords[2] if len(coords) >= 3 else 0.0
+        except ValueError as e:
+            issues.append(f"❌ [{prefix}{oid}] from 字段格式错误: {e}")
+            continue
+
+        # 沿墙距离检查
+        if along_dist < -0.3 or along_dist > wl + 0.3:
+            issues.append(
+                f"❌ [{prefix}{oid}] from[0]={along_dist} 超出墙体长度 [0, {wl:.1f}]。"
+                f"可能使用了世界坐标而非沿墙距离。"
+                f"parentWall='{parent_id}' 从 {parent['from']} 到 {parent['to']}。"
+            )
+
+        # 法向偏移检查
+        if abs(normal_offset) > MAX_OPENING_NORMAL_OFFSET:
+            issues.append(
+                f"❌ [{prefix}{oid}] from[2]={normal_offset} 法向偏移超出 "
+                f"±{MAX_OPENING_NORMAL_OFFSET}m；该字段是局部法向偏移，不是父墙世界 X/Z，"
+                "门窗通常应为 0"
+            )
+
+    if not issues:
+        return "✅ 所有 opening 的 from 字段格式正确。"
+    return "\n".join(issues)
+
+
+def _plan_point_on_wall_segment(
+    x: float,
+    z: float,
+    wall: dict,
+    tolerance: float = 0.15,
+) -> bool:
+    """判断 XZ 点是否落在另一面墙的线段上，用于识别合法 T 形连接。"""
+    start = wall.get("from", [0, 0, 0])
+    end = wall.get("to", [0, 0, 0])
+    dx = float(end[0]) - float(start[0])
+    dz = float(end[2]) - float(start[2])
+    length_sq = dx * dx + dz * dz
+    if length_sq <= 1e-9:
+        return False
+    projection = ((x - float(start[0])) * dx + (z - float(start[2])) * dz) / length_sq
+    if projection < -0.01 or projection > 1.01:
+        return False
+    nearest_x = float(start[0]) + projection * dx
+    nearest_z = float(start[2]) + projection * dz
+    return math.hypot(x - nearest_x, z - nearest_z) < tolerance
+
+
+def validate_wall_junctions(blueprint: dict) -> str:
+    """
+    检查相邻墙体在转角处是否对齐（端点共享，无缝隙）。
+
+    判断标准：两堵不同墙体的端点之间在 XZ 平面距离 < 0.15m 即为"已连接"。
+    所有不满足此条件的端点视为"孤立端点"，可能造成墙体缝隙。
+
+    参数 blueprint: 完整的 Blueprint dict
+    """
+    elements = _get_elements(blueprint)
+    walls = [
+        el for el in elements if el.get("type") == "wall" and _is_structural_wall(el)
+    ]
+
+    if len(walls) < 2:
+        return "✅ 少于 2 面墙，跳过连接检查。"
+
+    # 收集所有端点；除共享端点外，端点落在另一墙线段上的 T 形连接也合法。
+    endpoints: list[dict] = []
+    for w in walls:
+        f = w.get("from", [0, 0, 0])
+        t = w.get("to", [0, 0, 0])
+        endpoints.append(
+            {
+                "wall_id": w.get("id", "?"),
+                "wall": w,
+                "which": "from",
+                "x": float(f[0]),
+                "z": float(f[2]),
+            }
+        )
+        endpoints.append(
+            {
+                "wall_id": w.get("id", "?"),
+                "wall": w,
+                "which": "to",
+                "x": float(t[0]),
+                "z": float(t[2]),
+            }
+        )
+
+    TOLERANCE = 0.15  # 15cm 容差
+    isolated: list[str] = []
+    for ep in endpoints:
+        has_neighbor = False
+        source_wall = ep["wall"]
+        source_bottom, source_top = _wall_vertical_range(source_wall)
+        for other_wall in walls:
+            if other_wall is source_wall:
+                continue
+            other_bottom, other_top = _wall_vertical_range(other_wall)
+            same_level = (
+                min(source_top, other_top) - max(source_bottom, other_bottom) > 0.15
+            )
+            if same_level and _plan_point_on_wall_segment(
+                ep["x"],
+                ep["z"],
+                other_wall,
+                TOLERANCE,
+            ):
+                has_neighbor = True
+                break
+        if not has_neighbor:
+            isolated.append(
+                f"  - {ep['wall_id']}.{ep['which']} ({ep['x']:.2f}, {ep['z']:.2f})"
+            )
+
+    if not isolated:
+        return "✅ 所有墙体端点都有相邻连接，墙体闭合良好。"
+    return (
+        f"⚠️  发现 {len(isolated)} 个孤立端点（可能造成缝隙）：\n"
+        + "\n".join(isolated)
+        + "\n\n建议：确保相邻墙体端点坐标精确一致。"
+    )
+
+
+def _wall_footprint(walls: list[dict]) -> tuple[float, float, float, float] | None:
+    """一组墙的 XZ 包围盒 ``(min_x, max_x, min_z, max_z)``。曲线墙取整条中心线。"""
+
+    xs: list[float] = []
+    zs: list[float] = []
+    for wall in walls:
+        if wall.get("curve"):
+            points = _wall_centerline_points(wall)
+            if points:
+                xs.extend(point[0] for point in points)
+                zs.extend(point[1] for point in points)
+            continue
+        start, end = wall.get("from") or [0, 0, 0], wall.get("to") or [0, 0, 0]
+        try:
+            x0, x1 = sorted((float(start[0]), float(end[0])))
+            z0, z1 = sorted((float(start[2]), float(end[2])))
+        except (TypeError, ValueError, IndexError):
+            continue
+        xs.extend([x0, x1])
+        zs.extend([z0, z1])
+    if not xs or not zs:
+        return None
+    return min(xs), max(xs), min(zs), max(zs)
+
+
+#: 判定"更大轮廓严格包含"时每边至少要多的米数。
+#: 取 0.25：小于它的差异是墙厚/浮点噪声，不足以说明是另一圈更大的墙。
+_STEPPED_CONTAIN_MARGIN = 0.25
+
+
+def _stepped_support_y(
+    wall_tops: list[tuple[float, dict]],
+    support_y: float,
+) -> float | None:
+    """退台体量：该用哪一标高的墙当屋面承托。
+
+     返回 ``None`` 表示"不是退台，按原逻辑走" —— 这是**默认且最常见**的分支。
+
+    触发条件（三条全满足，缺一即不触发）：
+
+    1. 存在**标高明显更低**的墙（低 0.5m 以上，避免同层抖动误判）；
+    2. 那一组墙的 XZ 包围盒在 x/z **两个方向都严格包含**当层轮廓
+       （每边至少多 0.25m）—— 这才是"更小的那一圈"；
+    3. 当层轮廓非空。
+
+    为什么不用"楼层层数 > 1"判：普通两层楼上下层墙同尺寸，不满足条件 2，
+    不会被合并 —— 这是本判据保守性的关键。
+    """
+
+    current = _wall_footprint(
+        [wall for top, wall in wall_tops if abs(top - support_y) <= 0.15]
+    )
+    if current is None:
+        return None
+    lower_yields = sorted(
+        {round(top, 3) for top, _ in wall_tops if support_y - top > 0.5}
+    )
+    for candidate_y in reversed(lower_yields):  # 从最接近当层的那层往下找
+        outer = _wall_footprint(
+            [wall for top, wall in wall_tops if abs(top - candidate_y) <= 0.15]
+        )
+        if outer is None:
+            continue
+        larger_x = (
+            outer[0] <= current[0] - _STEPPED_CONTAIN_MARGIN
+            and outer[1] >= current[1] + _STEPPED_CONTAIN_MARGIN
+        )
+        larger_z = (
+            outer[2] <= current[2] - _STEPPED_CONTAIN_MARGIN
+            and outer[3] >= current[3] + _STEPPED_CONTAIN_MARGIN
+        )
+        if larger_x and larger_z:
+            return candidate_y
+    return None
+
+
+def get_roof_support_bounds(
+    walls: list[dict],
+    roof: dict | None = None,
+    primitives: list[dict] | None = None,
+    columns: list[dict] | None = None,
+    beams: list[dict] | None = None,
+) -> dict:
+    """返回屋顶所在标高实际承托构件的 XZ 包围盒，而不是整栋建筑首层外包框。
+
+    承托候选 = 墙顶 + 水平圆柱（primitive cylinder）顶 + 柱元素顶 + 水平梁顶。
+    传统建筑（祈年殿）用 primitive cylinder 表达中/上段殿身与檐盘，攒尖顶承托在
+    檐盘顶上而非直接落在墙顶；圆柱只有在与屋顶水平投影有交叠时才计入承托（装饰圆柱不在屋顶下方不参与）。
+
+     柱元素必须参与：开敞立面语义（facade pattern 全空 = 该面无墙）落地后，
+    亭/廊的屋面承托在**柱**上——2026-09-29 实测"四角凉亭"三面开敞只剩 1 面 front 墙，
+    本函数只看墙时 z 方向塌缩成一条线（depth=0），`fix_roof_coverage` 据此把
+    6.1×6.1 的攒尖顶"修"成 6.1×1.2 的窄带、中心贴到墙上，整座亭子只剩半边屋顶。
+    柱与屋顶水平投影有交叠才计入（与圆柱同规则）；柱是点状支撑，直接贡献
+    带半径的 XZ 区间，**不参与墙的横向/纵向裁剪**（那套裁剪会把点支撑塌缩成线）。
+    """
+    primitives = primitives or []
+    columns = columns or []
+    wall_tops = [(_wall_vertical_range(wall)[1], wall) for wall in walls]
+    position = (roof or {}).get("position")
+    roof_span = (roof or {}).get("span")
+    roof_depth = (roof or {}).get("depth")
+    roof_footprint = None
+    if (
+        isinstance(position, list)
+        and len(position) >= 3
+        and isinstance(position[0], (int, float))
+        and isinstance(position[2], (int, float))
+        and isinstance(roof_span, (int, float))
+        and roof_span > 0
+        and isinstance(roof_depth, (int, float))
+        and roof_depth > 0
+    ):
+        roof_footprint = (
+            float(position[0]) - float(roof_span) / 2,
+            float(position[0]) + float(roof_span) / 2,
+            float(position[2]) - float(roof_depth) / 2,
+            float(position[2]) + float(roof_depth) / 2,
+        )
+    for beam in beams or []:
+        a, b = beam.get("from"), beam.get("to")
+        if (
+            not _is_finite_vector3(a)
+            or not _is_finite_vector3(b)
+            or beam.get("curve")
+            or abs(a[1] - b[1]) > 1e-6
+            or not _is_positive_number(beam.get("height"))
+        ):
+            continue
+        if roof_footprint and (
+            max(a[0], b[0]) < roof_footprint[0]
+            or min(a[0], b[0]) > roof_footprint[1]
+            or max(a[2], b[2]) < roof_footprint[2]
+            or min(a[2], b[2]) > roof_footprint[3]
+        ):
+            continue
+        top = a[1] + beam["height"] / 2
+        # 仅为承托范围计算投影到梁顶，不修改实际实体及其中心线坐标。
+        wall_tops.append(
+            (top, {**beam, "from": [a[0], top, a[2]], "to": [b[0], top, b[2]]})
+        )
+    roof_cx = (roof_footprint[0] + roof_footprint[1]) / 2 if roof_footprint else None
+    roof_cz = (roof_footprint[2] + roof_footprint[3]) / 2 if roof_footprint else None
+    roof_half = (
+        max(
+            roof_footprint[1] - roof_footprint[0], roof_footprint[3] - roof_footprint[2]
+        )
+        / 2
+        if roof_footprint
+        else None
+    )
+
+    # 圆柱承托：position 为中心、height 上下对称 → 顶 = position.y + height/2。
+    cylinder_candidates: list[tuple[float, dict, float]] = []
+    for prim in primitives:
+        if prim.get("shape") != "cylinder":
+            continue
+        ppos = prim.get("position")
+        height = prim.get("height")
+        if not _is_finite_vector3(ppos) or not _is_positive_number(height):
+            continue
+        radius = prim.get("radiusTop") or prim.get("radius") or prim.get("radiusBottom")
+        if not _is_positive_number(radius):
+            continue
+        radius = float(radius)
+        top_y = float(ppos[1]) + float(height) / 2
+        if roof_cx is not None and roof_half is not None:
+            dist = math.hypot(float(ppos[0]) - roof_cx, float(ppos[2]) - roof_cz)
+            if dist > radius + roof_half:
+                continue
+        cylinder_candidates.append((top_y, prim, radius))
+
+    # 柱元素承托：base 是柱底、height 是柱高 → 顶 = base.y + height。
+    #  柱候选**不做**屋顶 footprint 过滤（圆柱才做）：柱是结构承托件且数量有限；
+    # 且 footprint 来自当前屋顶本身——屋顶已经坏掉时（窄带/偏心）按 footprint 过滤
+    # 会把真承托柱排除在外，形成"坏屋顶永远修不回来"的自锁（2026-09-29 实测）。
+    column_candidates: list[tuple[float, dict, float]] = []
+    for column in columns:
+        base = column.get("base")
+        height = column.get("height")
+        if not _is_finite_vector3(base) or not _is_positive_number(height):
+            continue
+        try:
+            radius = max(
+                float(column.get("bottomRadius", 0.1) or 0.1),
+                float(column.get("topRadius", 0.1) or 0.1),
+            )
+        except (TypeError, ValueError):
+            radius = 0.1
+        top_y = float(base[1]) + float(height)
+        column_candidates.append((top_y, column, radius))
+
+    if not wall_tops and not cylinder_candidates and not column_candidates:
+        return {
+            "min_x": 0.0,
+            "max_x": 0.0,
+            "min_z": 0.0,
+            "max_z": 0.0,
+            "span": 0.0,
+            "depth": 0.0,
+            "center_x": 0.0,
+            "center_z": 0.0,
+            "support_y": 0.0,
+            "support_kind": "none",
+        }
+
+    if (
+        isinstance(position, list)
+        and len(position) >= 3
+        and isinstance(position[1], (int, float))
+    ):
+        roof_y = float(position[1])
+    else:
+        tops = (
+            [top for top, _ in wall_tops]
+            + [top for top, _, _ in cylinder_candidates]
+            + [top for top, _, _ in column_candidates]
+        )
+        roof_y = max(tops) if tops else 0.0
+
+    candidates: list[tuple[float, str, object, float | None]] = [
+        (top, "wall", wall, None) for top, wall in wall_tops
+    ]
+    candidates += [
+        (top, "cylinder", prim, radius) for top, prim, radius in cylinder_candidates
+    ]
+    candidates += [
+        (top, "column", column, radius) for top, column, radius in column_candidates
+    ]
+    support_y, kind, payload, radius = min(
+        candidates, key=lambda item: abs(item[0] - roof_y)
+    )
+
+    if kind == "cylinder":
+        prim = payload
+        cx = float(prim["position"][0])
+        cz = float(prim["position"][2])
+        return {
+            "min_x": cx - radius,
+            "max_x": cx + radius,
+            "min_z": cz - radius,
+            "max_z": cz + radius,
+            "span": radius * 2,
+            "depth": radius * 2,
+            "center_x": cx,
+            "center_z": cz,
+            "support_y": support_y,
+            "support_kind": "primitive",
+        }
+
+    # 退台（stepped）体量：屋面应覆盖**各层外轮廓的并集**，不是"当层那一圈墙"。
+    #
+    # 2026-10-08 实测事故：底层 20×15、二层退到 14×9 的别墅，编译器给出一块覆盖
+    # 整栋的屋面（span 21.2 × depth 16.2 = 20×15 + 2×0.6 出檐），但 `support_y`
+    # 按 `roof.position[1]=7.0`（顶层墙顶）选墙⇒ 只选中层 14×9 的墙 ⇒
+    # `fix_roof_coverage` 把屋面"修"成 15.2×10.2，与已审核实体不符 ⇒
+    # `approved_design_mutation` 报error，整轮生成失败。
+    #
+    # 判据（保守）：存在**标高更低**的墙，且其 XZ 外轮廓**严格包含**当层轮廓。
+    # 三个条件缺一不可：
+    #   标高更低  —— 普通两层楼的上下层墙也分标高，不满足就不会被误合并；
+    #   严格包含  —— 真正"更小的那一圈"才触发，同尺寸的墙不触发；
+    #   墙非空    —— 没有墙就不进这个分支。
+    # 不满足时行为与从前完全一致（非退台建筑零影响）。
+    if kind == "wall":
+        stepped_y = _stepped_support_y(wall_tops, support_y)
+        if stepped_y is not None:
+            support_y = stepped_y
+            support_walls = [
+                wall for top, wall in wall_tops if abs(top - support_y) <= 0.15
+            ]
+            support_columns = []
+        else:
+            support_walls = [
+                wall for top, wall in wall_tops if abs(top - support_y) <= 0.15
+            ]
+    else:
+        support_walls = [
+            wall for top, wall in wall_tops if abs(top - support_y) <= 0.15
+        ]
+    support_columns = [
+        column for top, column, _ in column_candidates if abs(top - support_y) <= 0.15
+    ]
+    all_x: list[float] = []
+    all_z: list[float] = []
+    for wall in support_walls:
+        # 曲线墙（圆墙/弧墙）的 from/to XZ 是同一个闭合点，走直线端点会退化成"点"，
+        # 把圆形建筑的外包络算成 0（实测天坛：屋顶被误判"span/depth 悬空过多"）。
+        # 曲线墙直接取整条中心线的 XZ 包围盒，不参与下面的横向/纵向裁剪。
+        if wall.get("curve"):
+            points = _wall_centerline_points(wall)
+            if points:
+                xs = [point[0] for point in points]
+                zs = [point[1] for point in points]
+                all_x.extend([min(xs), max(xs)])
+                all_z.extend([min(zs), max(zs)])
+            continue
+        start = wall.get("from", [0, 0, 0])
+        end = wall.get("to", [0, 0, 0])
+        x0, x1 = sorted((float(start[0]), float(end[0])))
+        z0, z1 = sorted((float(start[2]), float(end[2])))
+        if roof_footprint:
+            roof_x0, roof_x1, roof_z0, roof_z1 = roof_footprint
+            if x1 - x0 >= z1 - z0:
+                wall_z = (z0 + z1) / 2
+                clipped_x0 = max(x0, roof_x0)
+                clipped_x1 = min(x1, roof_x1)
+                if (
+                    clipped_x1 >= clipped_x0
+                    and roof_z0 - 0.15 <= wall_z <= roof_z1 + 0.15
+                ):
+                    all_x.extend([clipped_x0, clipped_x1])
+                    all_z.extend([wall_z, wall_z])
+            else:
+                wall_x = (x0 + x1) / 2
+                clipped_z0 = max(z0, roof_z0)
+                clipped_z1 = min(z1, roof_z1)
+                if (
+                    clipped_z1 >= clipped_z0
+                    and roof_x0 - 0.15 <= wall_x <= roof_x1 + 0.15
+                ):
+                    all_x.extend([wall_x, wall_x])
+                    all_z.extend([clipped_z0, clipped_z1])
+            continue
+        all_x.extend([x0, x1])
+        all_z.extend([z0, z1])
+    if not all_x or not all_z:
+        for wall in support_walls:
+            if wall.get("curve"):
+                points = _wall_centerline_points(wall)
+                if points:
+                    xs = [point[0] for point in points]
+                    zs = [point[1] for point in points]
+                    all_x.extend([min(xs), max(xs)])
+                    all_z.extend([min(zs), max(zs)])
+                continue
+            start = wall.get("from", [0, 0, 0])
+            end = wall.get("to", [0, 0, 0])
+            all_x.extend([float(start[0]), float(end[0])])
+            all_z.extend([float(start[2]), float(end[2])])
+    # 已有二维墙顶承托时只计当前屋面下的柱；开敞亭廊仍用完整柱网找承托。
+    bounded_walls = (
+        bool(support_walls and all_x and all_z)
+        and max(all_x) - min(all_x) > 1e-6
+        and max(all_z) - min(all_z) > 1e-6
+    )
+    for column in support_columns:
+        base = column["base"]
+        radius = next((r for top, col, r in column_candidates if col is column), 0.1)
+        if (
+            roof_footprint
+            and bounded_walls
+            and (
+                base[0] + radius < roof_footprint[0]
+                or base[0] - radius > roof_footprint[1]
+                or base[2] + radius < roof_footprint[2]
+                or base[2] - radius > roof_footprint[3]
+            )
+        ):
+            continue
+        all_x.extend([float(base[0]) - radius, float(base[0]) + radius])
+        all_z.extend([float(base[2]) - radius, float(base[2]) + radius])
+    if not all_x or not all_z:
+        # 只有墙候选且裁剪后无贡献：退回墙端点原始包围盒（保持既有兜底行为）
+        for wall in support_walls:
+            if wall.get("curve"):
+                continue
+            start = wall.get("from", [0, 0, 0])
+            end = wall.get("to", [0, 0, 0])
+            all_x.extend([float(start[0]), float(end[0])])
+            all_z.extend([float(start[2]), float(end[2])])
+    if not all_x or not all_z:
+        return {
+            "min_x": 0.0,
+            "max_x": 0.0,
+            "min_z": 0.0,
+            "max_z": 0.0,
+            "span": 0.0,
+            "depth": 0.0,
+            "center_x": 0.0,
+            "center_z": 0.0,
+            "support_y": support_y,
+            "support_kind": "none",
+        }
+    min_x, max_x = min(all_x), max(all_x)
+    min_z, max_z = min(all_z), max(all_z)
+    if support_walls:
+        if any((w.get("type") == "wall" for w in support_walls)):
+            support_kind = "wall"
+        else:
+            support_kind = "beam"
+    elif support_columns:
+        support_kind = "column"
+    else:
+        support_kind = "wall"
+    return {
+        "min_x": min_x,
+        "max_x": max_x,
+        "min_z": min_z,
+        "max_z": max_z,
+        "span": max_x - min_x,
+        "depth": max_z - min_z,
+        "center_x": (min_x + max_x) / 2,
+        "center_z": (min_z + max_z) / 2,
+        "support_y": support_y,
+        "support_kind": support_kind,
+    }
+
+
+def _roof_base_y(roof: dict) -> float | None:
+    """返回屋顶 position[1]（屋面/檐口基底标高）；缺失或非法时返回 None。"""
+    position = roof.get("position")
+    if (
+        isinstance(position, list)
+        and len(position) >= 3
+        and isinstance(position[1], (int, float))
+        and not isinstance(position[1], bool)
+    ):
+        return float(position[1])
+    return None
+
+
+def _rect_distance(
+    x: float, z: float, rect: tuple[float, float, float, float]
+) -> float:
+    """点到 XZ 矩形 (x0, x1, z0, z1) 的距离（矩形内为 0）。"""
+    x0, x1, z0, z1 = rect
+    dx = max(x0 - x, 0.0, x - x1)
+    dz = max(z0 - z, 0.0, z - z1)
+    return math.hypot(dx, dz)
+
+
+def _wall_distance(
+    x: float, z: float, seg: tuple[float, float, float, float], thickness: float
+) -> float:
+    """点到轴对齐墙段中心线的距离，扣除半墙厚。"""
+    x0, z0, x1, z1 = seg
+    if abs(x1 - x0) >= abs(z1 - z0):
+        wz = (z0 + z1) / 2
+        cx = min(max(x, min(x0, x1)), max(x0, x1))
+        return max(math.hypot(x - cx, z - wz) - thickness / 2, 0.0)
+    wx = (x0 + x1) / 2
+    cz = min(max(z, min(z0, z1)), max(z0, z1))
+    return max(math.hypot(x - wx, z - cz) - thickness / 2, 0.0)
+
+
+def _circle_distance(x: float, z: float, cx: float, cz: float, radius: float) -> float:
+    """点到 XZ 圆盘的距离：圆内为 0，圆外为到圆周的距离。"""
+    return max(math.hypot(x - cx, z - cz) - radius, 0.0)
+
+
+def _polyline_distance(
+    x: float,
+    z: float,
+    points: list[tuple[float, float]],
+    thickness: float,
+) -> float:
+    """点到折线中心线的距离，扣除半墙厚（曲线墙/圆墙用）。"""
+    distance = math.inf
+    for (sx, sz), (ex, ez) in zip(points, points[1:]):
+        dx = ex - sx
+        dz = ez - sz
+        length_sq = dx * dx + dz * dz
+        if length_sq <= 1e-9:
+            distance = min(distance, math.hypot(x - sx, z - sz))
+            continue
+        ratio = min(max(((x - sx) * dx + (z - sz) * dz) / length_sq, 0.0), 1.0)
+        distance = min(
+            distance,
+            math.hypot(x - (sx + ratio * dx), z - (sz + ratio * dz)),
+        )
+    return max(distance - thickness / 2, 0.0)
+
+
+def _roof_deep_void(roof: dict, elements: list[dict]) -> tuple[float, float] | None:
+    """返回屋顶 footprint 中“离最近承托(墙/楼板)超过 1m”的深空区 (占比, 面积㎡)。
+
+    正常出檐 ≤1m 不会被算作空腔；L/U 形建筑用单块屋顶盖住内院/天井时，
+    内院中心到最近墙/板的距离远超 1m，从而被识别。采样步长随屋顶尺度自缩放。
+    """
+    span = roof.get("span")
+    depth = roof.get("depth")
+    position = roof.get("position")
+    if not (
+        isinstance(span, (int, float))
+        and span > 0
+        and isinstance(depth, (int, float))
+        and depth > 0
+        and isinstance(position, list)
+        and len(position) >= 3
+        and isinstance(position[0], (int, float))
+        and isinstance(position[2], (int, float))
+    ):
+        return None
+    cx, cz = float(position[0]), float(position[2])
+    x0, x1 = cx - span / 2, cx + span / 2
+    z0, z1 = cz - depth / 2, cz + depth / 2
+
+    floor_rects: list[tuple[float, float, float, float]] = []
+    floor_circles: list[tuple[float, float, float]] = []
+    wall_segs: list[tuple[float, float, float, float, float]] = []
+    wall_polylines: list[tuple[list[tuple[float, float]], float]] = []
+    for element in elements:
+        element_type = element.get("type")
+        if (
+            element_type == "primitive"
+            and element.get("shape") == "box"
+            and not any(element.get("rotation", [0, 0, 0]))
+            and _is_finite_vector3(element.get("position"))
+            and _is_finite_vector3(element.get("dimensions"))
+        ):
+            w, h, d = [
+                v * s
+                for v, s in zip(element["dimensions"], element.get("scale", [1, 1, 1]))
+            ]
+            x, y, z = element["position"]
+            if 0 < h < min(w, d) and y + h / 2 <= (_roof_base_y(roof) or 0) + 0.15:
+                floor_rects.append((x - w / 2, x + w / 2, z - d / 2, z + d / 2))
+        elif element_type == "floor":
+            # 圆形楼板用 center + radius 表达，from/to 只是包围盒的两个角点。
+            # 直接套矩形会把圆板当成"第一象限的方块"，把圆板另一侧误判成空腔
+            # （天坛：圆板 to=[18,_,18] 与 from=[0,_,0] 拼出的矩形只盖住 x/z 正半轴）。
+            if element.get("shape") == "circle" and _is_finite_vector3(
+                element.get("from")
+            ):
+                radius = element.get("radius")
+                if not _is_positive_number(radius):
+                    end = element.get("to")
+                    if _is_finite_vector3(end):
+                        radius = (
+                            math.hypot(
+                                float(end[0]) - float(element["from"][0]),
+                                float(end[2]) - float(element["from"][2]),
+                            )
+                            / 2
+                        )
+                if _is_positive_number(radius):
+                    floor_circles.append(
+                        (
+                            float(element["from"][0]),
+                            float(element["from"][2]),
+                            float(radius),
+                        )
+                    )
+                    continue
+            start = element.get("from")
+            end = element.get("to")
+            if not _is_finite_vector3(start) or not _is_finite_vector3(end):
+                continue
+            floor_rects.append(
+                (
+                    min(float(start[0]), float(end[0])),
+                    max(float(start[0]), float(end[0])),
+                    min(float(start[2]), float(end[2])),
+                    max(float(start[2]), float(end[2])),
+                )
+            )
+        elif element_type == "wall":
+            try:
+                thickness = float(element.get("thickness", 0.24)) or 0.24
+            except (TypeError, ValueError):
+                thickness = 0.24
+            if element.get("curve"):
+                points = _wall_centerline_points(element)
+                if len(points) >= 2:
+                    wall_polylines.append((points, thickness))
+                    continue
+            start = element.get("from")
+            end = element.get("to")
+            if not _is_finite_vector3(start) or not _is_finite_vector3(end):
+                continue
+            wall_segs.append(
+                (
+                    float(start[0]),
+                    float(start[2]),
+                    float(end[0]),
+                    float(end[2]),
+                    thickness,
+                )
+            )
+    if not floor_rects and not floor_circles:
+        # 没有楼板（只有围合墙）时，墙体只是 1D 线段，无法填充建筑内部，
+        # 此时无法区分"室内"与"内院"，跳过该检查避免误报。
+        return None
+
+    step = max(0.4, min(span, depth) / 50.0)
+    max_overhang = 1.0
+    deep = 0
+    total = 0
+    x = x0 + step / 2
+    while x < x1:
+        z = z0 + step / 2
+        while z < z1:
+            total += 1
+            distance = math.inf
+            for rect in floor_rects:
+                d = _rect_distance(x, z, rect)
+                if d < distance:
+                    distance = d
+            for cx_c, cz_c, radius in floor_circles:
+                d = _circle_distance(x, z, cx_c, cz_c, radius)
+                if d < distance:
+                    distance = d
+            for seg in wall_segs:
+                d = _wall_distance(x, z, seg[:4], seg[4])
+                if d < distance:
+                    distance = d
+            for points, thickness in wall_polylines:
+                d = _polyline_distance(x, z, points, thickness)
+                if d < distance:
+                    distance = d
+            if distance > max_overhang:
+                deep += 1
+            z += step
+        x += step
+    if total == 0:
+        return None
+    return deep / total, deep * step * step
+
+
+def validate_roof_coverage(blueprint: dict) -> str:
+    """
+    检查屋顶 span/depth 是否合理覆盖了墙体范围。
+
+    规则：
+      - span 应接近墙体 X 方向跨度（允许 1m 出檐）
+      - depth 应接近墙体 Z 方向跨度（允许 1m 出檐）
+      - 过大或过小都会产生警告
+
+    参数 blueprint: 完整的 Blueprint dict
+    """
+    elements = _get_elements(blueprint)
+    roofs = [el for el in elements if el.get("type") == "roof"]
+    walls = [el for el in elements if el.get("type") == "wall"]
+    primitives = [el for el in elements if el.get("type") == "primitive"]
+    columns = [el for el in elements if el.get("type") == "column"]
+
+    if not roofs:
+        return "✅ 没有 roof 构件，跳过检查。"
+    if not walls and not columns:
+        return "⚠️  有屋顶但没有墙体/柱，无法判断覆盖范围。请确认设计意图。"
+
+    issues: list[str] = []
+    last_bounds: dict[str, float] | None = None
+    for r in roofs:
+        rid = r.get("id", "?")
+        span = r.get("span", 0)
+        depth = r.get("depth", 0)
+        bounds = get_roof_support_bounds(
+            walls,
+            r,
+            primitives,
+            columns,
+            beams=[e for e in elements if e.get("type") == "beam"],
+        )
+        last_bounds = bounds
+        wall_span = bounds["span"]
+        wall_depth = bounds["depth"]
+        # 承托是 primitive 造型体（祈年殿的檐盘/殿身圆柱）时，屋顶是"攒尖/圆顶"这类
+        # 盖在造型体上的收分顶，其 span/depth 不遵循"≈ 墙体宽度"的矩形语义，跳过
+        # span/depth 对比，只保留悬空检查。
+        support_is_primitive = bounds.get("support_kind") == "primitive"
+
+        # 合理范围：墙体范围 + 0~2m 出檐空间
+        if not support_is_primitive:
+            if span < wall_span * 0.5:
+                issues.append(
+                    f"❌ [{rid}] span={span:.1f} 远小于墙体宽度={wall_span:.1f}，"
+                    f"屋顶完全无法覆盖墙体"
+                )
+            elif span < wall_span - 0.5:
+                issues.append(
+                    f"⚠️  [{rid}] span={span:.1f} 略小于墙体宽度={wall_span:.1f}，"
+                    f"出檐不足"
+                )
+            elif span > wall_span + 4.0:
+                issues.append(
+                    f"⚠️  [{rid}] span={span:.1f} 远大于墙体宽度={wall_span:.1f}，"
+                    f"屋顶悬空过多"
+                )
+
+            if depth < wall_depth * 0.5:
+                issues.append(
+                    f"❌ [{rid}] depth={depth:.1f} 远小于墙体进深={wall_depth:.1f}，"
+                    f"屋顶完全无法覆盖墙体"
+                )
+            elif depth < wall_depth - 0.5:
+                issues.append(
+                    f"⚠️  [{rid}] depth={depth:.1f} 略小于墙体进深={wall_depth:.1f}，"
+                    f"出檐不足"
+                )
+            elif depth > wall_depth + 4.0:
+                issues.append(
+                    f"⚠️  [{rid}] depth={depth:.1f} 远大于墙体进深={wall_depth:.1f}，"
+                    f"屋顶悬空过多"
+                )
+
+        # 无承托深空区：屋顶下面离最近墙/楼板 >1m 的占比（L/U 形内院是典型）。
+        deep_void = _roof_deep_void(r, elements)
+        if deep_void is not None:
+            ratio, area = deep_void
+            if area > 8.0:
+                issues.append(
+                    f"❌ [{rid}] 屋顶有 {ratio:.0%} 面积（约 {area:.1f}㎡）下方没有任何墙/楼板承托，"
+                    f"超出正常出檐范围。L/U 形等多体量应为每个体量各设一块屋顶，"
+                    f"不要用单块屋顶盖住内院/天井。"
+                )
+
+        # 屋顶底标高必须落在承托构件顶上：position[1] 高于承托顶会让整块屋顶悬空。
+        roof_y = _roof_base_y(r)
+        support_y = bounds.get("support_y")
+        if roof_y is not None and isinstance(support_y, (int, float)):
+            gap = float(roof_y) - float(support_y)
+            if gap > 0.15:
+                support_label = {
+                    "primitive": "承托造型体顶",
+                    "beam": "承托梁顶",
+                    "column": "承托柱顶",
+                }.get(bounds.get("support_kind"), "承托墙顶")
+                issues.append(
+                    f"❌ [{rid}] 屋顶底标高 position[1]={roof_y:.2f} 高于{support_label} {support_y:.2f}m，"
+                    f"悬空 {gap:.2f}m。position[1] 必须等于其承托构件的顶标高，"
+                    f"不要额外加上楼板厚度或层高。"
+                )
+
+    if not issues:
+        bounds = last_bounds or get_roof_support_bounds(walls, columns=columns)
+        return (
+            f"✅ 屋顶尺寸合理。"
+            f"（承托墙宽度={bounds['span']:.1f}, 进深={bounds['depth']:.1f}）"
+        )
+    return "\n".join(issues)
+
+
+# ============================================================
+# P1：屋顶覆盖的反向检查（墙顶 → 屋顶）
+# ============================================================
+
+# 判定"其上方存在构件"的竖向容差（米）。墙顶略高于屋面基底（重檐 / 穿斗结构里
+# 墙与柱穿过下层檐口继续上到上层檐）不算裸露，故下界留 0.05m 余量。
+#
+# 上界刻意不设：只要屋面基底落在墙顶之上，该墙顶就是"被盖住"的；究竟高多少米
+# 合不合理由 `validate_roof_coverage` 负责（它专报"position[1] 高于承托墙顶 →
+# 悬空"）。本条只回答"上面有没有东西"，不重复回答"离得合不合理"。
+ABOVE_TOLERANCE = 0.05
+# 沿墙中线采样步长（米）。太粗会漏掉局部裸露，太细会拖慢流水线。
+TOP_COVERAGE_SAMPLE_STEP = 0.5
+# 低于此裸露长度不报（米），避免把浮点误差当成缺口。
+MIN_EXPOSED_LENGTH = 0.1
+
+
+def _is_positive_number(value: object) -> bool:
+    return (
+        isinstance(value, (int, float))
+        and not isinstance(value, bool)
+        and float(value) > 0
+    )
+
+
+def _wall_centerline_points(wall: dict) -> list[tuple[float, float]]:
+    """返回墙体在 XZ 平面上的折线路径；带 curve 的墙按真实曲率展开。
+
+    `_wall_length` 早就支持 curve，但抽样若仍走 from→to 直线，曲线墙（弧墙、圆墙
+    围合）的 XZ 会退化成**一个点**（如天坛 main_wall 的 from/to 同为 [5.8, _, 0]），
+    采样点全落在错误位置，整圈墙被误报成裸露。
+    """
+    start = wall.get("from", [0, 0, 0])
+    end = wall.get("to", [0, 0, 0])
+    sx, sz = float(start[0]), float(start[2])
+    ex, ez = float(end[0]), float(end[2])
+    curve = wall.get("curve")
+    if curve:
+        points = curve_points([sx, sz], [ex, ez], curve)
+        if len(points) >= 2:
+            return [(float(point[0]), float(point[1])) for point in points]
+    return [(sx, sz), (ex, ez)]
+
+
+def _sample_wall_centerline(
+    wall: dict,
+    step: float = TOP_COVERAGE_SAMPLE_STEP,
+) -> tuple[float, list[tuple[float, float]]]:
+    """沿墙中线按**等弧长**采样，返回 (总长, [(x, z), ...])；退化墙返回 (0.0, [])。
+
+    取样点落在每个等分格的**中心**（`(i + 0.5) / count`），不是端点。端点采样会把
+    "墙端点落在屋顶外 4cm"这类浮点贴边放大成一个格的裸露：7m 长的墙按 0.5m 步长
+    只有 15 个采样点，端点一个不中就报 0.47m 裸露（实测 session_1786700051751）。
+    格中心采样下每个点严格代表 `总长 / count`，估计无偏，4cm 贴边自然落进
+    `MIN_EXPOSED_LENGTH` 之下。
+    """
+    points = _wall_centerline_points(wall)
+    if len(points) < 2:
+        return 0.0, []
+    cumulative = [0.0]
+    for start, end in zip(points, points[1:]):
+        cumulative.append(
+            cumulative[-1] + math.hypot(end[0] - start[0], end[1] - start[1])
+        )
+    total = cumulative[-1]
+    if total <= 1e-6:
+        return 0.0, []
+    count = max(1, int(round(total / step)))
+    samples: list[tuple[float, float]] = []
+    segment = 0
+    for index in range(count):
+        target = total * (index + 0.5) / count
+        while segment + 2 < len(cumulative) and cumulative[segment + 1] < target:
+            segment += 1
+        span = cumulative[segment + 1] - cumulative[segment]
+        ratio = 0.0 if span <= 1e-9 else (target - cumulative[segment]) / span
+        ax, az = points[segment]
+        bx, bz = points[segment + 1]
+        samples.append((ax + (bx - ax) * ratio, az + (bz - az) * ratio))
+    return total, samples
+
+
+def _point_on_wall_path(
+    x: float, z: float, wall: dict, tolerance: float = 0.15
+) -> bool:
+    """判断 XZ 点是否落在墙体中线上（支持曲线墙的折线路径）。"""
+    points = _wall_centerline_points(wall)
+    for start, end in zip(points, points[1:]):
+        dx = end[0] - start[0]
+        dz = end[1] - start[1]
+        length_sq = dx * dx + dz * dz
+        if length_sq <= 1e-9:
+            continue
+        ratio = min(
+            max(((x - start[0]) * dx + (z - start[1]) * dz) / length_sq, 0.0),
+            1.0,
+        )
+        if (
+            math.hypot(x - (start[0] + ratio * dx), z - (start[1] + ratio * dz))
+            < tolerance
+        ):
+            return True
+    return False
+
+
+def _highest_wall_bounds(
+    walls: list[dict],
+) -> tuple[float, float, float, float, float] | None:
+    """复刻前端 `resolver.ts::resolveRoofBoundary` 的承托墙取法。
+
+    取"墙顶最高的一批墙"的 XZ 包围盒与最高墙顶；这批墙少于 3 面时回退到全部墙
+    （兼容开放式雨棚等不闭合结构）。返回 (min_x, max_x, min_z, max_z, max_y)。
+    """
+    valid = [
+        wall
+        for wall in walls
+        if _is_finite_vector3(wall.get("from")) and _is_finite_vector3(wall.get("to"))
+    ]
+    if not valid:
+        return None
+    tops = [(_wall_vertical_range(wall)[1], wall) for wall in valid]
+    highest = max(top for top, _ in tops)
+    support = [wall for top, wall in tops if abs(top - highest) <= 0.05]
+    if len(support) < 3:
+        support = valid
+    xs: list[float] = []
+    zs: list[float] = []
+    for wall in support:
+        start = wall.get("from", [0, 0, 0])
+        end = wall.get("to", [0, 0, 0])
+        xs.extend([float(start[0]), float(end[0])])
+        zs.extend([float(start[2]), float(end[2])])
+    return min(xs), max(xs), min(zs), max(zs), highest
+
+
+def _roof_half_extents(
+    roof: dict,
+    fallback_half_w: float,
+    fallback_half_d: float,
+    expand_to_fallback: bool,
+) -> tuple[float, float]:
+    """屋顶半宽 / 半进深，含重檐屋顶的檐口外扩。
+
+    `chinese_pagoda` 的底层檐口是 `span/2 + eaveOutset`（roof.ts::buildPagoda），
+    只按 span/2 判断覆盖，会把半径 5.8m 的圆墙判成裸露 —— 实际 6.5m 的檐口早已盖住它。
+
+    `expand_to_fallback` 对应前端的 `!hasExplicitBoundary` 分支：position/span/depth
+    三者不全时，前端会把 span/depth 撑到 `承托墙包围盒 + 1.0`。
+    """
+    span = roof.get("span")
+    depth = roof.get("depth")
+    half_w = float(span) / 2 if _is_positive_number(span) else fallback_half_w
+    half_d = float(depth) / 2 if _is_positive_number(depth) else fallback_half_d
+    if expand_to_fallback:
+        half_w = max(half_w, fallback_half_w)
+        half_d = max(half_d, fallback_half_d)
+    outset = roof.get("eaveOutset")
+    if _is_positive_number(outset):
+        half_w += float(outset)
+        half_d += float(outset)
+    return half_w, half_d
+
+
+def _roof_footprint_entries(
+    elements: list[dict],
+    walls: list[dict],
+) -> list[tuple[float, float, float, float, float, str]]:
+    """返回 (min_x, max_x, min_z, max_z, base_y, id)，供 XZ 覆盖判定使用。
+
+    缺少 `position` 的屋顶按前端 `resolver.ts::resolveRoofBoundary` 的约定复原：
+    以承托墙包围盒居中，底标高取最高墙顶。旧实现遇到这种屋顶直接 `continue`，
+    整块屋顶不计入覆盖 —— 于是 bieshu / cabin_v1 这类"只写 span/depth"的正常
+    蓝图被误报成"建筑顶部完全裸露"。
+    """
+    roofs = [el for el in elements if el.get("type") == "roof"]
+    if not roofs:
+        return []
+    support = _highest_wall_bounds(walls)
+    fallback_half_w = fallback_half_d = 0.0
+    if support is not None:
+        min_x, max_x, min_z, max_z, _highest = support
+        fallback_half_w = (max_x - min_x + 1.0) / 2
+        fallback_half_d = (max_z - min_z + 1.0) / 2
+
+    entries: list[tuple[float, float, float, float, float, str]] = []
+    for el in roofs:
+        position = el.get("position")
+        explicit_position = (
+            isinstance(position, list)
+            and len(position) >= 3
+            and all(
+                isinstance(position[index], (int, float))
+                and not isinstance(position[index], bool)
+                for index in range(3)
+            )
+        )
+        has_explicit_boundary = (
+            explicit_position
+            and _is_positive_number(el.get("span"))
+            and _is_positive_number(el.get("depth"))
+        )
+        if explicit_position:
+            if support is None and not has_explicit_boundary:
+                continue
+            center_x, center_z, base_y = (
+                float(position[0]),
+                float(position[2]),
+                float(position[1]),
+            )
+        else:
+            if support is None:
+                continue
+            min_x, max_x, min_z, max_z, highest = support
+            center_x = (min_x + max_x) / 2
+            center_z = (min_z + max_z) / 2
+            base_y = highest
+        half_w, half_d = _roof_half_extents(
+            el,
+            fallback_half_w,
+            fallback_half_d,
+            expand_to_fallback=not has_explicit_boundary,
+        )
+        entries.append(
+            (
+                center_x - half_w,
+                center_x + half_w,
+                center_z - half_d,
+                center_z + half_d,
+                base_y,
+                str(el.get("id", "?")),
+            )
+        )
+    return entries
+
+
+def _covered_by_roof(
+    x: float,
+    z: float,
+    wall_top: float,
+    footprints: list[tuple[float, float, float, float, float, str]],
+) -> bool:
+    """该 XZ 点正上方是否存在一块**基底不低于墙顶**的屋顶。"""
+    for min_x, max_x, min_z, max_z, base_y, _rid in footprints:
+        if not (min_x <= x <= max_x and min_z <= z <= max_z):
+            continue
+        if base_y >= wall_top - ABOVE_TOLERANCE:
+            return True
+    return False
+
+
+def _has_slab_above(
+    x: float,
+    z: float,
+    wall_top: float,
+    floor_levels: list[tuple[float, list[list[float]]]],
+) -> bool:
+    for level_y, regions in floor_levels:
+        if level_y < wall_top - ABOVE_TOLERANCE:
+            continue
+        if point_in_regions((x, z), regions):
+            return True
+    return False
+
+
+def _has_wall_above(
+    x: float,
+    z: float,
+    wall_top: float,
+    walls: list[dict],
+    skip_index: int,
+) -> bool:
+    for index, other in enumerate(walls):
+        if index == skip_index:
+            continue
+        bottom, _top = _wall_vertical_range(other)
+        if bottom < wall_top - ABOVE_TOLERANCE:
+            continue
+        if _point_on_wall_path(x, z, other):
+            return True
+    return False
+
+
+def _has_primitive_cover_above(
+    x: float,
+    z: float,
+    wall_top: float,
+    primitives: list[dict],
+) -> bool:
+    """该 XZ 点正上方是否有水平造型体（cylinder/box）横跨墙顶标高。
+
+    传统殿阁（祈年殿 / 天坛）不用矩形 roof，而是用一摞水平 primitive：彩画带
+    （cylinder 环带）、蓝琉璃檐盘（薄 cylinder 盘）、上层殿身（cylinder）。正十二
+    边形 / 圆墙的墙顶并不是被一块 roof 盖住，而是被这些"盘 / 带"压住。若不认它们，
+    12 面墙会被整圈误报成裸露（实测祈年殿 65.2m 全裸）。
+
+    判据：造型体竖向跨度 [bottom, top] 必须包含 wall_top（容差内），且 XZ 投影
+    覆盖采样点。只认"水平薄盘"——圆柱按半径、box 按未旋转 AABB 判 XZ。
+    """
+    for prim in primitives:
+        shape = prim.get("shape")
+        ppos = prim.get("position")
+        if not _is_finite_vector3(ppos):
+            continue
+        px, py, pz = float(ppos[0]), float(ppos[1]), float(ppos[2])
+        if shape == "cylinder":
+            height = prim.get("height")
+            if not _is_positive_number(height):
+                continue
+            radius = (
+                prim.get("radiusTop") or prim.get("radius") or prim.get("radiusBottom")
+            )
+            if not _is_positive_number(radius):
+                continue
+            bottom = py - float(height) / 2
+            top = py + float(height) / 2
+            if bottom > wall_top + ABOVE_TOLERANCE or top < wall_top - ABOVE_TOLERANCE:
+                continue
+            if math.hypot(x - px, z - pz) <= float(radius) + ABOVE_TOLERANCE:
+                return True
+        elif shape == "box":
+            dims = prim.get("dimensions")
+            if not isinstance(dims, (list, tuple)) or len(dims) < 3:
+                continue
+            w, h, d = float(dims[0]), float(dims[1]), float(dims[2])
+            if not (w > 0 and h > 0 and d > 0):
+                continue
+            bottom = py - h / 2
+            top = py + h / 2
+            if bottom > wall_top + ABOVE_TOLERANCE or top < wall_top - ABOVE_TOLERANCE:
+                continue
+            if (
+                abs(x - px) <= w / 2 + ABOVE_TOLERANCE
+                and abs(z - pz) <= d / 2 + ABOVE_TOLERANCE
+            ):
+                return True
+    return False
+
+
+def validate_roof_top_coverage(blueprint: dict) -> str:
+    """
+    反向检查：每面墙的顶部是否真有东西盖着（屋顶 / 楼板 / 上层墙）。
+
+    为什么需要它：`validate_roof_coverage` 只做 roof → wall **单向**检查，
+    从不问"这些墙上面有没有屋顶"。于是"漏掉一整块体量的屋顶"能通过全部
+    校验器——实测一份 L 形别墅只给主楼生成了屋顶，侧翼整块裸露却 10/10 全绿。
+
+    判据：沿每面墙的中线采样（带 curve 的墙按其真实曲率展开），若某点上方既没有
+    覆盖它的屋顶（屋面基底不低于该墙顶）、也没有楼板、也没有上层墙，则该点裸露。
+    多体量（L 形 / U 形 / 退台）应**每个体量各生成一块屋顶**。
+
+    只检查结构性墙体：阳台栏杆（矮、薄）本来就不该有屋顶，不参与判定。
+
+    严重度：只报 ⚠️，不报 ❌ —— 屋顶缺失属"覆盖不完整"，按项目政策
+    只标记、不阻断交付。
+
+    参数 blueprint: 完整的 Blueprint dict
+    """
+    elements = _get_elements(blueprint)
+    walls = [
+        el for el in elements if el.get("type") == "wall" and _is_structural_wall(el)
+    ]
+    if not walls:
+        return "✅ 没有结构性墙构件，跳过检查。"
+
+    footprints = _roof_footprint_entries(elements, walls)
+    floor_levels = _floor_regions_by_level(elements)
+    primitives = [el for el in elements if el.get("type") == "primitive"]
+
+    if not footprints:
+        # 同时有墙和楼板才算"一栋建筑"；纯构件/场地场景（无楼板）不打扰。
+        if floor_levels:
+            return (
+                f"⚠️  有 {len(walls)} 面墙和 {len(floor_levels)} 层楼板，但一块屋顶都没有，"
+                f"建筑顶部完全裸露。请为每个体量补 roof 元素"
+                f"（多体量建筑不要只给主楼一块；若本就是露天院落/露台，"
+                f"请补该层标高的 floor 作为露台面）。"
+            )
+        return "✅ 没有屋顶构件，跳过检查。"
+
+    exposed: list[tuple[str, float, float, bool]] = []
+    highest_top = max(_wall_vertical_range(wall)[1] for wall in walls)
+    for index, wall in enumerate(walls):
+        _bottom, top = _wall_vertical_range(wall)
+        length, samples = _sample_wall_centerline(wall)
+        if length <= 1e-6 or not samples:
+            continue
+        bare = 0
+        for x, z in samples:
+            if _covered_by_roof(x, z, top, footprints):
+                continue
+            if _has_slab_above(x, z, top, floor_levels):
+                continue
+            if _has_wall_above(x, z, top, walls, index):
+                continue
+            if _has_primitive_cover_above(x, z, top, primitives):
+                continue
+            bare += 1
+        bare_length = length * bare / len(samples)
+        if bare_length > MIN_EXPOSED_LENGTH:
+            exposed.append(
+                (
+                    str(wall.get("id", "?")),
+                    top,
+                    bare_length,
+                    abs(top - highest_top) <= ABOVE_TOLERANCE,
+                )
+            )
+
+    if not exposed:
+        return f"✅ 所有 {len(walls)} 面墙的顶部均被屋顶 / 楼板 / 上层墙覆盖。"
+
+    total = sum(item[2] for item in exposed)
+    lines = [
+        f"⚠️  {len(exposed)} 面墙的顶部正上方没有任何构件（屋顶 / 楼板 / 上层墙），"
+        f"共 {total:.1f}m 裸露："
+    ]
+    for wall_id, top, bare_length, is_top_level in sorted(
+        exposed, key=lambda item: -item[2]
+    ):
+        level = "最高层" if is_top_level else "非最高层"
+        lines.append(
+            f"    · [{wall_id}] 墙顶 Y={top:.2f}m（{level}）裸露 {bare_length:.1f}m"
+        )
+    lines.append(
+        "    补救二选一：① 该体量本该有屋顶 → 为它**单独**生成一块 roof，"
+        "span/depth 按该体量自己的轮廓取，不要只给主楼一块；"
+        "② 该层本意是屋顶露台 → 补一块该层标高的 floor 作为露台面，"
+        "否则露台没有可站立的楼板。"
+    )
+    return "\n".join(lines)
+
+
+def validate_stair_alignment(blueprint: dict) -> str:
+    """
+    检查楼梯 from/to 端点高度是否与地板或墙体高度对齐。
+
+    规则：
+      - from.y 应对齐下层地板顶面或地面（y=0）
+      - to.y 应对齐上层地板顶面或墙体顶部高度
+      - 允许 ±0.2m 容差
+
+    参数 blueprint: 完整的 Blueprint dict
+    """
+    elements = _get_elements(blueprint)
+    stairs = [el for el in elements if el.get("type") == "stair"]
+
+    opening_issues = stair_opening_issues(blueprint)
+    if not stairs:
+        return "\n".join(opening_issues) or "✅ 没有 stair 构件，跳过检查。"
+
+    # 收集参考高度：地板顶面 + 墙体顶部 + 地面
+    floors = [el for el in elements if el.get("type") == "floor"]
+    walls = [el for el in elements if el.get("type") == "wall"]
+
+    floor_heights: list[float] = []
+    for f in floors:
+        fy = f.get("from", [0, 0, 0])[1]
+        thickness = f.get("thickness", 0.0)
+        if isinstance(fy, (int, float)):
+            floor_heights.append(float(fy) + float(thickness))
+    floor_heights.extend(
+        y
+        for y, _ in _floor_regions_by_level(
+            [item for item in elements if item.get("type") == "primitive"]
+        )
+    )
+
+    wall_top_heights: list[float] = []
+    for w in walls:
+        ty = w.get("to", [0, 0, 0])[1]
+        if isinstance(ty, (int, float)):
+            wall_top_heights.append(float(ty))
+
+    all_ref_heights = sorted(set([0.0] + floor_heights + wall_top_heights))
+
+    issues: list[str] = []
+    for s in stairs:
+        sid = s.get("id", "?")
+        f = s.get("from", [0, 0, 0])
+        t = s.get("to", [0, 0, 0])
+
+        fy = float(f[1]) if len(f) > 1 else 0.0
+        ty = float(t[1]) if len(t) > 1 else 0.0
+
+        # 检查 from.y
+        from_diffs = [abs(fy - h) for h in all_ref_heights]
+        if from_diffs and min(from_diffs) > 0.2:
+            nearest = all_ref_heights[from_diffs.index(min(from_diffs))]
+            issues.append(
+                f"⚠️  [{sid}] from.y={fy:.2f} 不匹配任何参考高度。"
+                f"最近: {nearest}（差 {abs(fy - nearest):.2f}m）"
+            )
+
+        # 检查 to.y
+        to_diffs = [abs(ty - h) for h in all_ref_heights]
+        if to_diffs and min(to_diffs) > 0.2:
+            nearest = all_ref_heights[to_diffs.index(min(to_diffs))]
+            issues.append(
+                f"⚠️  [{sid}] to.y={ty:.2f} 不匹配任何参考高度。"
+                f"最近: {nearest}（差 {abs(ty - nearest):.2f}m）"
+            )
+
+        # 检查 from.y < to.y（楼梯应该向上）
+        if fy >= ty:
+            issues.append(
+                f"❌ [{sid}] from.y={fy:.2f} >= to.y={ty:.2f}，" f"楼梯应该向上攀升"
+            )
+
+    issues.extend(opening_issues)
+    for placement_issue in collect_stair_placement_issues(blueprint):
+        entity_ids = ", ".join(
+            str(entity_id) for entity_id in placement_issue.get("entity_ids", ())
+        )
+        issues.append(
+            f"❌ [{entity_ids}] {placement_issue.get('message', '楼梯位置无效')}"
+        )
+
+    if not issues:
+        ref_str = ", ".join(f"{h:.1f}m" for h in all_ref_heights)
+        return f"✅ 楼梯端点与参考高度对齐。参考高度: [{ref_str}]"
+    return "\n".join(issues)
+
+
+# 字段校验与修正 Tool —— 以下函数先检查渲染必需字段，再进入原地修正步骤
+
+
+def validate_element_required_fields(blueprint: dict) -> str:
+    """
+    检查每个构件是否包含其类型所需的必填字段。
+    这是渲染前的最后一道防线——缺少必填字段会导致 wild-core 重建崩溃。
+
+    各构件类型的必填字段：
+      wall:    from, to, thickness
+      floor:   from, thickness；矩形需要 to，圆形需要 radius
+      column:  base, height, bottomRadius, topRadius, style
+      beam:    from, to, crossSection, width, height
+      roof:    roofType, span, depth, height, thickness
+      opening: parentWall, from, width, height, style
+      stair:   from, to, width
+      furniture: subtype, position, dimensions { width, depth, height }
+      primitive: shape，以及对应 shape 的几何参数
+
+    参数 blueprint: 完整的 Blueprint dict
+    """
+    REQUIRED = {
+        "wall": ["from", "to", "thickness"],
+        "floor": ["from", "thickness"],
+        "column": ["base", "height", "bottomRadius", "topRadius", "style"],
+        "beam": ["from", "to", "crossSection", "width", "height"],
+        "roof": ["roofType", "span", "depth", "height", "thickness"],
+        "opening": ["parentWall", "from", "width", "height", "style"],
+        "stair": ["from", "to", "width"],
+        "furniture": ["subtype", "position", "dimensions"],
+        "dense_brick": ["resolution", "origin", "data"],
+        "body": [
+            "height",
+            "build",
+            "headShape",
+            "armLength",
+            "legLength",
+            "cloakLength",
+            "hoodUp",
+        ],
+        "primitive": ["shape"],
+    }
+
+    # 合法枚举值
+    VALID_FURNITURE_SUBTYPES = {
+        "table",
+        "chair",
+        "sofa",
+        "bookshelf",
+        "bed",
+        "wardrobe",
+        "nightstand",
+        "tv_cabinet",
+        "lamp",
+        "tile",
+    }
+    VALID_PRIMITIVE_SHAPES = {"box", "sphere", "cylinder", "profile_sweep"}
+
+    # 蓝图顶层只允许这些 key
+    VALID_ROOT_KEYS = {"meta", "geometry", "materials", "assets", "behaviors", "editor"}
+    # geometry 内部只允许这些 key
+    VALID_GEOMETRY_KEYS = {
+        "elements",
+        "components",
+        "templates",
+        "instances",
+        "placements",
+    }
+
+    issues: list[str] = []
+
+    # === 检查根级别多余的 key ===
+    extra_root = set(blueprint.keys()) - VALID_ROOT_KEYS
+    if extra_root:
+        issues.append(
+            f"❌ 蓝图根级别出现非法字段: {extra_root}。只允许: {VALID_ROOT_KEYS}"
+        )
+
+    # === 检查 geometry 内部多余的 key ===
+    geo = blueprint.get("geometry", {})
+    if isinstance(geo, dict):
+        extra_geo = set(geo.keys()) - VALID_GEOMETRY_KEYS
+        if extra_geo:
+            issues.append(
+                f"❌ geometry 内部出现非法字段: {extra_geo}。只允许: {VALID_GEOMETRY_KEYS}"
+            )
+
+    elements = _get_elements(blueprint)
+    components = geo.get("components", []) if isinstance(geo, dict) else []
+    if not elements and not components:
+        if not issues:
+            return "✅ 没有基础构件或组合构件，跳过必填字段检查。"
+        return "\n".join(issues)
+
+    for el in elements:
+        _validate_element_fields(
+            el, REQUIRED, VALID_FURNITURE_SUBTYPES, VALID_PRIMITIVE_SHAPES, issues
+        )
+
+    component_required = {
+        "door": ["parentWall", "from", "width", "height", "interaction"],
+        "window": ["parentWall", "from", "width", "height"],
+        "railing": ["path", "height"],
+        "canopy": ["parentWall", "from", "width", "depth", "thickness"],
+        "balcony": ["parentWall", "from", "width", "depth", "slabThickness"],
+        "ramp": ["from", "to", "width", "thickness"],
+        "bay_window": ["parentWall", "from", "width", "height", "projectionDepth"],
+        "cornice": ["path", "profile"],
+        "chimney": ["position", "width", "depth", "height"],
+        "light": ["position"],
+        "elevator": ["position", "dimensions", "floorHeight", "floorCount"],
+    }
+    for component in components:
+        _validate_component_fields(component, component_required, issues)
+
+    if not issues:
+        types_found = set(el.get("type", "?") for el in elements)
+        component_types = set(item.get("type", "?") for item in components)
+        return (
+            f"✅ 所有 {len(elements)} 个基础构件和 {len(components)} 个组合构件"
+            f"的必填字段完整（基础类型: {types_found}，组合类型: {component_types}）"
+        )
+    return "\n".join(issues)
+
+
+def fix_opening_coords(blueprint: dict) -> str:
+    """
+    自动检测并修正 opening 的坐标问题。
+    如果 from[0] 疑似世界坐标（值超出墙体长度范围），则尝试换算为沿墙距离。
+
+    原理：
+      - 对于主要沿 X 方向的墙（|dx| > |dz|）：沿墙距离 = from[0] - wall.from[0]
+      - 对于主要沿 Z 方向的墙（|dz| > |dx|）：沿墙距离 = from[2] - wall.from[2]
+
+    注意：此工具会直接修改传入的 Blueprint dict。
+
+    参数 blueprint: 完整的 Blueprint dict
+    """
+    elements = _get_elements(blueprint)
+    walls = {el["id"]: el for el in elements if el.get("type") == "wall"}
+    openings = [el for el in elements if el.get("type") == "opening"]
+    components = blueprint.get("geometry", {}).get("components", [])
+    door_windows = [
+        component
+        for component in components
+        if component.get("type") in {"door", "window"}
+    ]
+
+    if not openings and not door_windows:
+        return "✅ 没有 opening/门窗组件需要修正。"
+
+    fixes: list[str] = []
+    for op in openings + door_windows:
+        oid = op.get("id", "?")
+        prefix = "component:" if op.get("type") in {"door", "window"} else ""
+        parent_id = op.get("parentWall", "")
+        from_vec = op.get("from", [0, 0, 0])
+
+        parent = walls.get(parent_id)
+        if not parent:
+            continue
+
+        try:
+            coords = _safe_coords(from_vec, f"[{prefix}{oid}] from")
+            if len(coords) != 3:
+                continue
+        except ValueError:
+            continue
+
+        # 统一为可原地修改的三元列表，避免外部调用传入 tuple 时修复失败。
+        op["from"] = list(coords)
+
+        wl = _wall_length(parent)
+        along_dist = coords[0]
+        normal_offset = coords[2]
+        wf = parent.get("from", [0, 0, 0])
+        dx, dz = _wall_direction_xz(parent)
+        changes: list[str] = []
+
+        # from[2] 明显偏大时，整组坐标很可能是世界 [X,Y,Z]。先将世界点
+        # 投影到父墙，恢复正确的沿墙距离，再把局部法向偏移归零。
+        if abs(normal_offset) > MAX_OPENING_NORMAL_OFFSET:
+            projected_along = (coords[0] - float(wf[0])) * dx + (
+                coords[2] - float(wf[2])
+            ) * dz
+            if -0.3 <= projected_along <= wl + 0.3:
+                new_along = max(0.0, min(projected_along, wl))
+                if abs(new_along - along_dist) > 1e-6:
+                    op["from"][0] = round(new_along, 2)
+                    changes.append(
+                        f"from[0] {along_dist:.2f} → {new_along:.2f}（世界坐标投影）"
+                    )
+                    along_dist = new_along
+            op["from"][2] = 0.0
+            changes.append(f"from[2] {normal_offset:.2f} → 0（贴合父墙中心面）")
+
+        # 沿墙距离本身越界时，也按世界点到父墙方向的投影尝试恢复。
+        if along_dist < -0.3 or along_dist > wl + 0.3:
+            projected_along = (coords[0] - float(wf[0])) * dx + (
+                coords[2] - float(wf[2])
+            ) * dz
+            new_along = max(0.1, min(projected_along, wl - 0.1))
+            op["from"][0] = round(new_along, 2)
+            changes.append(f"from[0] {along_dist:.2f} → {new_along:.2f}（沿墙距离）")
+
+        if changes:
+            fixes.append(
+                f"🔧 [{prefix}{oid}]: "
+                + "; ".join(changes)
+                + f"；parentWall='{parent_id}' 墙长={wl:.1f}m"
+            )
+
+    if not fixes:
+        return "✅ 所有 opening/门窗组件坐标已在合理范围，无需修正。"
+    return "已自动修正以下 opening/门窗组件坐标：\n" + "\n".join(fixes)
+
+
+# 引用完整性校验 —— Step 3 in pipeline
+
+
+def validate_reference_integrity(blueprint: dict) -> str:
+    """
+    校验构件之间的引用关系是否合法。
+
+    检查项：
+      1. opening.parentWall 必须存在且 type == 'wall'
+      2. geometry.instances[*].ref 必须存在于 geometry.templates
+      3. behaviors.physics.constraints[*].target 必须是已存在的构件 id
+      4. 不允许循环引用（template 引用自身）
+      5. 构件声明的材质 ID 必须存在于 Blueprint.materials
+
+    参数 blueprint: 完整的 Blueprint dict
+    """
+    issues: list[str] = []
+    elements = _get_elements(blueprint)
+    element_ids = {el.get("id") for el in elements if el.get("id")}
+    wall_ids = {el.get("id") for el in elements if el.get("type") == "wall"}
+    components = blueprint.get("geometry", {}).get("components", []) or []
+
+    # --- 1. opening.parentWall 校验 ---
+    for el in elements:
+        if el.get("type") != "opening":
+            continue
+        eid = el.get("id", "?")
+        parent = el.get("parentWall", "")
+        if not parent:
+            issues.append(f"❌ [{eid}] opening 缺少 parentWall 字段")
+        elif parent not in element_ids:
+            issues.append(f"❌ [{eid}] parentWall='{parent}' 引用的构件不存在")
+        elif parent not in wall_ids:
+            issues.append(f"❌ [{eid}] parentWall='{parent}' 引用的构件不是 wall 类型")
+
+    # --- 1b. 组合构件的依附对象必须是编译器要求的基础实体类型 ---
+    for component in components:
+        component_id = component.get("id", "?")
+        if component.get("type") in {"door", "window"} and not component.get(
+            "parentWall"
+        ):
+            issues.append(f"❌ [component:{component_id}] 缺少 parentWall 字段")
+        for field, kind in (
+            ("parentWall", "wall"),
+            ("parentFloor", "floor"),
+            ("parentRoof", "roof"),
+        ):
+            parent = component.get(field)
+            if not parent:
+                continue
+            if parent not in element_ids:
+                issues.append(
+                    f"❌ [component:{component_id}] {field}='{parent}' 引用的基础构件不存在；必须指向 {kind}"
+                )
+            elif not any(
+                e.get("id") == parent and e.get("type") == kind for e in elements
+            ):
+                issues.append(
+                    f"❌ [component:{component_id}] {field}='{parent}' 不是 {kind} 类型"
+                )
+
+    # --- 1c. 元素与组合构件的材质引用必须存在 ---
+    materials = blueprint.get("materials", {}) or {}
+    material_ids = set(materials) if isinstance(materials, dict) else set()
+    material_fields = ("material", "frameMaterial", "leafMaterial", "glassMaterial")
+    for entity in elements:
+        entity_id = entity.get("id", "?")
+        for field in material_fields:
+            material_id = entity.get(field)
+            if not material_id:
+                continue
+            if not isinstance(material_id, str) or material_id not in material_ids:
+                issues.append(
+                    f"❌ [{entity_id}] {field}='{material_id}' "
+                    "未在 Blueprint.materials 中定义"
+                )
+    for entity in components:
+        entity_id = entity.get("id", "?")
+        for field in material_fields:
+            material_id = entity.get(field)
+            if not material_id:
+                continue
+            if not isinstance(material_id, str) or material_id not in material_ids:
+                issues.append(
+                    f"❌ [component:{entity_id}] {field}='{material_id}' "
+                    "未在 Blueprint.materials 中定义"
+                )
+
+    # --- 2. instances.ref 校验（兼容早期 templateId）---
+    geo = blueprint.get("geometry", {})
+    templates = geo.get("templates", {}) or {}
+    instances = geo.get("instances", []) or []
+    for inst in instances:
+        iid = inst.get("id", "?")
+        tid = inst.get("ref") or inst.get("templateId", "")
+        if not tid:
+            issues.append(f"❌ [instance:{iid}] 缺少 ref 字段")
+        elif tid not in templates:
+            issues.append(
+                f"❌ [instance:{iid}] ref='{tid}' 在 geometry.templates 中不存在"
+            )
+
+    # --- 3. behaviors.physics.constraints.target 校验 ---
+    physics = blueprint.get("behaviors", {}).get("physics", {})
+    for c in physics.get("constraints", []):
+        target = c.get("target", "")
+        if target and target not in element_ids:
+            issues.append(
+                f"❌ [behavior.constraint] target='{target}' 引用的构件不存在"
+            )
+
+    # --- 4. template 自引用检测 ---
+    for tname, tdef in templates.items():
+        sub_elements = tdef.get("elements", []) if isinstance(tdef, dict) else []
+        for sub in sub_elements:
+            ref = sub.get("templateId", "")
+            if ref == tname:
+                issues.append(
+                    f"❌ [template:{tname}] 存在自引用（templateId 指向自身），会导致无限递归"
+                )
+
+    if not issues:
+        return (
+            f"✅ 引用完整性通过。"
+            f"（{len(elements)} 个基础构件，{len(components)} 个组合构件，"
+            f"{len(templates)} 个模板，{len(instances)} 个实例）"
+        )
+    return "\n".join(issues)
+
+
+def fix_material_references(blueprint: dict) -> str:
+    """修正唯一可判定的材质别名，例如 wood -> wood_oak。"""
+    materials = blueprint.get("materials", {}) or {}
+    if not isinstance(materials, dict) or not materials:
+        return "⚠️ Blueprint.materials 为空，没有可用于修正引用的材质"
+
+    material_ids = list(materials)
+    fields = ("material", "frameMaterial", "leafMaterial", "glassMaterial")
+    geometry = blueprint.get("geometry", {})
+    entities = [
+        *(geometry.get("elements", []) or []),
+        *(geometry.get("components", []) or []),
+    ]
+    fixes: list[str] = []
+    for entity in entities:
+        if not isinstance(entity, dict):
+            continue
+        entity_id = entity.get("id", "?")
+        for field in fields:
+            reference = entity.get(field)
+            if not isinstance(reference, str) or reference in materials:
+                continue
+            normalized = reference.lower()
+            candidates = [
+                material_id
+                for material_id in material_ids
+                if material_id.lower() == normalized
+                or material_id.lower().startswith(normalized + "_")
+                or normalized.startswith(material_id.lower() + "_")
+            ]
+            if field == "glassMaterial" and "glass" in materials:
+                candidates = ["glass"]
+            candidates = list(dict.fromkeys(candidates))
+            if len(candidates) != 1:
+                continue
+            entity[field] = candidates[0]
+            fixes.append(f"🔧 [{entity_id}] {field}: '{reference}' → '{candidates[0]}'")
+
+    if not fixes:
+        return "✅ 没有可唯一判定的材质别名需要修正。"
+    return "已修正以下材质引用：\n" + "\n".join(fixes)
+
+
+# 碰撞 / 空间冲突检测 —— Step 9 in pipeline
+
+
+def _vec3(value: object) -> list[float] | None:
+    """坐标序列宽容数值化。模型偶发把坐标写成字符串（实测 column.base[1]="0.0"，
+    曾让 validate_collision 整体 TypeError 炸掉、repair 条目与 final_validate 连锁失败），
+    这里统一转 float；任何分量转不动返回 None（由调用方按"无法计算"跳过）。"""
+    if not isinstance(value, (list, tuple)):
+        return None
+    try:
+        return [float(v) for v in value]
+    except (TypeError, ValueError):
+        return None
+
+
+def _aabb(el: dict) -> tuple[float, float, float, float, float, float] | None:
+    """
+    计算元素的轴对齐包围盒 (minX, maxX, minY, maxY, minZ, maxZ)。
+    只处理有明确坐标的构件，无法计算的返回 None。
+    Y 轴：wall/floor/beam 用 from[1]/to[1]，column 用 base[1] ~ base[1]+height。
+    所有坐标经 _vec3 数值化——模型产物里的字符串数字不算非法，但绝不能进算术。
+    """
+    t = el.get("type", "")
+
+    if t == "wall":
+        f = _vec3(el.get("from"))
+        to = _vec3(el.get("to"))
+        if not f or not to or len(f) < 3 or len(to) < 3:
+            return None
+        thickness = float(el.get("thickness", 0.2))
+        half_t = thickness / 2.0
+        min_y, max_y = _wall_vertical_range(el)
+        min_x = min(f[0], to[0]) - half_t
+        max_x = max(f[0], to[0]) + half_t
+        min_z = min(f[2], to[2]) - half_t
+        max_z = max(f[2], to[2]) + half_t
+        return (min_x, max_x, min_y, max_y, min_z, max_z)
+
+    if t == "floor":
+        from agent.utils.geometry.floors import floor_region
+
+        try:
+            x0, z0, x1, z1 = floor_region(el).bounds
+            y = float(el["from"][1])
+            thickness = float(el.get("thickness", 0))
+        except (ValueError, TypeError, KeyError):
+            return None
+        return (x0, x1, y, y + thickness, z0, z1)
+
+    if t == "beam":
+        f = _vec3(el.get("from"))
+        to = _vec3(el.get("to"))
+        if not f or not to or len(f) < 3 or len(to) < 3:
+            return None
+        half_width = float(el.get("width", 0.2)) / 2.0
+        beam_height = float(el.get("height", 0.2))
+        return (
+            min(f[0], to[0]) - half_width,
+            max(f[0], to[0]) + half_width,
+            min(f[1], to[1]) - beam_height / 2.0,
+            max(f[1], to[1]) + beam_height / 2.0,
+            min(f[2], to[2]) - half_width,
+            max(f[2], to[2]) + half_width,
+        )
+
+    if t == "column":
+        base = _vec3(el.get("base"))
+        if not base or len(base) < 3:
+            return None
+        height = float(el.get("height", 0))
+        r = max(float(el.get("bottomRadius", 0.1)), float(el.get("topRadius", 0.1)))
+        return (
+            base[0] - r,
+            base[0] + r,
+            base[1],
+            base[1] + height,
+            base[2] - r,
+            base[2] + r,
+        )
+
+    if t == "stair":
+        f = _vec3(el.get("from"))
+        to = _vec3(el.get("to"))
+        if not f or not to or len(f) < 3 or len(to) < 3:
+            return None
+        w = float(el.get("width", 1.0)) / 2.0
+        dx, dz = to[0] - f[0], to[2] - f[2]
+        length = math.hypot(dx, dz)
+        wx, wz = (abs(dz) / length * w, abs(dx) / length * w) if length else (w, w)
+        return (
+            min(f[0], to[0]) - wx,
+            max(f[0], to[0]) + wx,
+            min(f[1], to[1]),
+            max(f[1], to[1]),
+            min(f[2], to[2]) - wz,
+            max(f[2], to[2]) + wz,
+        )
+
+    if t == "furniture":
+        pos = _vec3(el.get("position"))
+        dims = el.get("dimensions", {})
+        if not pos or len(pos) < 3 or not isinstance(dims, dict):
+            return None
+        hw = float(dims.get("width", 0.5)) / 2.0
+        hd = float(dims.get("depth", 0.5)) / 2.0
+        h = float(dims.get("height", 0.5))
+        return (
+            pos[0] - hw,
+            pos[0] + hw,
+            pos[1],
+            pos[1] + h,
+            pos[2] - hd,
+            pos[2] + hd,
+        )
+
+    return None
+
+
+def _aabb_overlap(
+    a: tuple[float, float, float, float, float, float],
+    b: tuple[float, float, float, float, float, float],
+    margin: float = 0.05,
+) -> bool:
+    """判断两个 AABB 是否重叠（margin 为最小穿插深度阈值，避免贴面误报）"""
+    return (
+        a[0] < b[1] - margin
+        and a[1] > b[0] + margin  # X
+        and a[2] < b[3] - margin
+        and a[3] > b[2] + margin  # Y
+        and a[4] < b[5] - margin
+        and a[5] > b[4] + margin  # Z
+    )
+
+
+def _floor_reference_ys(blueprint: dict) -> tuple[list[float], list[float]]:
+    """返回楼板底面/顶面标高，并展开 floor 模板实例。
+
+    示意高层用 ``templates + instances`` 表达标准楼板。旧校验只读取显式
+    elements，因而会把正确落在 24m、56m 等楼板上的分段柱判为悬空，随后
+    修复器又把它们全拉到同一标高，制造真正的重叠柱。
+    """
+
+    geometry = blueprint.get("geometry", {}) if isinstance(blueprint, dict) else {}
+    base_ys: list[float] = [0.0]
+    top_ys: list[float] = [0.0]
+
+    def append_floor(item: dict, offset_y: float = 0.0) -> None:
+        start = item.get("from")
+        if not isinstance(start, list) or len(start) != 3:
+            return
+        try:
+            base_y = offset_y + float(start[1])
+            thickness = float(item.get("thickness") or 0.0)
+        except (TypeError, ValueError):
+            return
+        base_ys.append(base_y)
+        top_ys.append(base_y + thickness)
+
+    for item in geometry.get("elements", []):
+        if isinstance(item, dict) and item.get("type") == "floor":
+            append_floor(item)
+    templates = geometry.get("templates")
+    template_map = templates if isinstance(templates, dict) else {}
+    for instance in geometry.get("instances", []):
+        if not isinstance(instance, dict):
+            continue
+        template = template_map.get(str(instance.get("ref") or ""))
+        position = instance.get("position")
+        if (
+            isinstance(template, dict)
+            and template.get("type") == "floor"
+            and isinstance(position, list)
+            and len(position) == 3
+        ):
+            try:
+                append_floor(template, float(position[1]))
+            except (TypeError, ValueError):
+                continue
+    return (
+        sorted({round(value, 6) for value in base_ys}),
+        sorted({round(value, 6) for value in top_ys}),
+    )
+
+
+def validate_model_quality(blueprint: dict) -> str:
+    """检查重复骨架及轴对齐墙面与矩形构件的共面重叠。"""
+    elements = _get_elements(blueprint)
+    issues: list[str] = []
+
+    wall_groups: dict[tuple, list[str]] = {}
+    for wall in (item for item in elements if item.get("type") == "wall"):
+        key = _wall_centerline_key(wall)
+        if key is None:
+            continue
+        wall_groups.setdefault(key, []).append(str(wall.get("id", "?")))
+    for ids in wall_groups.values():
+        if len(ids) > 1:
+            issues.append(f"❌ 重复墙体共用同一中心线与标高: {', '.join(ids)}")
+
+    # 只检查可精确确定的共面表面；结构相交本身合法。
+    for wall_index, wall in enumerate(elements):
+        if wall.get("type") != "wall" or wall.get("curve"):
+            continue
+        start, end = wall.get("from"), wall.get("to")
+        if not _is_finite_vector3(start) or not _is_finite_vector3(end):
+            continue
+        if abs(end[2] - start[2]) < 1e-06:
+            axis = 0
+        elif abs(end[0] - start[0]) < 1e-06:
+            axis = 2
+        else:
+            axis = None
+        if axis is None:
+            continue
+        normal = 2 - axis
+        if not _is_positive_number(wall.get("thickness")):
+            continue
+        bottom, top = _wall_vertical_range(wall)
+        wall_faces = [
+            start[normal] - wall.get("thickness", 0) / 2,
+            start[normal] + wall.get("thickness", 0) / 2,
+        ]
+        holes = []
+        for opening in [
+            *elements,
+            *blueprint.get("geometry", {}).get("components", []),
+        ]:
+            if (
+                opening.get("parentWall") != wall.get("id")
+                or opening.get("type") not in {"door", "window", "opening"}
+                or (
+                    opening.get("type") == "opening"
+                    and opening.get("style") != "rectangular"
+                )
+                or not _is_finite_vector3(opening.get("from"))
+                or not all(
+                    _is_positive_number(opening.get(k)) for k in ("width", "height")
+                )
+            ):
+                continue
+            direction = 1 if end[axis] > start[axis] else -1
+            left = start[axis] + direction * opening["from"][0]
+            right = left + direction * opening["width"]
+            holes.append(
+                (
+                    *sorted((left, right)),
+                    opening["from"][1],
+                    opening["from"][1] + opening["height"],
+                )
+            )
+        for member_index, member in enumerate(elements):
+            bounds = None
+            if (
+                member.get("type") == "wall"
+                and not member.get("curve")
+                and member_index > wall_index
+            ):
+                a, b = member.get("from"), member.get("to")
+                if (
+                    _is_finite_vector3(a)
+                    and _is_finite_vector3(b)
+                    and abs(a[normal] - b[normal]) < 1e-6
+                    and _wall_centerline_key(wall) != _wall_centerline_key(member)
+                ):
+                    bounds = list(_aabb(member))
+                    bounds[axis * 2 : axis * 2 + 2] = sorted((a[axis], b[axis]))
+            elif (
+                member.get("type") == "beam"
+                and member.get("crossSection", "rect") == "rect"
+                and not member.get("curve")
+            ):
+                a, b = member.get("from"), member.get("to")
+                if (
+                    _is_finite_vector3(a)
+                    and _is_finite_vector3(b)
+                    and abs(a[1] - b[1]) < 1e-6
+                    and abs(a[normal] - b[normal]) < 1e-6
+                ):
+                    bounds = _aabb(member)
+            elif (
+                member.get("type") == "primitive"
+                and member.get("shape") == "box"
+                and _is_finite_vector3(member.get("rotation", [0, 0, 0]))
+                and not any(member.get("rotation", [0, 0, 0]))
+            ):
+                p, size = member.get("position"), member.get("dimensions")
+                if _is_finite_vector3(p) and _is_finite_vector3(size):
+                    bounds = []
+                    for coordinate_index in range(3):
+                        bounds.extend(
+                            (
+                                p[coordinate_index] - size[coordinate_index] / 2,
+                                p[coordinate_index] + size[coordinate_index] / 2,
+                            )
+                        )
+            if bounds is None:
+                continue
+            left, right = max(min(start[axis], end[axis]), bounds[axis * 2]), min(
+                max(start[axis], end[axis]), bounds[axis * 2 + 1]
+            )
+            low, high = max(bottom, bounds[2]), min(top, bounds[3])
+            has_coplanar_face = False
+            if right - left > 0.05 and high - low > 0.05:
+                for wall_face in wall_faces:
+                    for face_index in (0, 1):
+                        if abs(wall_face - bounds[normal * 2 + face_index]) < 0.001:
+                            has_coplanar_face = True
+                            break
+                    if has_coplanar_face:
+                        break
+            if has_coplanar_face:
+                # 门窗洞内没有墙面；按矩形洞口并集核对，保留墙垛处的冲突。
+                if member.get("type") != "wall" and holes:
+                    x_coordinates = {left, right}
+                    for hole in holes:
+                        for boundary_x in hole[:2]:
+                            x_coordinates.add(max(left, min(right, boundary_x)))
+                    xs = sorted(x_coordinates)
+                    covered = 0
+                    for a, b in zip(xs, xs[1:]):
+                        intervals = sorted(
+                            (max(low, h[2]), min(high, h[3]))
+                            for h in holes
+                            if h[0] <= a and h[1] >= b and h[2] < high and h[3] > low
+                        )
+                        cursor = low
+                        for y0, y1 in intervals:
+                            covered += (b - a) * max(0, y1 - max(cursor, y0))
+                            cursor = max(cursor, y1)
+                    if (right - left) * (high - low) - covered < 1e-9:
+                        continue
+                issues.append(
+                    f"❌ [{wall.get('id')}] / [{member.get('id')}] 表面共面重叠，会产生闪烁；"
+                    f"法线轴 {'XZ'[normal//2]}，墙面坐标 {wall_faces}，构件表面坐标 {list(bounds[normal*2:normal*2+2])}；"
+                    "调整该方向截面或实际进退关系，移动 Y 标高不能消除此类共面"
+                )
+
+    columns: list[tuple[str, list[float], float, float]] = []
+    for column in (item for item in elements if item.get("type") == "column"):
+        base = column.get("base")
+        if not _is_finite_vector3(base):
+            continue
+        try:
+            height = float(column.get("height", 0))
+            radius = max(
+                float(column.get("bottomRadius", 0)),
+                float(column.get("topRadius", 0)),
+                float(column.get("radius", 0)),
+                float(column.get("width", 0)) / 2,
+                float(column.get("depth", 0)) / 2,
+                0.01,
+            )
+        except (TypeError, ValueError):
+            continue
+        columns.append((str(column.get("id", "?")), base, height, radius))
+
+    for index, first in enumerate(columns):
+        for second in columns[index + 1 :]:
+            first_top = float(first[1][1]) + first[2]
+            second_top = float(second[1][1]) + second[2]
+            vertical_overlap = min(first_top, second_top) - max(
+                float(first[1][1]), float(second[1][1])
+            )
+            horizontal_distance = math.hypot(
+                float(first[1][0]) - float(second[1][0]),
+                float(first[1][2]) - float(second[1][2]),
+            )
+            if (
+                vertical_overlap > 0.05
+                and horizontal_distance < first[3] + second[3] - 0.02
+            ):
+                issues.append(
+                    f"❌ 重叠柱应合并为一个轴网节点: {first[0]} / {second[0]} "
+                    f"(中心距 {horizontal_distance:.2f}m)"
+                )
+
+    if not issues:
+        return "✅ 模型质量检查通过：无重复墙体、重叠柱或共面骨架表面。"
+    visible = issues[:12]
+    if len(issues) > len(visible):
+        visible.append(f"❌ 另有 {len(issues) - len(visible)} 处重复骨架未展开")
+    return f"发现 {len(issues)} 处模型质量问题：\n" + "\n".join(visible)
+
+
+def _wall_xz_footprint(wall: dict) -> list[float] | None:
+    """返回墙体的 XZ 包围盒 [minx, minz, maxx, maxz]；无法解析时返回 None。"""
+    start = wall.get("from")
+    end = wall.get("to")
+    if not _is_finite_vector3(start) or not _is_finite_vector3(end):
+        return None
+    return [
+        min(float(start[0]), float(end[0])),
+        min(float(start[2]), float(end[2])),
+        max(float(start[0]), float(end[0])),
+        max(float(start[2]), float(end[2])),
+    ]
+
+
+def validate_stacked_member_containment(blueprint: dict) -> str:
+    """检查跨越多个楼层的竖向墙体是否收进其经过的每一层外墙轮廓。
+
+    通用规则（不针对特定构件类型）：任何贯通多层的 wall，在它经过的每一层都必须
+    落在该层外墙的水平包络内。退台建筑中，核心筒/电梯井/贯通剪力墙若按底层轮廓
+    通高到底，就会在退台层外凸成一堵独立墙体。
+
+    只检查 wall：角部柱、框架/幕墙系统的柱天然会落在墙线外侧，属合法构造，
+    且已有 validate_model_quality / validate_collision 覆盖柱的重叠与高程。
+
+    判据（两段式，避免裙房/塔楼等“贯通外壳即底层外轮廓”的合法体型被误报）：
+      1. 仅当贯通墙在其**底层**处于外墙包络**内部**（四面都留 ≥0.3m 边）时才进一步判断。
+         这样，本身就是底层外轮廓的贯通外壳（如裙房通高幕墙、整层通高立面）会被跳过。
+      2. 对满足第 1 条的贯通墙，在它跨越的每个层间标高上，检查其 XZ 跨度是否落在
+         “墙底位于该层”的单层结构墙（高≥1.8m、厚≥0.1、单层高）的 XZ 包围盒内；
+         单层墙不足 3 面则不判定该层。容差 0.05m。
+    """
+    elements = _get_elements(blueprint)
+    story = _infer_story_height(elements)
+
+    structural = [
+        w
+        for w in elements
+        if w.get("type") == "wall"
+        and _is_structural_wall(w)
+        and _is_finite_vector3(w.get("from"))
+        and _is_finite_vector3(w.get("to"))
+    ]
+
+    def covers_level(wall: dict, y: float) -> bool:
+        bottom, top = _wall_vertical_range(wall)
+        return bottom <= y + 0.01 and y < top - 0.01
+
+    # 1) 按墙底标高给“单层结构墙”分组，求每层外轮廓包络（供上层比较）
+    envelope: dict[int, list[float]] = {}
+    wall_count: dict[int, int] = {}
+    for wall in structural:
+        bottom, top = _wall_vertical_range(wall)
+        if top - bottom > story * 1.5 + 0.01:
+            continue  # 贯通墙不作为“单层外轮廓”
+        level = int(round(bottom * 100))
+        wall_count[level] = wall_count.get(level, 0) + 1
+        footprint = _wall_xz_footprint(wall)
+        if footprint is None:
+            continue
+        box = envelope.get(level)
+        if box is None:
+            envelope[level] = list(footprint)
+        else:
+            box[0] = min(box[0], footprint[0])
+            box[1] = min(box[1], footprint[1])
+            box[2] = max(box[2], footprint[2])
+            box[3] = max(box[3], footprint[3])
+
+    levels = sorted(level for level in envelope if wall_count.get(level, 0) >= 3)
+    if not levels:
+        return "✅ 无法定义逐层外墙轮廓（单层结构墙不足 3 面），跳过贯通墙体收进检查。"
+
+    # 2) 贯通墙 = 跨层结构墙；只有“底层处于轮廓内部”的才进一步判断
+    margin = 0.3
+    tolerance = 0.05
+    issues: list[str] = []
+
+    for wall in structural:
+        bottom, top = _wall_vertical_range(wall)
+        if top - bottom <= story * 1.5 + 0.01:
+            continue  # 单层墙不检查
+
+        footprint = _wall_xz_footprint(wall)
+        if footprint is None:
+            continue
+
+        # 底层外轮廓 = 覆盖该墙底层标高的全部结构墙的 XZ 并集
+        base_box: list[float] | None = None
+        for other in structural:
+            if not covers_level(other, bottom):
+                continue
+            other_fp = _wall_xz_footprint(other)
+            if other_fp is None:
+                continue
+            if base_box is None:
+                base_box = list(other_fp)
+            else:
+                base_box[0] = min(base_box[0], other_fp[0])
+                base_box[1] = min(base_box[1], other_fp[1])
+                base_box[2] = max(base_box[2], other_fp[2])
+                base_box[3] = max(base_box[3], other_fp[3])
+        if base_box is None:
+            continue
+        interior_at_base = (
+            footprint[0] >= base_box[0] + margin
+            and footprint[2] <= base_box[2] - margin
+            and footprint[1] >= base_box[1] + margin
+            and footprint[3] <= base_box[3] - margin
+        )
+        if not interior_at_base:
+            continue  # 本身是底层外轮廓的贯通外壳，跳过
+
+        wall_id = str(wall.get("id", "?"))
+        for level in levels:
+            level_y = level / 100.0
+            if not (bottom + 0.25 < level_y < top - 0.25):
+                continue  # 墙未真正穿过该层间标高
+            box = envelope[level]
+            if (
+                footprint[0] >= box[0] - tolerance
+                and footprint[2] <= box[2] + tolerance
+                and footprint[1] >= box[1] - tolerance
+                and footprint[3] <= box[3] + tolerance
+            ):
+                continue
+            over_x = max(box[0] - footprint[0], footprint[2] - box[2], 0.0)
+            over_z = max(box[1] - footprint[1], footprint[3] - box[3], 0.0)
+            issues.append(
+                f"❌ [{wall_id}] 贯通墙体超出第 {level_y:.2f}m 层外墙轮廓："
+                f"越界 X {over_x:.2f}m / Z {over_z:.2f}m"
+            )
+
+    if not issues:
+        return f"✅ 贯通墙体均收进其跨越的每一层外墙轮廓（检查 {len(levels)} 层）。"
+    visible = issues[:12]
+    if len(issues) > len(visible):
+        visible.append(f"❌ 另有 {len(issues) - len(visible)} 处贯通墙体越界未展开")
+    return f"发现 {len(issues)} 处贯通墙体伸出所在层外墙轮廓：\n" + "\n".join(visible)
+
+
+def _hip_roof_beam_penetrations(elements: list[dict]) -> list[str]:
+    """按 Core 的 hip 坡面与 XYZ 梁旋转核对截面，中心线在瓦面下不等于截面不穿出。"""
+    errors = []
+    roofs = [
+        e
+        for e in elements
+        if e.get("type") == "roof"
+        and e.get("roofType") == "hip"
+        and _is_finite_vector3(e.get("position"))
+        and all(_is_positive_number(e.get(k)) for k in ("span", "depth", "height"))
+    ]
+    for beam in elements:
+        if (
+            beam.get("type") != "beam"
+            or beam.get("curve")
+            or beam.get("crossSection") not in {"rect", "i-beam"}
+            or not all(_is_finite_vector3(beam.get(k)) for k in ("from", "to"))
+            or not all(_is_positive_number(beam.get(k)) for k in ("width", "height"))
+        ):
+            continue
+        a, b = beam["from"], beam["to"]
+        dx, dy, dz = [q - p for p, q in zip(a, b)]
+        length = math.hypot(dx, dy, dz)
+        if length <= 1e-9:
+            continue
+        ry = math.asin(max(-1, min(1, dx / length)))
+        rx = math.atan2(-dy, dz) if math.hypot(dy, dz) > 1e-9 else 0
+        width_axis = [
+            math.cos(ry),
+            math.sin(rx) * math.sin(ry),
+            -math.cos(rx) * math.sin(ry),
+        ]
+        height_axis = [0, math.cos(rx), math.sin(rx)]
+        corners = []
+        for current_point in (a, b):
+            for width_sign in (-1, 1):
+                for height_sign in (-1, 1):
+                    corner = []
+                    for coordinate_index in range(3):
+                        corner.append(
+                            current_point[coordinate_index]
+                            + width_sign
+                            * beam["width"]
+                            / 2
+                            * width_axis[coordinate_index]
+                            + height_sign
+                            * beam["height"]
+                            / 2
+                            * height_axis[coordinate_index]
+                        )
+                    corners.append(corner)
+        for roof in roofs:
+            cx, base, cz = roof["position"]
+            hw, hd = roof["span"] / 2, roof["depth"] / 2
+
+            def surface(point):
+                edge = min(hw - abs(point[0] - cx), hd - abs(point[2] - cz))
+                return base + roof["height"] * edge / min(hw, hd) if edge >= 0 else None
+
+            end_surfaces = [surface(p) for p in (a, b)]
+            if any(y is None for y in end_surfaces) or all(
+                p[1] > y + 0.001 for p, y in zip((a, b), end_surfaces)
+            ):
+                continue  # 完全位于屋面以上的独立杆件不冒充穿瓦面。
+            above = max(
+                (p[1] - y for p in corners if (y := surface(p)) is not None), default=0
+            )
+            if above > 0.001:
+                drop = above + 0.001
+                errors.append(
+                    f"❌ [{beam['id']}] 梁截面穿出屋顶 [{roof['id']}] 外表面 {above:.3f}m；"
+                    "不能只核对中心线。保持截面及坡向整体下移时，"
+                    f"from[1] 至多 {a[1]-drop:.6f}、to[1] 至多 {b[1]-drop:.6f}；"
+                    "回核梁端承接，保持屋面尺寸与标高，不能抬屋顶掩盖穿插"
+                )
+    return errors
+
+
+def validate_collision(blueprint: dict) -> str:
+    """
+    检测构件之间是否存在碰撞、穿插、悬空或不合理重叠。
+
+    检查项：
+      1. 同类型构件之间不应有实质性重叠（如两根柱子、两段楼梯）
+      2. opening 不应与其他 opening 重叠（同一面墙上）
+      3. furniture / stair 不应穿插进 wall 内部（结构柱嵌入墙体属于合法节点）
+      4. column / stair / furniture 底部 Y 不应悬空
+         （base[1] 或 from[1] 应 >= 最近楼板顶面，容差 0.3m）
+
+    说明：
+      - 使用轴对齐包围盒（AABB）近似，不做精确几何求交
+      - opening 本身嵌入墙体是合法的，不参与碰撞检测
+      - wall 之间的端点相交是正常建筑连接，不报告
+
+    参数 blueprint: 完整的 Blueprint dict
+    """
+    elements = _get_elements(blueprint)
+    issues: list[str] = []
+
+    # 按 type 分组
+    issues.extend(_hip_roof_beam_penetrations(elements))
+    by_type: dict[str, list[dict]] = {}
+    for el in elements:
+        t = el.get("type", "")
+        by_type.setdefault(t, []).append(el)
+
+    # --- 1. 同类型非 wall 构件之间重叠检测 ---
+    CHECK_SELF_COLLISION = ("column", "stair", "furniture", "floor")
+    for t in CHECK_SELF_COLLISION:
+        group = by_type.get(t, [])
+        for i in range(len(group)):
+            for j in range(i + 1, len(group)):
+                a, b = group[i], group[j]
+                ba = _aabb(a)
+                bb = _aabb(b)
+                if ba and bb and _aabb_overlap(ba, bb):
+                    issues.append(
+                        f"⚠️  [{a.get('id','?')}] 与 [{b.get('id','?')}]"
+                        f"（均为 {t}）存在重叠/穿插，请检查坐标"
+                    )
+
+    # 梁的端部相接、T 形连接和十字相交都是合法结构节点；只报告同轴的实质重叠。
+    beams = by_type.get("beam", [])
+    for index, beam_a in enumerate(beams):
+        for beam_b in beams[index + 1 :]:
+            start_a, end_a = beam_a.get("from", []), beam_a.get("to", [])
+            start_b, end_b = beam_b.get("from", []), beam_b.get("to", [])
+            if any(len(point) < 3 for point in (start_a, end_a, start_b, end_b)):
+                continue
+            if beam_a.get("curve") or beam_b.get("curve"):
+                continue
+            direction_a = [float(b) - float(a) for a, b in zip(start_a, end_a)]
+            direction_b = [float(b) - float(a) for a, b in zip(start_b, end_b)]
+            length_a, length_b = math.hypot(*direction_a), math.hypot(*direction_b)
+            if min(length_a, length_b) <= 1e-9:
+                continue
+            axis = [v / length_a for v in direction_a]
+            parallel = abs(sum(a * b for a, b in zip(axis, direction_b))) / length_b
+            if abs(parallel - 1) > 1e-9:
+                continue
+            offset = [float(b) - float(a) for a, b in zip(start_a, start_b)]
+            along = sum(a * b for a, b in zip(offset, axis))
+            if math.hypot(*(v - along * u for v, u in zip(offset, axis))) > 0.15:
+                continue
+            interval_b = sorted(
+                (along, along + sum(a * b for a, b in zip(direction_b, axis)))
+            )
+            overlap = min(length_a, interval_b[1]) - max(0, interval_b[0])
+            if overlap > 0.15:
+                issues.append(
+                    f"⚠️  [{beam_a.get('id','?')}] 与 [{beam_b.get('id','?')}]"
+                    f"（均为 beam）同轴重叠 {overlap:.2f}m，请检查是否重复生成"
+                )
+
+    # --- 2. 同一面墙上的 opening 重叠检测 ---
+    openings = by_type.get("opening", [])
+    # 按 parentWall 分组
+    wall_openings: dict[str, list[dict]] = {}
+    for op in openings:
+        pw = op.get("parentWall", "")
+        wall_openings.setdefault(pw, []).append(op)
+
+    for wall_id, ops in wall_openings.items():
+        for i in range(len(ops)):
+            for j in range(i + 1, len(ops)):
+                a, b = ops[i], ops[j]
+                a_from = a.get("from", [0, 0, 0])
+                b_from = b.get("from", [0, 0, 0])
+                a_w = a.get("width", 1.0)
+                b_w = b.get("width", 1.0)
+                a_h = a.get("height", 1.0)
+                b_h = b.get("height", 1.0)
+
+                # 沿墙方向区间重叠 + 高度区间重叠
+                a_along_min = a_from[0]
+                a_along_max = a_from[0] + a_w
+                b_along_min = b_from[0]
+                b_along_max = b_from[0] + b_w
+
+                a_y_min = a_from[1]
+                a_y_max = a_from[1] + a_h
+                b_y_min = b_from[1]
+                b_y_max = b_from[1] + b_h
+
+                along_overlap = a_along_min < b_along_max and a_along_max > b_along_min
+                y_overlap = a_y_min < b_y_max and a_y_max > b_y_min
+
+                if along_overlap and y_overlap:
+                    issues.append(
+                        f"❌ [{a.get('id','?')}] 与 [{b.get('id','?')}]"
+                        f" 在墙 '{wall_id}' 上发生开口重叠，"
+                        f"沿墙区间 [{a_along_min:.2f},{a_along_max:.2f}] ∩ [{b_along_min:.2f},{b_along_max:.2f}]"
+                    )
+
+    # --- 3. stair / furniture 不应穿插入 wall 内部 ---
+    # 允许贴靠（margin 收紧到 0.15m，避免合理贴墙被误报）
+    walls = by_type.get("wall", [])
+    INTRUDE_TYPES = ("stair", "furniture")
+    for t in INTRUDE_TYPES:
+        for el in by_type.get(t, []):
+            el_bb = _aabb(el)
+            if not el_bb:
+                continue
+            for wall in walls:
+                w_bb = _aabb(wall)
+                if not w_bb:
+                    continue
+                if _aabb_overlap(el_bb, w_bb, margin=0.15):
+                    issues.append(
+                        f"⚠️  [{el.get('id','?')}]（{t}）与墙 [{wall.get('id','?')}] "
+                        f"存在穿插，请确认是否为贴墙摆放（可忽略）或实际穿墙（需修正）"
+                    )
+
+    # --- 4. 悬空检测：column / stair / furniture 底部 Y 应不低于地板 ---
+    # 注意：floor 顶面 = from[1] + thickness（floor.from[1] 是底面 Y，不是顶面 Y）
+    floor_base_ys, floor_top_ys = _floor_reference_ys(blueprint)
+
+    FLOATING_TYPES = {
+        "column": lambda el: el.get("base", [0, 0, 0])[1],
+        "stair": lambda el: el.get("from", [0, 0, 0])[1],
+        "furniture": lambda el: el.get("position", [0, 0, 0])[1],
+    }
+    # column / stair 的底座既可落在楼板**顶面**（承托柱、台基/须弥座上的柱、楼梯起步），
+    # 也可落在楼板**底面**（高层分段柱从结构层标高起算）。两者都算"有承托"，故合并
+    # 底面/顶面标高再取最近；furniture 的 position[1] 是家具底部，站在行走面（楼板顶面）
+    # 上，只对顶面。合并后避免把"站在叠层台基顶上的柱"（底 Y = 某层顶面）误判悬空。
+    support_levels = sorted({round(v, 6) for v in (*floor_base_ys, *floor_top_ys)})
+    unsupported_starts = set()
+    for issue in collect_stair_placement_issues(blueprint):
+        if issue["code"] != "stair_start_outside_floor":
+            continue
+        for entity_id in issue["entity_ids"]:
+            unsupported_starts.add(entity_id)
+    for t, get_bottom_y in FLOATING_TYPES.items():
+        for el in by_type.get(t, []):
+            if t == "stair" and el.get("id") not in unsupported_starts:
+                continue
+            bottom_y = float(get_bottom_y(el))
+            references = floor_top_ys if t == "furniture" else support_levels
+            # 找最近的楼板高度
+            nearest_floor = min(references, key=lambda fy: abs(fy - bottom_y))
+            gap = bottom_y - nearest_floor
+            if (
+                gap > 0.31
+            ):  # 0.31 留出浮点误差余量，与 fix_element_elevations 的阈值对齐
+                issues.append(
+                    f"⚠️  [{el.get('id','?')}]（{t}）底部 Y={bottom_y:.2f}，"
+                    f"距最近楼板 Y={nearest_floor:.2f} 相差 {gap:.2f}m，可能悬空"
+                )
+            elif gap < -0.1:
+                issues.append(
+                    f"⚠️  [{el.get('id','?')}]（{t}）底部 Y={bottom_y:.2f}，"
+                    f"低于最近楼板 Y={nearest_floor:.2f}，可能穿入地板"
+                )
+
+    if not issues:
+        checked = sum(
+            len(by_type.get(t, [])) for t in (*CHECK_SELF_COLLISION, "beam", "opening")
+        )
+        return f"✅ 碰撞检测通过，共检查 {checked} 个构件，未发现空间冲突。"
+    return f"发现 {len(issues)} 处空间冲突：\n" + "\n".join(issues)
+
+
+# ============================================================
+# P0：开口越界检查 —— 顶点爆炸根源
+# ============================================================
+
+
+def validate_opening_fit(blueprint: dict) -> str:
+    """
+    检查每个 opening 是否完全在 parentWall 的尺寸范围内。
+
+    规则：
+      - 沿墙方向：from[0] >= 0 且 from[0] + width <= 墙长
+      - 高度方向：from[1] >= 墙底Y 且 from[1] + height <= 墙顶Y
+
+    超出墙体范围的 opening 会导致 wild-core 切孔算法产生异常几何（顶点数爆炸）。
+
+    参数 blueprint: 完整的 Blueprint dict
+    """
+    elements = _get_elements(blueprint)
+    walls = {el["id"]: el for el in elements if el.get("type") == "wall"}
+    openings = [el for el in elements if el.get("type") == "opening"]
+    components = blueprint.get("geometry", {}).get("components", [])
+    door_windows = [
+        c for c in components if c.get("type") in WALL_OPENING_COMPONENT_TYPES
+    ]
+
+    if not openings and not door_windows:
+        return "✅ 没有 opening/门窗组件，跳过检查。"
+
+    issues: list[str] = []
+    for op in openings:
+        oid = op.get("id", "?")
+        parent_id = op.get("parentWall", "")
+        from_vec = op.get("from", [0, 0, 0])
+        width = op.get("width", 0)
+        height = op.get("height", 0)
+
+        parent = walls.get(parent_id)
+        if not parent:
+            continue  # 已由 validate_reference_integrity 覆盖
+
+        wl = _wall_length(parent)
+        wall_bottom_y, wall_top_y = _wall_vertical_range(parent)
+        wall_height = wall_top_y - wall_bottom_y
+
+        along = float(from_vec[0])
+        base_y = float(from_vec[1]) if len(from_vec) > 1 else wall_bottom_y
+
+        # 沿墙方向越界
+        if along < -0.05:
+            issues.append(f"❌ [{oid}] 沿墙起点 {along:.2f} < 0，开口超出墙体左端")
+        if along + width > wl + 0.05:
+            issues.append(
+                f"❌ [{oid}] 沿墙终点 {along + width:.2f} > 墙长 {wl:.2f}，开口超出墙体右端"
+            )
+
+        # 高度方向越界（相对世界坐标）
+        rel_bottom = base_y - wall_bottom_y
+        rel_top = rel_bottom + height
+        if rel_bottom < -0.05:
+            issues.append(
+                f"❌ [{oid}] 开口底部 Y={base_y:.2f} 低于墙底 Y={wall_bottom_y:.2f}"
+            )
+        if rel_top > wall_height + 0.05:
+            issues.append(
+                f"❌ [{oid}] 开口顶部 Y={base_y + height:.2f} 超出墙顶 Y={wall_top_y:.2f}"
+            )
+
+        # 尺寸为零或负值
+        if width <= 0:
+            issues.append(f"❌ [{oid}] width={width} 无效，必须 > 0")
+        if height <= 0:
+            issues.append(f"❌ [{oid}] height={height} 无效，必须 > 0")
+
+    # ── 同样检查 door/window/bay_window 组合构件 ──
+    for comp in door_windows:
+        cid = comp.get("id", "?")
+        parent_id = comp.get("parentWall", "")
+        from_vec = comp.get("from", [0, 0, 0])
+        width = comp.get("width", 0)
+        height = comp.get("height", 0)
+
+        parent = walls.get(parent_id)
+        if not parent:
+            continue  # 已由 validate_reference_integrity 覆盖
+
+        wl = _wall_length(parent)
+        wall_bottom_y, wall_top_y = _wall_vertical_range(parent)
+        wall_height = wall_top_y - wall_bottom_y
+
+        along = float(from_vec[0])
+        base_y = float(from_vec[1]) if len(from_vec) > 1 else wall_bottom_y
+
+        if along < -0.05:
+            issues.append(
+                f"❌ [component:{cid}] 沿墙起点 {along:.2f} < 0，超出父墙左端"
+            )
+        if along + width > wl + 0.05:
+            issues.append(
+                f"❌ [component:{cid}] 沿墙终点 {along+width:.2f} > 墙长 {wl:.2f}，超出父墙右端"
+            )
+
+        if base_y < wall_bottom_y - 0.05:
+            issues.append(
+                f"❌ [component:{cid}] 底部 Y={base_y:.2f} 低于墙底 Y={wall_bottom_y:.2f}"
+            )
+        if height > 0 and base_y + height > wall_top_y + 0.05:
+            issues.append(
+                f"❌ [component:{cid}] 顶部 Y={base_y+height:.2f} 超出墙顶 Y={wall_top_y:.2f}"
+            )
+
+        if width <= 0:
+            issues.append(f"❌ [component:{cid}] width={width} 无效")
+        if height <= 0:
+            issues.append(f"❌ [component:{cid}] height={height} 无效")
+
+    # 同一父墙上的开口不能占用相同的二维区域。只比较沿墙方向和高度方向
+    # 都有实际交叠的对象，允许高窗位于门的正上方。
+    opening_boxes: list[tuple[str, str, float, float, float, float]] = []
+    for op in openings:
+        from_vec = op.get("from", [])
+        if len(from_vec) < 2:
+            continue
+        opening_boxes.append(
+            (
+                str(op.get("id", "?")),
+                str(op.get("parentWall", "")),
+                float(from_vec[0]),
+                float(from_vec[1]),
+                float(op.get("width", 0)),
+                float(op.get("height", 0)),
+            )
+        )
+    for comp in door_windows:
+        from_vec = comp.get("from", [])
+        if len(from_vec) < 2:
+            continue
+        opening_boxes.append(
+            (
+                f"component:{comp.get('id', '?')}",
+                str(comp.get("parentWall", "")),
+                float(from_vec[0]),
+                float(from_vec[1]),
+                float(comp.get("width", 0)),
+                float(comp.get("height", 0)),
+            )
+        )
+
+    for index, first in enumerate(opening_boxes):
+        first_id, first_wall, first_x, first_y, first_w, first_h = first
+        if not first_wall or first_w <= 0 or first_h <= 0:
+            continue
+        for second in opening_boxes[index + 1 :]:
+            second_id, second_wall, second_x, second_y, second_w, second_h = second
+            if first_wall != second_wall or second_w <= 0 or second_h <= 0:
+                continue
+            horizontal_overlap = min(first_x + first_w, second_x + second_w) - max(
+                first_x, second_x
+            )
+            vertical_overlap = min(first_y + first_h, second_y + second_h) - max(
+                first_y, second_y
+            )
+            if horizontal_overlap > 0.05 and vertical_overlap > 0.05:
+                issues.append(
+                    f"❌ [{first_id}] 与 ❌ [{second_id}] 在父墙 [{first_wall}] 上重叠 "
+                    f"({horizontal_overlap:.2f}m × {vertical_overlap:.2f}m)"
+                )
+
+    total = len(openings) + len(door_windows)
+    if not issues:
+        return f"✅ 所有 {total} 个 opening/门窗组件均在 parentWall 范围内。"
+    return "\n".join(issues)
+
+
+# ============================================================
+# P1：构件尺寸合理性检查
+# ============================================================
+
+
+def validate_element_dimensions(blueprint: dict) -> str:
+    """
+    检查各构件尺寸是否在合理范围内。
+
+    规则（单位：米）：
+      wall:    长度 0.1~500，高度 0.1~50，厚度 0.01~5
+      floor:   单边 0.1~500，厚度 0.01~5
+      column:  高度 0.1~50，半径 0.01~5
+      beam:    长度 0.1~200，宽/高截面 0.01~5
+      roof:    span/depth 0.5~500，高度 0.1~100
+      opening: 宽 0.1~20，高 0.1~20
+      stair:   高差 0.1~50，水平距离 0.1~100
+
+    参数 blueprint: 完整的 Blueprint dict
+    """
+    elements = [
+        *_get_elements(blueprint),
+        *blueprint.get("geometry", {}).get("components", []),
+    ]
+    issues: list[str] = []
+
+    for el in elements:
+        t = el.get("type", "")
+        eid = el.get("id", "?")
+
+        if t in {"wall", "floor", "beam", "stair"}:
+            coordinate_fields = (
+                ("from",)
+                if t == "floor" and el.get("shape") in {"circle", "polygon"}
+                else ("from", "to")
+            )
+            invalid_fields = [
+                field
+                for field in coordinate_fields
+                if not _is_finite_vector3(el.get(field))
+            ]
+            if invalid_fields:
+                issues.extend(
+                    f"❌ [{eid}.{field}] 必须是包含 3 个有限数字的数组"
+                    for field in invalid_fields
+                )
+                continue
+
+        if t == "wall":
+            length = _wall_length(el)
+            f, to = el.get("from", [0, 0, 0]), el.get("to", [0, 0, 0])
+            endpoint_height = abs(to[1] - f[1])
+            h = el.get("height", endpoint_height)
+            th = el.get("thickness", 0)
+            if length <= 0.01:
+                issues.append(
+                    f"❌ [{eid}] wall 水平长度={length:.3f}m，不能作为有效墙体或门窗宿主"
+                )
+            elif not (0.1 <= length <= 500):
+                issues.append(f"⚠️  [{eid}] wall 长度={length:.1f}m，建议在 0.1~500m")
+            if h <= 0.01:
+                issues.append(
+                    f"❌ [{eid}] wall 高度={h:.1f}m；from[1] 必须是墙底、to[1] 必须是墙顶"
+                )
+            elif not (0.1 <= h <= 50):
+                issues.append(f"⚠️  [{eid}] wall 高度={h:.1f}m，建议在 0.1~50m")
+            if (
+                endpoint_height > 0.01
+                and isinstance(el.get("height"), (int, float))
+                and not isinstance(el.get("height"), bool)
+                and abs(float(el["height"]) - endpoint_height)
+                > max(0.05, endpoint_height * 0.01)
+            ):
+                issues.append(
+                    f"❌ [{eid}] wall height={float(el['height']):.1f}m 与 "
+                    f"from/to 竖向范围={endpoint_height:.1f}m 不一致"
+                )
+            if th > 0 and not (0.01 <= th <= 5):
+                issues.append(f"⚠️  [{eid}] wall thickness={th}m，建议在 0.01~5m")
+
+        elif t == "floor":
+            f, to = el.get("from", [0, 0, 0]), el.get("to", [0, 0, 0])
+            th = el.get("thickness", 0)
+            if el.get("shape") == "polygon":
+                from agent.utils.geometry.floors import floor_region
+
+                try:
+                    floor_region(el)
+                except ValueError as exc:
+                    issues.append(f"❌ [{eid}] {exc}")
+            elif el.get("shape", "rect") == "circle":
+                if not _is_positive_number(el.get("radius")):
+                    issues.append(f"❌ [{eid}] 圆形 floor radius 必须是正有限数字")
+            else:
+                for dim, val in [
+                    ("X跨度", abs(to[0] - f[0])),
+                    ("Z跨度", abs(to[2] - f[2])),
+                ]:
+                    if val == 0:
+                        issues.append(
+                            f"❌ [{eid}] 矩形 floor {dim}=0，楼板面积为零；from/to 是对角端点，不是中心"
+                        )
+                    elif not (0.1 <= val <= 500):
+                        issues.append(
+                            f"⚠️  [{eid}] floor {dim}={val:.1f}m，建议在 0.1~500m"
+                        )
+            if th > 0 and not (0.01 <= th <= 5):
+                issues.append(f"⚠️  [{eid}] floor thickness={th}m，建议在 0.01~5m")
+
+        elif t == "column":
+            # 字符串数字宽容解析（同 _aabb._vec3 口径）：模型偶发输出 "3.6" 这类值
+            try:
+                h = float(el.get("height", 0))
+                br = float(el.get("bottomRadius", 0))
+                tr = float(el.get("topRadius", 0))
+            except (TypeError, ValueError):
+                h, br, tr = 0.0, 0.0, 0.0
+            if h > 0 and not (0.1 <= h <= 50):
+                issues.append(f"⚠️  [{eid}] column height={h}m，建议在 0.1~50m")
+            for rname, rv in [("bottomRadius", br), ("topRadius", tr)]:
+                if rv > 0 and not (0.01 <= rv <= 5):
+                    issues.append(f"⚠️  [{eid}] column {rname}={rv}m，建议在 0.01~5m")
+
+        elif t == "beam":
+            f, to = el.get("from", [0, 0, 0]), el.get("to", [0, 0, 0])
+            dx = to[0] - f[0]
+            dy = to[1] - f[1]
+            dz = to[2] - f[2]
+            length = math.sqrt(dx * dx + dy * dy + dz * dz)
+            w = el.get("width", 0)
+            h = el.get("height", 0)
+            if length > 0 and not (0.1 <= length <= 200):
+                issues.append(
+                    f"❌ [{eid}] beam 长度={length:.1f}m，超出合理范围 0.1~200m，"
+                    f"可能坐标错误"
+                )
+            for fname, fv in [("width", w), ("height", h)]:
+                if fv > 0 and not (0.01 <= fv <= 5):
+                    issues.append(f"⚠️  [{eid}] beam {fname}={fv}m，建议在 0.01~5m")
+
+        elif t == "roof":
+            span = el.get("span", 0)
+            depth = el.get("depth", 0)
+            rh = el.get("height", 0)
+            for fname, fv, lo, hi in [
+                ("span", span, 0.5, 500),
+                ("depth", depth, 0.5, 500),
+                ("height", rh, 0.1, 100),
+            ]:
+                if fv > 0 and not (lo <= fv <= hi):
+                    issues.append(f"⚠️  [{eid}] roof {fname}={fv}m，建议在 {lo}~{hi}m")
+
+        elif t == "window":
+            frame = el.get("frameWidth", 0.06)
+            if not all(
+                _is_positive_number(value)
+                for value in (frame, el.get("width"), el.get("height"))
+            ):
+                issues.append(
+                    f"❌ [{eid}] window width、height、frameWidth 必须是有限正数"
+                )
+                continue
+            width, height = (
+                el.get("width", 0) - 2 * frame,
+                el.get("height", 0) - 2 * frame,
+            )
+            if width <= 0 or height <= 0:
+                issues.append(f"❌ [{eid}] frameWidth 必须保留正的窗净宽、净高")
+                continue
+            vertical, horizontal = el.get("verticalMullions", 0), el.get(
+                "horizontalMullions", 0
+            )
+            if any(
+                not isinstance(n, int) or isinstance(n, bool) or not 0 <= n <= 32
+                for n in (vertical, horizontal)
+            ):
+                issues.append(
+                    f"❌ [{eid}] verticalMullions、horizontalMullions 必须是 0–32 的整数"
+                )
+                continue
+            bar = el.get("mullionWidth", min(frame, 0.02))
+            ratios = {i / (vertical + 1) for i in range(1, vertical + 1)}
+            if el.get("interaction"):
+                ratios.add(0.5)
+            ordered = [0, *sorted(ratios), 1]
+            spacing = min((b - a) * width for a, b in zip(ordered, ordered[1:]))
+            if (ratios or horizontal) and (
+                not _is_positive_number(bar)
+                or (ratios and bar >= spacing)
+                or (horizontal and bar >= height / (horizontal + 1))
+            ):
+                issues.append(
+                    f"❌ [{eid}] mullionWidth 与棂条间距冲突，必须保留透明净空；独立设置棂条宽度，不缩改外框"
+                )
+
+        elif t == "opening":
+            w = el.get("width", 0)
+            h = el.get("height", 0)
+            for fname, fv in [("width", w), ("height", h)]:
+                if fv > 0 and not (0.1 <= fv <= 20):
+                    issues.append(f"⚠️  [{eid}] opening {fname}={fv}m，建议在 0.1~20m")
+
+        elif t == "stair":
+            f, to = el.get("from", [0, 0, 0]), el.get("to", [0, 0, 0])
+            dh = abs(to[1] - f[1])
+            dx = to[0] - f[0]
+            dz = to[2] - f[2]
+            horiz = math.sqrt(dx * dx + dz * dz)
+            if dh > 0 and not (0.1 <= dh <= 50):
+                issues.append(f"⚠️  [{eid}] stair 高差={dh:.1f}m，建议在 0.1~50m")
+            if horiz > 0 and not (0.1 <= horiz <= 100):
+                issues.append(
+                    f"⚠️  [{eid}] stair 水平距离={horiz:.1f}m，建议在 0.1~100m"
+                )
+
+    if not issues:
+        return f"✅ 所有 {len(elements)} 个构件尺寸合理。"
+    return "\n".join(issues)
+
+
+# ============================================================
+# 查询类 Tool —— 不修改 Blueprint，只返回场景信息供 LLM 参考
+# ============================================================
+
+
+def compute_wall_bounding_box(blueprint: dict) -> dict:
+    """返回结构墙体的机器可读包围盒，供状态图和组件节点共享。"""
+    walls = [
+        element
+        for element in _get_elements(blueprint)
+        if isinstance(element, dict)
+        and element.get("type") == "wall"
+        and _is_structural_wall(element)
+    ]
+    points: list[list[float]] = []
+    for wall in walls:
+        for field in ("from", "to"):
+            value = wall.get(field)
+            if not isinstance(value, list) or len(value) != 3:
+                continue
+            try:
+                point = [float(value[0]), float(value[1]), float(value[2])]
+            except (TypeError, ValueError):
+                continue
+            if all(
+                number == number and abs(number) != float("inf") for number in point
+            ):
+                points.append(point)
+
+    if not points:
+        return {}
+
+    minimum = [min(point[index] for point in points) for index in range(3)]
+    maximum = [max(point[index] for point in points) for index in range(3)]
+    return {
+        "min": minimum,
+        "max": maximum,
+        "center": [(minimum[index] + maximum[index]) / 2 for index in range(3)],
+        "size": [maximum[index] - minimum[index] for index in range(3)],
+        "wall_count": len(walls),
+    }
+
+
+def get_wall_bounding_box(blueprint: dict) -> str:
+    """
+    查询所有墙体的 XZ 平面包围盒信息。
+
+    返回墙体覆盖范围（宽度/进深）、中心点坐标、墙高范围，
+    用于在生成 roof / floor 等覆盖类构件前获取正确的目标尺寸。
+
+    重要：生成 roof 前必须先调用此工具！roof 的 span/depth 必须 >= 墙体包围盒。
+
+    参数 blueprint: 完整的 Blueprint dict
+    """
+    elements = _get_elements(blueprint)
+    walls = [
+        el for el in elements if el.get("type") == "wall" and _is_structural_wall(el)
+    ]
+
+    if not walls:
+        return "⚠️  场景中没有墙体，无法计算包围盒。"
+
+    all_x, all_z = [], []
+    all_y_min, all_y_max = [], []
+    for w in walls:
+        f = w.get("from", [0, 0, 0])
+        t = w.get("to", [0, 0, 0])
+        all_x.extend([f[0], t[0]])
+        all_z.extend([f[2], t[2]])
+        all_y_min.append(min(f[1], t[1]))
+        all_y_max.append(max(f[1], t[1]))
+
+    min_x, max_x = min(all_x), max(all_x)
+    min_z, max_z = min(all_z), max(all_z)
+    span = max_x - min_x
+    depth = max_z - min_z
+    center_x = (min_x + max_x) / 2
+    center_z = (min_z + max_z) / 2
+    min_y = min(all_y_min)
+    max_y = max(all_y_max)
+
+    EAVE = 1.0  # 建议出檐
+
+    return (
+        f"📐 墙体 XZ 包围盒信息：\n"
+        f"  - X 方向（宽度/面阔）：{span:.1f}m（从 {min_x:.1f} 到 {max_x:.1f}，中心={center_x:.1f}）\n"
+        f"  - Z 方向（进深）：{depth:.1f}m（从 {min_z:.1f} 到 {max_z:.1f}，中心={center_z:.1f}）\n"
+        f"  - Y 方向（高度）范围：{min_y:.1f}m ~ {max_y:.1f}m（最大墙高={max_y:.1f}m）\n"
+        f"  - 墙体数量：{len(walls)} 面\n"
+        f"\n"
+        f"💡 屋顶生成建议：\n"
+        f"  - roof.span 应设为 {span + EAVE * 2:.1f}m（墙体宽度 + {EAVE * 2:.1f}m 出檐）\n"
+        f"  - roof.depth 应设为 {depth + EAVE * 2:.1f}m（墙体进深 + {EAVE * 2:.1f}m 出檐）\n"
+        f"  - roof.position = [{center_x:.1f}, {max_y:.1f}, {center_z:.1f}]（墙顶中心）\n"
+        f"  - 如果是多屋顶设计，请根据各自的覆盖范围分别设置"
+    )
+
+
+# P0：屋顶自动修正
+
+
+def fix_roof_coverage(blueprint: dict) -> str:
+    """
+    自动修正屋顶的 span/depth/position，使其合理覆盖屋顶标高处的承托墙体。
+
+    修正逻辑：
+      1. 按 roof.position.y 选择同标高的承托墙体
+      2. span/depth = 承托墙跨度 + 出檐（默认 0.6m 每侧）
+      4. position.x = wall X 中心
+      5. position.z = wall Z 中心
+      6. position.y 保持不变（由 LLM 生成，通常是墙顶高度）
+
+    仅修正 span/depth 明显不匹配的屋顶（差值 > 2m）。
+
+    参数 blueprint: 完整的 Blueprint dict
+    """
+    elements = _get_elements(blueprint)
+    walls = [el for el in elements if el.get("type") == "wall"]
+    columns = [el for el in elements if el.get("type") == "column"]
+    roofs = [el for el in elements if el.get("type") == "roof"]
+
+    if not roofs:
+        return "✅ 没有 roof 构件，跳过修正。"
+    if not walls and not columns:
+        return "⚠️  没有 wall/column 构件，无法计算屋顶目标尺寸。"
+
+    EAVE = 0.6
+    fixes: list[str] = []
+    for r in roofs:
+        rid = r.get("id", "?")
+        span = r.get("span", 0)
+        depth = r.get("depth", 0)
+        bounds = get_roof_support_bounds(
+            walls,
+            r,
+            columns=columns,
+            beams=[e for e in elements if e.get("type") == "beam"],
+        )
+        wall_span = bounds["span"]
+        wall_depth = bounds["depth"]
+        center_x = bounds["center_x"]
+        center_z = bounds["center_z"]
+        target_span = round(wall_span + EAVE * 2, 2)
+        target_depth = round(wall_depth + EAVE * 2, 2)
+        pos = r.get("position", [center_x, bounds["support_y"], center_z])
+
+        changed: list[str] = []
+
+        # span 差值 > 2m 才修正
+        if abs(span - target_span) > 2.0:
+            r["span"] = target_span
+            changed.append(f"span {span} → {target_span}")
+
+        # depth 差值 > 2m 才修正
+        if abs(depth - target_depth) > 2.0:
+            r["depth"] = target_depth
+            changed.append(f"depth {depth} → {target_depth}")
+
+        # 退台建筑的顶层中心可能与首层相差数米，中心偏差超过 0.25m 即修正。
+        if isinstance(pos, list) and len(pos) >= 3:
+            if abs(pos[0] - center_x) > 0.25:
+                changed.append(f"position.x {pos[0]} → {center_x:.2f}")
+                pos[0] = round(center_x, 2)
+            if abs(pos[2] - center_z) > 0.25:
+                changed.append(f"position.z {pos[2]} → {center_z:.2f}")
+                pos[2] = round(center_z, 2)
+            r["position"] = pos
+
+        if changed:
+            fixes.append(f"🔧 [{rid}]: " + ", ".join(changed))
+
+    if not fixes:
+        return "✅ 所有屋顶均已匹配各自标高处的承托墙体，无需修正。"
+    return "已按屋顶标高处的承托墙体修正覆盖范围：\n" + "\n".join(fixes)
+
+
+# P1：墙体端点自动对齐
+
+
+def _segment_is_floor_boundary(
+    start: tuple[float, float],
+    end: tuple[float, float],
+    base_y: float,
+    floors: list[dict],
+) -> bool:
+    """判断一条轴对齐线段是否位于同层矩形楼板并集的外边界。"""
+    level_floors = [
+        floor
+        for floor in floors
+        if abs(float(floor.get("from", [0, 0, 0])[1]) - base_y) <= 0.25
+    ]
+    if not level_floors:
+        return False
+    x1, z1 = start
+    x2, z2 = end
+    if abs(x1 - x2) > 0.15 and abs(z1 - z2) > 0.15:
+        return False
+
+    def covered(x: float, z: float) -> bool:
+        for floor in level_floors:
+            floor_from = floor.get("from", [0, 0, 0])
+            floor_to = floor.get("to", [0, 0, 0])
+            min_x, max_x = sorted((float(floor_from[0]), float(floor_to[0])))
+            min_z, max_z = sorted((float(floor_from[2]), float(floor_to[2])))
+            if min_x - 0.01 <= x <= max_x + 0.01 and min_z - 0.01 <= z <= max_z + 0.01:
+                return True
+        return False
+
+    mid_x, mid_z = (x1 + x2) / 2, (z1 + z2) / 2
+    offset = 0.05
+    if abs(x1 - x2) <= 0.15:
+        side_a = covered(mid_x - offset, mid_z)
+        side_b = covered(mid_x + offset, mid_z)
+    else:
+        side_a = covered(mid_x, mid_z - offset)
+        side_b = covered(mid_x, mid_z + offset)
+    return side_a != side_b
+
+
+def fix_wall_junctions(blueprint: dict) -> str:
+    """
+    自动对齐孤立的墙体端点，消除墙体转角缝隙。
+
+    修正逻辑：
+      1. 对近距离孤立端点执行吸附；
+      2. 合法 T 形连接不修改；
+      3. 若剩余孤立端点之间的轴对齐缺口位于楼板并集外边界，补建缺失墙段。
+      若距离在 (TOLERANCE, MAX_SNAP] 范围内，则把孤立端点坐标对齐到目标端点。
+      - TOLERANCE = 0.15m（已在容差内的不处理）
+      - MAX_SNAP   = 0.5m（超过此距离不自动对齐，避免误操作）
+
+    参数 blueprint: 完整的 Blueprint dict
+    """
+    elements = _get_elements(blueprint)
+    walls = [
+        el for el in elements if el.get("type") == "wall" and _is_structural_wall(el)
+    ]
+    floors = [el for el in elements if el.get("type") == "floor"]
+
+    degenerate_ids = [
+        str(wall.get("id", "?")) for wall in walls if _wall_length(wall) <= 0.01
+    ]
+    if degenerate_ids:
+        return "❌ 零水平长度墙体不能用于猜测补墙，请依据已批准方案重建：" + ", ".join(
+            degenerate_ids
+        )
+
+    if len(walls) < 2:
+        return "✅ 少于 2 面墙，跳过端点对齐。"
+
+    TOLERANCE = 0.15
+    MAX_SNAP = 0.5
+
+    # 收集所有端点
+    endpoints: list[dict] = []
+    for w in walls:
+        f = w.get("from", [0, 0, 0])
+        t = w.get("to", [0, 0, 0])
+        bottom, top = _wall_vertical_range(w)
+        endpoints.append(
+            {
+                "wall": w,
+                "which": "from",
+                "x": float(f[0]),
+                "z": float(f[2]),
+                "bottom": bottom,
+                "top": top,
+            }
+        )
+        endpoints.append(
+            {
+                "wall": w,
+                "which": "to",
+                "x": float(t[0]),
+                "z": float(t[2]),
+                "bottom": bottom,
+                "top": top,
+            }
+        )
+
+    fixes: list[str] = []
+
+    for ep in endpoints:
+        # 检查是否已有邻居
+        has_neighbor = any(
+            other_wall is not ep["wall"]
+            and min(ep["top"], _wall_vertical_range(other_wall)[1])
+            - max(ep["bottom"], _wall_vertical_range(other_wall)[0])
+            > 0.15
+            and _plan_point_on_wall_segment(ep["x"], ep["z"], other_wall, TOLERANCE)
+            for other_wall in walls
+        )
+        if has_neighbor:
+            continue
+
+        # 找最近的其他墙端点
+        candidates = [
+            (math.sqrt((ep["x"] - o["x"]) ** 2 + (ep["z"] - o["z"]) ** 2), o)
+            for o in endpoints
+            if o["wall"] is not ep["wall"]
+        ]
+        if not candidates:
+            continue
+        dist, nearest = min(candidates, key=lambda x: x[0])
+
+        if TOLERANCE < dist <= MAX_SNAP:
+            wall = ep["wall"]
+            which = ep["which"]
+            old_x, old_z = ep["x"], ep["z"]
+            new_x, new_z = nearest["x"], nearest["z"]
+
+            # 修改 blueprint dict
+            coord = wall[which]  # list [x, y, z]
+            coord[0] = new_x
+            coord[2] = new_z
+            ep["x"] = new_x
+            ep["z"] = new_z
+
+            fixes.append(
+                f"🔧 [{wall.get('id','?')}.{which}]: "
+                f"({old_x:.2f}, {old_z:.2f}) → ({new_x:.2f}, {new_z:.2f})  "
+                f"dist={dist:.3f}m"
+            )
+
+    # 吸附后重新识别孤立端点，只对楼板外边界上的轴对齐缺口补墙。
+    isolated = []
+    for ep in endpoints:
+        connected = any(
+            other_wall is not ep["wall"]
+            and min(ep["top"], _wall_vertical_range(other_wall)[1])
+            - max(ep["bottom"], _wall_vertical_range(other_wall)[0])
+            > 0.15
+            and _plan_point_on_wall_segment(ep["x"], ep["z"], other_wall, TOLERANCE)
+            for other_wall in walls
+        )
+        if not connected:
+            isolated.append(ep)
+
+    used_ids = {str(element.get("id")) for element in elements}
+    for ep in isolated:
+        # 前一个端点可能已经补齐本缺口；按当前墙集合复查，保证一次及重复调用幂等。
+        if any(
+            wall is not ep["wall"]
+            and min(ep["top"], _wall_vertical_range(wall)[1])
+            - max(ep["bottom"], _wall_vertical_range(wall)[0])
+            > 0.15
+            and _plan_point_on_wall_segment(ep["x"], ep["z"], wall, TOLERANCE)
+            for wall in walls
+        ):
+            continue
+        candidates: list[tuple[float, dict]] = []
+        for other in endpoints:
+            if other["wall"] is ep["wall"]:
+                continue
+            same_level = abs(ep["bottom"] - other["bottom"]) <= 0.15
+            aligned = (
+                abs(ep["x"] - other["x"]) <= 0.15 or abs(ep["z"] - other["z"]) <= 0.15
+            )
+            distance = math.hypot(ep["x"] - other["x"], ep["z"] - other["z"])
+            if same_level and aligned and distance > TOLERANCE:
+                candidates.append((distance, other))
+        for distance, other in sorted(candidates, key=lambda item: item[0]):
+            if not _segment_is_floor_boundary(
+                (ep["x"], ep["z"]),
+                (other["x"], other["z"]),
+                ep["bottom"],
+                floors,
+            ):
+                continue
+            repair_index = 1
+            repair_id = f"wall_repair_{repair_index}"
+            while repair_id in used_ids:
+                repair_index += 1
+                repair_id = f"wall_repair_{repair_index}"
+            new_wall = {
+                "type": "wall",
+                "id": repair_id,
+                "from": [round(ep["x"], 3), ep["bottom"], round(ep["z"], 3)],
+                "to": [round(other["x"], 3), ep["top"], round(other["z"], 3)],
+                "thickness": float(ep["wall"].get("thickness", 0.24)),
+                "material": ep["wall"].get("material", "wall_finish"),
+            }
+            new_key = _wall_centerline_key(new_wall)
+            if new_key is None or any(
+                _wall_centerline_key(wall) == new_key for wall in walls
+            ):
+                # 该候选只是把已有墙反向复制一遍，继续寻找真正的边界缺口。
+                continue
+            elements.append(new_wall)
+            walls.append(new_wall)
+            used_ids.add(repair_id)
+            fixes.append(
+                f"🔧 [{repair_id}] 补齐楼板外边界墙段: "
+                f"({ep['x']:.2f}, {ep['z']:.2f}) → ({other['x']:.2f}, {other['z']:.2f})"
+            )
+            break
+
+    if not fixes:
+        return "✅ 所有墙体端点及合法 T 形连接均已闭合，无需修正。"
+    return "已自动修复墙体连接：\n" + "\n".join(fixes)
+
+
+# P1：开口越界自动修正（继 validate_opening_fit）
+
+
+def fix_opening_fit(blueprint: dict) -> str:
+    """
+    自动修正超出 parentWall 范围的 opening。
+
+    修正策略：
+      - 沿墙方向越界：将 from[0] 钳位到 [0, 墙长 - width]，width 超出墙长时等比例缩小
+      - 高度方向越界：将 from[1] 钳位到 [墙底Y, 墙顶Y - height]，height 超出墙高时等比例缩小
+
+    仅对严重越界（超出 0.5m）的 opening 进行修正，轻微偏差保留原样。
+
+    参数 blueprint: 完整的 Blueprint dict
+    """
+    elements = _get_elements(blueprint)
+    walls = {el["id"]: el for el in elements if el.get("type") == "wall"}
+    openings = [el for el in elements if el.get("type") == "opening"]
+    components = blueprint.get("geometry", {}).get("components", [])
+    door_windows = [
+        c for c in components if c.get("type") in WALL_OPENING_COMPONENT_TYPES
+    ]
+
+    if not openings and not door_windows:
+        return "✅ 没有 opening/门窗组件，跳过修正。"
+
+    THRESHOLD = 0.5  # 只修正超出 0.5m 的情况，避免过度干扰用户设计意图
+
+    fixes: list[str] = []
+    for op in openings:
+        oid = op.get("id", "?")
+        parent_id = op.get("parentWall", "")
+        parent = walls.get(parent_id)
+        if not parent:
+            continue
+
+        wl = _wall_length(parent)
+        wall_bottom_y, wall_top_y = _wall_vertical_range(parent)
+        wall_height = wall_top_y - wall_bottom_y
+
+        along = op.get("from", [0, 0, 0])[0]
+        base_y = op.get("from", [0, 0, 0])[1] if len(op["from"]) > 1 else wall_bottom_y
+        width = op.get("width", 1.0)
+        height = op.get("height", 1.0)
+
+        changed: list[str] = []
+
+        # 1. 沿墙方向修正
+        left_margin = max(0.0, 0.0 - along)
+        right_margin = max(0.0, (along + width) - wl)
+
+        if left_margin > THRESHOLD:
+            # 左端越界 → 向右移动，保持 width
+            new_along = 0.1  # 留 0.1m 余量
+            op["from"][0] = new_along
+            changed.append(
+                f"沿墙距离 {along:.2f} → {new_along:.2f}（左端越界 {left_margin:.2f}m）"
+            )
+        elif right_margin > THRESHOLD:
+            # 右端越界 → 向左移动，若 width 超过墙长则等比例缩小
+            max_width = wl - 0.1
+            if width > max_width:
+                op["width"] = max_width
+                changed.append(
+                    f"宽度 {width:.2f} → {max_width:.2f}（超出墙体 {right_margin:.2f}m）"
+                )
+            # 移动起点
+            new_along = max(0.1, wl - op["width"] - 0.1)
+            op["from"][0] = new_along
+            changed.append(f"沿墙距离 {along:.2f} → {new_along:.2f}（右端越界）")
+
+        # 2. 高度方向修正
+        bottom_margin = max(0.0, wall_bottom_y - base_y)
+        top_margin = max(0.0, (base_y + height) - wall_top_y)
+
+        if bottom_margin > THRESHOLD:
+            # 底部低于墙底 → 上移到墙底 + 余量
+            new_base_y = wall_bottom_y + 0.1
+            op["from"][1] = new_base_y
+            changed.append(
+                f"底部Y {base_y:.2f} → {new_base_y:.2f}（低于墙底 {bottom_margin:.2f}m）"
+            )
+        elif top_margin > THRESHOLD:
+            # 顶部高于墙顶 → 等比例缩小或下移
+            max_height = wall_height - 0.1
+            if height > max_height:
+                op["height"] = max_height
+                changed.append(
+                    f"高度 {height:.2f} → {max_height:.2f}（超出墙体 {top_margin:.2f}m）"
+                )
+            # 下移到底部
+            new_base_y = wall_top_y - op["height"] - 0.1
+            op["from"][1] = new_base_y
+            changed.append(f"底部Y {base_y:.2f} → {new_base_y:.2f}（超出墙顶）")
+
+        # 3. 防止尺寸为零或负值
+        if op.get("width", 1.0) <= 0.01:
+            op["width"] = 0.1
+            changed.append(f"宽度修正为 0.1m（原值为 {width}）")
+        if op.get("height", 1.0) <= 0.01:
+            op["height"] = 0.1
+            changed.append(f"高度修正为 0.1m（原值为 {height}）")
+
+        if changed:
+            fixes.append(f"🔧 [{oid}]: " + "; ".join(changed))
+
+    # ── 同样修正 door/window/bay_window 组合构件（components，非 elements）──
+    for comp in door_windows:
+        cid = comp.get("id", "?")
+        parent_id = comp.get("parentWall", "")
+        parent = walls.get(parent_id)
+        if not parent:
+            continue
+
+        wl = _wall_length(parent)
+        wall_bottom_y, wall_top_y = _wall_vertical_range(parent)
+
+        along = comp.get("from", [0, 0, 0])[0]
+        base_y = (
+            comp.get("from", [0, 0, 0])[1] if len(comp["from"]) > 1 else wall_bottom_y
+        )
+        width = comp.get("width", 1.0)
+        height = comp.get("height", 1.0)
+
+        changed: list[str] = []
+
+        # 沿墙方向修正
+        if along < -THRESHOLD:
+            comp["from"][0] = 0.0
+            changed.append(f"from[0] {along:.2f} → 0（左越界）")
+
+        # 修复右越界：先钳位 along，再钳位 width
+        if along + width > wl + THRESHOLD:
+            # 先确保 along 不超出墙长
+            clamped_along = min(along, wl - 0.1)
+            if along > clamped_along:
+                comp["from"][0] = round(clamped_along, 2)
+                changed.append(
+                    f"from[0] {along:.2f} → {clamped_along:.2f}（起点超出墙长）"
+                )
+                along = clamped_along
+
+            # 再钳位 width
+            max_width = wl - along
+            if max_width < 0.1:
+                max_width = 0.1
+
+            if width > max_width:
+                comp["width"] = round(max_width, 2)
+                changed.append(f"宽度 {width:.2f} → {max_width:.2f}（超出墙体）")
+
+        # 高度方向修正
+        if height > 0 and base_y + height > wall_top_y + THRESHOLD:
+            max_height = wall_top_y - max(base_y, wall_bottom_y)
+            if max_height > 0.1:
+                comp["height"] = round(max_height, 2)
+                changed.append(f"高度 {height:.2f} → {max_height:.2f}（超出墙顶）")
+
+        if changed:
+            fixes.append(f"🔧 [component:{cid}]: " + "; ".join(changed))
+
+    conflict_stats = _resolve_wall_opening_component_conflicts(blueprint)
+    relocated = conflict_stats["relocated_bay_windows"]
+    replaced = conflict_stats["replaced_windows"]
+    pruned = conflict_stats["pruned_bay_windows"]
+    relocated_windows = conflict_stats["relocated_windows"]
+    pruned_windows = conflict_stats["pruned_windows"]
+    if relocated:
+        fixes.append("🔧 凸窗移至安全窗位: " + ", ".join(relocated))
+    if replaced:
+        fixes.append("🔧 移除被门/凸窗替换的普通窗: " + ", ".join(replaced))
+    if pruned:
+        fixes.append("🔧 无安全窗位，移除冲突凸窗: " + ", ".join(pruned))
+    if relocated_windows:
+        fixes.append("🔧 普通窗移至同墙安全位置: " + ", ".join(relocated_windows))
+    if pruned_windows:
+        fixes.append("🔧 同墙无安全位置，移除重叠普通窗: " + ", ".join(pruned_windows))
+
+    if not fixes:
+        return "✅ 所有 opening/门窗组件均在 parentWall 合理范围内，无需修正。"
+    return "已自动修正以下 opening/门窗组件越界问题：\n" + "\n".join(fixes)
+
+
+# P1：楼梯端点高度自动对齐
+
+
+def fix_stair_alignment(blueprint: dict) -> str:
+    """
+    自动修正楼梯端点高度，使其对齐到最近的地板或墙体高度。
+
+    修正逻辑：
+      - 收集所有可用参考高度（地板顶面Y、墙体顶部Y、地面Y=0）
+      - 将 stair.from.y 对齐到最近的参考高度（偏差超过 0.2m 才修正）
+      - 将 stair.to.y 对齐到下一个更高的参考高度
+      - 确保 from.y < to.y（楼梯向上）
+
+    参数 blueprint: 完整的 Blueprint dict
+    """
+    elements = _get_elements(blueprint)
+    stairs = [el for el in elements if el.get("type") == "stair"]
+    if not stairs:
+        opened = cut_stair_openings(blueprint)
+        if opened:
+            return "已为模板楼梯拆分遮挡楼板：" + ", ".join(opened)
+        return "✅ 没有 stair 构件，跳过修正。"
+
+    # 收集参考高度
+    ref_ys: list[float] = [0.0]
+    for el in elements:
+        if el.get("type") == "floor":
+            fy = el.get("from", [0, 0, 0])[1]
+            thickness = el.get("thickness", 0.0)
+            if isinstance(fy, (int, float)):
+                ref_ys.append(float(fy) + float(thickness))  # 楼板顶面
+        elif el.get("type") == "wall":
+            ty = el.get("to", [0, 0, 0])[1]
+            if isinstance(ty, (int, float)):
+                ref_ys.append(float(ty))
+    ref_ys = sorted(set(ref_ys))
+
+    TOL = 0.2  # 20cm 容差，小于此值时视为已对齐
+
+    fixes: list[str] = []
+    for s in stairs:
+        sid = s.get("id", "?")
+        f = s.get("from", [0, 0, 0])
+        t = s.get("to", [0, 0, 0])
+        fy = float(f[1]) if len(f) > 1 else 0.0
+        ty = float(t[1]) if len(t) > 1 else 0.0
+
+        changed: list[str] = []
+
+        # 对齐 from.y
+        if ref_ys:
+            best_ref = min(ref_ys, key=lambda h: abs(h - fy))
+            if abs(fy - best_ref) > TOL:
+                f[1] = best_ref
+                changed.append(f"from.y {fy:.2f} → {best_ref:.2f}")
+
+        # 对齐 to.y（找比当前 from.y 更高的最近参考高度）
+        from_y = f[1]
+        higher_refs = [h for h in ref_ys if h > from_y]
+        if higher_refs:
+            best_to = min(higher_refs, key=lambda h: abs(h - ty))
+            if abs(ty - best_to) > TOL:
+                t[1] = best_to
+                changed.append(f"to.y {ty:.2f} → {best_to:.2f}")
+        else:
+            # 没有更高参考，设为 from.y + 0.3m（标准踏步高度）
+            new_to_y = from_y + 0.3
+            if abs(ty - new_to_y) > TOL:
+                t[1] = new_to_y
+                changed.append(f"to.y {ty:.2f} → {new_to_y:.2f}（默认踏步高度）")
+
+        # 检查 from.y < to.y，若不成立则交换
+        if f[1] >= t[1]:
+            f[1], t[1] = t[1], f[1]
+            changed.append("from/to Y 互换（确保楼梯向上）")
+
+        if changed:
+            fixes.append(f"🔧 [{sid}]: " + ", ".join(changed))
+
+    placement_issues = collect_stair_placement_issues(blueprint)
+
+    def is_generated_stair_id(item: dict) -> bool:
+        parts = str(item.get("id") or "").split("_")
+        return (
+            len(parts) == 3
+            and parts[0] == "stair"
+            and parts[1].isdigit()
+            and parts[2].isdigit()
+        )
+
+    floor_levels = _floor_regions_by_level(elements)
+    floor_gaps = [
+        next_y - current_y
+        for (current_y, _), (next_y, _) in zip(floor_levels, floor_levels[1:])
+        if next_y - current_y > 0.2
+    ]
+    if (
+        placement_issues
+        and stairs
+        and all(is_generated_stair_id(item) for item in stairs)
+        and floor_gaps
+    ):
+        preferred_widths = [
+            float(item.get("width"))
+            for item in stairs
+            if isinstance(item.get("width"), (int, float))
+        ]
+        layout = shared_stair_layout(
+            [regions for _, regions in floor_levels],
+            min(floor_gaps),
+            min(preferred_widths, default=1.8),
+        )
+        if layout:
+            start = layout["start"]
+            end = layout["end"]
+            ordered_stairs = sorted(
+                stairs,
+                key=lambda item: float((item.get("from") or [0, 0, 0])[1]),
+            )
+            for index, stair in enumerate(ordered_stairs):
+                lower, upper = (start, end) if index % 2 == 0 else (end, start)
+                stair["from"][0] = lower[0]
+                stair["from"][2] = lower[1]
+                stair["to"][0] = upper[0]
+                stair["to"][2] = upper[1]
+                stair["width"] = layout["width"]
+            fixes.append("🔧 楼梯栈移全楼共同有效区域，" "并交替梯段方向使相邻平台连续")
+
+    opened = cut_stair_openings(blueprint)
+    if opened:
+        fixes.append("🔧 拆分遮挡楼梯通道的楼板：" + ", ".join(opened))
+    if not fixes:
+        return "✅ 所有 stair 端点高度已合理对齐，无需修正。"
+    return "已自动修正以下 stair 高度对齐：\n" + "\n".join(fixes)
+
+
+# P1：构件尺寸自动修正（继 validate_element_dimensions）
+
+
+def fix_element_dimensions(blueprint: dict) -> str:
+    """
+    自动修正严重异常的构件尺寸。
+
+    修正策略：
+      - 超出上限 2 倍以上的尺寸才修正（防止过度干预合理设计）
+      - 按合理范围上限的 0.9 倍收缩
+      - 保留组件比例（如 wall 的厚度与高度比例）
+      - wall/column 的建议高度上限只产生警告，不改写合法的高层建筑总高度
+      - wall 的 from/to 是 WILD 高度事实源，移除与其重复或冲突的 height
+
+    参数 blueprint: 完整的 Blueprint dict
+    """
+    RULES = {
+        "wall": {"length": (0.1, 500), "height": (0.1, 50), "thickness": (0.01, 5)},
+        "floor": {"span": (0.1, 500), "thickness": (0.01, 5)},
+        "column": {"height": (0.1, 50), "radius": (0.01, 5)},
+        "beam": {"length": (0.1, 200), "width": (0.01, 5), "height": (0.01, 5)},
+        "roof": {"span": (0.5, 500), "depth": (0.5, 500), "height": (0.1, 100)},
+        "opening": {"width": (0.1, 20), "height": (0.1, 20)},
+        "stair": {"rise": (0.1, 50), "run": (0.1, 100)},
+    }
+
+    elements = _get_elements(blueprint)
+    fixes: list[str] = []
+
+    for el in elements:
+        t = el.get("type", "")
+        eid = el.get("id", "?")
+        if t not in RULES:
+            continue
+
+        changed: list[str] = []
+
+        # wall 特殊处理
+        if t == "wall":
+            length = _wall_length(el)
+            f, to = el.get("from", [0, 0, 0]), el.get("to", [0, 0, 0])
+            endpoint_height = abs(to[1] - f[1])
+            declared_height = el.get("height")
+            has_declared_height = (
+                isinstance(declared_height, (int, float))
+                and not isinstance(declared_height, bool)
+                and math.isfinite(float(declared_height))
+                and float(declared_height) > 0
+            )
+            thickness = el.get("thickness", 0)
+
+            lo, hi = RULES[t]["length"]
+            if length > hi * 2:  # 超过上限 2 倍才修
+                # 保持墙体方向，等比缩短到 hi * 0.9
+                scale = hi * 0.9 / length
+                el["to"][0] = f[0] + (to[0] - f[0]) * scale
+                el["to"][2] = f[2] + (to[2] - f[2]) * scale
+                changed.append(f"长度 {length:.1f} → {length*scale:.1f}m")
+
+            if endpoint_height <= 0.01 and has_declared_height:
+                bottom = min(float(f[1]), float(to[1]))
+                el["from"][1] = bottom
+                el["to"][1] = round(bottom + float(declared_height), 2)
+                el.pop("height", None)
+                changed.append(
+                    f"将 height={float(declared_height):.1f}m 统一为 from/to 竖向范围"
+                )
+            elif endpoint_height <= 0.01:
+                bottom = min(float(f[1]), float(to[1]))
+                new_top = _infer_wall_top(elements, bottom)
+                el["from"][1] = bottom
+                el["to"][1] = round(new_top, 2)
+                changed.append(
+                    f"高度 {endpoint_height:.1f} → {new_top - bottom:.1f}m（按楼板标高/常用层高补全）"
+                )
+            elif has_declared_height:
+                # WILD 使用 from/to 表达墙高。保留端点意味着既不会把百米外壳
+                # 静默压矮，也不会留下 height 与端点范围互相冲突的双重事实源。
+                el.pop("height", None)
+                changed.append(
+                    f"移除重复 height={float(declared_height):.1f}m，"
+                    f"保留 from/to 竖向范围={endpoint_height:.1f}m"
+                )
+
+            lo, hi = RULES[t]["thickness"]
+            if thickness > hi * 2:
+                el["thickness"] = hi * 0.9
+                changed.append(f"厚度 {thickness:.1f} → {el['thickness']:.1f}m")
+
+        # beam 特殊处理（长度）
+        elif t == "beam":
+            f, to = el.get("from", [0, 0, 0]), el.get("to", [0, 0, 0])
+            dx, dy, dz = to[0] - f[0], to[1] - f[1], to[2] - f[2]
+            length = math.sqrt(dx * dx + dy * dy + dz * dz)
+            lo, hi = RULES[t]["length"]
+            if length > hi * 2:
+                scale = hi * 0.9 / length
+                el["to"][0] = f[0] + dx * scale
+                el["to"][1] = f[1] + dy * scale
+                el["to"][2] = f[2] + dz * scale
+                changed.append(f"长度 {length:.1f} → {length*scale:.1f}m")
+
+        # 楼板 / 楼梯：通用字段修正
+        elif t in ("floor", "stair"):
+            for field, (lo, hi) in RULES[t].items():
+                val = el.get(field)
+                if val is not None and isinstance(val, (int, float)) and val > hi * 2:
+                    el[field] = hi * 0.9
+                    changed.append(f"{field} {val:.1f} → {el[field]:.1f}m")
+
+        # 屋顶修正（已在 fix_roof_coverage 中处理，这里只兜底极端值）
+        elif t == "roof":
+            for field, (lo, hi) in [
+                ("span", RULES[t]["span"]),
+                ("depth", RULES[t]["depth"]),
+                ("height", RULES[t]["height"]),
+            ]:
+                if field in el:
+                    val = el[field]
+                    if val > hi * 3:  # 极端异常才修
+                        el[field] = hi * 0.9
+                        changed.append(f"{field} {val:.1f} → {el[field]:.1f}m")
+
+        # 柱高超过建议范围只产生警告。高层建筑的全高柱是合法表达，不能在这里
+        # 静默压成 45m；如需分段，应由标准层模板或明确的结构编译规则负责。
+        elif t == "column":
+            pass
+
+        # 其余类型（opening 等）：通用字段兜底修正
+        else:
+            for field, (lo, hi) in RULES[t].items():
+                val = el.get(field)
+                if val is not None and isinstance(val, (int, float)) and val > hi * 2:
+                    el[field] = hi * 0.9
+                    changed.append(f"{field} {val:.1f} → {el[field]:.1f}m")
+
+        if changed:
+            fixes.append(f"🔧 [{eid}]: " + "; ".join(changed))
+
+    if not fixes:
+        return "✅ 所有构件尺寸在合理范围内，无需修正。"
+    return "已自动修正以下构件尺寸异常：\n" + "\n".join(fixes)
+
+
+# P1：竖向构件高程自动修正（继 validate_collision 悬空检测）
+
+
+def fix_element_elevations(blueprint: dict) -> str:
+    """
+    自动修正竖向构件底部 Y 坐标，使其对齐到最近的楼板顶面（含地面 Y=0）。
+
+    修正对象：
+      - column：base[1]（柱子底面 Y）
+      - stair：from[1]（楼梯起点 Y）
+      - furniture：position[1]（家具底面 Y）
+
+    修正阈值：
+      - gap > 0.3m（悬空超过容差）→ 修正到最近楼板 Y
+      - gap < -0.1m（穿入楼板）    → 修正到最近楼板 Y
+
+    仅修改底部锚点 Y 坐标，不触碰其他任何字段。
+
+    参数 blueprint: 完整的 Blueprint dict（直接修改，原地更新）
+    """
+    elements = _get_elements(blueprint)
+
+    floor_base_ys, floor_top_ys = _floor_reference_ys(blueprint)
+
+    FLOAT_THRESH = 0.31  # 悬空超过 0.31m 才修正（略大于 validate_collision 的 0.3m 容差，避免浮点误差边界触发）
+    EMBED_THRESH = 0.1  # 穿入超过 0.1m 才修正
+
+    # 各类型的底部 Y 获取/设置方式
+    TYPE_CONFIG = {
+        "column": ("base", 1),
+        "stair": ("from", 1),
+        "furniture": ("position", 1),
+    }
+
+    fixes: list[str] = []
+
+    for el in elements:
+        t = el.get("type", "")
+        if t not in TYPE_CONFIG:
+            continue
+
+        field, idx = TYPE_CONFIG[t]
+        coord = el.get(field)
+        if not coord or len(coord) <= idx:
+            continue  # 坐标缺失，跳过
+
+        bottom_y = float(coord[idx])
+        ref_ys = floor_top_ys if t == "furniture" else floor_base_ys
+        nearest_floor = min(ref_ys, key=lambda h: abs(h - bottom_y))
+        gap = bottom_y - nearest_floor
+
+        if gap > FLOAT_THRESH or gap < -EMBED_THRESH:
+            eid = el.get("id", "?")
+            coord[idx] = nearest_floor
+            fixes.append(
+                f"🔧 [{eid}]（{t}）底部 Y: {bottom_y:.3f} → {nearest_floor:.3f}"
+                f"（{'悬空' if gap > 0 else '穿入'} {abs(gap):.3f}m，对齐到楼板 Y={nearest_floor:.3f}）"
+            )
+
+    if not fixes:
+        ref_str = ", ".join(f"{h:.2f}" for h in floor_base_ys)
+        return (
+            f"✅ 所有竖向构件底部 Y 均已对齐楼板，无需修正。（参考高度: [{ref_str}]）"
+        )
+    return f"已自动修正 {len(fixes)} 个竖向构件的高程：\n" + "\n".join(fixes)
+
+
+#: 通用几何通道的构件类型：`primitive`（几何语言）与 `body`（简化人物）。
+#: 它们的 position 语义与 furniture 不同，所以不能复用 `fix_element_elevations`
+#: 的"逐件把底面贴到楼板"逻辑——见 `fix_primitive_elevations` 的说明。
+_GENERIC_SHAPE_TYPES = frozenset({"primitive", "body"})
+
+
+def _generic_shape_bottom_y(element: dict) -> float | None:
+    """通用几何构件的**最低点世界 Y**（近似）；无法判定时返回 None。
+
+    `primitive.position` 是**形体中心锚点**（见 KB《构件参数》§十一），
+    所以"最低点 = 中心 Y − 竖直半高"，逐 shape 不同：
+
+    - box → pos.y − dimensions[1]/2
+    - sphere → pos.y − radius
+    - cylinder → pos.y − height/2
+    - profile_sweep → pos.y + min(path[1])（路径最低点，忽略截面自身厚度）
+    - body → pos.y（引擎把脚底放在 origin 上，见 `body.ts::buildBody`）
+
+    rotation 不参与计算：旋转后的包围盒需要完整矩阵运算，而这里只用它判断
+    "整组是否悬空/穿地"，容差 0.31m 远大于倾斜带来的误差。
+    """
+
+    position = element.get("position")
+    if isinstance(position, list) and len(position) == 3:
+        try:
+            anchor_y = float(position[1])
+        except (TypeError, ValueError):
+            anchor_y = 0.0
+    else:
+        anchor_y = 0.0
+
+    etype = element.get("type")
+    if etype == "body":
+        return anchor_y
+
+    shape = str(element.get("shape") or "")
+    try:
+        if shape == "box":
+            dimensions = element.get("dimensions")
+            if not (isinstance(dimensions, list) and len(dimensions) == 3):
+                return None
+            return anchor_y - float(dimensions[1]) / 2.0
+        if shape == "sphere":
+            return anchor_y - float(element.get("radius"))
+        if shape == "cylinder":
+            return anchor_y - float(element.get("height")) / 2.0
+        if shape == "profile_sweep":
+            path = element.get("path")
+            if not (isinstance(path, list) and path):
+                return None
+            ys = [
+                float(point[1])
+                for point in path
+                if isinstance(point, list) and len(point) == 3
+            ]
+            return anchor_y + min(ys) if ys else None
+    except (TypeError, ValueError):
+        return None
+    return None
+
+
+def fix_primitive_elevations(blueprint: dict) -> str:
+    """把 `primitive` / `body` 装配体的**最低点**对齐到行走面（Y=0）。
+
+    与 `fix_element_elevations` 的关键区别是**修法不同**：
+
+    - furniture 的 `position` 是**底面中心**，可以逐件把自己的底面贴到楼板顶面；
+    - primitive 的 `position` 是**形体中心**，逐件贴地会把每个零件都压进地面
+      （球心贴到 Y=0 = 半个球埋进地里）。
+
+    所以这里只做**整组刚性平移**：算出本次所有 primitive/body 的最低点，
+    只有整组悬空 > 0.31m 或整体穿入 > 0.1m 时，才把所有零件平移同一个量。
+    零件之间的相对关系完全不变，装配体不会被拆散。
+
+    场景里存在 floor 时不动：那时 primitive 可能有意分层摆放（灯具、檐盘等），
+    整组平移会把分层关系压平。这种场景的落位由生成节点负责。
+    """
+
+    elements = _get_elements(blueprint)
+    targets = [
+        element
+        for element in elements
+        if isinstance(element, dict) and element.get("type") in _GENERIC_SHAPE_TYPES
+    ]
+    if not targets:
+        return "✅ 无 primitive/body 构件需要修正。"
+
+    if any(
+        isinstance(element, dict) and element.get("type") == "floor"
+        for element in elements
+    ):
+        return (
+            "✅ 场景含楼板：primitive/body 可分标高摆放，不做整组平移"
+            "（逐件贴地会把中心锚点的形体压进地面）。"
+        )
+
+    bottoms: list[float] = []
+    for element in targets:
+        bottom = _generic_shape_bottom_y(element)
+        if bottom is not None:
+            bottoms.append(bottom)
+    if not bottoms:
+        return "⚠️ primitive/body 构件缺少可判定的几何参数，未做高程修正。"
+
+    FLOAT_THRESH = 0.31  # 与 fix_element_elevations 同一容差，避免边界浮点抖动
+    EMBED_THRESH = 0.1
+    lowest = min(bottoms)
+    gap = lowest - 0.0
+    if -EMBED_THRESH <= gap <= FLOAT_THRESH:
+        return (
+            f"✅ primitive/body 装配体最低点 {lowest:.3f} 已在行走面容差内，无需修正。"
+        )
+
+    delta = round(-gap, 3)
+    for element in targets:
+        position = element.get("position")
+        if not (isinstance(position, list) and len(position) == 3):
+            position = [0.0, 0.0, 0.0]
+            element["position"] = position
+        try:
+            position[1] = round(float(position[1]) + delta, 3)
+        except (TypeError, ValueError):
+            position[1] = delta
+    return (
+        f"🔧 primitive/body 装配体整组平移 {delta:+.3f}m："
+        f"最低点 {lowest:.3f} → 0.000（{'悬空' if gap > 0 else '穿入'} {abs(gap):.3f}m；"
+        f"共 {len(targets)} 个零件，零件相对关系不变）"
+    )
+
+
+def _validate_element_fields(
+    element, required_fields, valid_furniture_subtypes, valid_primitive_shapes, issues
+):
+    """检查单个基础实体的必填字段、几何形状和旋转协议。"""
+    element_type = element.get("type", "")
+    element_id = element.get("id", "?")
+    if element_type == "solid":
+        from agent.utils.components.capability import load_engine_schema
+        from jsonschema import Draft202012Validator
+
+        schema = load_engine_schema()
+        if schema is None:
+            issues.append(f"❌ [{element_id}] WILD Schema不可用，不能确认solid参数")
+            return
+        definition = next(
+            (
+                value
+                for value in schema.get("$defs", {}).values()
+                if value.get("properties", {}).get("type", {}).get("const") == "solid"
+                and value.get("properties", {}).get("kind", {}).get("const")
+                == element.get("kind")
+            ),
+            None,
+        )
+        if definition is None:
+            issues.append(f"❌ [{element_id}] 未知solid.kind {element.get('kind')!r}")
+            return
+        for error in Draft202012Validator(
+            {**definition, "$defs": schema["$defs"]}
+        ).iter_errors(element):
+            issues.append(
+                f"❌ [{element_id}] solid字段 {'/'.join(map(str,error.path))}：{error.message}"
+            )
+        return
+    required = required_fields.get(element_type, [])
+    if not required:
+        issues.append(f"❌ [{element_id}] 未知构件类型 '{element_type}'")
+        return
+    for field in required:
+        if field not in element or element[field] is None:
+            issues.append(
+                f"❌ [{element_id}] (type={element_type}) 缺少必填字段 '{field}'"
+            )
+
+    # furniture 特殊检查
+    if element_type == "furniture":
+        # subtype 合法性
+        subtype = element.get("subtype", "")
+        if subtype and subtype not in valid_furniture_subtypes:
+            issues.append(
+                f"❌ [{element_id}] furniture subtype='{subtype}' 无效。"
+                f"合法值: {valid_furniture_subtypes}"
+            )
+        # dimensions 结构化检查
+        if "dimensions" in element:
+            dims = element["dimensions"]
+            if isinstance(dims, dict):
+                for dfield in ["width", "depth", "height"]:
+                    if dfield not in dims or dims[dfield] is None:
+                        issues.append(
+                            f"❌ [{element_id}] (type=furniture) dimensions 缺少 '{dfield}'"
+                        )
+            else:
+                issues.append(
+                    f"❌ [{element_id}] (type=furniture) dimensions 必须是对象，实际为 {type(dims).__name__}"
+                )
+
+    # rotation 类型检查（所有带 rotation 的基础构件共用）。
+    # rotation 是弧度制 vec3；标量（如 90）会让 wild-core 构建器抛
+    # "rotation is not iterable"，整个构件从场景消失——必须在交付前拦下。
+    if "rotation" in element and not _is_finite_vector3(element["rotation"]):
+        issues.append(
+            f"❌ [{element_id}] (type={element_type}) rotation 必须是弧度制三维数组 "
+            f"[rx, ry, rz]（朝向写 [0, 弧度, 0]），"
+            f"实际为 {element['rotation']!r}；不要写度数标量"
+        )
+
+    if element_type == "floor":
+        shape = element.get("shape", "rect")
+        if shape == "circle":
+            if "radius" not in element:
+                issues.append(f"❌ [{element_id}] 圆形 floor 缺少 radius")
+        elif shape == "polygon":
+            from agent.utils.geometry.floors import floor_region
+
+            try:
+                floor_region(element)
+            except ValueError as exc:
+                issues.append(f"❌ [{element_id}] {exc}")
+        elif "to" not in element:
+            issues.append(f"❌ [{element_id}] 矩形 floor 缺少 to")
+
+    if element_type == "primitive":
+        shape = element.get("shape", "")
+        if shape and shape not in valid_primitive_shapes:
+            issues.append(
+                f"❌ [{element_id}] primitive shape='{shape}' 无效。"
+                f"合法值: {valid_primitive_shapes}"
+            )
+        if shape == "box":
+            dimensions = element.get("dimensions")
+            valid_dimensions = _is_finite_vector3(dimensions) and all(
+                value > 0 for value in dimensions
+            )
+            if not valid_dimensions:
+                issues.append(
+                    f"❌ [{element_id}] primitive box 的 dimensions 必须是 "
+                    "[width, height, depth] 三个正有限数字"
+                )
+        if shape == "sphere" and "radius" not in element:
+            issues.append(f"❌ [{element_id}] primitive sphere 缺少 radius")
+        if shape == "cylinder":
+            if "height" not in element:
+                issues.append(f"❌ [{element_id}] primitive cylinder 缺少 height")
+            if "radius" not in element and not (
+                "radiusTop" in element and "radiusBottom" in element
+            ):
+                issues.append(
+                    f"❌ [{element_id}] primitive cylinder 需要 radius，或同时提供 radiusTop/radiusBottom"
+                )
+        if shape == "profile_sweep" and "path" not in element:
+            issues.append(f"❌ [{element_id}] primitive profile_sweep 缺少 path")
+
+
+def _validate_component_fields(component, component_required, issues):
+    """检查单个组合构件的必填参数、坐标和尺寸。"""
+    if not isinstance(component, dict):
+        issues.append("❌ geometry.components 中的项目必须是对象")
+        return
+    component_id = component.get("id", "?")
+    component_type = component.get("type", "")
+    required = component_required.get(component_type)
+    if required is None:
+        issues.append(f"❌ [{component_id}] 未知组合构件类型 '{component_type}'")
+        return
+    for field in required:
+        if field not in component or component[field] is None:
+            issues.append(
+                f"❌ [{component_id}] (component={component_type}) 缺少必填字段 '{field}'"
+            )
+    if component_type in {"door", "window", "canopy", "balcony", "bay_window"}:
+        if not _is_finite_vector3(component.get("from")):
+            issues.append(f"❌ [{component_id}] from 必须是三维有限坐标")
+        numeric_fields = [
+            field
+            for field in required
+            if field not in {"parentWall", "from", "interaction"}
+        ]
+        for field in numeric_fields:
+            value = component.get(field)
+            if (
+                not isinstance(value, (int, float))
+                or isinstance(value, bool)
+                or value <= 0
+            ):
+                issues.append(f"❌ [{component_id}] {field} 必须是正数")
+    elif component_type in {"railing", "cornice"}:
+        path = component.get("path")
+        if (
+            not isinstance(path, list)
+            or len(path) < 2
+            or not all(_is_finite_vector3(point) for point in path)
+        ):
+            issues.append(f"❌ [{component_id}] path 至少需要两个三维有限坐标")
+    elif component_type == "ramp":
+        for field in ("from", "to"):
+            if not _is_finite_vector3(component.get(field)):
+                issues.append(f"❌ [{component_id}] {field} 必须是三维有限坐标")
+        for field in ("width", "thickness"):
+            value = component.get(field)
+            if (
+                not isinstance(value, (int, float))
+                or isinstance(value, bool)
+                or value <= 0
+            ):
+                issues.append(f"❌ [{component_id}] {field} 必须是正数")
+    elif component_type == "elevator":
+        if not _is_finite_vector3(component.get("position")):
+            issues.append(f"❌ [{component_id}] position 必须是三维有限坐标")
+        dims = component.get("dimensions")
+        if (
+            not isinstance(dims, dict)
+            or not isinstance(dims.get("width"), (int, float))
+            or not isinstance(dims.get("depth"), (int, float))
+            or not isinstance(dims.get("height"), (int, float))
+            or any(
+                isinstance(v, bool)
+                for v in dims.values()
+                if isinstance(v, (int, float))
+            )
+            or min(dims.get("width", 0), dims.get("depth", 0), dims.get("height", 0))
+            <= 0
+        ):
+            issues.append(
+                f"❌ [{component_id}] dimensions 必须是 {{width, depth, height}} 且均为正数"
+            )
+        for field in ("floorHeight", "floorCount"):
+            value = component.get(field)
+            if (
+                not isinstance(value, (int, float))
+                or isinstance(value, bool)
+                or value <= 0
+            ):
+                issues.append(f"❌ [{component_id}] {field} 必须是正数")
+        initial_floor = component.get("initialFloor")
+        if initial_floor is not None and (
+            not isinstance(initial_floor, int)
+            or isinstance(initial_floor, bool)
+            or initial_floor < 0
+            or (
+                isinstance(component.get("floorCount"), int)
+                and initial_floor >= component["floorCount"]
+            )
+        ):
+            issues.append(
+                f"❌ [{component_id}] initialFloor 必须落在 [0, floorCount) 内"
+            )
+    elif component_type in {"chimney", "light"}:
+        if not _is_finite_vector3(component.get("position")):
+            issues.append(f"❌ [{component_id}] position 必须是三维有限坐标")
+        for field in required:
+            if field == "position":
+                continue
+            value = component.get(field)
+            if (
+                not isinstance(value, (int, float))
+                or isinstance(value, bool)
+                or value <= 0
+            ):
+                issues.append(f"❌ [{component_id}] {field} 必须是正数")

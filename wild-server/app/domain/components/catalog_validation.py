@@ -1,7 +1,7 @@
 """不依赖 Web 框架的物品资产导入校验。"""
 
 from __future__ import annotations
-from app.paths import SERVER_ROOT
+from common.paths import SERVER_ROOT
 
 import json
 from pathlib import Path

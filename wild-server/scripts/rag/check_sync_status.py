@@ -29,8 +29,8 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     # 先解析参数，让 --help 不需要初始化 Agent、Chroma 或 Embedding。
-    from app.infrastructure.retrieval.resources import create_spec_loader
-    from app.infrastructure.retrieval.loader import RAGSpecLoader
+    from agent.rag.resources import create_spec_loader
+    from agent.rag.loader import RAGSpecLoader
 
     loader = create_spec_loader()
     print(f"Spec Loader: {type(loader).__name__}")

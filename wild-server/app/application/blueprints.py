@@ -1,5 +1,7 @@
 """blueprints 业务用例，传输协议由 API 层适配。"""
 
+from collections.abc import Callable
+
 from app.application.errors import ApplicationError
 from app.application.access import require_admin
 from app.infrastructure.persistence.repositories.activity import public_usage, record_activity
@@ -29,7 +31,8 @@ def get_scene(filename: str):
 
 
 def update_scene(filename: str, user: dict | None, blueprint: dict=None, *,
-                 operation_id: str | None = None, label: str = "保存蓝图", base_revision: int | None = None):
+                 operation_id: str | None = None, label: str = "保存蓝图", base_revision: int | None = None,
+                 verify_ai_edit: Callable[..., bool] | None = None):
     if not isinstance(blueprint.get("meta"), dict) or not isinstance(blueprint.get("geometry"), dict):
         raise ApplicationError('invalid_input', "JSON 必须包含 meta 和 geometry 对象")
     try:
@@ -44,7 +47,7 @@ def update_scene(filename: str, user: dict | None, blueprint: dict=None, *,
                 owner_id = session_owner
         path = blueprint_repository.save(filename, blueprint, owner_id=owner_id, session_id=session_id,
                                          actor_id=user.get("id"), operation_id=operation_id,
-                                         label=label, base_revision=base_revision)
+                                         label=label, base_revision=base_revision, verify_ai_edit=verify_ai_edit)
     except OperationConflict:
         raise
     except ValueError as exc:

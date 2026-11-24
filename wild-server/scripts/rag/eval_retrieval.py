@@ -2,7 +2,7 @@
 RAG 检索评测工具
 
 功能：
-1. 使用项目真实检索链路（app.infrastructure.retrieval.loader.RAGSpecLoader + config 中的
+1. 使用项目真实检索链路（agent.rag.loader.RAGSpecLoader + config 中的
    embedding 配置）对内置或外部问题集逐条执行检索
 2. 输出每条问题的 Top-K 命中分片：距离/分数、来源文件、标题路径、实体、内容摘要
 3. 有标准答案时计算 Hit@K、Recall@K、MRR；同时保留距离、空召回等诊断指标
@@ -45,9 +45,9 @@ SERVER_ROOT = Path(__file__).resolve().parents[2]
 if str(SERVER_ROOT) not in sys.path:
     sys.path.insert(0, str(SERVER_ROOT))
 
-from app.infrastructure.retrieval.loader import RAGSpecLoader
-from app.infrastructure.retrieval.loader import collect_markdown_paths
-from app.infrastructure.retrieval.loader import create_embedding_function
+from agent.rag.loader import RAGSpecLoader
+from agent.rag.loader import collect_markdown_paths
+from agent.rag.loader import create_embedding_function
 
 # 与 app/infrastructure/retrieval/resources.py 保持一致的路径与排除规则
 _KB = SERVER_ROOT / "storage" / "knowledge_base"
@@ -194,7 +194,7 @@ def load_questions(args_questions: str | None, limit: int | None) -> list[dict[s
 def build_loader(args: argparse.Namespace) -> tuple[RAGSpecLoader, Any | None]:
     """按真实链路装配 Loader，并把实验索引与正式 Chroma 隔离。"""
     try:
-        from config import config
+        from agent.llm.config import config
     except Exception as exc:
         raise SystemExit(
             f"错误: 无法加载 config（请在 wild-server 根目录运行并设置 PYTHONPATH=\".\"）: {exc}"

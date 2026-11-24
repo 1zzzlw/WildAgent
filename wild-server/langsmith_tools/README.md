@@ -107,7 +107,7 @@ START → classifier → architecture → END
                   执行完成后的静态断点
 ```
 
-非建筑生成请求会在 classifier 后结束。这个入口只加载前两个业务节点，避免因后续旧节点仍引用已删除 design 模块而在启动时失败；业务完整图 app/agent/graph.py 本轮没有修改。
+非建筑生成请求会在 classifier 后结束。这个入口只加载前两个业务节点，避免因后续旧节点仍引用已删除 design 模块而在启动时失败；业务完整图 agent/graph.py 本轮没有修改。
 
 断点配置在图编译处：
 

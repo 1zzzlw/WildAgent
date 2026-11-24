@@ -20,7 +20,7 @@ SERVER_ROOT = Path(__file__).resolve().parents[2]
 if str(SERVER_ROOT) not in sys.path:
     sys.path.insert(0, str(SERVER_ROOT))
 
-from app.infrastructure.retrieval.rag.calibration import calibrate_distance_threshold
+from agent.rag.index.calibration import calibrate_distance_threshold
 
 
 def _samples_from_eval_results(results: list[dict]) -> list[dict[str, object]]:

@@ -41,7 +41,8 @@ def update_scene(filename: str, request: Request, blueprint: dict=Body(...),
     result = use_cases.update_scene(filename, getattr(request.state, "user", None), blueprint,
                                     operation_id=x_operation_id,
                                     label=unquote(x_operation_label)[:200] or "保存蓝图",
-                                    base_revision=x_base_revision)
+                                    base_revision=x_base_revision,
+                                    verify_ai_edit=getattr(request.app.state, "verify_ai_edit", None))
     return result
 
 

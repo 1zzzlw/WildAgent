@@ -5,7 +5,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
-from app.domain.components.names import component_catalog_document
+from agent.utils.components.names import component_catalog_document
 
 
 if __name__ == "__main__":

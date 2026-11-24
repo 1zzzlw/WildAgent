@@ -6,7 +6,7 @@ WILD 只保存 assetId、哈希、来源和 URL；图片本体由该存储层管
 """
 
 from __future__ import annotations
-from app.paths import SERVER_ROOT
+from common.paths import SERVER_ROOT
 
 import hashlib
 import json

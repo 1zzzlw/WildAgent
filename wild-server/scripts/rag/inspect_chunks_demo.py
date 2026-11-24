@@ -30,8 +30,8 @@ if sys.platform == "win32":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
-from app.infrastructure.retrieval.loader import MarkdownChunker
-from app.infrastructure.retrieval.loader import collect_markdown_paths
+from agent.rag.loader import MarkdownChunker
+from agent.rag.loader import collect_markdown_paths
 
 
 # ── 合法性检查 ──────────────────────────────────────────────────────

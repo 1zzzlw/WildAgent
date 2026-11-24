@@ -276,10 +276,10 @@ def build_new_collection(
     probe_embedding(candidate, no_proxy=no_proxy)
 
     # 延迟导入：probe 命令只验证标准接口，不加载 Chroma、LangChain 或 Agent。
-    from config import config
-    from app.infrastructure.retrieval.loader import RAGSpecLoader
-    from app.infrastructure.retrieval.loader import collect_markdown_paths
-    from app.infrastructure.retrieval.loader import create_embedding_function
+    from agent.llm.config import config
+    from agent.rag.loader import RAGSpecLoader
+    from agent.rag.loader import collect_markdown_paths
+    from agent.rag.loader import create_embedding_function
 
     embedding = create_embedding_function(
         api_key=config.embedding.api_key,

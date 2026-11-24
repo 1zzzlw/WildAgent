@@ -323,7 +323,7 @@ MRR 是 Mean Reciprocal Rank，即“平均倒数排名”。先计算每道题�
 6. 最后才是查询改写、混合检索和 rerank；
 7. 再检查 Agent 是否采用了已召回知识。
 
-项目中虽然已有 `app/agent/rag/hybrid_retriever.py`，但当前生产主链路仍由 `RAGSpecLoader` 的 Chroma 向量检索承担，不能把已有文件等同于功能已接入。
+项目中虽然已有 `agent/rag/index/hybrid_retriever.py`，但当前生产主链路仍由 `RAGSpecLoader` 的 Chroma 向量检索承担，不能把已有文件等同于功能已接入。
 
 ## 8. 用这些文件学习 Python
 

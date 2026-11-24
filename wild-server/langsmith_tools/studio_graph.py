@@ -1,8 +1,8 @@
 """给官方 Studio 导出项目原图；检查点由 Agent Server 管理。"""
-from app.domain.components import get_implemented_components
-from app.agent.graph import build_generation_graph
-from app.agent.graph import plan_recursion_limit
-from app.bootstrap.resources import initialize_agent_resources
+from agent.utils.components import get_implemented_components
+from agent.graph import build_generation_graph
+from agent.graph import plan_recursion_limit
+from agent.llm.resources import initialize_agent_resources
 
 
 initialize_agent_resources()
