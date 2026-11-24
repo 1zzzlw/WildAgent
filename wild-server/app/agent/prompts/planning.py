@@ -56,20 +56,15 @@ def _style_preference_section(style_preference: list[str] | None) -> str:
 
 
 def build_architecture_plan_prompt(
-    spec_text: str,
     profile_id: str,
     detail_level: DetailLevel = "minimal",
-    current_plan: dict | None = None,
-    revision_feedback: str = "",
     style_preference: list[str] | None = None,
     *,
     object_scene: bool = False,
 ) -> str:
     """字段定义来自同一份设计契约；不再维护另一份矩形建筑输出模板。"""
     if object_scene:
-        return _build_object_design_prompt(
-            spec_text, current_plan=current_plan, revision_feedback=revision_feedback
-        )
+        return _build_object_design_prompt()
 
     import json
     from app.domain.components.names import component_naming_prompt
@@ -80,10 +75,6 @@ def build_architecture_plan_prompt(
 
     guidance = DETAIL_LEVEL_GUIDANCE[detail_level]
     construction = SYSTEM_PROTOCOL if detail_level in ("standard", "detailed") else ""
-    previous_drawing = {
-        key: value for key, value in (current_plan or {}).items() if key != "complexity"
-    }
-    current = json.dumps(previous_drawing, ensure_ascii=False) if previous_drawing else "无"
     schema = json.dumps(
         architecture_output_schema(), ensure_ascii=False, separators=(",", ":")
     )
@@ -123,20 +114,11 @@ design_intent 中选定的特征必须有相应数据，不能仅靠文字表达
 type 使用稳定英文 snake_case，具体形式、色彩和材料写 description/form。常用命名允许按需求扩展：
 {component_naming_prompt()}
 
-参考资料提供设计方法与构造知识，不改变用户要求或上述坐标协议。
-当前方案：{current}
-修订意见：{revision_feedback or '无'}
 风格线索：{style_preference or []}
-本次设计参考：
-{spec_text}
 """
 
 
-def _build_object_design_prompt(
-    spec_text: str,
-    current_plan: dict | None = None,
-    revision_feedback: str = "",
-) -> str:
+def _build_object_design_prompt() -> str:
     """生成独立物件的图纸字段和摆位要求。"""
 
     import json as _json
@@ -146,18 +128,6 @@ def _build_object_design_prompt(
     #: 不另写一份 —— 预设增删时提示词自动跟着变。
     catalog_text = _json.dumps(subtype_catalog(), ensure_ascii=False, indent=2)
     materials = "wood, metal, glass, stone, fabric, accent"
-    revision_section = ""
-    if current_plan and revision_feedback:
-        revision_section = f"""
-
-# 本轮是物件方案修订
-
-用户对上一版的修改意见：{revision_feedback}
-
-上一版方案如下。保留未被意见否定的种类、尺寸与摆位，只改相关部分；仍需输出完整方案：
-
-{_json.dumps(current_plan, ensure_ascii=False, indent=2)}
-"""
 
     return f"""你是物件设计师。本次交付物**不是建筑**，而是用户点名的那件（或那几件）物件本身。
 只做物件清单、尺寸与摆位，不设计建筑、不设计房间、不设计体量。
@@ -281,11 +251,6 @@ def _build_object_design_prompt(
 - 实在无法表达某个点名物件时，把它写进 `unsupported_objects`（字符串列表），
   **不要**用其它物件顶上；此时 `objects` 可以为空。
 - 所有数值都必须由本次需求推导；不要输出类型说明文字代替数值。
-{revision_section}
-
-# 知识库参考
-
-{spec_text}
 """
 
 

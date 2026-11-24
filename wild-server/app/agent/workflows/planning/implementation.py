@@ -1302,7 +1302,7 @@ class _MarkerGeneration:
     async def _load_references(self):
         """为缺少构造资料的标记加载知识库及网络参考。"""
         from app.domain.components.capability import capability_surface
-        from app.agent.workflows.planning.knowledge_tool import search_knowledge_result
+        from app.agent.tools.knowledge import search_knowledge_result
 
         if self.callback:
             await self.callback(

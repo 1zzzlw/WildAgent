@@ -134,7 +134,7 @@ def test_display_text_does_not_become_a_material_reference():
                                                 ([None, .5], "succeeded")])
 def test_marker_failure_revision_and_revalidation(monkeypatch, responses, expected):
     from app.domain.planning.contracts import PlanItem
-    from app.agent.workflows.planning import knowledge_tool
+    from app.agent.tools import knowledge as knowledge_tool
     from app.agent import runtime as model_runtime
     from app.infrastructure.llm import invocation
     from app.infrastructure.llm.invocation import LlmResult

@@ -7,7 +7,7 @@ import json
 import pytest
 
 from app.agent.workflows.design import drafting
-from app.agent.workflows.design.architecture import _validation_reason
+from app.agent.tools.design_validation import _validation_reason
 from app.domain.design.coordinates import DesignCoordinateConflict, wall_covers
 from app.domain.design.resolver import build_design_document, resolve_design
 from app.domain.design.spatial import host_point, resolve_geometry
@@ -63,7 +63,7 @@ def test_repair_context_contains_levels_hosts_and_other_openings_without_widenin
     plan = duplicate_plan()
     plan["components"].append({**deepcopy(plan["components"][0]), "id": "other_window"})
     paths = ["/components/0"]
-    prompt = drafting._build_repair_prompt(plan, paths, "错层宿主", "上一补丁失败", "")
+    prompt = drafting._build_repair_prompt(plan, paths, "错层宿主", "上一补丁失败")
     context = json.loads(prompt.split("\n当前相关设计数据：", 1)[1])
     assert context["levels"] == plan["levels"]
     assert context["systems"] == plan["systems"]
@@ -96,7 +96,7 @@ def test_malformed_first_draft_can_still_build_a_targeted_repair_prompt():
     plan["walls"] = ["not a wall"]
     plan["components"] = ["not a component"]
     paths = drafting._repair_paths("/walls/0：应为对象", plan, set(plan))
-    prompt = drafting._build_repair_prompt(plan, paths, "字段类型错误", "字段类型错误", "")
+    prompt = drafting._build_repair_prompt(plan, paths, "字段类型错误", "字段类型错误")
     context = json.loads(prompt.split("\n当前相关设计数据：", 1)[1])
     assert context["repair_targets"]["/walls/0"]["value"] == "not a wall"
 
@@ -234,7 +234,10 @@ def test_rejected_candidate_does_not_replace_the_working_drawing(monkeypatch):
             raise ValueError(_validation_reason(exc)) from exc
 
     monkeypatch.setattr(drafting, "_request_draft", reply)
-    result, diag = asyncio.run(drafting.draft_design(base_prompt="生成建筑", user_request="别墅", validate=check))
+    result, diag = asyncio.run(drafting.draft_design(
+        base_prompt="生成建筑", user_request="别墅",
+        call_accounting={"model_calls": 0}, validate=check,
+    ))
     assert diag["settled"] and diag["model_calls"] == 3
     assert [item["validated"] for item in diag["repairs"]] == [False, True]
     assert [item["adopted"] for item in diag["repairs"]] == [False, True]
@@ -266,7 +269,10 @@ def test_partial_repair_is_kept_only_when_the_remaining_problem_set_strictly_shr
             raise ValueError(_validation_reason(exc)) from exc
 
     monkeypatch.setattr(drafting, "_request_draft", reply)
-    result, diag = asyncio.run(drafting.draft_design(base_prompt="生成建筑", user_request="别墅", validate=check))
+    result, diag = asyncio.run(drafting.draft_design(
+        base_prompt="生成建筑", user_request="别墅",
+        call_accounting={"model_calls": 0}, validate=check,
+    ))
     assert diag["settled"]
     assert [item["adopted"] for item in diag["repairs"]] == [True, True]
     assert [item["validated"] for item in diag["repairs"]] == [False, True]
@@ -303,7 +309,10 @@ def test_new_partition_conflict_can_be_repaired_without_adopting_the_failed_cand
             raise ValueError(_validation_reason(exc)) from exc
 
     monkeypatch.setattr(drafting, "_request_draft", reply)
-    result, diag = asyncio.run(drafting.draft_design(base_prompt="生成建筑", user_request="别墅", validate=check))
+    result, diag = asyncio.run(drafting.draft_design(
+        base_prompt="生成建筑", user_request="别墅",
+        call_accounting={"model_calls": 0}, validate=check,
+    ))
     assert diag["settled"]
     assert [item["adopted"] for item in diag["repairs"]] == [False, True]
     context = json.loads(prompts[2].split("\n当前相关设计数据：", 1)[1])

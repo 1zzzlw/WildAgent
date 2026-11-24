@@ -19,7 +19,6 @@ agent/
 │   ├── editing/              # 场景 Patch 生成
 │   ├── repair/               # 基于失败证据的模型修订
 │   ├── knowledge/            # 问答与受控研究
-│   ├── vision/               # 离线视觉审核和候选修订
 │   └── assets/               # 独立 PBR 资源工作流
 ├── prompts/                  # 各阶段提示词构建器
 └── tools/                    # 按需诊断工具和 LangChain 工具包装
@@ -28,8 +27,6 @@ agent/
 阅读主链从 `graph.py` 开始，通过 `nodes/*_node.py` 进入对应工作流。建筑和物件共用 `architecture → material_plan → plan → execute / replanner → compile → final_validate`。Plan 根据已确认图纸展开任务并准备初始蓝图。
 
 图纸与材质通过设计契约校验、保存并确定版本后自动继续。`design_ready` 事件用于展示，不创建人工审核中断。节点进度只说明流程走到哪里，不能代替业务验收和视觉确认；校验失败时可保留已有可编辑实体，同时明确返回失败状态。
-
-离线视觉审核通过 `python -m app.agent.workflows.vision.workflow` 启动，调用 `app.agent.tools.vision.proxy_evaluate` 读取蓝图并生成 `proxy.json`。该工具也可直接从 Python 调用。人工审核仍以对应版本的渲染截图为依据。
 
 依赖约定：
 

@@ -10,6 +10,8 @@ import time
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable
 
+from langchain_core.messages import AIMessage, AIMessageChunk, message_chunk_to_message
+
 from app.infrastructure.llm.client import message_texts
 from app.infrastructure.observability.trace import prepare_rag_llm_call
 from app.infrastructure.observability.trace import record_rag_llm_call
@@ -37,6 +39,7 @@ class LlmResult:
     finish_reason: str | None = None
     retry_count: int = 0
     call_id: str | None = None
+    message: AIMessage | None = None
 
     @property
     def content_chars(self) -> int:
@@ -78,6 +81,8 @@ def collect_response(response: Any) -> LlmResult:
     """从一次已完成的非流式响应收集 content / reasoning / usage / finish_reason。"""
     content, reasoning = message_texts(response)
     result = LlmResult(content=content, reasoning=reasoning)
+    if isinstance(response, AIMessage):
+        result.message = response
 
     metadata = getattr(response, "response_metadata", None) or {}
     if isinstance(metadata, dict):
@@ -179,7 +184,9 @@ async def invoke_llm(llm, messages, *, on_reasoning_delta: Callable[[str], Await
     raise last_exc if last_exc is not None else RuntimeError("invoke_llm 未返回结果")
 
 
-async def stream_llm(llm, messages, *, on_reasoning_delta=None) -> LlmResult:
+async def stream_llm(
+    llm, messages, *, on_reasoning_delta=None, keep_message=False
+) -> LlmResult:
     """统一流式调用：逐字收集 reasoning，末尾收集 content / usage / finish_reason。
 
     配置超时限制等待正文或思考新数据的时间；持续输出时更新截止时间。
@@ -189,6 +196,7 @@ async def stream_llm(llm, messages, *, on_reasoning_delta=None) -> LlmResult:
     reasoning_parts: list[str] = []
     token_usage: dict[str, int] | None = None
     finish_reason: str | None = None
+    message_chunks: list[AIMessageChunk] = []
 
     started = time.perf_counter()
     call_metadata = prepare_rag_llm_call(llm, messages)
@@ -198,8 +206,10 @@ async def stream_llm(llm, messages, *, on_reasoning_delta=None) -> LlmResult:
         _stream = llm.astream(messages)
         async with asyncio.timeout(llm_timeout if llm_timeout > 0 else None) as deadline:
             async for chunk in _stream:
+                if keep_message and isinstance(chunk, AIMessageChunk):
+                    message_chunks.append(chunk)
                 text, delta = message_texts(chunk)
-                if llm_timeout > 0 and (text or delta):
+                if llm_timeout > 0 and (text or delta or getattr(chunk, "tool_call_chunks", None)):
                     deadline.reschedule(asyncio.get_running_loop().time() + llm_timeout)
                 if text:
                     if not content_parts:
@@ -250,6 +260,11 @@ async def stream_llm(llm, messages, *, on_reasoning_delta=None) -> LlmResult:
         finish_reason=finish_reason,
         call_id=call_metadata.get("call_id"),
     )
+    if message_chunks:
+        combined = message_chunks[0] + message_chunks[1:]
+        message = message_chunk_to_message(combined)
+        if isinstance(message, AIMessage):
+            result.message = message
     record_rag_llm_call(
         mode="stream",
         elapsed_ms=round((time.perf_counter() - started) * 1000),

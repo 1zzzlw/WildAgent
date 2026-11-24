@@ -46,6 +46,8 @@ def test_existing_explicit_axis_is_preserved(axis):
 
 @pytest.mark.parametrize("needs_design_choice", [False, True])
 def test_original_output_replays_through_actual_architecture_node(monkeypatch, needs_design_choice):
+    from langchain_core.messages import AIMessage, ToolMessage
+
     from app.agent.workflows.design import architecture as workflow
     from app.agent.workflows.design import drafting as design_workflow
     from app.infrastructure.llm.invocation import LlmResult
@@ -58,13 +60,18 @@ def test_original_output_replays_through_actual_architecture_node(monkeypatch, n
     calls, repair_queries = [], []
     def repair_rules(queries, **_kwargs):
         repair_queries.extend(queries)
-        return "局部字段契约"
-    monkeypatch.setattr(agent_service.spec_loader, "load_many_result", lambda *_a, **_kw: SimpleNamespace(text="", hits=[]))
-    monkeypatch.setattr(agent_service.spec_loader, "load_many", repair_rules)
+        return SimpleNamespace(text="", hits=[])
+    monkeypatch.setattr(agent_service.spec_loader, "load_many_result", repair_rules)
     monkeypatch.setattr(workflow, "get_reasoning_callback", lambda: None)
-    monkeypatch.setattr(design_workflow, "create_llm", lambda **_kwargs: object())
+    monkeypatch.setattr(design_workflow, "create_llm", lambda **_kwargs: SimpleNamespace(bind_tools=lambda _: object()))
     async def reply(_model, messages, **_kwargs):
         calls.append(messages)
+        if len(calls) == 2 and needs_design_choice:
+            search = AIMessage(content="", tool_calls=[{
+                "id": "roof_rule", "name": "search_design_knowledge",
+                "args": {"query": "双坡屋面 ridge_axis 的字段取值"},
+            }])
+            return LlmResult(message=search)
         content = source if len(calls) == 1 else {"operations": [{"op": "replace", "path": "/roof/ridge_axis", "value": "x"}]}
         return LlmResult(content=json.dumps(content, ensure_ascii=False))
     monkeypatch.setattr(design_workflow, "invoke_llm", reply)
@@ -72,7 +79,7 @@ def test_original_output_replays_through_actual_architecture_node(monkeypatch, n
         "intent_profile": "villa", "session_id": "design-replay", "thinking_mode": False}))
     assert result.get("error") is None
     assert result["architecture_diag"]["settled"] is True
-    assert result["architecture_diag"]["model_calls"] == len(calls) == (2 if needs_design_choice else 1)
+    assert result["architecture_diag"]["model_calls"] == len(calls) == (3 if needs_design_choice else 1)
     document = result["design_document"]
     assert document["decisions"]["roof"]["ridge_axis"] == "x"
     assert document["decisions"]["massing"]["width"] == 12
@@ -80,8 +87,11 @@ def test_original_output_replays_through_actual_architecture_node(monkeypatch, n
     assert result["resolved_design"]["warnings"], "房间缺少内墙的警告必须保留"
     assert result["architecture_plan"]["components"][0]["placement"]["offset"] == 3.75
     if needs_design_choice:
-        assert len(repair_queries) == 1, "字段修订只检索当前字段协议，不重复加载粒度和总体设计流程"
-        assert repair_queries[0].metadata_filter == {"entity_name": "architecture_design_expression"}
+        assert len(repair_queries) == 1
+        assert repair_queries == ["双坡屋面 ridge_axis 的字段取值"]
+        assert isinstance(calls[-1][-1], ToolMessage)
+        assert calls[-1][-1].tool_call_id == "roof_rule"
+        assert result["architecture_diag"]["knowledge_trace"][0]["status"] == "no_match"
     else:
         assert repair_queries == []
         changes = [c for t in document["rule_trace"] for c in t["changes"]]
@@ -92,6 +102,6 @@ def test_original_output_replays_through_actual_architecture_node(monkeypatch, n
 
 def test_prompt_uses_shared_roof_field_description():
     from app.agent.prompts.planning import build_architecture_plan_prompt
-    prompt = build_architecture_plan_prompt("", "villa", detail_level="minimal")
+    prompt = build_architecture_plan_prompt("villa", detail_level="minimal")
     assert RoofDecision.model_fields["ridge_axis"].description in prompt
     assert "审核前" not in prompt and "校验和审核" not in prompt

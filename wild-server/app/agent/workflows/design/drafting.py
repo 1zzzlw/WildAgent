@@ -1,6 +1,7 @@
 """完整图纸起草与字段级修订；不检查引擎能否实现设计。"""
 
 from copy import deepcopy
+from functools import partial
 import json
 import re
 
@@ -12,7 +13,36 @@ from app.infrastructure.llm.invocation import merge_token_usage
 from app.infrastructure.observability.trace import llm_trace_scope
 from app.domain.blueprint.json_extractor import extract_json_object
 from app.domain.design.parametric import expand_parameters
-from app.domain.design.architecture.design_blocks import ordered_blocks
+
+_MAX_ATTEMPTS = 3
+_REPAIR_FIELDS = frozenset(
+    {
+        "concept",
+        "design_intent",
+        "design_constraints",
+        "design_rationale",
+        "massing",
+        "coordinate_system",
+        "levels",
+        "profiles",
+        "volumes",
+        "structural_grid",
+        "systems",
+        "slabs",
+        "voids",
+        "floor_layouts",
+        "circulation",
+        "walls",
+        "facades",
+        "curtain_wall",
+        "roofs",
+        "roof",
+        "components",
+        "relations",
+        "materials",
+        "detail_packages",
+    }
+)
 
 
 def _repair_paths(issue, draft, fields, *, target_draft=None):
@@ -39,15 +69,22 @@ def _repair_paths(issue, draft, fields, *, target_draft=None):
         walls = draft.get("walls")
         if parts[0] == "walls" and len(parts) == 2 and isinstance(walls, list):
             index = int(parts[1])
-            if index < len(walls) and isinstance(walls[index], dict) and walls[index].get("id"):
+            if (
+                index < len(walls)
+                and isinstance(walls[index], dict)
+                and walls[index].get("id")
+            ):
                 wall_ids.add(walls[index]["id"])
     for path in entity_reference_paths(draft, wall_ids):
         parts = path.strip("/").split("/")
         if parts[0] in fields:
             paths.append("/" + "/".join(parts[:2]))
-    if ("walls" in fields and isinstance(draft.get("walls"), list)
-            and any(path.startswith("/components") for path in paths)
-            and ("宿主" in issue or "/host" in issue)):
+    if (
+        "walls" in fields
+        and isinstance(draft.get("walls"), list)
+        and any(path.startswith("/components") for path in paths)
+        and ("宿主" in issue or "/host" in issue)
+    ):
         paths.append("/walls/-")
     if (
         any(p.startswith("/components") for p in paths)
@@ -67,14 +104,21 @@ def _repair_paths(issue, draft, fields, *, target_draft=None):
             parts = path.strip("/").split("/")
             source = draft.get(parts[0])
             target = target_draft.get(parts[0])
-            if (len(parts) == 2 and parts[1].isdigit()
-                    and isinstance(source, list) and isinstance(target, list)
-                    and int(parts[1]) < len(source)):
+            if (
+                len(parts) == 2
+                and parts[1].isdigit()
+                and isinstance(source, list)
+                and isinstance(target, list)
+                and int(parts[1]) < len(source)
+            ):
                 record = source[int(parts[1])]
                 if isinstance(record, dict) and record.get("id"):
                     parts[1] = "-"
                     for index, existing in enumerate(target):
-                        if isinstance(existing, dict) and existing.get("id") == record["id"]:
+                        if (
+                            isinstance(existing, dict)
+                            and existing.get("id") == record["id"]
+                        ):
                             parts[1] = str(index)
                             break
                     path = "/" + "/".join(parts)
@@ -107,7 +151,9 @@ def _apply_repair(draft, raw, paths):
         if operation.op != "remove" and "value" not in item:
             raise ValueError(f"{operation.path}：add/replace 必须提供 value")
         records = draft.get(operation.path.lstrip("/"))
-        if isinstance(records, list) and any(isinstance(row, dict) and row.get("id") for row in records):
+        if isinstance(records, list) and any(
+            isinstance(row, dict) and row.get("id") for row in records
+        ):
             raise ValueError(
                 f"{operation.path}：请修改具体实例或属性，不能替换或清空已有实体数组"
             )
@@ -116,8 +162,11 @@ def _apply_repair(draft, raw, paths):
             records = draft.get(tokens[0])
             if isinstance(records, list) and int(tokens[1]) < len(records):
                 old = records[int(tokens[1])]
-                if (isinstance(old, dict) and old.get("id")
-                        and (operation.op != "replace" or operation.value != old["id"])):
+                if (
+                    isinstance(old, dict)
+                    and old.get("id")
+                    and (operation.op != "replace" or operation.value != old["id"])
+                ):
                     raise ValueError(f"{operation.path}：修订须保留实例的稳定 ID")
         if (
             len(tokens) == 2
@@ -158,53 +207,73 @@ def _apply_repair(draft, raw, paths):
 
         references = entity_reference_paths(candidate, set(wall_removals.values()))
         if references:
-            raise ValueError("删除墙须在同一补丁迁移引用，目标墙 "
-                             + "、".join(wall_removals.values()) + "，仍有引用：" + "、".join(references))
+            raise ValueError(
+                "删除墙须在同一补丁迁移引用，目标墙 "
+                + "、".join(wall_removals.values())
+                + "，仍有引用："
+                + "、".join(references)
+            )
         original_hosts = {host["id"]: host for host in resolve_geometry(draft)["hosts"]}
-        retained_hosts = {host["id"]: host for host in resolve_geometry(candidate)["hosts"]}
+        retained_hosts = {
+            host["id"]: host for host in resolve_geometry(candidate)["hosts"]
+        }
         for index, identity in wall_removals.items():
             removed = original_hosts[identity]
             covered = False
             for retained_id, retained in retained_hosts.items():
-                if (retained_id != identity and retained_id in original_hosts
-                        and wall_covers(original_hosts[retained_id], removed)
-                        and wall_covers(retained, removed)):
+                if (
+                    retained_id != identity
+                    and retained_id in original_hosts
+                    and wall_covers(original_hosts[retained_id], removed)
+                    and wall_covers(retained, removed)
+                ):
                     covered = True
                     break
             if not covered:
-                raise ValueError(f"/walls/{index}：{identity} 未被保留墙完整覆盖，不能通过删除实体消除错误")
+                raise ValueError(
+                    f"/walls/{index}：{identity} 未被保留墙完整覆盖，不能通过删除实体消除错误"
+                )
     return candidate
 
 
-async def _request_draft(messages, *, thinking_mode, on_reasoning_delta):
+async def _request_draft(messages, *, thinking_mode, on_reasoning_delta, tools=()):
     """仅在首轮明确开启思考时转发流式推理内容。"""
-    use_thinking = thinking_mode
-    if use_thinking and on_reasoning_delta:
+    streaming = thinking_mode and on_reasoning_delta is not None
+    model = create_llm(enable_thinking=thinking_mode, streaming=streaming)
+    if tools:
+        model = model.bind_tools(tools)
+    if streaming:
 
         async def emit(delta):
             await on_reasoning_delta("architecture", delta)
 
-        reply = await stream_llm(
-            create_llm(enable_thinking=True, streaming=True),
+        return await stream_llm(
+            model,
             messages,
             on_reasoning_delta=emit,
+            keep_message=bool(tools),
         )
-    else:
-        # 直接调用模型，因为没有思考模式，不需要流式输出
-        reply = await invoke_llm(
-            create_llm(enable_thinking=use_thinking, streaming=False), messages
-        )
-    return reply
+    return await invoke_llm(model, messages)
 
 
 def _build_repair_prompt(
-    draft, repair_paths, validation_issue, issue, rules, *, rejected_patch=None
+    draft, repair_paths, validation_issue, issue, *, rejected_patch=None
 ) -> str:
     """为允许修订的字段组装规则、当前值和具体校验错误。"""
     from app.domain.design.completeness import value_at
 
     reference = {}
-    for key in ("massing", "coordinate_system", "levels", "profiles", "systems", "volumes", "walls", "facades", "floor_layouts"):
+    for key in (
+        "massing",
+        "coordinate_system",
+        "levels",
+        "profiles",
+        "systems",
+        "volumes",
+        "walls",
+        "facades",
+        "floor_layouts",
+    ):
         if key in draft:
             reference[key] = draft[key]
     # 候选宿主是只读背景，不会因此扩大允许修改范围。
@@ -221,12 +290,17 @@ def _build_repair_prompt(
     reference["wall_references"] = entity_reference_paths(draft, wall_ids)
     reference["hosted_components"] = {}
     components = draft.get("components")
-    for index, component in enumerate(components if isinstance(components, list) else []):
+    for index, component in enumerate(
+        components if isinstance(components, list) else []
+    ):
         if not isinstance(component, dict):
             continue
         relation = component.get("relation")
         target = relation.get("target") if isinstance(relation, dict) else None
-        if any(isinstance(ref, str) and ref in wall_ids for ref in (component.get("host"), target)):
+        if any(
+            isinstance(ref, str) and ref in wall_ids
+            for ref in (component.get("host"), target)
+        ):
             reference["hosted_components"][f"/components/{index}"] = component
     try:
         reference["resolved_hosts"] = resolve_geometry(draft)["hosts"]
@@ -240,7 +314,8 @@ def _build_repair_prompt(
         exists, value = value_at(draft, path)
         reference["repair_targets"][path] = {"exists": exists, "value": value}
     missing_fields = [
-        path for path, target in reference["repair_targets"].items()
+        path
+        for path, target in reference["repair_targets"].items()
         if path.count("/") == 1 and not target["exists"]
     ]
     if missing_fields:
@@ -253,11 +328,11 @@ def _build_repair_prompt(
             model = field.annotation if field is not None else None
             if isinstance(model, type) and issubclass(model, BaseModel):
                 reference["repair_targets"][path]["required_fields"] = [
-                    name for name, definition in model.model_fields.items() if definition.is_required()
+                    name
+                    for name, definition in model.model_fields.items()
+                    if definition.is_required()
                 ]
-    return build_design_repair_prompt(
-        repair_paths, validation_issue, issue, rules, reference
-    )
+    return build_design_repair_prompt(repair_paths, validation_issue, issue, reference)
 
 
 def _validation_evidence(exc: Exception, design: dict):
@@ -269,7 +344,11 @@ def _validation_evidence(exc: Exception, design: dict):
         current = design
         stable = []
         for part in parts:
-            if isinstance(current, list) and part.isdigit() and int(part) < len(current):
+            if (
+                isinstance(current, list)
+                and part.isdigit()
+                and int(part) < len(current)
+            ):
                 current = current[int(part)]
                 identity = current.get("id") if isinstance(current, dict) else None
                 stable.append(str(identity) if identity else part)
@@ -290,21 +369,35 @@ def _validation_evidence(exc: Exception, design: dict):
         if callable(errors):
             problems = []
             for error in errors():
-                nested = getattr((error.get("ctx") or {}).get("error"), "conflicts", None)
+                nested = getattr(
+                    (error.get("ctx") or {}).get("error"), "conflicts", None
+                )
                 if nested:
                     problems.extend(nested)
                 else:
                     path = "/" + "/".join(str(part) for part in error["loc"])
                     exists, value = value_at(design, path.removeprefix("/decisions"))
-                    problems.append({"path": path, "type": error["type"], "message": error["msg"],
-                                     "actual": value if exists else error.get("input")})
+                    problems.append(
+                        {
+                            "path": path,
+                            "type": error["type"],
+                            "message": error["msg"],
+                            "actual": value if exists else error.get("input"),
+                        }
+                    )
             return 0, frozenset(fingerprint(problem) for problem in problems)
         conflicts = getattr(current, "conflicts", None)
         if conflicts:
             problems = []
             for conflict in conflicts:
                 # related_paths 是修订范围，删墙后的数组下标变化不等于问题已经消失。
-                problems.append({key: value for key, value in conflict.items() if key != "related_paths"})
+                problems.append(
+                    {
+                        key: value
+                        for key, value in conflict.items()
+                        if key != "related_paths"
+                    }
+                )
             return 1, frozenset(fingerprint(problem) for problem in problems)
         current = current.__cause__
     # 无结构证据时，仅完整通过的候选可被采用，不能靠错误文案长度或数量评分。
@@ -315,56 +408,19 @@ def _validation_evidence(exc: Exception, design: dict):
 # user_request：用户原始需求
 # thinking_mode：是否允许首轮开启思考
 # on_reasoning_delta：向外发送思考内容、进度的异步函数
-# current_plan：可选的起始图纸
-# only_blocks：可选的设计字段分组范围
-# defects：调用方提供的待修问题
-# max_attempts：最多尝试次数，默认 3
-# call_accounting：与外层共享的调用计数字典
-# allow_design_changes：控制后面的一项顶层字段检查
+# call_accounting：调用方初始化的模型调用计数，与检索子图共享
 # validate：外层传入的校验函数
-# load_repair_rules：外层传入的修订资料检索函数
-# **_options：接收其他命名参数，其中 design_hash 用于追踪
 async def draft_design(
     *,
     base_prompt,
     user_request,
+    call_accounting: dict[str, int],
     thinking_mode=False,
     on_reasoning_delta=None,
-    current_plan=None,
-    only_blocks=None,
-    defects=None,
-    max_attempts=3,
-    call_accounting=None,
-    allow_design_changes=False,
     validate=None,
-    load_repair_rules=None,
-    **_options,
+    request_draft=None,
 ):
-    # 调用方传进来的上一轮设计图纸，有起始图纸，就深复制；没有就使用空字典
-    context = deepcopy(current_plan or {})
-    # 创建空集合，用来保存允许处理的顶层字段名。集合会自动去重。
-    fields = set()
-    # 遍历设计字段分组
-    for block in ordered_blocks():
-        if only_blocks is not None and block.name not in only_blocks:
-            continue
-        fields.update(block.fields)
-
-    # 没有限定分组时，再加入逐层布局字段
-    if only_blocks is None:
-        fields.add("floor_layouts")
-
     prompt = base_prompt
-    if only_blocks is not None:
-        prompt += "\n本轮只修订这些字段：" + ", ".join(sorted(fields))
-    if defects:
-        # 补充待修问题
-        prompt += "\n待修问题：" + str(defects)
-    if context:
-        # 旧图纸转成 JSON 放进去
-        prompt += "\n当前图纸：" + json.dumps(context, ensure_ascii=False)
-    # 保存这份起始提示词
-    base = prompt
 
     # 初始化整个过程需要的记录
     # rejected：记录未通过的轮次、错误和模型原始输出
@@ -377,20 +433,24 @@ async def draft_design(
     usage = None
     # draft：保存后续可以修订的图纸草稿
     # repair_paths：本轮允许修改的具体路径
-    # rules：检索到的修订规则
     # validation_issue：保存图纸本身的校验错误
+    # draft_evidence：保存上轮校验的阶段和问题数量，用于判断本轮是否有改进
     draft = None
     repair_paths = []
-    rules = ""
     validation_issue = ""
     draft_evidence = None
 
-    # 如果调用方传来了计数字典，就直接使用它。这样即使后面模型调用抛错，外层仍然能看到已经尝试调用了几次。
-    accounting = call_accounting if call_accounting is not None else {"model_calls": 0}
+    initial_calls = call_accounting["model_calls"]
+
+    request_draft = request_draft or partial(
+        _request_draft, on_reasoning_delta=on_reasoning_delta
+    )
 
     # 开始最多三次尝试
     # 对应首次生成，加上最多两次修订。第一次成功就立即返回，不会继续调用。
-    for attempt in range(1, max_attempts + 1):
+    for attempt in range(1, _MAX_ATTEMPTS + 1):
+
+        # 任务描述：首次生成时使用用户原始需求；修订时使用系统提示和原始需求，要求只修订错误字段。
         task = (
             user_request
             if attempt == 1
@@ -405,18 +465,19 @@ async def draft_design(
             {"role": "user", "content": task},
         ]
 
-        accounting["model_calls"] = accounting.get("model_calls", 0) + 1
+        call_accounting["model_calls"] += 1
 
         # 设置追踪名称
         stage = (
             "architecture.generate" if attempt == 1 else "architecture.format_revision"
         )
+
         # 给首次生成和后续修订设置不同的追踪名称，方便查看 trace。
-        with llm_trace_scope(stage=stage, design_hash=_options.get("design_hash")):
-            reply = await _request_draft(
+        with llm_trace_scope(stage=stage):
+            reply = await request_draft(
                 messages,
+                # 只有第一次才开思考模式，重试关掉，节省 token
                 thinking_mode=thinking_mode and attempt == 1,
-                on_reasoning_delta=on_reasoning_delta,
             )
 
         usage = merge_token_usage(usage, reply.token_usage)
@@ -424,8 +485,14 @@ async def draft_design(
         raw = None
         issue = ""
         try:
+            # getattr()：动态获取对象的属性 / 方法
+            # - obj：目标对象
+            # - name：属性名字符串
+            # - default（可选）：找不到属性时返回这个；不填找不到直接抛 `AttributeError`
+            # finish_reason：模型输出结束的原因，可能是 "stop"、"length"、"max_tokens" 等
             if getattr(reply, "finish_reason", None) in {"length", "max_tokens"}:
                 raise ValueError("模型输出达到长度上限，图纸或补丁未完整返回")
+            # 把模型回复里的 JSON 文本解析成 Python 字典 raw
             raw = extract_json_object(
                 reply.content or "", outer_only=True, raise_on_error=True
             )
@@ -433,9 +500,11 @@ async def draft_design(
             issue = str(exc)
 
         # raw：模型本轮返回的对象，可能是完整设计，也可能是补丁
-        # candidate：准备接受校验的候选图纸
         # picked：本轮成功后实际返回的数据
+        # candidate：准备接受校验的候选图纸
         # checked：是否已经进入候选图纸的校验阶段
+        # adopted：候选图纸是否被采纳为后续修订的基础
+        # candidate_evidence：候选图纸的校验阶段和问题数量，用于判断是否有改进
         picked = raw or {}
         candidate = None
         checked = False
@@ -445,8 +514,9 @@ async def draft_design(
         if not issue:
             try:
                 source = raw
+                # 把模型返回里的简写、表达式、重复项展开成标准图纸结构。
                 raw, expansion = expand_parameters(
-                    raw, facts={"current_design": draft or context}
+                    raw, facts={"current_design": draft or {}}
                 )
                 picked = raw
                 if expansion:
@@ -455,21 +525,12 @@ async def draft_design(
                     )
                 if repair_paths:
                     candidate = _apply_repair(draft, raw, repair_paths)
-                    picked = (
-                        {key: candidate[key] for key in fields if key in candidate}
-                        if only_blocks is not None
-                        else candidate
-                    )
+                    picked = candidate
                     repairs.append(
                         {"attempt": attempt, "operations": deepcopy(raw["operations"])}
                     )
                 else:
-                    if allow_design_changes and set(raw) - fields:
-                        raise ValueError(
-                            "修订包含未授权字段："
-                            + ", ".join(sorted(set(raw) - fields))
-                        )
-                    candidate = {**context, **raw}
+                    candidate = raw.copy()
             except (ValueError, TypeError, KeyError) as exc:
                 issue = str(exc)
 
@@ -489,7 +550,9 @@ async def draft_design(
                 old_stage, old_problems = draft_evidence
                 new_stage, new_problems = candidate_evidence
                 # 校验阶段推进可揭示原先被字段错误挡住的问题；同阶段必须严格减少原问题且无新增。
-                improved = new_stage > old_stage or (new_stage == old_stage and new_problems < old_problems)
+                improved = new_stage > old_stage or (
+                    new_stage == old_stage and new_problems < old_problems
+                )
             adopted = draft is None or not issue or improved
             if issue and adopted:
                 volumes = candidate.get("volumes")
@@ -508,7 +571,7 @@ async def draft_design(
             repairs[-1]["adopted"] = adopted
         diag = {
             "settled": not issue,
-            "model_calls": attempt,
+            "model_calls": call_accounting["model_calls"] - initial_calls,
             "attempts": attempt,
             "token_usage": usage,
             "last_issue": issue,
@@ -531,26 +594,34 @@ async def draft_design(
         if on_reasoning_delta:
             await on_reasoning_delta(
                 "architecture:progress",
-                f"图纸需要修订（{attempt}/{max_attempts}）：{issue}。\n",
+                f"图纸需要修订（{attempt}/{_MAX_ATTEMPTS}）：{issue}。\n",
             )
-        if attempt == max_attempts:
+        if attempt == _MAX_ATTEMPTS:
             break
         if draft is not None and (checked or not repair_paths):
-            repair_paths = _repair_paths(validation_issue or issue, draft, fields) or repair_paths
+            repair_paths = (
+                _repair_paths(validation_issue or issue, draft, _REPAIR_FIELDS)
+                or repair_paths
+            )
             if checked and not adopted and candidate is not None:
                 # 新反馈可扩大关联修订范围，但失败候选的下标必须映射回保留稿的稳定 ID。
-                related = _repair_paths(issue, candidate, fields, target_draft=draft)
+                related = _repair_paths(
+                    issue, candidate, _REPAIR_FIELDS, target_draft=draft
+                )
                 repair_paths = list(dict.fromkeys([*repair_paths, *related]))
         if repair_paths:
-            if load_repair_rules and checked:
-                rules = await load_repair_rules(validation_issue)
             prompt = _build_repair_prompt(
-                draft, repair_paths, validation_issue, issue, rules,
-                rejected_patch=raw if isinstance(raw, dict) and "operations" in raw else None,
+                draft,
+                repair_paths,
+                validation_issue,
+                issue,
+                rejected_patch=(
+                    raw if isinstance(raw, dict) and "operations" in raw else None
+                ),
             )
         else:
             prompt = (
-                base
+                base_prompt
                 + "\n本轮修复未完成或缺少关键字段的图纸，返回完整 JSON，保留已有设计。错误："
                 + issue
                 + "\n上一稿："

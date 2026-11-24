@@ -573,7 +573,6 @@ def test_actual_architecture_node_accepts_spatial_schema_without_legacy_fields(
     import asyncio
     import json
     from types import SimpleNamespace
-    from app.agent.runtime import agent_runtime
     from app.agent.workflows.design import architecture, drafting
     from app.infrastructure.llm.invocation import LlmResult
 
@@ -599,14 +598,8 @@ def test_actual_architecture_node_accepts_spatial_schema_without_legacy_fields(
         calls.append(messages)
         return LlmResult(content=json.dumps(responses[len(calls) - 1], ensure_ascii=False))
 
-    monkeypatch.setattr(
-        agent_runtime.spec_loader,
-        "load_many_result",
-        lambda *_a, **_kw: SimpleNamespace(text="", hits=[]),
-    )
-    monkeypatch.setattr(agent_runtime.spec_loader, "load_many", lambda *_a, **_kw: "")
     monkeypatch.setattr(architecture, "get_reasoning_callback", lambda: None)
-    monkeypatch.setattr(drafting, "create_llm", lambda **_kw: object())
+    monkeypatch.setattr(drafting, "create_llm", lambda **_kw: SimpleNamespace(bind_tools=lambda _: object()))
     monkeypatch.setattr(drafting, "invoke_llm", reply)
     result = asyncio.run(
         architecture.architecture_planner(
@@ -623,11 +616,11 @@ def test_actual_architecture_node_accepts_spatial_schema_without_legacy_fields(
     assert len(calls) == len(responses)
     if draft_issue == "missing_massing":
         assert result["architecture_diag"]["repairs"][0]["validated"]
-        assert '允许修改的范围：["/massing"]' in calls[1][0]["content"]
-        assert '"required_fields"' in calls[1][0]["content"]
+        assert '允许修改的范围：["/massing"]' in calls[1][0].content
+        assert '"required_fields"' in calls[1][0].content
     elif draft_issue == "roof_outline":
         assert result["architecture_diag"]["repairs"][0]["validated"]
-        assert "/roofs/0/geometry/outline" in calls[1][0]["content"]
+        assert "/roofs/0/geometry/outline" in calls[1][0].content
     assert result["design_document"]["schema_version"] == "design/1.0"
     assert result["architecture_plan"]["volumes"][0]["geometry"]["type"] == "extrusion"
     assert result["resolved_design"]["body_geometry"]["elements"]

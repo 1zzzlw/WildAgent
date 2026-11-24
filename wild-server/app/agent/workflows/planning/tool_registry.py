@@ -72,7 +72,7 @@ _REGISTRY: tuple[ToolSpec, ...] | None = None
 def _knowledge_tool() -> Any:
     """按需检索工具（带 metadata 过滤，见 §4.10）。"""
 
-    from app.agent.workflows.planning.knowledge_tool import search_knowledge
+    from app.agent.tools.knowledge import search_knowledge
 
     return search_knowledge
 

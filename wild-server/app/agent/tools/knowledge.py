@@ -1,7 +1,8 @@
-"""检索构件知识并保留来源；未知设计类型也可查询构件资料。"""
+"""设计与构件执行共用的知识检索工具。"""
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 from langchain.tools import tool
@@ -21,16 +22,17 @@ def search_knowledge_result(
     query: str,
     *,
     kind: str = "",
-    doc_type: str = "component",
+    doc_type: str | None = "component",
     per_query: int = 2,
 ) -> dict[str, Any]:
-    """带过滤的知识检索。无已知 entity_type 时按构件资料检索。"""
+    """检索知识并保留来源。doc_type 为 None 时可跨文档类型查询。"""
 
     query = str(query or "").strip()
     if not query:
         return {
             "text": "❌ 查询为空：请给出具体的字段、构件或构造问题。",
             "has_shape_reference": False,
+            "status": "invalid_query",
         }
 
     if kind:
@@ -43,29 +45,26 @@ def search_knowledge_result(
 
     from app.infrastructure.retrieval.loader import SpecQuery
 
-    filters: dict[str, Any] = {"doc_type": doc_type or "component"}
+    filters: dict[str, Any] = (
+        {"doc_type": doc_type or "component"} if doc_type is not None else {}
+    )
     entity_type = _entity_type_for(kind) if kind else ""
     if entity_type:
         filters["entity_type"] = entity_type
     exact_filters = (
-        {"doc_type": doc_type or "component", "entity_name": naming["kind"]}
+        {**filters, "entity_name": naming["kind"]}
         if kind and entity_type and naming["kind"] != entity_type
         else None
     )
 
-    try:
-        from app.agent.runtime import agent_runtime
-    except Exception as exc:  # pragma: no cover - 基建不可用时不阻断生成
-        logger.warning(f"[search_knowledge] 检索不可用: {exc}")
-        return {
-            "text": "❌ 知识库当前不可用，请基于已给约束作答。",
-            "has_shape_reference": False,
-        }
+    from app.agent.runtime import agent_runtime
 
     try:
-        selected_filters = exact_filters or filters
+        selected_filters = exact_filters or filters or None
+        # 自然语言设计问题可能同时涉及规则和构件，避免别名推断把检索收窄。
+        search_query = SpecQuery(query, selected_filters) if selected_filters else query
         result = agent_runtime.spec_loader.load_many_result(
-            [SpecQuery(query, selected_filters)],
+            [search_query],
             per_query=per_query,
             include_base=False,
         )
@@ -84,20 +83,24 @@ def search_knowledge_result(
         return {
             "text": "❌ 检索失败，请基于已给约束作答。",
             "has_shape_reference": False,
+            "status": "error",
+            "error_type": type(exc).__name__,
         }
 
     if getattr(result, "error_type", None):
         return {
             "text": f"⚠️ 检索服务调用失败（{result.error_type}），未取得参考资料；"
-            "请依据已给字段协议和批准图纸实现，并保留检索故障，不能解释为知识库没有匹配内容。",
+            "请依据当前任务提供的字段协议继续。",
             "has_shape_reference": False,
             "chunk_ids": [],
+            "status": "error",
             "error_type": result.error_type,
         }
-    if not result.text.strip():
+    if not result.hits:
         return {
             "text": "（知识库没有检索到内容：请勿编造字段，改用已给约束并说明缺口。）",
             "has_shape_reference": False,
+            "status": "no_match",
         }
 
     chunks = result.hits
@@ -108,7 +111,7 @@ def search_knowledge_result(
     logger.info(
         f"[search_knowledge] query={query[:120]!r} filters={filters} hits={hits}"
     )
-    header = f"# 检索结果（过滤 {filters}，命中 {len(hits)} 条）\n\n"
+    header = f"# 检索结果（命中 {len(hits)} 条）\n\n"
     selected, documents = [], []
     for hit in chunks:
         document = f"## {hit.metadata.get('source', '?')} / {hit.metadata.get('heading', '?')}\n{hit.document}"
@@ -149,7 +152,12 @@ def search_knowledge_result(
         )
         for hit in selected
     )
-    return {"text": text, "has_shape_reference": bool(shape), "chunk_ids": chunk_ids}
+    return {
+        "text": text,
+        "has_shape_reference": bool(shape),
+        "chunk_ids": chunk_ids,
+        "status": "matched",
+    }
 
 
 def search_knowledge_impl(
@@ -172,8 +180,28 @@ def search_knowledge(query: str, kind: str = "") -> str:
     return search_knowledge_impl(query, kind=kind)
 
 
+@tool(response_format="content_and_artifact")
+async def search_design_knowledge(query: str) -> tuple[str, dict[str, Any]]:
+    """查阅 WILD 图纸字段、空间关系和构造示例。
+
+    Args:
+        query: 当前需要解决的一个具体问题，写出相关字段或构件。
+    """
+    query = query.strip()[:500]
+    result = await asyncio.to_thread(search_knowledge_result, query, doc_type=None)
+    evidence = {
+        "query": query,
+        "status": result["status"],
+        "chunk_ids": result.get("chunk_ids", []),
+    }
+    if result.get("error_type"):
+        evidence["error_type"] = result["error_type"]
+    return result["text"], evidence
+
+
 __all__ = [
     "MAX_RESULT_CHARS",
+    "search_design_knowledge",
     "search_knowledge",
     "search_knowledge_impl",
     "search_knowledge_result",

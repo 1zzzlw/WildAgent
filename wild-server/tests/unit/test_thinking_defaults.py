@@ -45,21 +45,25 @@ def test_architecture_model_uses_the_design_switch(monkeypatch, choice):
     async def reply(*_args, **_kwargs):
         return LlmResult(content=json.dumps({"massing": {}, "volumes": []}))
     monkeypatch.setattr(workflow, "invoke_llm", reply)
-    asyncio.run(workflow.draft_design(base_prompt="图纸", user_request="别墅", thinking_mode=choice is True))
+    asyncio.run(workflow.draft_design(
+        base_prompt="图纸",
+        user_request="别墅",
+        call_accounting={"model_calls": 0},
+        thinking_mode=choice is True,
+    ))
     assert settings == [{"enable_thinking": choice is True, "streaming": False}]
 
 
 @pytest.mark.parametrize("choice", [None, False, True, "true"])
 def test_object_design_also_uses_only_the_design_switch(monkeypatch, choice):
-    from app.agent.runtime import agent_runtime
     from app.agent.workflows.design import architecture, drafting
     from app.infrastructure.llm.invocation import LlmResult
     settings = []
-    monkeypatch.setattr(agent_runtime, "spec_loader", SimpleNamespace(
-        load_many_result=lambda *_args, **_kwargs: SimpleNamespace(text="", hits=[]),
-    ))
     monkeypatch.setattr(architecture, "get_reasoning_callback", lambda: None)
-    monkeypatch.setattr(drafting, "create_llm", lambda **kwargs: settings.append(kwargs) or object())
+    def create_model(**kwargs):
+        settings.append(kwargs)
+        return SimpleNamespace(bind_tools=lambda _: object())
+    monkeypatch.setattr(drafting, "create_llm", create_model)
     async def reply(*_args, **_kwargs):
         return LlmResult(content=json.dumps({"kind": "object", "concept": "桌子", "objects": [{
             "kind": "furniture", "subtype": "table", "count": 1, "width": 1.2, "depth": .7, "height": .75,

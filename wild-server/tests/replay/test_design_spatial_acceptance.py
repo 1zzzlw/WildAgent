@@ -275,7 +275,6 @@ def test_existing_architecture_repair_flow_can_fix_coordinates_then_add_a_passag
     import asyncio
     from types import SimpleNamespace
 
-    from app.agent.runtime import agent_runtime
     from app.agent.workflows.design import architecture, drafting
     from app.infrastructure.llm.invocation import LlmResult
 
@@ -291,10 +290,8 @@ def test_existing_architecture_repair_flow_can_fix_coordinates_then_add_a_passag
         calls.append(messages)
         return LlmResult(content=json.dumps(replies[len(calls) - 1], ensure_ascii=False))
 
-    monkeypatch.setattr(agent_runtime.spec_loader, "load_many_result", lambda *_a, **_kw: SimpleNamespace(text="", hits=[]))
-    monkeypatch.setattr(agent_runtime.spec_loader, "load_many", lambda *_a, **_kw: "")
     monkeypatch.setattr(architecture, "get_reasoning_callback", lambda: None)
-    monkeypatch.setattr(drafting, "create_llm", lambda **_kwargs: object())
+    monkeypatch.setattr(drafting, "create_llm", lambda **_kwargs: SimpleNamespace(bind_tools=lambda _: object()))
     monkeypatch.setattr(drafting, "invoke_llm", reply)
     result = asyncio.run(architecture.architecture_planner({"user_message": "生成一个别墅", "detail_level": "minimal",
                                                           "intent_profile": "villa", "session_id": "repair-replay", "thinking_mode": False}))
@@ -305,5 +302,5 @@ def test_existing_architecture_repair_flow_can_fix_coordinates_then_add_a_passag
     accepted = result["architecture_plan"]
     assert [item["id"] for item in accepted["components"]] == ["entry", "light", "passage"]
     assert accepted["massing"]["width"] == 10
-    assert '"room_id": "right"' in calls[2][0]["content"]
-    assert "/floor_layouts/0/walls" in calls[2][0]["content"]
+    assert '"room_id": "right"' in calls[2][0].content
+    assert "/floor_layouts/0/walls" in calls[2][0].content

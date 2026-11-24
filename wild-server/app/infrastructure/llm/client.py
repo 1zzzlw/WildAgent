@@ -4,7 +4,7 @@ OpenAI-compatible 响应解析与既有节点创建入口。
 """
 from typing import Any
 from langchain_openai import ChatOpenAI
-from langchain_core.messages import AIMessageChunk
+from langchain_core.messages import AIMessage
 from config import ModelConfig
 
 
@@ -67,6 +67,20 @@ class ReasoningChatOpenAI(ChatOpenAI):
        - 捕获最终 chunk 中的 usage（DashScope 在最后一条 chunk 带 usage）
     2. 非流式：_create_chat_result                处理完整响应
     """
+
+    def _get_request_payload(self, input_, *, stop=None, **kwargs):
+        payload = super()._get_request_payload(input_, stop=stop, **kwargs)
+        rows = payload.get("messages", [])
+        if not any(row.get("tool_calls") for row in rows):
+            return payload
+        # DeepSeek 等 OpenAI-compatible 模型在工具续写时需要回传这一轮推理。
+        messages = self._convert_input(input_).to_messages()
+        for message, row in zip(messages, rows, strict=True):
+            if isinstance(message, AIMessage) and row.get("tool_calls"):
+                reasoning = message.additional_kwargs.get("reasoning_content")
+                if reasoning:
+                    row["reasoning_content"] = reasoning
+        return payload
 
     def _convert_chunk_to_generation_chunk(
         self,

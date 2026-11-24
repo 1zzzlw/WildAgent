@@ -1,5 +1,7 @@
 """生成请求共用设计、材质、计划、执行、装配和校验。"""
 
+from typing import get_args
+
 from langgraph.graph import END, StateGraph
 from loguru import logger
 
@@ -19,6 +21,7 @@ from app.domain.planning.store import poll_runnable
 from app.domain.planning.store import refresh_statuses
 from app.agent.state import GenerationInput
 from app.agent.state import GenerationState
+from app.domain.design.types import DetailLevel
 
 
 def plan_recursion_limit(plan_item_count: int, max_retries: int = 3) -> int:
@@ -47,6 +50,14 @@ def _plan_of(state: dict) -> PlanDocument | None:
 
 
 # ── 路由 ──
+
+
+async def _classify_request(state: GenerationState) -> dict:
+    """分类入口为网页和 Studio 统一处理图纸档位。"""
+    result = await classifier_node(state)
+    if state.get("detail_level") not in get_args(DetailLevel):
+        result["detail_level"] = "minimal"
+    return result
 
 
 def _classifier_dispatch(state: GenerationState):
@@ -128,7 +139,7 @@ def build_generation_graph(*, checkpointer=None):
     """构建生成链。"""
 
     graph = StateGraph(GenerationState, input_schema=GenerationInput)
-    graph.add_node("classifier", classifier_node)
+    graph.add_node("classifier", _classify_request)
     graph.add_node("chat", chat_node)
     graph.add_node("patch", patch_node)
     graph.add_node("architecture", architecture_planner)

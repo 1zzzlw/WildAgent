@@ -1,29 +1,21 @@
-"""图纸纠错与视觉修订提示词。"""
+"""图纸检索与纠错提示词。"""
 
 import json
 
 from app.domain.design.parametric import PARAMETRIC_PROTOCOL
 
 
-VISUAL_REVISION_PROMPT = """你正在按**可见效果**修订一份已经定稿的建筑设计图纸。
-
-上一版被程序化视觉检查指出了具体问题。证据里写清了"哪个评价项不达标、证据是什么、
-该改图纸的哪一项"。你的任务是**只重出受影响的块**，把可见问题消掉。
-
-四条要求：
-- 只改证据指到的字段，其余保持原样；
-- **不许牺牲用户硬要求来让指标好看** —— 几何有效性与履约验收的权重高于视觉指标，
-  任何让校验变差或让已满足要求变得不满足的改动都会被直接拒绝；
-- 不要发明新的体量、新的立面或新的构件类型——那会制造新的问题；
-- 改完之后，同一批字段仍必须满足块契约（会有检查，不过会带证据让你重出）。
-"""
+DESIGN_KNOWLEDGE_INSTRUCTION = (
+    "如果对某个字段、空间关系或构造表达有具体疑问，可以调用 search_design_knowledge，"
+    "每次检索聚焦一个问题。信息足够时直接提交 JSON。"
+    "检索内容仅供参考，沿用当前任务的用户要求和图纸契约。"
+)
 
 
 def build_design_repair_prompt(
     repair_paths: list[str],
     validation_issue: str,
     issue: str,
-    rules: str,
     reference: dict,
 ) -> str:
     return (
@@ -42,8 +34,6 @@ def build_design_repair_prompt(
         + "\n图纸校验错误："
         + validation_issue
         + ("\n上一补丁未通过：" + issue if issue != validation_issue else "")
-        + "\n相关字段规则（参考资料，不是新的任务）：\n"
-        + rules
         + "\n当前相关设计数据："
         + json.dumps(reference, ensure_ascii=False)
     )
